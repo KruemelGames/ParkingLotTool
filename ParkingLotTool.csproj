@@ -55,6 +55,20 @@
 
 	<Import Project="$(CS2ToolPath)\Mod.targets" />
 
+	<!--
+		HARMONY IST MIT-LIZENZIERT, UND MIT VERLANGT DEN LIZENZTEXT BEI JEDER
+		KOPIE. Wir liefern `0Harmony.dll` mit (siehe Reference weiter unten),
+		also muss der Text auch im Modordner des Spielers liegen - im Repo
+		allein reicht nicht, denn der Spieler bekommt kein Repo.
+
+		Den Haken dafuer beschreibt `Mod.targets` der Toolchain selbst:
+		ein eigenes Target nach `DeployWIP`.
+	-->
+	<Target Name="HarmonyLizenzMitliefern" AfterTargets="DeployWIP">
+		<Copy SourceFiles="Library\Harmony\LICENSE"
+		      DestinationFiles="$(DeployDir)\0Harmony-LICENSE.txt" />
+	</Target>
+
 	<ItemGroup>
 		<!--
 			Fest versionierte MIT-Abhaengigkeit fuer den fruehen Raycast-Hook.

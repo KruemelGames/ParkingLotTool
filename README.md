@@ -37,14 +37,16 @@ them before you enable it.
 | Mod | Why it is needed |
 |---|---|
 | [Unified Icon Library](https://mods.paradoxplaza.com/mods/74417/Windows) | every icon in the panel comes from it |
-| **Asset Icon Library** | the surface pictures in the surface picker |
-| **Harmony** | used to read the game's own selection and bulldoze behaviour |
+| [Asset Icon Library](https://mods.paradoxplaza.com/mods/79634/Windows) | the surface pictures in the surface picker |
 
-Plus Cities: Skylines II itself, of course. All three are on Paradox Mods —
-search for them by name there.
+Plus Cities: Skylines II itself, of course.
 
-If the panel opens but stays empty, or icons show as white boxes, one of the
-three is missing.
+If the panel opens but icons show as white boxes, one of the two is missing.
+
+**Harmony does not need installing.** The mod ships its own copy of
+`0Harmony.dll` and it lands in the mod folder on build. It is used to read the
+game's own selection, bulldoze and upkeep behaviour. Licence and origin are in
+the header of `Tools/ParkingLotRaycastPatch.cs`.
 
 ## Building
 
@@ -123,6 +125,17 @@ available. Whoever takes, gives back.
 
 Contributions are welcome and are taken to be under the same licence.
 
-The mod depends on [Unified Icon Library](https://github.com/algernon-A/UnifiedIconLibrary)
-(Apache-2.0) at runtime; none of its code is included here. Apache-2.0 is
-one-way compatible with GPL-3.0, so that combination is fine.
+### Third-party code
+
+**Shipped with the mod:** [Harmony](https://github.com/pardeike/Harmony) 2.2.2
+(`0Harmony.dll`), Copyright (c) 2017 Andreas Pardeike, MIT licence. The binary
+is unmodified, taken from the [Lib.Harmony 2.2.2](https://www.nuget.org/packages/Lib.Harmony/2.2.2)
+NuGet package; no Harmony source code was copied into this project. Its licence
+text travels with it — in the repository at `Library/Harmony/LICENSE`, and in
+the built mod folder as `0Harmony-LICENSE.txt`. MIT is compatible with GPL-3.0.
+
+**Not shipped, required at runtime:**
+[Unified Icon Library](https://github.com/algernon-A/UnifiedIconLibrary)
+(Apache-2.0) and Asset Icon Library. None of their code is included here; the
+player installs them separately. Apache-2.0 is one-way compatible with GPL-3.0,
+so that combination is fine.
