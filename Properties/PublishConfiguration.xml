@@ -93,7 +93,7 @@ The full source is on GitHub under GPL-3.0. This mod was written with AI assista
 		Nummer noch einmal, und auseinanderlaufende Nummern sind spaeter beim
 		Fehlersuchen der reine Zeitfresser.
 	-->
-	<ModVersion Value="1.0.0" />
+	<ModVersion Value="0.1.0" />
 
 	<!--
 		Recommended version of the base game to use the mod.
