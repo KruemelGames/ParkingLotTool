@@ -7,10 +7,34 @@ markings and surfaces, with cars that actually park.
 ## Status
 
 Work in progress, and honest about it: it builds working parking lots, but it
-is not on the Workshop yet and things still break. If you find something,
-there is a **Report a problem** tab in the panel — it writes a single file with
-everything needed to look into it, including a crash report if the game died
-last time. Send that file along.
+is not on the Workshop yet and things still break.
+
+## Reporting a problem
+
+Open an [issue](https://github.com/KruemelGames/ParkingLotTool/issues). That is
+the only channel — it keeps the file, the description and the follow-up
+questions in one place, and other people can see what is already known.
+
+Before you write it, use the **Report a problem** tab in the panel. It writes a
+single `.zip` into your Cities: Skylines II logs folder containing everything
+needed to look into it, including a crash report if the game died last time.
+Drag that file into the issue.
+
+Then say, briefly:
+
+- what you did, step by step — drew an area, built, edited, bulldozed
+- what you expected, and what happened instead
+- whether the game crashed
+- which other mods were running
+
+Everything technical is already in the report file. Please do not paste logs.
+
+**One thing to know before you upload.** A crash report includes the game's own
+`Player.log`, and that file contains your Windows user name, your Steam ID, the
+names of your save games and the list of your installed mods. Issues are
+public. If that bothers you, open the `.zip` and remove `Player.log` and
+`Player-prev.log` — the report is still useful without them, just less so for
+crashes.
 
 ## What it does
 

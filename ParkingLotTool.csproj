@@ -69,6 +69,25 @@
 		      DestinationFiles="$(DeployDir)\0Harmony-LICENSE.txt" />
 	</Target>
 
+	<!--
+		UNSERE EIGENE LIZENZ GEHOERT GENAUSO MIT.
+
+		Wir liefern Harmonys MIT-Text und Reacts Hinweis mit, den eigenen
+		nicht. Bei GPL-3.0 ist das nicht nur inkonsequent, sondern falsch: wer
+		die gebaute Fassung bekommt, braucht die Lizenz UND einen Weg zum
+		Quelltext. Beides liegt jetzt im Modordner.
+
+		README.txt nennt ausserdem die beiden Icon-Bibliotheken - der
+		haeufigste Grund fuer "bei mir sind da nur weisse Kaestchen". Es ist
+		englisch, weil der Mod global weitergegeben wird.
+	-->
+	<Target Name="EigeneLizenzMitliefern" AfterTargets="DeployWIP">
+		<Copy SourceFiles="LICENSE"
+		      DestinationFiles="$(DeployDir)\LICENSE.txt" />
+		<Copy SourceFiles="Properties\README.txt"
+		      DestinationFiles="$(DeployDir)\README.txt" />
+	</Target>
+
 	<ItemGroup>
 		<!--
 			Fest versionierte MIT-Abhaengigkeit fuer den fruehen Raycast-Hook.

@@ -1,0 +1,85 @@
+name: Report a problem
+description: Something broke, looked wrong, or crashed the game
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **First, get the report file.** The panel has a **Report a problem**
+        tab. It writes a single `.zip` into your Cities: Skylines II logs
+        folder with everything needed to look into this — including a crash
+        report if the game died last time. Drag that file into this issue.
+
+        Please don't paste logs. Everything technical is already in the file.
+
+        **Before you upload:** a crash report includes the game's own
+        `Player.log`, which contains your Windows user name, your Steam ID,
+        your save game names and your mod list. Issues here are public. If that
+        bothers you, open the `.zip` and remove `Player.log` and
+        `Player-prev.log` first — the report still helps, just less so for
+        crashes.
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do?
+      description: Step by step, in the order you did it.
+      placeholder: |
+        1. Drew an area next to a road
+        2. Added a zoning strip along the north edge
+        3. Built
+        4. Opened Edit, moved the zoning strip, built again
+    validations:
+      required: true
+
+  - type: textarea
+    id: result
+    attributes:
+      label: What did you expect, and what happened instead?
+      placeholder: |
+        Expected the lot to rebuild with the strip in its new place.
+        Instead the aisle on the left was missing and the pavement ran onto
+        the street.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: crash
+    attributes:
+      label: Did the game crash?
+      options:
+        - "No"
+        - "Yes, it closed itself"
+        - "Yes, it froze and I had to kill it"
+    validations:
+      required: true
+
+  - type: textarea
+    id: report
+    attributes:
+      label: Report file
+      description: Drag the .zip from the "Report a problem" tab in here.
+      placeholder: Drop the file here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: mods
+    attributes:
+      label: Which other mods were running?
+      description: >
+        Names are enough. This matters more than it sounds — most odd
+        behaviour in Cities: Skylines II comes from two mods touching the
+        same thing.
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: >
+        A screenshot helps a lot for anything visual. Drag it in here.
+      placeholder: Optional.
+    validations:
+      required: false
