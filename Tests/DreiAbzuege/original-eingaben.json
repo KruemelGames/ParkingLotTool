@@ -1,0 +1,257 @@
+[
+  {
+    "Datei": "C:\\Users\\kruem\\AppData\\LocalLow\\Colossal Order\\Cities Skylines II\\Logs\\ParkingLotTool-debug-20260909-154354-667.json",
+    "SHA256": "1badd1dc551cd26514230858a2ef2b4d9ef3a43f5cc09dc118d44674eb1dea59",
+    "Input": {
+      "PolygonSource": "aktuelles gezeichnetes Polygon",
+      "PolygonWorld": [
+        {
+          "X": -1037.0201416015625,
+          "Y": 512.0127563476562,
+          "Z": 118.68981170654297
+        },
+        {
+          "X": -1041.7760009765625,
+          "Y": 512.3839721679688,
+          "Z": -19.95400047302246
+        },
+        {
+          "X": -1146.008056640625,
+          "Y": 512.6953125,
+          "Z": -16.378000259399414
+        },
+        {
+          "X": -1143.0111083984375,
+          "Y": 512.5703125,
+          "Z": 70.96600341796875
+        },
+        {
+          "X": -1099.5789794921875,
+          "Y": 512.3529052734375,
+          "Z": 120.83588409423828
+        }
+      ],
+      "PolygonXZ": [
+        {
+          "X": -1037.0201416015625,
+          "Z": 118.68981170654297
+        },
+        {
+          "X": -1041.7760009765625,
+          "Z": -19.95400047302246
+        },
+        {
+          "X": -1146.008056640625,
+          "Z": -16.378000259399414
+        },
+        {
+          "X": -1143.0111083984375,
+          "Z": 70.96600341796875
+        },
+        {
+          "X": -1099.5789794921875,
+          "Z": 120.83588409423828
+        }
+      ],
+      "LayoutSettings": {
+        "Es": 1,
+        "Ai": 7,
+        "Cw": 3,
+        "Sl": 5.9,
+        "Sw": 3,
+        "Md": 2.5,
+        "Cr": 33,
+        "Qk": true,
+        "Auto": false,
+        "Angle": 0,
+        "AngleMode": "edge",
+        "TeilflaechenAusrichtungen": [],
+        "Zellen": true,
+        "Randstrassen": false,
+        "Entrances": [],
+        "NoNotch": false,
+        "Single": false,
+        "Ausrichtwinkel": null,
+        "AutomaticEntrances": false,
+        "Zoningstrasse": "Alley",
+        "Teilflaechenschnitte": [],
+        "Zoningflaechen": [],
+        "Randzoning": []
+      },
+      "CurrentGeometryRevision": 13,
+      "ResultGeometryRevision": 13,
+      "MatchesResult": true,
+      "Note": null
+    }
+  },
+  {
+    "Datei": "C:\\Users\\kruem\\AppData\\LocalLow\\Colossal Order\\Cities Skylines II\\Logs\\ParkingLotTool-debug-20260909-154359-722.json",
+    "SHA256": "8b2ad9d9ae1116e1ea871f5f4b209b00f69695e6e0fa3cd4f645eb0f6a54cf00",
+    "Input": {
+      "PolygonSource": "aktuelles gezeichnetes Polygon",
+      "PolygonWorld": [
+        {
+          "X": -1037.0201416015625,
+          "Y": 512.0127563476562,
+          "Z": 118.68981170654297
+        },
+        {
+          "X": -1041.7760009765625,
+          "Y": 512.3839721679688,
+          "Z": -19.95400047302246
+        },
+        {
+          "X": -1153.6671142578125,
+          "Y": 512.6953125,
+          "Z": -16.115001678466797
+        },
+        {
+          "X": -1150.6700439453125,
+          "Y": 512.5703125,
+          "Z": 71.22900390625
+        },
+        {
+          "X": -1099.5789794921875,
+          "Y": 512.3529052734375,
+          "Z": 120.83588409423828
+        }
+      ],
+      "PolygonXZ": [
+        {
+          "X": -1037.0201416015625,
+          "Z": 118.68981170654297
+        },
+        {
+          "X": -1041.7760009765625,
+          "Z": -19.95400047302246
+        },
+        {
+          "X": -1153.6671142578125,
+          "Z": -16.115001678466797
+        },
+        {
+          "X": -1150.6700439453125,
+          "Z": 71.22900390625
+        },
+        {
+          "X": -1099.5789794921875,
+          "Z": 120.83588409423828
+        }
+      ],
+      "LayoutSettings": {
+        "Es": 1,
+        "Ai": 7,
+        "Cw": 3,
+        "Sl": 5.9,
+        "Sw": 3,
+        "Md": 2.5,
+        "Cr": 33,
+        "Qk": true,
+        "Auto": false,
+        "Angle": 0,
+        "AngleMode": "edge",
+        "TeilflaechenAusrichtungen": [],
+        "Zellen": true,
+        "Randstrassen": false,
+        "Entrances": [],
+        "NoNotch": false,
+        "Single": false,
+        "Ausrichtwinkel": null,
+        "AutomaticEntrances": false,
+        "Zoningstrasse": "Alley",
+        "Teilflaechenschnitte": [],
+        "Zoningflaechen": [],
+        "Randzoning": []
+      },
+      "CurrentGeometryRevision": 14,
+      "ResultGeometryRevision": 14,
+      "MatchesResult": true,
+      "Note": null
+    }
+  },
+  {
+    "Datei": "C:\\Users\\kruem\\AppData\\LocalLow\\Colossal Order\\Cities Skylines II\\Logs\\ParkingLotTool-debug-20260909-154415-436.json",
+    "SHA256": "f1397c86e8644dd9a2e4a7ad28fbc2f673884422374107d371d32e4c1152fe43",
+    "Input": {
+      "PolygonSource": "aktuelles gezeichnetes Polygon",
+      "PolygonWorld": [
+        {
+          "X": -1037.0201416015625,
+          "Y": 512.0127563476562,
+          "Z": 118.68981170654297
+        },
+        {
+          "X": -1041.7760009765625,
+          "Y": 512.3839721679688,
+          "Z": -19.95400047302246
+        },
+        {
+          "X": -1160.1300048828125,
+          "Y": 512.6953125,
+          "Z": -15.894001007080078
+        },
+        {
+          "X": -1157.133056640625,
+          "Y": 512.5703125,
+          "Z": 71.45000457763672
+        },
+        {
+          "X": -1099.5789794921875,
+          "Y": 512.3529052734375,
+          "Z": 120.83588409423828
+        }
+      ],
+      "PolygonXZ": [
+        {
+          "X": -1037.0201416015625,
+          "Z": 118.68981170654297
+        },
+        {
+          "X": -1041.7760009765625,
+          "Z": -19.95400047302246
+        },
+        {
+          "X": -1160.1300048828125,
+          "Z": -15.894001007080078
+        },
+        {
+          "X": -1157.133056640625,
+          "Z": 71.45000457763672
+        },
+        {
+          "X": -1099.5789794921875,
+          "Z": 120.83588409423828
+        }
+      ],
+      "LayoutSettings": {
+        "Es": 1,
+        "Ai": 7,
+        "Cw": 3,
+        "Sl": 5.9,
+        "Sw": 3,
+        "Md": 2.5,
+        "Cr": 33,
+        "Qk": true,
+        "Auto": false,
+        "Angle": 0,
+        "AngleMode": "edge",
+        "TeilflaechenAusrichtungen": [],
+        "Zellen": true,
+        "Randstrassen": false,
+        "Entrances": [],
+        "NoNotch": false,
+        "Single": false,
+        "Ausrichtwinkel": null,
+        "AutomaticEntrances": false,
+        "Zoningstrasse": "Alley",
+        "Teilflaechenschnitte": [],
+        "Zoningflaechen": [],
+        "Randzoning": []
+      },
+      "CurrentGeometryRevision": 26,
+      "ResultGeometryRevision": 26,
+      "MatchesResult": true,
+      "Note": null
+    }
+  }
+]

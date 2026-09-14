@@ -1,0 +1,229 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;700&amp;display=swap">
+  <style>
+    body {
+      margin: 0;
+      background-color: #242c33;
+      font-family: Overpass, "Noto Sans", system-ui, sans-serif;
+    }
+    a { color: #4fc3f7; }
+    a:hover { color: #9ee2fc; }
+  </style>
+</helmet>
+<div style="padding: 20px">
+  <div style="margin-bottom: 14px; color: rgba(255,255,255,0.35); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase">A — Werkstatt · 452 × 432 rem</div>
+
+  <div style="box-sizing: border-box; width: 452px; padding: 14px; border-radius: 10px; background-color: rgba(16,23,36,0.88); border: 1px solid rgba(126,172,214,0.16); box-shadow: 0 8px 26px rgba(0,0,0,0.5); color: rgba(255,255,255,0.82)">
+
+    <!-- Kopf: der Name traegt selbst Farbe, damit das Fenster im Spiel sofort als der Mod erkennbar ist. -->
+    <div style="display: flex; align-items: center; margin-bottom: 12px">
+      <span style="width: 3px; height: 18px; margin-right: 8px; border-radius: 2px; background-color: #4fc3f7"></span>
+      <span style="flex: 1; font-size: 19px; font-weight: 700; letter-spacing: 0.04em; color: #ffffff">PARKPLATZ</span>
+      <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-left: 4px; border-radius: 4px; background-color: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+      <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-left: 4px; border-radius: 4px; background-color: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10"></path><path d="M6 4V2.5h4V4"></path><path d="M4.5 4l.6 9h5.8l.6-9"></path></svg></span>
+      <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-left: 4px; border-radius: 4px; background-color: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"></path></svg></span>
+    </div>
+
+    <!-- Reiter: der aktive traegt die Farbe seiner Aufgabe, nicht eine gemeinsame Akzentfarbe. -->
+    <div style="display: flex; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+      <span style="padding: 0 14px 7px 2px; margin-right: 6px; font-size: 15px; font-weight: 700; color: #ffffff; border-bottom: 2px solid #4fc3f7">Entwurf</span>
+      <span style="padding: 0 14px 7px 2px; font-size: 15px; color: rgba(255,255,255,0.5); border-bottom: 2px solid rgba(255,255,255,0)">Fehler melden</span>
+    </div>
+
+    <!-- Ergebnis zuerst: das ist die Zahl, wegen der man das Fenster ueberhaupt offen hat. -->
+    <div style="display: flex; align-items: center; padding: 10px 12px; border-radius: 8px; background-color: rgba(0,0,0,0.28)">
+      <div style="width: 132px">
+        <div style="font-size: 34px; font-weight: 700; line-height: 1; color: #ffffff">298</div>
+        <div style="margin-top: 4px; font-size: 12px; color: rgba(255,255,255,0.5)">Stellplätze · 84 am Rand</div>
+      </div>
+      <div style="width: 1px; height: 44px; margin-right: 14px; background-color: rgba(255,255,255,0.1)"></div>
+      <div style="flex: 1; display: flex; flex-wrap: wrap">
+        <div style="width: 50%; margin-bottom: 8px">
+          <span style="font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.9)">48,9 m²</span>
+          <span style="margin-left: 5px; font-size: 11px; color: rgba(255,255,255,0.45)">je Bucht</span>
+        </div>
+        <div style="width: 50%; margin-bottom: 8px">
+          <span style="font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.9)">7</span>
+          <span style="margin-left: 5px; font-size: 11px; color: rgba(255,255,255,0.45)">Fahrgassen</span>
+        </div>
+        <div style="width: 50%">
+          <span style="font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.9)">93,3°</span>
+          <span style="margin-left: 5px; font-size: 11px; color: rgba(255,255,255,0.45)">Reihenwinkel</span>
+        </div>
+        <div style="width: 50%">
+          <span style="font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.9)">14.560 m²</span>
+          <span style="margin-left: 5px; font-size: 11px; color: rgba(255,255,255,0.45)">Areal</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zwei Spalten statt einer Schlange: die neun Regler passen nebeneinander,
+         weil Beschriftung und Wert eine Zeile teilen und die Schiene darunter liegt. -->
+    <div style="display: flex; margin-top: 14px">
+
+      <div style="width: 202px; margin-right: 20px">
+        <div style="display: flex; align-items: center; margin-bottom: 9px">
+          <span style="width: 3px; height: 15px; margin-right: 7px; border-radius: 2px; background-color: #f0ad3e"></span>
+          <span style="font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: #f0ad3e">ZUSCHNITT</span>
+          <span style="flex: 1; height: 1px; margin-left: 9px; background-color: rgba(240,173,62,0.25)"></span>
+        </div>
+        <div style="margin-bottom: 9px">
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 14px; color: rgba(255,255,255,0.78)">Randabstand</span>
+            <span style="font-size: 14px; font-weight: 700; color: #f0ad3e">1,0 m</span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.09)">
+            <div style="position: absolute; top: 0; left: 0; width: 17%; height: 5px; border-radius: 3px; background-color: #f0ad3e"></div>
+            <div style="position: absolute; top: -2px; left: 17%; width: 9px; height: 9px; margin-left: -5px; border-radius: 5px; background-color: #ffffff"></div>
+          </div>
+        </div>
+        <div style="margin-bottom: 9px">
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 14px; color: rgba(255,255,255,0.78)">Reihenwinkel</span>
+          </div>
+          <div style="display: flex">
+            <span style="flex: 1; margin-right: 3px; padding: 3px 0; border-radius: 4px; text-align: center; font-size: 12px; font-weight: 700; color: #f0ad3e; background-color: rgba(240,173,62,0.20)">Kante</span>
+            <span style="flex: 1; margin-right: 3px; padding: 3px 0; border-radius: 4px; text-align: center; font-size: 12px; color: rgba(255,255,255,0.5); background-color: rgba(255,255,255,0.06)">Meiste</span>
+            <span style="flex: 1; padding: 3px 0; border-radius: 4px; text-align: center; font-size: 12px; color: rgba(255,255,255,0.5); background-color: rgba(255,255,255,0.06)">Fest</span>
+          </div>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 14px; color: rgba(255,255,255,0.3)">Winkel</span>
+            <span style="font-size: 14px; color: rgba(255,255,255,0.3)">0 Grad</span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.05)">
+            <div style="position: absolute; top: -2px; left: 0; width: 9px; height: 9px; border-radius: 5px; background-color: rgba(255,255,255,0.22)"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width: 202px">
+        <div style="display: flex; align-items: center; margin-bottom: 9px">
+          <span style="width: 3px; height: 15px; margin-right: 7px; border-radius: 2px; background-color: #4fc3f7"></span>
+          <span style="font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: #4fc3f7">FAHRWEGE</span>
+          <span style="flex: 1; height: 1px; margin-left: 9px; background-color: rgba(79,195,247,0.25)"></span>
+        </div>
+        <!-- Der eine Regler, der vom Standard abweicht: nur hier erscheinen die beiden
+             kleinen Knoepfe. Bisher trug jede der neun Zeilen sie dauerhaft mit. -->
+        <div style="margin-bottom: 9px">
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 14px; color: rgba(255,255,255,0.78)">Fahrgassenbreite</span>
+            <span style="font-size: 14px; font-weight: 700; color: #4fc3f7">7,5 m</span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.09); color: rgba(255,255,255,0.55)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 3px; border-radius: 3px; background-color: rgba(255,255,255,0.09); color: rgba(255,255,255,0.55)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.09)">
+            <div style="position: absolute; top: 0; left: 0; width: 50%; height: 5px; border-radius: 3px; background-color: #4fc3f7"></div>
+            <div style="position: absolute; top: -2px; left: 50%; width: 9px; height: 9px; margin-left: -5px; border-radius: 5px; background-color: #ffffff"></div>
+          </div>
+        </div>
+        <div style="margin-bottom: 9px">
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 14px; color: rgba(255,255,255,0.78)">Querstraßenbreite</span>
+            <span style="font-size: 14px; font-weight: 700; color: #4fc3f7">3,0 m</span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.09)">
+            <div style="position: absolute; top: -2px; left: 0; width: 9px; height: 9px; border-radius: 5px; background-color: #ffffff"></div>
+          </div>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 14px; color: rgba(255,255,255,0.78)">Abstand Verbindungen</span>
+            <span style="font-size: 14px; font-weight: 700; color: #4fc3f7">34 m</span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.09)">
+            <div style="position: absolute; top: 0; left: 0; width: 14%; height: 5px; border-radius: 3px; background-color: #4fc3f7"></div>
+            <div style="position: absolute; top: -2px; left: 14%; width: 9px; height: 9px; margin-left: -5px; border-radius: 5px; background-color: #ffffff"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; margin-top: 16px">
+
+      <div style="width: 202px; margin-right: 20px">
+        <div style="display: flex; align-items: center; margin-bottom: 9px">
+          <span style="width: 3px; height: 15px; margin-right: 7px; border-radius: 2px; background-color: #7cd455"></span>
+          <span style="font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: #7cd455">GRÜN</span>
+          <span style="flex: 1; height: 1px; margin-left: 9px; background-color: rgba(124,212,85,0.25)"></span>
+        </div>
+        <!-- Schalter als Kippschalter statt als Knopf ueber die volle Breite:
+             halbe Hoehe, und an/aus ist ohne Text zu sehen. -->
+        <div style="display: flex; align-items: center; margin-bottom: 8px">
+          <span style="flex: 1; font-size: 14px; color: rgba(255,255,255,0.78)">Mittelgrün</span>
+          <span style="position: relative; width: 26px; height: 14px; border-radius: 7px; background-color: #7cd455">
+            <span style="position: absolute; top: 2px; left: 14px; width: 10px; height: 10px; border-radius: 5px; background-color: #101724"></span>
+          </span>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 9px">
+          <span style="flex: 1; font-size: 14px; color: rgba(255,255,255,0.78)">Kappen an Querstraßen</span>
+          <span style="position: relative; width: 26px; height: 14px; border-radius: 7px; background-color: #7cd455">
+            <span style="position: absolute; top: 2px; left: 14px; width: 10px; height: 10px; border-radius: 5px; background-color: #101724"></span>
+          </span>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 14px; color: rgba(255,255,255,0.78)">Grünstreifentiefe</span>
+            <span style="font-size: 14px; font-weight: 700; color: #7cd455">2,5 m</span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.09)">
+            <div style="position: absolute; top: 0; left: 0; width: 31%; height: 5px; border-radius: 3px; background-color: #7cd455"></div>
+            <div style="position: absolute; top: -2px; left: 31%; width: 9px; height: 9px; margin-left: -5px; border-radius: 5px; background-color: #ffffff"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Magenta ist im Spiel schon die Farbe des Zufahrt-Rings. Hier traegt sie
+           denselben Schritt, damit Fenster und Welt dasselbe sagen. -->
+      <div style="width: 202px">
+        <div style="display: flex; align-items: center; margin-bottom: 9px">
+          <span style="width: 3px; height: 15px; margin-right: 7px; border-radius: 2px; background-color: #ff5fb0"></span>
+          <span style="font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: #ff5fb0">ZUFAHRT</span>
+          <span style="flex: 1; height: 1px; margin-left: 9px; background-color: rgba(255,95,176,0.25)"></span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: center; padding: 8px 0; border-radius: 6px; background-color: rgba(255,95,176,0.16); border: 1px solid rgba(255,95,176,0.45); color: #ffb3da">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 7px"><path d="M2 13V6.5L8 2l6 4.5V13"></path><path d="M8 13V9"></path></svg>
+          <span style="font-size: 14px; font-weight: 700">Zufahrt setzen</span>
+        </div>
+        <div style="margin-top: 7px; font-size: 12px; color: rgba(255,255,255,0.45)">3 von 10 gesetzt · Rechtsklick nimmt die letzte zurück</div>
+        <div style="display: flex; align-items: center; margin-top: 9px">
+          <span style="width: 6px; height: 6px; margin-right: 6px; border-radius: 3px; background-color: #ff5fb0"></span>
+          <span style="width: 6px; height: 6px; margin-right: 6px; border-radius: 3px; background-color: #ff5fb0"></span>
+          <span style="width: 6px; height: 6px; margin-right: 10px; border-radius: 3px; background-color: #ff5fb0"></span>
+          <span style="width: 6px; height: 6px; margin-right: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.14)"></span>
+          <span style="width: 6px; height: 6px; margin-right: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.14)"></span>
+          <span style="width: 6px; height: 6px; margin-right: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.14)"></span>
+          <span style="width: 6px; height: 6px; margin-right: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.14)"></span>
+          <span style="width: 6px; height: 6px; margin-right: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.14)"></span>
+          <span style="width: 6px; height: 6px; margin-right: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.14)"></span>
+          <span style="width: 6px; height: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.14)"></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08)">
+      <div style="display: flex; align-items: center">
+        <span style="width: 6px; height: 6px; margin-right: 7px; border-radius: 3px; background-color: #7cd455"></span>
+        <span style="font-size: 13px; color: rgba(255,255,255,0.7)">Gebaut: 298 Buchten, 16 Grasflächen, 5 Belagflächen.</span>
+      </div>
+      <div style="margin-top: 5px; font-size: 12px; color: rgba(255,255,255,0.4)">Linksklick setzt Punkte · Enter baut · ESC beendet</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":492,"height":500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

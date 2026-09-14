@@ -1,0 +1,10 @@
+  Buchten 527, Gassen 7, gesetzte Zugaenge 5, Zufahrtslinien 8
+      ! Halbebenenschnitt y=1076,4261494245545 (ID 195): entartete Scherbe verworfen, Flaeche 5,960372766686
+      ! Halbebenenschnitt y=1076,426151757579 (ID 196): entartete Scherbe verworfen, Flaeche 5,9603807400189
+      ! Halbebenenschnitt y=1078,4261494245532 (ID 198): entartete Scherbe verworfen, Flaeche 5,688236810435
+      ! Halbebenenschnitt y=1078,4261517575776 (ID 199): entartete Scherbe verworfen, Flaeche 5,688229998876
+      ! Halbebenenschnitt y=1111,4262509072287 (ID 207): entartete Scherbe verworfen, Flaeche 6,934468716013
+      ! Halbebenenschnitt y=1111,426319604235 (ID 208): entartete Scherbe verworfen, Flaeche 1,1978215531850
+      ! Halbebenenschnitt y=1115,426250907226 (ID 210): entartete Scherbe verworfen, Flaeche 3,7835407066985
+      ! Halbebenenschnitt y=1115,4263196042323 (ID 211): entartete Scherbe verworfen, Flaeche 6,535440970078
+Fusswegzugang: 0 Fehler

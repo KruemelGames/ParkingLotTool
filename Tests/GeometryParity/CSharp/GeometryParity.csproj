@@ -1,0 +1,83 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Program.Gassenabstand.cs" />
+    <Compile Include="Program.Randstrassen.cs" />
+    <Compile Include="Program.Zufahrtsschnitt.cs" />
+    <Compile Include="Program.Ringlosflaechen.cs" />
+    <Compile Include="Program.Versorgung.cs" />
+    <Compile Include="Program.VersorgungFehlermuster.cs" />
+    <Compile Include="Program.VersorgungRing.cs" />
+    <Compile Include="Program.Switches.cs" />
+    <Compile Include="Program.Zerlegungsprobe.cs" />
+    <Compile Include="Program.Nutzerform.cs" />
+    <Compile Include="Program.Nutzerbild.cs" />
+    <Compile Include="Program.Protokoll.cs" />
+    <Compile Include="Program.Anschluss.cs" />
+    <Compile Include="Program.Mittig.cs" />
+    <Compile Include="Program.Zoningtreffer.cs" />
+    <Compile Include="Program.Zoningnetz.cs" />
+    <Compile Include="Program.ZoningTAnschluss.cs" />
+    <Compile Include="Program.Zoningflaeche.cs" />
+    <Compile Include="Program.Zoningrasten.cs" />
+    <Compile Include="Program.Ueberlappung.cs" />
+    <Compile Include="Program.Infokarten.cs" />
+    <Compile Include="Program.Flaechenannahme.cs" />
+    <Compile Include="Program.SplitFussweg.cs" />
+    <Compile Include="Program.Fusswegsuche.cs" />
+    <Compile Include="Program.Zufahrtsverlust.cs" />
+    <Compile Include="Program.Regler.cs" />
+    <Compile Include="Program.Echt.cs" />
+    <Compile Include="Program.Schwarm.cs" />
+    <Compile Include="Program.Zellen.cs" />
+    <Compile Include="Program.Zellenlauf.cs" />
+    <Compile Include="Program.LFormen.cs" />
+    <Compile Include="Program.Treppen.cs" />
+    <Compile Include="Program.Qualitaet.cs" />
+    <Compile Include="Program.Flaechen.cs" />
+    <Compile Include="Program.Fehlerbilder.cs" />
+    <Compile Include="Program.Doppelpunkte.cs" />
+    <Compile Include="Program.Triangulierungstest.cs" />
+    <Compile Include="Program.FlaechenUrsache.cs" />
+    <Compile Include="Program.FlaechenStudie.cs" />
+    <Compile Include="Program.FlaechenNaehte.cs" />
+    <Compile Include="Program.FlaechenNaehte.Algorithmus.cs" />
+    <Compile Include="Program.FormenExport.cs" />
+    <Compile Include="Program.Kappen.cs" />
+    <Compile Include="Program.Befund.cs" />
+    <Compile Include="Program.Querstrassen.cs" />
+    <Compile Include="Program.Querfall.cs" />
+    <Compile Include="Program.Zufahrtsarten.cs" />
+    <Compile Include="Program.Sonderplaetze.cs" />
+    <Compile Include="Program.Zufahrtsquads.cs" />
+    <Compile Include="Program.Lformtoggle.cs" />
+    <Compile Include="Program.Fusswegzugang.cs" />
+    <Compile Include="Program.Winkelmodus.cs" />
+    <Compile Include="Program.Endwegbreite.cs" />
+    <Compile Include="Program.Diagonalwege.cs" />
+    <Compile Include="Program.Werkzeugzustand.cs" />
+    <Compile Include="Program.Randzoningseite.cs" />
+    <Compile Include="Program.Querstrassengitter.cs" />
+    <Compile Include="Program.Geradepunkt.cs" />
+    <Compile Include="Program.Rzanschluss.cs" />
+    <Compile Include="Program.Rzgasse.cs" />
+    <Compile Include="Program.Entarteteringe.cs" />
+    <Compile Include="Program.Ortsunabhaengig.cs" />
+    <Compile Include="Program.Rzstufen.cs" />
+    <Compile Include="Program.Teilflaechenwinkel.cs" />
+    <Compile Include="Dump.cs" />
+    <Compile Include="..\..\..\Geometry\*.cs" Link="Geometry\%(Filename)%(Extension)" />
+    <Compile Include="..\..\..\Geometry\Zellen\*.cs" Link="Geometry\Zellen\%(Filename)%(Extension)" />
+    <Reference Include="Unity.Mathematics">
+      <HintPath>$(CSII_TOOLPATH)\UnityModsProject\Library\ScriptAssemblies\Unity.Mathematics.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

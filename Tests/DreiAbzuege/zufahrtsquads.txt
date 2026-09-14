@@ -1,0 +1,24 @@
+      EntranceQuad      2 | Kante <1cm    0 | <5cm    0 | <20cm    0 | Flaeche <0,01 m2    0
+      AisleQuad         5 | Kante <1cm    0 | <5cm    0 | <20cm    0 | Flaeche <0,01 m2    0
+      CrossQuad        18 | Kante <1cm    0 | <5cm    0 | <20cm    0 | Flaeche <0,01 m2    0
+      Green           211 | Kante <1cm    0 | <5cm    0 | <20cm    0 | Flaeche <0,01 m2    0
+      Bay             538 | Kante <1cm    0 | <5cm    0 | <20cm    0 | Flaeche <0,01 m2    0
+  Randstrassen an   Buchten  538  EntranceQuad    2  davon entartet (<5 cm)    0
+          6,9 x    7,0 m   x1
+          2,0 x    6,9 m   x1
+      EntranceQuad     22 | Kante <1cm    0 | <5cm    0 | <20cm    0 | Flaeche <0,01 m2    0
+      AisleQuad         6 | Kante <1cm    0 | <5cm    0 | <20cm    0 | Flaeche <0,01 m2    0
+      CrossQuad        20 | Kante <1cm    0 | <5cm    0 | <20cm    0 | Flaeche <0,01 m2    0
+      Green           264 | Kante <1cm    0 | <5cm    0 | <20cm    0 | Flaeche <0,01 m2    0
+      Bay             510 | Kante <1cm    0 | <5cm    0 | <20cm    0 | Flaeche <0,01 m2    0
+  Randstrassen aus  Buchten  510  EntranceQuad   22  davon entartet (<5 cm)    0
+          2,0 x    3,5 m   x8
+          2,0 x    5,9 m   x6
+          2,0 x    2,5 m   x3
+          1,0 x    3,5 m   x2
+          2,0 x   42,6 m   x1
+          2,0 x  113,5 m   x1
+          2,0 x   13,3 m   x1
+        halbbreit: (-1117,7/121,5) (-1114,2/121,3) (-1114,2/120,3) (-1117,7/120,5)
+        halbbreit: (-1121,2/121,6) (-1117,7/121,5) (-1117,7/120,5) (-1121,2/120,6)
+Zufahrtsquads: 0 Fehler

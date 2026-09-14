@@ -1,0 +1,61 @@
+Ring N=5: 191/20
+Ring N=6: 209/10
+Ring N=7: 209/10
+Ring N=8: 209/10
+Ring N=9: 209/10
+Ring N=12: 209/10
+80x64 Ring=True Median=False Kappen=False: 102 Buchten
+80x64 Ring=True Median=False Kappen=True: 94 Buchten
+80x64 Ring=True Median=True Kappen=False: 102 Buchten
+80x64 Ring=True Median=True Kappen=True: 94 Buchten
+80x64 Ring=False Median=False Kappen=False: 132 Buchten
+  Reihe 3,800..9,700: 20 Buchten
+  Reihe 16,700..22,600: 22 Buchten
+  Reihe 22,600..28,500: 22 Buchten
+  Reihe 35,500..41,400: 22 Buchten
+  Reihe 41,400..47,300: 22 Buchten
+  Reihe 54,300..60,200: 24 Buchten
+  Export: 130 Buchten, 16 Flaechen, 0 unbaubar; 
+80x64 Ring=False Median=False Kappen=True: 112 Buchten
+  Reihe 3,800..9,700: 18 Buchten
+  Reihe 16,700..22,600: 18 Buchten
+  Reihe 22,600..28,500: 18 Buchten
+  Reihe 35,500..41,400: 18 Buchten
+  Reihe 41,400..47,300: 18 Buchten
+  Reihe 54,300..60,200: 22 Buchten
+  Export: 110 Buchten, 24 Flaechen, 0 unbaubar; 
+80x64 Ring=False Median=True Kappen=False: 132 Buchten
+  Reihe 1,300..7,200: 20 Buchten
+  Reihe 14,200..20,100: 22 Buchten
+  Reihe 22,600..28,500: 22 Buchten
+  Reihe 35,500..41,400: 22 Buchten
+  Reihe 43,900..49,800: 22 Buchten
+  Reihe 56,800..62,700: 24 Buchten
+  Export: 130 Buchten, 24 Flaechen, 0 unbaubar; 
+80x64 Ring=False Median=True Kappen=True: 112 Buchten
+  Reihe 1,300..7,200: 18 Buchten
+  Reihe 14,200..20,100: 18 Buchten
+  Reihe 22,600..28,500: 18 Buchten
+  Reihe 35,500..41,400: 18 Buchten
+  Reihe 43,900..49,800: 18 Buchten
+  Reihe 56,800..62,700: 22 Buchten
+  Export: 110 Buchten, 24 Flaechen, 0 unbaubar; 
+  Gruen ueber Rasterrand y=1: 1 gemeinsame Flaeche(n)
+Ausgabe: 130 Buchten; Netz 11; Warnungen: 
+Auto-Erreichbarkeit schraeg: 52/52 Segmente; 1 aeussere Zufahrten, 0 Zoning-Randanschluesse
+Kreuzprobe schraeg: 365 Buchten, 56 Wege, 0 Bucht/Weg-Ueberlappungen (max 9,067320370093057E-06 m / 1,8883374650613405E-05 m2); Cell engine: 1 surface ring(s) with 2765,82 m2 left out - CS2 would have refused them. | Cell engine: hole separation had to cut 1 seam(s) - 15 hole(s) in 1 surface(s). A surface merged into a ring; that is a construction fault upstream, not a repair job.
+Auto-Erreichbarkeit seitlich: 44/44 Segmente; 1 aeussere Zufahrten, 0 Zoning-Randanschluesse
+Kreuzprobe seitlich: 464 Buchten, 47 Wege, 0 Bucht/Weg-Ueberlappungen (max 0 m / 0 m2); 
+Auto-Erreichbarkeit L: 21/21 Segmente; 1 aeussere Zufahrten, 0 Zoning-Randanschluesse
+Kreuzprobe L: 321 Buchten, 24 Wege, 0 Bucht/Weg-Ueberlappungen (max 0 m / 0 m2); 
+Auto-Erreichbarkeit U: 32/32 Segmente; 1 aeussere Zufahrten, 0 Zoning-Randanschluesse
+Kreuzprobe U: 344 Buchten, 36 Wege, 0 Bucht/Weg-Ueberlappungen (max 0 m / 0 m2); 
+Auto-Erreichbarkeit Bauland: 32/32 Segmente; 1 aeussere Zufahrten, 2 Zoning-Randanschluesse
+Kreuzprobe Bauland: 423 Buchten, 40 Wege, 0 Bucht/Weg-Ueberlappungen (max 0 m / 0 m2); Cell engine: hole separation had to cut 1 seam(s) - 1 hole(s) in 1 surface(s). A surface merged into a ring; that is a construction fault upstream, not a repair job.
+Auto-Erreichbarkeit Randzoning: 27/27 Segmente; 1 aeussere Zufahrten, 2 Zoning-Randanschluesse
+Kreuzprobe Randzoning: 377 Buchten, 30 Wege, 0 Bucht/Weg-Ueberlappungen (max 0 m / 0 m2); 
+Auto-Erreichbarkeit Teilwinkel: 39/39 Segmente; 1 aeussere Zufahrten, 0 Zoning-Randanschluesse
+Kreuzprobe Teilwinkel: 368 Buchten, 39 Wege, 0 Bucht/Weg-Ueberlappungen (max 6,466801636406672E-06 m / 1,5671178061893443E-05 m2); 
+Klein 40x15: 12 Buchten
+Klein 40x9: 0 Buchten
+Randstrassen: 0 Fehler

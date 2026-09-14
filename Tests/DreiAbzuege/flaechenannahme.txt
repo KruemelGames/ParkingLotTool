@@ -1,0 +1,17 @@
+Nutzerfall 18:28 ringlos: 543 Buchten, 104 Ringe, 0 wuerde CS2 ablehnen
+    Split/Netz: 0 Fusswegnaehte, 0 Grasrandnaehte; 2 Fusskurse, 4/4 freie Fussknoten, 1 freie Autozufahrten
+    Fussweg-Suchregel: 0 zur automatischen Strassensuche freigegebene Enden
+Nutzerfall 18:28 mit Ring: 544 Buchten, 112 Ringe, 0 wuerde CS2 ablehnen
+    Split/Netz: 0 Fusswegnaehte, 0 Grasrandnaehte; 0 Fusskurse, 0/0 freie Fussknoten, 1 freie Autozufahrten
+    Fussweg-Suchregel: 0 zur automatischen Strassensuche freigegebene Enden
+Nutzerfall 17:30 ringlos: 419 Buchten, 88 Ringe, 0 wuerde CS2 ablehnen
+    Split/Netz: 0 Fusswegnaehte, 0 Grasrandnaehte; 2 Fusskurse, 4/4 freie Fussknoten, 1 freie Autozufahrten
+    Fussweg-Suchregel: 0 zur automatischen Strassensuche freigegebene Enden
+Nutzerfall 18:28 edge ohne Zufahrt: 602 Buchten, 103 Ringe, 0 wuerde CS2 ablehnen
+    Split/Netz: 0 Fusswegnaehte, 2 Grasrandnaehte; 2 Fusskurse, 4/4 freie Fussknoten, 0 freie Autozufahrten
+    Fussweg-Suchregel: 0 zur automatischen Strassensuche freigegebene Enden
+Rechteck 80 x 64 ringlos: 88 Buchten, 23 Ringe, 0 wuerde CS2 ablehnen
+    Split/Netz: 0 Fusswegnaehte, 2 Grasrandnaehte; 2 Fusskurse, 4/4 freie Fussknoten, 0 freie Autozufahrten
+    Fussweg-Suchregel: 0 zur automatischen Strassensuche freigegebene Enden
+Fusswegsuche: 115680 Kombinationen, 0 Fussverlaengerungen, 12216 Autoanschluesse
+Flaechenannahme: 0 Fehler

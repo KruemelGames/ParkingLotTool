@@ -1,0 +1,38 @@
+using System;
+using System.Linq;
+using ParkingLotTool.Geometry;
+using Unity.Mathematics;
+class Program {
+ static int checks;
+ static void Check(bool ok,string message){checks++;if(!ok)throw new Exception(message);}
+ static float2[] Rect(float w,float h)=>new[]{new float2(0,0),new float2(w,0),new float2(w,h),new float2(0,h)};
+ static void Main(){
+ for(int age=0;age<6;age++) for(uint seed=0;seed<20;seed++) Check(ParkingVegetation.SelectAge(1<<age,seed)==age,"Jede der sechs Altersstufen erreichbar");
+ Check(Enumerable.Range(0,60).Select(seed=>ParkingVegetation.SelectAge(63,(uint)seed)).Distinct().Count()==6,"Alle Altersstufen gemischt");
+ var species=new[]{new VegetationSpecies{Id="tree",Tree=true,Spacing=8},new VegetationSpecies{Id="shrub",Spacing=2.5f}};
+ var rings=new[]{Rect(90,40)};var o=new VegetationOptions{Enabled=true,Density=100};
+ var all=ParkingVegetation.Plan(rings,o,species);Check(all.Plants.Count>30,"Gueltige Flaeche muss Pflanzen erhalten");
+ Check(all.Plants.Any(p=>p.Species==0)&&all.Plants.Any(p=>p.Species==1),"Baeume und Buesche muessen beide vorkommen");
+ foreach(int density in new[]{0,25,50,100}) foreach(bool line in new[]{false,true}) {
+ o.Density=density;o.Line=line;
+ foreach(var ring in new[]{Rect(80,3),Rect(80,40),new[]{new float2(0,0),new float2(50,0),new float2(50,10),new float2(10,10),new float2(10,50),new float2(0,50)}}) {
+ var a=ParkingVegetation.Plan(new[]{ring},o,species);var b=ParkingVegetation.Plan(new[]{ring},o,species);
+ Check(a.Plants.Count==b.Plants.Count,"Deterministisch");
+ for(int i=0;i<a.Plants.Count;i++) {
+ var x=a.Plants[i];Check(math.distance(x.Position,b.Plants[i].Position)<.001,"Position stabil");
+ Check(ParkingVegetation.Inside(x.Position,ring),"Nur Dekoflaeche");
+ Check(ParkingVegetation.EdgeDistance(x.Position,ring)>=(species[x.Species].Tree?.65f:.35f)-.001,"Randabstand");
+ for(int j=0;j<i;j++){var y=a.Plants[j];float gap=(ParkingVegetation.Spacing(species[x.Species],line)+ParkingVegetation.Spacing(species[y.Species],line))*.5f;Check(math.distance(x.Position,y.Position)>=gap-.001,"Pflanzabstand");}
+ }
+ if(density==0)Check(a.Plants.Count==0,"Null Prozent");else Check(a.Plants.Count>0,"Kein stilles Nichts-Tun");
+ }
+ }
+ o.Line=true;o.Density=100;var median=ParkingVegetation.Plan(new[]{Rect(80,3)},o,new[]{species[0]});
+ Check(median.Plants.Count>=5,"Median bepflanzt");Check(median.Plants.All(p=>math.abs(p.Position.y-1.5f)<.001),"Mittige Reihe");Check(median.Plants.Any(p=>math.abs(p.Position.x-40)<.001),"Reihe beginnt in Mitte");
+ o.Line=false;var translated=ParkingVegetation.Plan(new[]{rings[0].Select(p=>p+new float2(8000,-8000)).ToArray()},o,species);
+ Check(translated.Plants.Count==all.Plants.Count,"Translation Anzahl");for(int i=0;i<all.Plants.Count;i++) Check(math.distance(translated.Plants[i].Position-new float2(8000,-8000),all.Plants[i].Position)<.01,"Translation Position");
+ o.Density=50;var half=ParkingVegetation.Plan(rings,o,species);Check(half.Plants.Count>=all.Plants.Count*.3 && half.Plants.Count<=all.Plants.Count*.7,"50 Prozent reduziert tatsaechlich etwa auf die Haelfte");foreach(var plant in half.Plants)Check(all.Plants.Any(p=>p.Position.Equals(plant.Position)&&p.Species==plant.Species),"Dichte erhaelt Positionen");
+ o.Enabled=false;Check(ParkingVegetation.Plan(rings,o,species).Plants.Count==0,"Standard aus");
+ Console.WriteLine($"Vegetation: {checks} Pruefungen, 0 Fehler; 50%={half.Plants.Count}, 100%={all.Plants.Count}; Median={median.Plants.Count}");
+ }
+}

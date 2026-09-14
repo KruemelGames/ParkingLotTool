@@ -1,0 +1,61 @@
+{
+  "erzeugt": "2026-08-09T12:51:11.269Z",
+  "hinweis": "CS2_SETTINGS UNVERAENDERT, also auto:true - die Winkelsuche gehoert dazu",
+  "einstellung": {
+    "es": 1,
+    "ai": 7,
+    "cw": 3,
+    "sl": 5.5,
+    "sw": 3,
+    "md": 2.5,
+    "cr": 34,
+    "auto": true,
+    "angle": 0
+  },
+  "faelle": {
+    "Rechteck": {
+      "buchten": 226,
+      "rand": 98,
+      "innen": 128,
+      "gassen": 4,
+      "quer": 5,
+      "winkel": 90,
+      "kappen": 24,
+      "behindert": 6,
+      "elektro": 8
+    },
+    "L-Form": {
+      "buchten": 160,
+      "rand": 104,
+      "innen": 56,
+      "gassen": 4,
+      "quer": 2,
+      "winkel": 90,
+      "kappen": 17,
+      "behindert": 6,
+      "elektro": 6
+    },
+    "Schraeg": {
+      "buchten": 212,
+      "rand": 102,
+      "innen": 110,
+      "gassen": 4,
+      "quer": 5,
+      "winkel": 80,
+      "kappen": 27,
+      "behindert": 6,
+      "elektro": 8
+    },
+    "Referenz 08s": {
+      "buchten": 206,
+      "rand": 107,
+      "innen": 97,
+      "gassen": 5,
+      "quer": 5,
+      "winkel": 125,
+      "kappen": 17,
+      "behindert": 6,
+      "elektro": 8
+    }
+  }
+}

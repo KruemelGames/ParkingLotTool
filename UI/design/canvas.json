@@ -1,0 +1,46 @@
+{
+  "artboards": [
+    { "file": "Jetzt.dc.html", "title": "Heute", "x": 0, "y": 0, "w": 340, "h": 700 },
+    { "file": "Main.dc.html", "title": "A — Werkstatt", "x": 400, "y": 0, "w": 492, "h": 510 },
+    { "file": "Karten.dc.html", "title": "B — Karten", "x": 952, "y": 0, "w": 496, "h": 560 },
+    { "file": "Leiste.dc.html", "title": "C — Leiste (gewählt)", "x": 400, "y": 620, "w": 1400, "h": 230 }
+  ],
+  "annotations": [
+    {
+      "id": "heute",
+      "x": 0,
+      "y": -190,
+      "w": 340,
+      "text": "HEUTE\n\nMassgetreu aus panel.module.scss nachgebaut: 300 rem breit, gut 570 rem hoch. Neun Regler untereinander, jeder zweizeilig, jeder mit zwei Stellknöpfen. Alle drei Überschriften tragen dieselbe Farbe (--accentColorNormal) und sind mit 14 rem kleiner als die Beschriftungen darunter (16 rem)."
+    },
+    {
+      "id": "option-a",
+      "x": 400,
+      "y": -190,
+      "w": 492,
+      "text": "A — WERKSTATT\n\nZwei Spalten, Überschrift als farbiger Riegel mit Haarlinie. 452 x 432 statt 300 x 570 — knapp die halbe Höhe.\n\nDafür: die Zahl, wegen der man das Fenster offen hat, steht oben statt unten. Die zwei Stellknöpfe erscheinen nur an dem Regler, der vom Standard abweicht (hier Fahrgassenbreite) statt an allen neun.\n\nDagegen: technischer, kühler Eindruck. Wer die Vanilla-Fenster mag, findet es etwas nüchtern."
+    },
+    {
+      "id": "option-b",
+      "x": 952,
+      "y": -190,
+      "w": 496,
+      "text": "B — KARTEN\n\nDieselbe Dichte, aber jede Gruppe ist eine eigene Karte, die ihre Farbe leicht einfärbt. Überschrift 17 rem mit Farbchip.\n\nDafür: näher am weichen, runden Eindruck der Spielfenster; die Zusammengehörigkeit einer Gruppe muss man nicht am Abstand ablesen.\n\nDagegen: vier getönte Flächen übereinander sind mehr Farbe im Bild — bei einem hellen Spielthema kann das laut wirken."
+    },
+    {
+      "id": "option-c",
+      "x": 400,
+      "y": 880,
+      "w": 480,
+      "text": "C — LEISTE · GEWÄHLT\n\n1250 x 161 rem, oben eckig und unten rund, weil sie am oberen Bildrand klebt. Das ist die radikale Antwort auf 'zu weit untereinander': gar nicht mehr hoch, die Karte darunter bleibt frei.\n\nAlle 18 Stellknöpfe sind drin — zurücksetzen und als Standard speichern, an jedem der neun Regler. Blass, solange der Wert dem Standard entspricht (heutiges Verhalten, settingButtonOff); hell nur an der Fahrgassenbreite, die hier auf 7,5 m steht.\n\nRechts das Handlungspaar, beide 66 x 132 rem, also genau 1:2: Zufahrt magenta wie der Ring in der Welt, Bauen als einzige voll gefüllte Fläche der ganzen Leiste."
+    },
+    {
+      "id": "farbsystem",
+      "x": 0,
+      "y": 740,
+      "w": 340,
+      "text": "DIE VIER FARBEN\n\nZuschnitt #f0ad3e (Maß, Kreide)\nFahrwege #4fc3f7 (Asphalt)\nGrün #7cd455\nZufahrt #ff5fb0 (dieselbe Farbe wie der Ring in der Welt)\nMelden #f2725c\n\nAlle fünf liegen auf derselben Helligkeit, nur der Farbton wechselt — deshalb schreit keine lauter als die andere.\n\nAlles ist so gebaut, dass Cohtml es kann: kein grid, kein gap, kein hsl, kein oklch, kein inset-Schatten, nur Regular und Bold."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

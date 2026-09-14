@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
+<NoWarn>$(NoWarn);CS0649</NoWarn><NeubauQuelle Condition="'$(NeubauQuelle)' == ''">../../Tools/ParkingLotVersorgungsneubau.cs</NeubauQuelle></PropertyGroup>
+<ItemGroup><Compile Include="$(NeubauQuelle)" Link="ParkingLotVersorgungsneubau.cs" /></ItemGroup>
+</Project>

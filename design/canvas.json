@@ -1,0 +1,10 @@
+{
+  "artboards": [
+    { "file": "Ist.dc.html", "x": 0, "y": 0, "w": 820, "h": 660, "title": "Ist-Zustand" },
+    { "file": "Main.dc.html", "x": 920, "y": 0, "w": 1120, "h": 660, "title": "Soll-Zustand" }
+  ],
+  "annotations": [
+    { "id": "kern", "x": 0, "y": -150, "w": 620, "text": "Links: was die Prüfläufe heute messen. Rechts: der Soll-Zustand nach deiner Skizze.\nBeides ist ein Schnitt bzw. eine Draufsicht an einer Polygonkante MIT eingeschaltetem Randzoning." }
+  ],
+  "launch": { "view": "canvas" }
+}

@@ -1,0 +1,157 @@
+/**
+ * Cohtml 1.64: Flex statt Grid, Raender statt gap, RGB statt HSL.
+ * Als Schriftschnitte stehen im Spiel nur Regular und Bold zur Verfuegung.
+ */
+.section {
+  width: 100%;
+}
+
+.value {
+  font-weight: bold;
+  color: var(--accentColorNormal);
+}
+
+.sliderArea {
+  padding: 2rem 12rem 8rem;
+}
+
+/* Kein input[type=range]: Cohtml zeichnet dafuer keinen brauchbaren Griff. */
+.track {
+  position: relative;
+  height: 6rem;
+  border-radius: 3rem;
+  background-color: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 6rem;
+  border-radius: 3rem;
+  background-color: var(--accentColorNormal);
+}
+
+.knob {
+  position: absolute;
+  top: -4rem;
+  width: 14rem;
+  height: 14rem;
+  margin-left: -7rem;
+  border-radius: 7rem;
+  background-color: #ffffff;
+}
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: var(--fontSizeXS);
+}
+
+/**
+ * NACHBAU DER VANILLA-RICHTLINIENZEILE.
+ *
+ * Vorbild ist der Screenshot des Nutzers vom 2026-08-26: Gruppenkopf
+ * "BESTIMMUNGEN", darunter eine Zeile mit Symbol, Name und Haken rechts, und
+ * darunter der Regler mit dem Betrag am Ende.
+ *
+ * Cohtml: kein grid, kein gap, kein hsl - Flex und Raender.
+ */
+.header {
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.haken {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18rem;
+  height: 18rem;
+  padding: 0;
+  border: 2rem solid rgba(255, 255, 255, 0.35);
+  border-radius: 3rem;
+  background-color: transparent;
+  cursor: pointer;
+
+  &:hover { border-color: rgba(255, 255, 255, 0.65); }
+
+  img {
+    width: 14rem;
+    height: 14rem;
+  }
+}
+
+.hakenAn {
+  border-color: var(--accentColorNormal);
+}
+
+.betrag {
+  margin-top: 3rem;
+  text-align: right;
+  font-weight: bold;
+  color: var(--accentColorNormal);
+}
+
+/**
+ * Aus heisst blass, nicht weg. Der eingestellte Betrag bleibt sichtbar, damit
+ * man weiss, was der Haken zurueckholt.
+ */
+.ausgegraut {
+  opacity: 0.4;
+}
+
+/**
+ * Die Richtlinienzeile, jetzt aus eigenen Elementen.
+ *
+ * Vorher kamen Kopf und Zeile aus `cs2/ui` - und ein Import, den es zur
+ * Laufzeit nicht gab, hat die ganze Spieloberflaeche abgeschossen (React 130).
+ * Was hier steht, kann nicht undefined sein.
+ */
+.zeile {
+  display: flex;
+  align-items: center;
+  padding: 4rem 12rem;
+}
+
+.symbol {
+  width: 20rem;
+  height: 20rem;
+  margin-right: 6rem;
+}
+
+.name {
+  flex: 1;
+  /* Werte aus panel.module.scss; diese Datei hat keine eigenen Variablen. */
+  color: rgba(255, 255, 255, 0.82);
+  font-size: var(--fontSizeXS);
+}
+
+.editSection {
+  width: 100%;
+  padding: 5rem 12rem 8rem;
+}
+
+.editButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 34rem;
+  padding: 5rem 12rem;
+  border: 1rem solid rgba(255, 255, 255, 0.24);
+  border-radius: 4rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--fontSizeS);
+  font-weight: bold;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--accentColorNormal);
+    background-color: rgba(255, 255, 255, 0.16);
+  }
+}

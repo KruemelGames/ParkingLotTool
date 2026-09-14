@@ -1,0 +1,25 @@
+  Randstrassen an   Buchten  248 (oberer Arm  105)  Gassen  3 (oben  1)  Teile 2  Belag oben    4524 m2 / unten    4649 m2
+      Zufahrtslinie (-1041,1/0,1) .. (-1051,5/0,4)  Laenge  10,4  schief  0,0 Grad
+    Gassennachbarn ohne Endfussweg: 4 von 4
+  Randstrassen aus  Buchten  225 (oberer Arm  100)  Gassen  4 (oben  2)  Teile 2  Belag oben    4303 m2 / unten    3302 m2
+      Zufahrtslinie (-1056,8/-37,8) .. (-1127,7/-35,4)  Laenge  70,9  schief  0,0 Grad
+      Zufahrtslinie (-1097,3/25,5) .. (-1125,5/26,5)  Laenge  28,3  schief  0,0 Grad
+      Zufahrtslinie (-1051,5/117,2) .. (-1079,8/118,2)  Laenge  28,3  schief  0,0 Grad
+      Zufahrtslinie (-1041,1/0,1) .. (-1059,0/0,7)  Laenge  17,9  schief  0,0 Grad
+    Gassennachbarn ohne Endfussweg: 3 von 6
+
+  Der obere Arm allein (rund 58 x 93 m):
+    Randstrassen an   Buchten  112  Gassen  1  Teile 1  Belag  13 Ringe
+        ! Cell engine: automatic entrances are not implemented; place them by hand.
+    Randstrassen aus  Buchten  100  Gassen  2  Teile 1  Belag  11 Ringe
+        ! Randstraßen aus: 0 Autozufahrten; eine Autozufahrt setzen.
+        ! Cell engine: automatic entrances are not implemented; place them by hand.
+
+  Stufenform des Nutzers (Bauzettel 00:48):
+    Buchten 476, Gassen 8, Belagringe 74, Grasringe 23
+    Randgruen in 21,3-m-Stuecken: 0 | Fussweg in 21,3-m-Stuecken: 0 | halbbreite Fusswegstuecke: 1
+    (Ringe mit einer 1,0-m-Kante: 1 - Verjuengung an der Kante, keine Beanstandung)
+
+  Zum Vergleich das Rechteck (Bauzettel 23:51):
+    Buchten 512, Gassen 6
+Lformtoggle: 0 Fehler

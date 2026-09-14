@@ -1,0 +1,21 @@
+C:\Projekte\CS2 Mods\ParkingLotTool\Geometry\Versorgungsweg.cs(22,26): warning CS0649: Dem Feld "Versorgungsweg.Ziel.Index" wird nie etwas zugewiesen, und es hat immer seinen Standardwert von "0". [C:\Projekte\CS2 Mods\ParkingLotTool\Tests\DiagonaleEndwege\DiagonaleEndwege.csproj]
+C:\Projekte\CS2 Mods\ParkingLotTool\Geometry\ParkingGeometry.Zoning.cs(81,35): warning CS0649: Dem Feld "ParkingGeometry.ZoningMaxBreiteQuelle" wird nie etwas zugewiesen, und es hat immer seinen Standardwert von "null". [C:\Projekte\CS2 Mods\ParkingLotTool\Tests\DiagonaleEndwege\DiagonaleEndwege.csproj]
+C:\Projekte\CS2 Mods\ParkingLotTool\Geometry\Versorgungsweg.cs(21,29): warning CS0649: Dem Feld "Versorgungsweg.Ziel.Punkt" wird nie etwas zugewiesen, und es hat immer seinen Standardwert von "". [C:\Projekte\CS2 Mods\ParkingLotTool\Tests\DiagonaleEndwege\DiagonaleEndwege.csproj]
+C:\Projekte\CS2 Mods\ParkingLotTool\Geometry\ParkingGeometry.Zoning.cs(82,35): warning CS0649: Dem Feld "ParkingGeometry.ZoningMaxTiefeQuelle" wird nie etwas zugewiesen, und es hat immer seinen Standardwert von "null". [C:\Projekte\CS2 Mods\ParkingLotTool\Tests\DiagonaleEndwege\DiagonaleEndwege.csproj]
+88-Grad-Kette: 7 Gassen, 2 Endstreifen
+  x=-101,000..-101,000, y=-3,500..131,300
+  x=101,000..101,000, y=-3,500..131,300
+  Gruppenentwurf: 2 Streifen, Mehrlaenge 0,000 m, ungedeckte Eckproben 0, Ueberlappungen 0, zusaetzliche Gassenkuerzung 0 m
+L-Sprung: 4 Gassen, 3 Endstreifen
+  x=-101,000..-101,000, y=-3,500..67,400
+  x=8,000..8,000, y=39,100..67,400
+  x=101,000..101,000, y=-3,500..24,800
+  Gruppenentwurf: 3 Streifen, Mehrlaenge -0,000 m, ungedeckte Eckproben 0, Ueberlappungen 0, zusaetzliche Gassenkuerzung 0 m
+Einzelende: 3 Gassen, 3 Endstreifen
+  x=-101,000..-101,000, y=-3,500..46,100
+  x=8,000..8,000, y=39,100..46,100
+  x=101,000..101,000, y=-3,500..24,800
+  Gruppenentwurf: 3 Streifen, Mehrlaenge 0,000 m, ungedeckte Eckproben 0, Ueberlappungen 0, zusaetzliche Gassenkuerzung 0 m
+2 Grad / 7 m: Rechteck-Luecke max. 0,244445 m, Dreieck 0,855559 m2 je Stirn
+Gemeinsame schraege Materialgrenze: 101 Proben, max. Luecke 0,000000 m
+Entwurfsmessung: 0 Fehler

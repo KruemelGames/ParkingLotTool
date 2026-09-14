@@ -1,0 +1,3 @@
+Zoningrasten-Matrix: 300000 Faelle, 300000 mit vorab nachgewiesenem Ziel, 300000 gefunden, 0 Fehler.
+  Mauswunsch frei/begrenzt: 65625/234375 | Zulassungspruefungen Mittel 128,8, Maximum 263 | 12,69 s
+  Feste-Maus-Folgebilder ohne Schwingen: 900000/900000

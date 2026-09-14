@@ -1,0 +1,28 @@
+  6x6 allein                    4 Stueck, 1 Zug/Zuege, Asphalt auf Parzellen   0,00 m2, Strassenbelag    1787 m2, Sonderplatz zur ZF  35,9 m / zum Weg  49,7 m
+  6x6 + 3x3, eine Kachel        8 Stueck, 1 Zug/Zuege, Asphalt auf Parzellen   0,00 m2, Strassenbelag    2479 m2, Sonderplatz zur ZF  23,1 m / zum Weg  50,5 m
+  6x6 + 3x3, buendig            6 Stueck, 1 Zug/Zuege, Asphalt auf Parzellen   0,00 m2, Strassenbelag    2158 m2, Sonderplatz zur ZF  25,1 m / zum Weg  51,8 m
+  6x6 + 3x3, versetzt           8 Stueck, 1 Zug/Zuege, Asphalt auf Parzellen   0,00 m2, Strassenbelag    2477 m2, Sonderplatz zur ZF  23,8 m / zum Weg  28,4 m
+  L aus 6x2 und 2x4             8 Stueck, 1 Zug/Zuege, Asphalt auf Parzellen   0,00 m2, Strassenbelag    2047 m2, Sonderplatz zur ZF  19,5 m / zum Weg  49,1 m
+  3 x 3x3 in Reihe             10 Stueck, 1 Zug/Zuege, Asphalt auf Parzellen   0,00 m2, Strassenbelag    2163 m2, Sonderplatz zur ZF  24,2 m / zum Weg  81,5 m
+  Nutzerfall 6x6 + 7x2 buendig  4 Stueck, 1 Zug/Zuege, Asphalt auf Parzellen   0,00 m2, Strassenbelag    1186 m2, Sonderplatz zur ZF  29,8 m / zum Weg  30,7 m
+  Randzoning an Kante 0         1 Stueck, 1 Zug/Zuege, Asphalt auf Parzellen   0,00 m2, Strassenbelag    1006 m2, Sonderplatz zur ZF    -   m / zum Weg  22,5 m, Randabschnitt: Randstrasse   0,0 m / Zoningstrasse 123,2 m, Buchten drin 0, Wege drin   0,0 m
+  Nutzerfall 88 Grad, 6x6 + 7x2  5 Stueck, 1 Zug/Zuege, Asphalt auf Parzellen   0,01 m2, Strassenbelag    1118 m2, Sonderplatz zur ZF  19,7 m / zum Weg  32,0 m
+  Randzoning + 6x6 innen        5 Stueck, 2 Zug/Zuege, Asphalt auf Parzellen   0,00 m2, Strassenbelag    2793 m2, Sonderplatz zur ZF  35,9 m / zum Weg  57,2 m, Randabschnitt: Randstrasse   0,0 m / Zoningstrasse 123,2 m, Buchten drin 0, Wege drin   0,0 m
+  Protokoll PLT-A950B8E0         6 Stueck,  300,1 m Strasse, Belag    2404 m2 = 100,1 % der erwarteten Flaeche
+      RZ   97,5 m ->    778 m2 von    780 =  99,8 %
+      RZ   42,6 m ->    341 m2 von    341 = 100,0 %
+      ZF   56,0 m ->    448 m2 von    448 = 100,0 %
+      ZF   16,0 m ->    113 m2 von    128 =  88,1 %
+      ZF   56,0 m ->    448 m2 von    448 = 100,0 %
+      ZF   32,0 m ->    256 m2 von    256 = 100,0 %
+  Protokoll 17:46 T-Kreuzung     6 Stueck, 1 Zug/Zuege, 0 T-Kreuzung(en) ohne Knoten, 0 freies Ende(n) VOR der RZ-Strasse
+  Bau 19:46 Knotenzerfall        6 Stueck, 1 Zug/Zuege, 0 T-Kreuzung(en) ohne Knoten
+  Bau 01:52 eingerastet          6 Stueck, 7 Knoten, 1 mit 3+ Armen, 1 Zug/Zuege, 0 T-Kreuzung(en) ohne Knoten
+  Protokoll 18:22 T-Kreuzung     6 Stueck, RZ-Luecke  0,00 m, 0 T-Kreuzung(en) ohne Knoten, 1 Endpunkt-Zug/Zuege
+      Blockrechnung RZ: 128,93 m ungeteilt 17 Laengsspalten, geteilt 86,33 + 42,60 m = 16 Spalten; aussen -6 Zellen, roh 4 -> 6 Bloecke
+  Bau 23:04 Fahrbahnen         0 ueberlappende(s) Zoning/Weg-Paar(e)
+  Bau 01:51 / PLT-FAB3DE01: Winkel 88,04000000, 6 Kanten, 1 Netz, 0 Strasse-auf-Strasse, 1 exakte Kreuzung(en), kuerzeste Kante 16,000 m
+  Bau 01:51 / PLT-FAB3DE01: Winkel 88,03520620, 6 Kanten, 1 Netz, 0 Strasse-auf-Strasse, 1 exakte Kreuzung(en), kuerzeste Kante 16,000 m
+  Bau 01:52 / PLT-3F5291F9: Winkel 88,04000000, 6 Kanten, 1 Netz, 0 Strasse-auf-Strasse, 1 exakte Kreuzung(en), kuerzeste Kante 16,000 m
+  Bau 01:52 / PLT-3F5291F9: Winkel 88,03525058, 6 Kanten, 1 Netz, 0 Strasse-auf-Strasse, 1 exakte Kreuzung(en), kuerzeste Kante 16,000 m
+Zoningnetz: alle Faelle haengen zusammen.

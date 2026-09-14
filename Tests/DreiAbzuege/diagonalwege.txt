@@ -1,0 +1,17 @@
+  Diagonale: 507 Buchten, 6 Gassen
+    Gassenenden laengs: 83,4 / 83,4 / 83,4 / 83,4 / 62,5 / 32,5
+      Endweg quer   1056,0 ..   1130,4  bei laengs    84,4   Laenge   74,4
+      Endweg quer   1130,4 ..   1170,3  bei laengs    56,3   Laenge   68,9
+    zusammenhaengende Endwege: 1, gefordert 1
+    Randgruen in 21,3-m-Stuecken: 1 | Fussweg: 0
+  Stufe: 468 Buchten, 6 Gassen
+    Gassenenden laengs: 83,4 / 83,4 / 83,4 / 83,4 / -4,4 / -4,4
+      Endweg quer   1056,0 ..   1126,9  bei laengs    84,4   Laenge   70,9
+      Endweg quer   1141,2 ..   1169,5  bei laengs    -3,4   Laenge   28,3
+    zusammenhaengende Endwege: 2, gefordert 2
+    Randgruen in 21,3-m-Stuecken: 0 | Fussweg: 0
+  Plan: 6 Gassen, 3 Endwege, Gassenband 1056,0..1169,5
+    Endweg y 1056,02..1169,52  Ueberstand 0,00 m
+    Endweg y 1056,02..1130,93  Ueberstand 0,00 m
+    Endweg y 1129,89..1169,52  Ueberstand 0,00 m
+Diagonalwege: 0 Fehler

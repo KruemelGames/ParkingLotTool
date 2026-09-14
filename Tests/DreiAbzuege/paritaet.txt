@@ -1,0 +1,79 @@
+C:\Projekte\CS2 Mods\ParkingLotTool\Geometry\ParkingGeometry.Zoning.cs(82,35): warning CS0649: Dem Feld "ParkingGeometry.ZoningMaxTiefeQuelle" wird nie etwas zugewiesen, und es hat immer seinen Standardwert von "null". [C:\Projekte\CS2 Mods\ParkingLotTool\Tests\GeometryParity\CSharp\GeometryParity.csproj]
+C:\Projekte\CS2 Mods\ParkingLotTool\Geometry\ParkingGeometry.Zoning.cs(81,35): warning CS0649: Dem Feld "ParkingGeometry.ZoningMaxBreiteQuelle" wird nie etwas zugewiesen, und es hat immer seinen Standardwert von "null". [C:\Projekte\CS2 Mods\ParkingLotTool\Tests\GeometryParity\CSharp\GeometryParity.csproj]
+C:\Projekte\CS2 Mods\ParkingLotTool\Tests\GeometryParity\CSharp\Program.Treppen.cs(337,37): warning CA2013: Übergeben Sie kein Argument mit dem Werttyp „ParkingLotTool.Geometry.NetSegment“ an „ReferenceEqualityComparer“. Aufgrund des Boxings der Werte kann dieser Aufruf von „Equals“ ein unerwartetes Ergebnis zurückgeben. Verwenden Sie stattdessen „EqualityComparer“, oder übergeben Sie Argumente mit einem Verweistyp, wenn Sie „ReferenceEqualityComparer“ verwenden möchten. (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2013) [C:\Projekte\CS2 Mods\ParkingLotTool\Tests\GeometryParity\CSharp\GeometryParity.csproj]
+C:\Projekte\CS2 Mods\ParkingLotTool\Tests\GeometryParity\CSharp\Program.Treppen.cs(337,46): warning CA2013: Übergeben Sie kein Argument mit dem Werttyp „ParkingLotTool.Geometry.NetSegment“ an „ReferenceEqualityComparer“. Aufgrund des Boxings der Werte kann dieser Aufruf von „Equals“ ein unerwartetes Ergebnis zurückgeben. Verwenden Sie stattdessen „EqualityComparer“, oder übergeben Sie Argumente mit einem Verweistyp, wenn Sie „ReferenceEqualityComparer“ verwenden möchten. (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2013) [C:\Projekte\CS2 Mods\ParkingLotTool\Tests\GeometryParity\CSharp\GeometryParity.csproj]
+ALTLAST-LAUF (Portierung Prototyp -> C#, abgeschlossen). Rote Zeilen sind hier erwartet und erklaert in PARITAET-GEKLAERT.md.
+Der lebende Massstab ist --qualitaet. Sollwerte NICHT anpassen, um es gruen zu bekommen.
+
+Rechteck        246 Buchten | Rand 120 | innen 126 | Gassen 3 | Quer 2 | Winkel 0 | Kappen 0 | behindert 0 | elektro 0 | 188 ms
+               ungedeckt 0,0 % | Ueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | unerreichbar 0
+               Strasse auf Strasse 0,00 m2 | Rand/Gasse 0,00 | Rand/Verbindung 0,00 | Gasse/Verbindung 0,00
+               Fahrwege ausgegeben Gassen 3/3 | Querungen 2/0 | kleinster Abstand 36,00 m
+               Asphalt auf Gras 0,00 m2 | Material Gras 18 | Asphalt 35 | Engstelle Gras 0,400001 m | Asphalt 7,000000 m
+               logische Gruenflaechen 52 | ueberschneiden nach float 0 | Doppelpunkte 0 | kuerzeste Kante Gras 0,600 m | Asphalt 3,000 m | echte Engstelle Gras 0,4000 m
+               Decals 246 fuer 246 von 246 Buchten | normal 246 | behindert 0 | elektro 0 | nicht erkannt 0 | gegen den Nachbarn gedreht 0 | Ladesaeulen 0
+               Ladesaeulen 0 | gerade ja | alle gepaart ja | Nachbarabstand 0,0E+000 m Fehler (soll 3 m)
+               Vorschau-Streifen 22 statt 246 Buchten (91 % weniger) | Buchten erfasst 246/246 | Flaeche 4354,20 gegen 4354,20 m2, Fehler 0,0E+000 m2
+               Overlay-Formen 89 = Gruen 52 + Fahrwege 15 + Streifen 22 + Saeulen 0 | frueher 246 (nur Buchten, ohne Gruen und Fahrwege)
+               Prototyp-Vergleich (stillgelegt): Gras 18/12 Ringe, Asphalt 35/2, Engstelle Gras 0,400001/1,000000, Asphalt 7,000000/2,192031
+L-Form          148 Buchten | Rand 116 | innen  32 | Gassen 2 | Quer 0 | Winkel 0 | Kappen 0 | behindert 0 | elektro 0 | 49 ms
+               ungedeckt 0,0 % | Ueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | unerreichbar 0
+               Strasse auf Strasse 0,00 m2 | Rand/Gasse 0,00 | Rand/Verbindung 0,00 | Gasse/Verbindung 0,00
+               Fahrwege ausgegeben Gassen 2/2 | Querungen 0/0 | kleinster Abstand nur eine
+               Asphalt auf Gras 0,00 m2 | Material Gras 11 | Asphalt 14 | Engstelle Gras 0,049995 m | Asphalt 6,999998 m
+               logische Gruenflaechen 32 | ueberschneiden nach float 0 | Doppelpunkte 3 | kuerzeste Kante Gras 0,050 m | Asphalt 5,900 m | echte Engstelle Gras 0,0500 m
+               Decals 148 fuer 148 von 148 Buchten | normal 148 | behindert 0 | elektro 0 | nicht erkannt 0 | gegen den Nachbarn gedreht 0 | Ladesaeulen 0
+               Ladesaeulen 0 | gerade ja | alle gepaart ja | Nachbarabstand 0,0E+000 m Fehler (soll 3 m)
+               Vorschau-Streifen 10 statt 148 Buchten (93 % weniger) | Buchten erfasst 148/148 | Flaeche 2619,60 gegen 2619,60 m2, Fehler 0,0E+000 m2
+               Overlay-Formen 50 = Gruen 32 + Fahrwege 8 + Streifen 10 + Saeulen 0 | frueher 148 (nur Buchten, ohne Gruen und Fahrwege)
+               Prototyp-Vergleich (stillgelegt): Gras 11/5 Ringe, Asphalt 14/3, Engstelle Gras 0,049995/1,000000, Asphalt 6,999998/2,192031
+Schraeg         272 Buchten | Rand 122 | innen 150 | Gassen 3 | Quer 2 | Winkel 0 | Kappen 0 | behindert 0 | elektro 0 | 161 ms
+               ungedeckt 0,0 % | Ueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | unerreichbar 0
+               Strasse auf Strasse 6,12 m2 | Rand/Gasse 6,12 | Rand/Verbindung 0,00 | Gasse/Verbindung 0,00
+               Fahrwege ausgegeben Gassen 3/3 | Querungen 2/0 | kleinster Abstand 36,00 m
+               Asphalt auf Gras 0,00 m2 | Material Gras 14 | Asphalt 25 | Engstelle Gras 0,215125 m | Asphalt 6,999995 m
+               logische Gruenflaechen 152 | ueberschneiden nach float 0 | Doppelpunkte 0 | kuerzeste Kante Gras 0,227 m | Asphalt 3,000 m | echte Engstelle Gras 0,2151 m
+               Decals 272 fuer 272 von 272 Buchten | normal 272 | behindert 0 | elektro 0 | nicht erkannt 0 | gegen den Nachbarn gedreht 0 | Ladesaeulen 0
+               Ladesaeulen 0 | gerade ja | alle gepaart ja | Nachbarabstand 0,0E+000 m Fehler (soll 3 m)
+               Vorschau-Streifen 18 statt 272 Buchten (93 % weniger) | Buchten erfasst 272/272 | Flaeche 4814,40 gegen 4814,40 m2, Fehler 2,4E-004 m2
+               Overlay-Formen 184 = Gruen 152 + Fahrwege 14 + Streifen 18 + Saeulen 0 | frueher 272 (nur Buchten, ohne Gruen und Fahrwege)
+               Prototyp-Vergleich (stillgelegt): Gras 14/13 Ringe, Asphalt 25/3, Engstelle Gras 0,215125/0,999999, Asphalt 6,999995/1,252445
+Referenz 08s    224 Buchten | Rand 120 | innen 104 | Gassen 3 | Quer 2 | Winkel 0 | Kappen 0 | behindert 0 | elektro 0 | 286 ms
+               ungedeckt 0,0 % | Ueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | unerreichbar 40
+               Strasse auf Strasse 17,11 m2 | Rand/Gasse 17,11 | Rand/Verbindung 0,00 | Gasse/Verbindung 0,00
+               Fahrwege ausgegeben Gassen 3/3 | Querungen 2/0 | kleinster Abstand 36,00 m
+               Asphalt auf Gras 0,00 m2 | Material Gras 22 | Asphalt 29 | Engstelle Gras 0,007001 m | Asphalt 0,000000 m
+               logische Gruenflaechen 523 | ueberschneiden nach float 0 | Doppelpunkte 2 | kuerzeste Kante Gras 0,007 m | Asphalt 0,085 m | echte Engstelle Gras 0,0070 m
+               Decals 224 fuer 224 von 224 Buchten | normal 224 | behindert 0 | elektro 0 | nicht erkannt 0 | gegen den Nachbarn gedreht 0 | Ladesaeulen 0
+               Ladesaeulen 0 | gerade ja | alle gepaart ja | Nachbarabstand 0,0E+000 m Fehler (soll 3 m)
+               Vorschau-Streifen 21 statt 224 Buchten (91 % weniger) | Buchten erfasst 224/224 | Flaeche 3964,80 gegen 3964,80 m2, Fehler 3,1E-004 m2
+               Overlay-Formen 563 = Gruen 523 + Fahrwege 19 + Streifen 21 + Saeulen 0 | frueher 224 (nur Buchten, ohne Gruen und Fahrwege)
+               Prototyp-Vergleich (stillgelegt): Gras 22/11 Ringe, Asphalt 29/4, Engstelle Gras 0,007001/0,699933, Asphalt 0,000000/1,059788
+
+Schalter Kappen an Querstrassen:
+  Rechteck      AN      | 246 Buchten | Gras 18 /  1904,80 m2 | innen 12 / 1321,24 m2 | aussen  6 / 583,56 m2 | Asphalt 35 /  8895,20 m2
+                        ungedeckt 0,0 % | Buchtueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | Strasse 0,00 m2 | Asphalt/Gras 0,00 m2 | Gras/Gras 0,00 m2 | Asphalt/Asphalt 0,00 m2 | Gras/Bucht 0,00 m2 | Gras/Gasse 0,00 m2 | CS2 verwirft 0 | Engstelle 0,400/7,000 m
+  Rechteck      AUS     | 282 Buchten | Gras 18 /  1083,52 m2 | innen 12 /  499,96 m2 | aussen  6 / 583,56 m2 | Asphalt 35 /  9716,48 m2
+                        ungedeckt 0,0 % | Buchtueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | Strasse 0,00 m2 | Asphalt/Gras 0,00 m2 | Gras/Gras 0,00 m2 | Asphalt/Asphalt 0,00 m2 | Gras/Bucht 0,00 m2 | Gras/Gasse 0,00 m2 | CS2 verwirft 0 | Engstelle 0,849/7,000 m
+  L-Form        AN      | 148 Buchten | Gras 11 /  2672,00 m2 | innen  3 / 2017,64 m2 | aussen  8 / 654,36 m2 | Asphalt 14 /  5428,00 m2
+                        ungedeckt 0,0 % | Buchtueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | Strasse 0,00 m2 | Asphalt/Gras 0,00 m2 | Gras/Gras 0,00 m2 | Asphalt/Asphalt 0,00 m2 | Gras/Bucht 0,00 m2 | Gras/Gasse 0,00 m2 | CS2 verwirft 0 | Engstelle 0,050/7,000 m
+  L-Form        AUS     | 156 Buchten | Gras 11 /  2478,48 m2 | innen  3 / 1824,12 m2 | aussen  8 / 654,36 m2 | Asphalt 14 /  5621,52 m2
+                        ungedeckt 0,0 % | Buchtueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | Strasse 0,00 m2 | Asphalt/Gras 0,00 m2 | Gras/Gras 0,00 m2 | Asphalt/Asphalt 0,00 m2 | Gras/Bucht 0,00 m2 | Gras/Gasse 0,00 m2 | CS2 verwirft 0 | Engstelle 0,050/7,000 m
+  Schraeg       AN      | 272 Buchten | Gras 14 /  1563,13 m2 | innen  8 /  958,08 m2 | aussen  6 / 605,04 m2 | Asphalt 25 /  9236,87 m2
+                        ungedeckt 0,0 % | Buchtueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | Strasse 6,12 m2 | Asphalt/Gras 0,00 m2 | Gras/Gras 0,00 m2 | Asphalt/Asphalt 0,00 m2 | Gras/Bucht 0,00 m2 | Gras/Gasse 0,00 m2 | CS2 verwirft 0 | Engstelle 0,215/7,000 m
+  Schraeg       AUS     | 286 Buchten | Gras 14 /  1113,68 m2 | innen  8 /  508,64 m2 | aussen  6 / 605,04 m2 | Asphalt 25 /  9686,32 m2
+                        ungedeckt 0,0 % | Buchtueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | Strasse 6,12 m2 | Asphalt/Gras 0,00 m2 | Gras/Gras 0,00 m2 | Asphalt/Asphalt 0,00 m2 | Gras/Bucht 0,00 m2 | Gras/Gasse 0,00 m2 | CS2 verwirft 0 | Engstelle 0,215/5,900 m
+  Referenz 08s  AN      | 224 Buchten | Gras 22 /  2473,21 m2 | innen  8 / 1788,28 m2 | aussen 14 / 684,93 m2 | Asphalt 29 /  7963,29 m2
+                        ungedeckt 0,0 % | Buchtueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | Strasse 17,11 m2 | Asphalt/Gras 0,00 m2 | Gras/Gras 0,00 m2 | Asphalt/Asphalt 0,00 m2 | Gras/Bucht 0,00 m2 | Gras/Gasse 0,00 m2 | CS2 verwirft 0 | Engstelle 0,007/0,000 m
+  Referenz 08s  AUS     | 237 Buchten | Gras 23 /  1939,37 m2 | innen  9 / 1254,44 m2 | aussen 14 / 684,93 m2 | Asphalt 32 /  8497,13 m2
+                        ungedeckt 0,0 % | Buchtueberlappung 0 | Bucht auf Fahrbahn 0 | Enden ausserhalb 0 | Strasse 17,11 m2 | Asphalt/Gras 0,00 m2 | Gras/Gras 0,00 m2 | Asphalt/Asphalt 0,00 m2 | Gras/Bucht 0,00 m2 | Gras/Gasse 0,00 m2 | CS2 verwirft 0 | Engstelle 0,007/0,000 m
+Float-Regress. Gruenflaechen 22 | ueberschneiden nach float 0 | Doppelpunkte 0 | kuerzeste Kante 0,289 m | Engstelle Gras 0,286300 m | Asphalt 2,999993 m
+               Strasse auf Strasse 1,56 m2 | Rand/Gasse 1,34 | Rand/Verbindung 0,21 | Gasse/Verbindung 0,00
+               Asphalt auf Gras 0,01 m2
+Debug 23:32    496 Buchten | Gras 28 | Engstelle Gras 0,215314 m | Asphalt 0,586986 m | ungedeckt 0,0 %
+               Strasse auf Strasse 33,86 m2 | Asphalt auf Gras 0,01 m2
+               Decals Debug 23:32 496, gegen den Nachbarn gedreht 0 | Nutzerpolygon 630, gegen den Nachbarn gedreht 0
+Nutzerpolygon  630 Buchten | Gras 28 | Asphalt 67 | Engstelle Gras 0,448901 m | Asphalt 0,069642 m | ungedeckt 0,0 %
+               Strasse auf Strasse 21,36 m2 | Asphalt auf Gras 0,00 m2
+
+  17 Meldung(en), alle bekannt. KEINE NEUE ABWEICHUNG.

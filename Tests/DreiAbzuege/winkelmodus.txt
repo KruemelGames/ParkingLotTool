@@ -1,0 +1,6 @@
+WINKELMODUS: 4 Modi
+  edge     -> 0 -> edge
+  quer     -> 3 -> quer
+  fixed    -> 1 -> fixed
+  auto     -> 2 -> auto
+Winkelmodus: 0 Fehler

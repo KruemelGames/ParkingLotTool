@@ -1,0 +1,156 @@
+﻿<Publish>
+	<!--
+		HIER STEHT, WAS IM WORKSHOP ZU SEHEN IST.
+		Geaendert wird nur hier - beim Veroeffentlichen liest das Toolchain-Ziel
+		"PublishNewMod"/"PublishNewVersion" diese Datei.
+	-->
+
+	<!--
+		LEER LASSEN BIS ZUR ERSTEN VEROEFFENTLICHUNG. Paradox vergibt die Id
+		selbst; danach MUSS sie hier stehen, sonst legt jede weitere
+		Veroeffentlichung einen zweiten Mod-Eintrag an statt den ersten zu
+		aktualisieren.
+	-->
+	<ModId Value="" />
+
+	<!--Name of the mod to display to players-->
+	<DisplayName Value="Parking Lot Tool" />
+
+	<!--Short description of the mod. Bei Paradox sind hoechstens 200 Zeichen erlaubt.-->
+	<ShortDescription Value="Draw a shape and get a finished parking lot inside it: bays, aisles, cross roads and surfaces. The cars really park in it." />
+
+	<!--Long description of the mod. Single line or multi line. Supports minimal markdown subset-->
+	<LongDescription>
+Draw a shape on the ground and the mod fills it with a complete parking lot: parking bays, driving aisles, cross roads, a road around the edge and the two ground surfaces. The bays are real parking lanes, so cars actually drive in and park there - they are not decoration.
+
+# How to use it
+
+1. Click the parking icon in the mod bar at the top left, or press Ctrl+P.
+2. Left click sets the corners of your area, right click takes the last one back. Click the first corner again to close the shape.
+3. Place at least one entrance where the lot should meet an existing road.
+4. Press Enter, or the Build button.
+
+Before you build you can drag any corner or any edge to reshape the lot, and the preview follows. ESC leaves the tool.
+
+# What you can change
+
+**Layout** - edge setback, row angle (follow an edge, or a fixed angle), aisle width, cross road width, and a cross road every N bays.
+
+**Green** - a median between the bay rows and how deep it is, and the small grass caps where a row meets a cross road. Switch the caps off and the bays sit straight against the cross road instead.
+
+**Surfaces** - pick any of the game's surfaces for the driving area and for everything in between, or switch either one off and paint the ground yourself.
+
+**Bay markings** - the painted stall markings, on or off.
+
+Every value can be saved as your own default, so the next lot starts the way you like it.
+
+# Good to know
+
+- The whole lot has a single owner: one click selects it, one bulldoze removes it.
+- The panel is English by default. German can be chosen in the mod options.
+- Something looks wrong? The "Report a problem" tab lets you mark the spot in the world and writes a short text file you can send along.
+
+# Requirements
+
+Unified Icon Library.
+
+# Source
+
+The full source is on GitHub under GPL-3.0. This mod was written with AI assistance and I would rather say so than have someone find out. That is not the same as letting a model improvise until it compiles: the repository documents what was measured, what was decompiled and which wrong turns cost days. You are welcome to check.
+	</LongDescription>
+
+	<!--
+		950x500. Das hier ist NOCH das Platzhalterbild der Toolchain (blaues
+		Hexagon mit Hammer) - vor der Veroeffentlichung ersetzen.
+	-->
+	<Thumbnail Value="Properties/Thumbnail.png" />
+
+	<!--
+		Screenshot, can be set multiple times.
+		Dateien nach Properties/Screenshots/ legen und die Zeile einkommentieren.
+		Was gezeigt werden sollte, steht in RELEASE.md.
+	-->
+	<!--<Screenshot Value="Properties/Screenshots/01-fertiger-parkplatz.png" />-->
+	<!--<Screenshot Value="Properties/Screenshots/02-panel.png" />-->
+	<!--<Screenshot Value="Properties/Screenshots/03-zeichnen.png" />-->
+	<!--<Screenshot Value="Properties/Screenshots/04-parkende-autos.png" />-->
+
+	<!--
+		Tag, can be set multiple times.
+		"Code Mod" ist der Tag, den alle Codemods tragen - nachgezaehlt im
+		Mod-Cache: Anarchy, Traffic, Move It, Find It, Better Bulldozer und
+		Realistic Parking haben genau diesen einen und sonst keinen. Die
+		Parkplatz-Tags (ParkingFacility, UIRoadsParking) gehoeren zu
+		Asset-Mods, die fertige Gebaeude mitliefern - wir liefern keine.
+	-->
+	<Tag Value="Code Mod" />
+
+	<!--Link to the forum post where the mod can be discussed-->
+	<ForumLink Value="" />
+
+	<!--
+		Version of the mod. MUSS zu UI/mod.json passen - dort steht dieselbe
+		Nummer noch einmal, und auseinanderlaufende Nummern sind spaeter beim
+		Fehlersuchen der reine Zeitfresser.
+	-->
+	<ModVersion Value="1.0.0" />
+
+	<!--
+		Recommended version of the base game to use the mod.
+		1.6.* - gegen diese Spielversion ist gebaut und geprueft worden
+		(SceneFlow.log: 1.6.0f1). Der Stern haelt Patchstaende offen.
+	-->
+	<GameVersion Value="1.6.*" />
+
+	<!--Dependency for the mod, can be set multiple times-->
+	<!--
+		74417 = Unified Icon Library. HARTE Abhaengigkeit, nicht optional:
+		das Panel laedt seine Symbole ueber coui://uil/Standard/, und diesen
+		Host registriert die Bibliothek selbst (UIManager.AddHostLocation).
+		Fehlt sie, bleiben alle Symbole leer.
+	-->
+	<Dependency Id="74417" />
+	<!--
+		79634 = Asset Icon Library. Seit dem 2026-08-25 HART, und zwar erst
+		seitdem: bis dahin stand in den zwei Flaechenfeldern nur der Name
+		("Pavement Surface 01"), und niemand wusste vorher, wie das aussieht.
+		Jetzt zeigt die Auswahl Vorschaubilder.
+
+		Die Bibliothek registriert den Host `coui://ail` und schreibt ihre
+		Adressen in `UIObject.m_Icon` an jedem Prefab; genau dieses Feld liest
+		`Vorschaubild` in `Tools/ParkingLotAreaPrefabSurvey.cs`. Fehlt sie,
+		haben die Flaechen dieses Feld gar nicht - Flaechen stehen in keinem
+		Baumenue und bringen deshalb kein eigenes Symbol mit. Das Panel faellt
+		dann auf reine Namen zurueck, bedienbar bleibt es, aber die Spalte
+		verliert ihren Sinn.
+
+		Die Regel von vorher gilt weiter und ist hier erfuellt: eine
+		Abhaengigkeit wird eingetragen, sobald sie etwas tut - vorher kostet
+		sie den Nutzer nur einen Zwangsdownload.
+	-->
+	<Dependency Id="79634" />
+
+	<!--Required DLC, can be set multiple times. Supported values are "Landmark Buildings", "San Fransisco Set", "Beach Properties", "Urban Promenades", "Modern Architecture"-->
+	<RequiredDLC Value="" />
+
+	<!--
+		Change log for new version. Single line or multi line.
+		Gilt fuer DIESE Version - vor jeder neuen Veroeffentlichung neu fuellen.
+		Dieselben Zeilen stehen in CHANGELOG.md.
+	-->
+	<ChangeLog>
+First release.
+	</ChangeLog>
+
+	<!--External link, can be set multiple times. supported types are "discord", "github", "youtube", "twitch", "x", "paypal", "patreon", "buymeacoffee", "kofi", "crowdin", "gitlab", "gofundme"-->
+	<!--
+		DER GITHUB-LINK IST BEI GPL-3.0 KEINE ZIERDE, SONDERN PFLICHT: wer den
+		Mod bekommt, muss an den Quelltext kommen koennen. Vor dem
+		Veroeffentlichen pruefen, dass das Repository unter dieser Adresse
+		tatsaechlich oeffentlich steht.
+	-->
+	<ExternalLink Type="github" Url="https://github.com/KruemelGames/ParkingLotTool" />
+
+	<!--Supported values Public, Private, Unlisted-->
+	<AccessLevel Value="Public" />
+</Publish>

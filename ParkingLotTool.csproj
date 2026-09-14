@@ -1,0 +1,225 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Configurations>Debug;Release</Configurations>
+		<CS2ToolPath Condition="'$(CSII_TOOLPATH)' != ''">$(CSII_TOOLPATH)</CS2ToolPath>
+		<CS2ToolPath Condition="'$(CS2ToolPath)' == ''">$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))</CS2ToolPath>
+	
+		<!--The file where mod information which is required for publishing mod on PDX mods are stored-->
+		<PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
+	</PropertyGroup>
+	
+	<!--Imports must be after PropertyGroup block-->
+	<Import Project="$(CS2ToolPath)\Mod.props" />
+
+	<!--
+		Die Toolchain liest normalerweise benutzerspezifische Umgebungsvariablen.
+		CI- und Rechner-Testprozesse reichen dieselben Werte als Prozessvariablen
+		durch; diese Fallbacks halten beide Startarten gleichwertig.
+	-->
+	<PropertyGroup>
+		<UseProcessCs2Paths Condition="'$(EntitiesVersion)' == '' AND '$(CSII_ENTITIESVERSION)' != ''">true</UseProcessCs2Paths>
+	</PropertyGroup>
+	<ItemGroup Condition="'$(UseProcessCs2Paths)' == 'true'">
+		<Analyzer Remove="@(Analyzer)" />
+	</ItemGroup>
+	<PropertyGroup>
+		<ManagedPath Condition="'$(ManagedPath)' == '' AND '$(CSII_MANAGEDPATH)' != ''">$(CSII_MANAGEDPATH)</ManagedPath>
+		<UserDataPath Condition="'$(UserDataPath)' == '' AND '$(CSII_USERDATAPATH)' != ''">$(CSII_USERDATAPATH)</UserDataPath>
+		<LocalModsPath Condition="'$(LocalModsPath)' == '' AND '$(CSII_LOCALMODSPATH)' != ''">$(CSII_LOCALMODSPATH)</LocalModsPath>
+		<UnityModProjectPath Condition="'$(UnityModProjectPath)' == '' AND '$(CSII_UNITYMODPROJECTPATH)' != ''">$(CSII_UNITYMODPROJECTPATH)</UnityModProjectPath>
+		<ModPostProcessorPath Condition="'$(ModPostProcessorPath)' == '' AND '$(CSII_MODPOSTPROCESSORPATH)' != ''">$(CSII_MODPOSTPROCESSORPATH)</ModPostProcessorPath>
+		<ModPublisherPath Condition="'$(ModPublisherPath)' == '' AND '$(CSII_MODPUBLISHERPATH)' != ''">$(CSII_MODPUBLISHERPATH)</ModPublisherPath>
+		<EntitiesVersion Condition="'$(EntitiesVersion)' == '' AND '$(CSII_ENTITIESVERSION)' != ''">$(CSII_ENTITIESVERSION)</EntitiesVersion>
+		<EntityPackagePath Condition="'$(CSII_ENTITIESVERSION)' != ''">$(UnityModProjectPath)\Library\PackageCache\com.unity.entities@$(EntitiesVersion)\Unity.Entities\SourceGenerators</EntityPackagePath>
+		<MSCORLIBPath Condition="'$(MSCORLIBPath)' == '' AND '$(CSII_MSCORLIBPATH)' != ''">$(CSII_MSCORLIBPATH)</MSCORLIBPath>
+		<AssemblySearchPaths>$(AssemblySearchPaths);$(ManagedPath)</AssemblySearchPaths>
+	</PropertyGroup>
+	<ItemGroup Condition="'$(UseProcessCs2Paths)' == 'true'">
+		<Reference Include="$(MSCORLIBPath)" Condition="Exists('$(MSCORLIBPath)')">
+			<Private>false</Private>
+		</Reference>
+		<Analyzer Include="$(EntityPackagePath)\SystemGenerator.SystemAPI.dll" />
+		<Analyzer Include="$(EntityPackagePath)\SystemGenerator.dll" />
+		<Analyzer Include="$(EntityPackagePath)\SystemGenerator.SystemAPI.QueryBuilder.dll" />
+		<Analyzer Include="$(EntityPackagePath)\SystemGenerator.LambdaJobs.dll" />
+		<Analyzer Include="$(EntityPackagePath)\SystemGenerator.Common.dll" />
+		<Analyzer Include="$(EntityPackagePath)\SystemGenerator.SystemAPI.Query.dll" />
+		<Analyzer Include="$(EntityPackagePath)\SystemGenerator.EntityQueryBulkOperations.dll" />
+		<Analyzer Include="$(EntityPackagePath)\AspectGenerator.dll" />
+		<Analyzer Include="$(EntityPackagePath)\Common.dll" />
+		<Analyzer Include="$(EntityPackagePath)\JobEntityGenerator.dll" />
+		<Analyzer Include="$(EntityPackagePath)\Unity.Entities.Analyzer.dll" />
+		<Analyzer Include="$(EntityPackagePath)\Unity.Entities.Analyzer.CodeFixes.dll" />
+	</ItemGroup>
+
+	<Import Project="$(CS2ToolPath)\Mod.targets" />
+
+	<ItemGroup>
+		<!--
+			Fest versionierte MIT-Abhaengigkeit fuer den fruehen Raycast-Hook.
+			Die lokale Referenz macht Release-Builds ohne Netzzugriff reproduzierbar;
+			Herkunft, Lizenz und SHA-256 stehen direkt neben der Assembly.
+		-->
+		<Reference Include="0Harmony">
+			<HintPath>Library\Harmony\0Harmony.dll</HintPath>
+			<Private>true</Private>
+		</Reference>
+		<Reference Include="Game">
+			<Private>false</Private>
+		</Reference>
+		<!--
+			Fuer das Meldepaket (ParkingLotMeldepaket): ein Tester soll EINE
+			Datei verschicken, nicht vier aus einem Ordner mit Hunderten
+			heraussuchen. `System.IO.Compression` liegt im Managed-Ordner des
+			Spiels, muss aber ausdruecklich verwiesen werden - `ZipArchive`
+			ist dorthin nur weitergeleitet.
+			`Private=false`, weil die DLL ohnehin beim Spiel liegt; eine Kopie
+			im Modordner waere eine zweite Fassung derselben Bibliothek.
+		-->
+		<Reference Include="System.IO.Compression">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Colossal.Core">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Colossal.Collections">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Colossal.Mathematics">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Colossal.Logging">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Colossal.UI.Binding">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Colossal.IO.AssetDatabase">
+			<Private>false</Private>
+		</Reference>
+		<!-- Fuer die Beschriftungen der Optionsseite: LocalizationManager.AddSource. -->
+		<Reference Include="Colossal.Localization">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Newtonsoft.Json">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="UnityEngine.CoreModule">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Unity.InputSystem">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Unity.Burst">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Unity.Collections">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Unity.Entities">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Unity.Mathematics">
+			<HintPath>$(ManagedPath)\Unity.Mathematics.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Update="System">
+			<Private>false</Private>
+		</Reference>
+		<Reference Update="System.Core">
+			<Private>false</Private>
+		</Reference>
+		<Reference Update="System.Data">
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="$(ModPropsFile)" Link="Properties\Mod.props" />
+		<None Include="$(ModTargetsFile)" Link="Properties\Mod.targets" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Der eigenstaendige Rechner-Test gehoert nicht in die Mod-DLL. -->
+		<Compile Remove="Tests\**\*.cs" />
+		<!--
+			Verschachtelte Testausgaben sind sonst `None`-Kandidaten fuer RAR und
+			verdraengen trotz HintPath die aktuelle CS2-Unity.Mathematics.dll.
+		-->
+		<None Remove="Tests\**\bin\**;Tests\**\obj\**" />
+		<Content Remove="Tests\**\bin\**;Tests\**\obj\**" />
+		<!-- Das UI ist ein eigenes npm-Projekt und wird von webpack gebaut. -->
+		<Compile Remove="UI\**\*.cs" />
+		<None Remove="UI\node_modules\**" />
+	</ItemGroup>
+
+	<!--
+		Ein `dotnet build` soll BEIDE Haelften liefern. Sonst baut man das C#
+		neu, testet im Spiel und sieht ein altes Panel - der Fehler faellt
+		garantiert erst nach der Fehlersuche auf.
+
+		Uebersprungen wird der Schritt nur, wenn die Abhaengigkeiten fehlen;
+		dann steht der Grund in der Bauausgabe statt in einem Ratespiel.
+	-->
+	<Target Name="BuildUserInterface" AfterTargets="Build">
+		<PropertyGroup>
+			<UiDirectory>$(MSBuildProjectDirectory)\UI</UiDirectory>
+		</PropertyGroup>
+		<Message Importance="high"
+			Condition="!Exists('$(UiDirectory)\node_modules')"
+			Text="UI uebersprungen: $(UiDirectory)\node_modules fehlt. Einmal 'npm install' im Ordner UI ausfuehren." />
+		<!--
+			DER RUECKGABEWERT MUSS AUSGEWERTET WERDEN.
+
+			Bis zum 2026-08-26 stand hier nur ContinueOnError="true". Damit
+			meldete `dotnet build` "0 Fehler", waehrend webpack darunter mit
+			"compiled with 2 errors" abbrach - ausgeliefert wurde dann ein
+			altes oder gar kein UI-Buendel. Genau so ging ein SassError in den
+			Spielstart und riss dort die Oberflaeche mit.
+
+			ContinueOnError bleibt stehen, damit der Aufraeumschritt darunter
+			noch laeuft; ausgesprochen wird der Fehler gleich danach. Auch ein
+			gescheitertes Kopieren (MSB3231, weil CS2 laeuft und die Datei
+			haelt) faellt so auf, statt als "fertig" durchzugehen.
+		-->
+		<Exec Condition="Exists('$(UiDirectory)\node_modules')"
+			WorkingDirectory="$(UiDirectory)"
+			Command="npm run build"
+			ContinueOnError="true">
+			<Output TaskParameter="ExitCode" PropertyName="UiExitCode" />
+		</Exec>
+		<Error Condition="'$(UiExitCode)' != '' AND '$(UiExitCode)' != '0'"
+			Text="UI-Bau fehlgeschlagen (npm run build, Rueckgabewert $(UiExitCode)). Das Buendel im Modordner ist jetzt veraltet oder fehlt - so nicht ins Spiel laden. Die Ursache steht in der webpack-Ausgabe weiter oben." />
+	</Target>
+
+	<!-- AUFRAEUMEN NACH DEM BAUEN: die Toolchain loescht ihre Zwischenspeicher
+	     nicht. Am 2026-08-24 waren daraus 987 Ordner mit 54 GB geworden - im
+	     StreetBlockAlgo-Projekt hatte derselbe Sammler die Platte einmal
+	     vollstaendig gefuellt, danach "haengen" Builds nur noch und der
+	     Post-Processor bricht mit Code -1 ab. Diese Abhilfe stand dort seit dem
+	     2026-07-27 und fehlte hier.
+
+	     Geloescht wird ausschliesslich, was aelter als zwei Stunden ist -
+	     laufende Builds und ein geoeffnetes Spiel bleiben unberuehrt. Fehler
+	     werden ignoriert; ein fehlgeschlagenes Aufraeumen darf keinen Build
+	     kippen. -->
+	<Target Name="CleanStaleBuildTempCaches" AfterTargets="Build">
+		<Exec Command="powershell -NoProfile -NonInteractive -Command &quot;$cut=(Get-Date).AddHours(-2); Get-ChildItem $env:TEMP -Directory -ErrorAction SilentlyContinue ^| Where-Object { ($_.Name -like 'cache*' -or $_.Name -like 'microsoft.net.workload*') -and $_.LastWriteTime -lt $cut } ^| Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; exit 0&quot;"
+			ContinueOnError="true" StandardOutputImportance="low" StandardErrorImportance="low" />
+	</Target>
+
+	<!-- Der Debug-Build baut nur fuer Windows. Das ist der offizielle Haken der
+	     Toolchain; Release baut weiter fuer alle Plattformen. Spart je Build
+	     mehrere Cache-Ordner und rund die Haelfte der Bauzeit. -->
+	<Target Name="CustomModPostProcessorConfig" AfterTargets="ModPostProcessorConfig"
+			Condition="'$(Configuration)' == 'Debug'">
+		<PropertyGroup>
+			<ModPostProcessorArgs>$(ModPostProcessorArgs.Replace(' -p macOS -p Linux', ''))</ModPostProcessorArgs>
+		</PropertyGroup>
+	</Target>
+
+</Project>

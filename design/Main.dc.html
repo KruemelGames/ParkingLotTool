@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #00ffff; }
+    a:hover { color: #7dd3fc; }
+  </style>
+</helmet>
+
+<div style="width: 1120px; height: 700px; box-sizing: border-box; background: #161a1f; color: #e5e9ec; font-family: 'IBM Plex Sans', system-ui, sans-serif; padding: 26px 30px; display: flex; flex-direction: column; gap: 16px;">
+
+  <div style="display: flex; flex-direction: column; gap: 4px;">
+    <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.14em; color: #00ff00; text-transform: uppercase;">Soll-Zustand · nach deiner Skizze</div>
+    <div style="font-size: 25px; font-weight: 700; letter-spacing: -0.01em;">Die Fahrgasse <em style="font-style: normal; color: #00ffff;">ist</em> die Randzoning-Straße</div>
+    <div style="font-size: 13px; color: #8a949e; max-width: 780px;">Gilt nur an Kanten mit eingeschaltetem Randzoning. Überall sonst ändert sich nichts.</div>
+  </div>
+
+  <div style="display: flex; gap: 20px; flex-grow: 1;">
+
+    <div style="width: 400px; display: flex; flex-direction: column; gap: 9px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #8a949e;">A · WAAGERECHTE KANTE — SCHNITT</div>
+      <div style="position: relative; height: 262px; background: #1e242b; border: 1px solid #2c343d;">
+
+        <div style="position: absolute; left: 0; top: 0; width: 100%; height: 2px; background: #ffffff;"></div>
+        <div style="position: absolute; left: 10px; top: 7px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #ffffff; letter-spacing: 0.08em;">POLYGONKANTE · RZ AN</div>
+
+        <div style="position: absolute; left: 0; top: 2px; width: 100%; height: 87px; background: #00ff00;"></div>
+        <div style="position: absolute; left: 10px; top: 48px; font-size: 12px; color: #0b3d0b; font-weight: 700;">Kacheln · Bauland</div>
+        <div style="position: absolute; left: 10px; top: 65px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #0b3d0b;">0 – 14,81 m</div>
+
+        <div style="position: absolute; left: 0; top: 89px; width: 100%; height: 48px; background: #00ffff;"></div>
+        <div style="position: absolute; left: 10px; top: 105px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #003b3b; font-weight: 600;">FAHRGASSE = RZ-STRASSE</div>
+
+        <div style="position: absolute; left: 0; top: 137px; width: 100%; height: 36px; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; padding: 5px 10px; box-sizing: border-box;">
+          <div style="background: #9ca3af;"></div><div style="background: #9ca3af;"></div><div style="background: #9ca3af;"></div><div style="background: #9ca3af;"></div><div style="background: #9ca3af;"></div><div style="background: #9ca3af;"></div><div style="background: #9ca3af;"></div><div style="background: #9ca3af;"></div><div style="background: #9ca3af;"></div><div style="background: #9ca3af;"></div>
+        </div>
+        <div style="position: absolute; right: 10px; top: 145px; font-size: 11px; color: #cbd5e1;">innere Reihe bleibt</div>
+
+        <div style="position: absolute; left: 0; top: 173px; width: 100%; height: 40px; background: #4b5563;"></div>
+        <div style="position: absolute; left: 0; top: 192px; width: 100%; height: 2px; background: #cbd5e1;"></div>
+        <div style="position: absolute; left: 10px; top: 178px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8a949e;">FAHRGASSE 4</div>
+
+        <div style="position: absolute; right: 80px; top: 2px; width: 1px; height: 111px; background: #00ffff;"></div>
+        <div style="position: absolute; right: 16px; top: 46px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #00ffff; font-weight: 600;">18,81 m</div>
+      </div>
+      <div style="background: #1e242b; border-left: 2px solid #00ff00; padding: 10px 12px; font-size: 12px; line-height: 1.5;">Nur die <strong>äußere</strong> Buchtreihe fällt weg. Kein Belag zwischen Kante und Straßenrand — weil er dort nicht geplant wird.</div>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 9px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #8a949e;">B · SCHRÄGE KANTE — DRAUFSICHT</div>
+      <div style="position: relative; height: 262px; background: #1e242b; border: 1px solid #2c343d; overflow: hidden;">
+
+        <div style="position: absolute; left: 90px; top: 8px; width: 100px; height: 46px; background: #00ff00;"></div>
+        <div style="position: absolute; left: 190px; top: 8px; width: 100px; height: 106px; background: #00ff00;"></div>
+        <div style="position: absolute; left: 290px; top: 8px; width: 100px; height: 166px; background: #00ff00;"></div>
+        <div style="position: absolute; left: 390px; top: 8px; width: 100px; height: 226px; background: #00ff00;"></div>
+
+        <div style="position: absolute; left: 113px; top: 8px; width: 439px; height: 2px; background: #ffffff; transform-origin: 0 0; transform: rotate(30.96deg);"></div>
+
+        <div style="position: absolute; left: 10px; top: 54px; width: 80px; height: 6px; background: #00ffff;"></div>
+        <div style="position: absolute; left: 90px; top: 54px; width: 100px; height: 6px; background: #ff0000;"></div>
+        <div style="position: absolute; left: 190px; top: 114px; width: 100px; height: 6px; background: #ff0000;"></div>
+        <div style="position: absolute; left: 290px; top: 174px; width: 100px; height: 6px; background: #ff0000;"></div>
+        <div style="position: absolute; left: 390px; top: 234px; width: 100px; height: 6px; background: #ff0000;"></div>
+
+        <div style="position: absolute; left: 184px; top: 60px; width: 6px; height: 54px; background: #ff00ff;"></div>
+        <div style="position: absolute; left: 284px; top: 120px; width: 6px; height: 54px; background: #ff00ff;"></div>
+        <div style="position: absolute; left: 384px; top: 180px; width: 6px; height: 54px; background: #ff00ff;"></div>
+
+        <div style="position: absolute; left: 119px; top: 20px; width: 430px; height: 3px; background: #ff4500; transform-origin: 0 0; transform: rotate(30.96deg);"></div>
+        <div style="position: absolute; left: 196px; top: 78px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #ff4500; background: #1e242b; padding: 2px 5px;">so liefe er heute — in die Kacheln</div>
+
+        <div style="position: absolute; left: 10px; bottom: 8px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="display: flex; align-items: center; gap: 7px; font-size: 11px;"><span style="width: 16px; height: 6px; background: #00ffff;"></span><span><strong>Straße</strong> — Gasse an der waagerechten Kante</span></div>
+          <div style="display: flex; align-items: center; gap: 7px; font-size: 11px;"><span style="width: 16px; height: 6px; background: #ff0000;"></span><span><strong>Straße</strong> — Gasse an der Diagonale, je Höhe eine</span></div>
+          <div style="display: flex; align-items: center; gap: 7px; font-size: 11px;"><span style="width: 16px; height: 6px; background: #ff00ff;"></span><span>Fußweg-Verbinder — Kante an Kante</span></div>
+          <div style="display: flex; align-items: center; gap: 7px; font-size: 11px;"><span style="width: 16px; height: 6px; background: #00ff00;"></span><span>Kacheln · Bauland</span></div>
+        </div>
+      </div>
+      <div style="background: #1e242b; border-left: 2px solid #ff00ff; padding: 10px 12px; font-size: 12px; line-height: 1.5;"><strong>Blau und Rot sind beide Straße</strong> — dieselbe Sache, nur an verschiedenen Kanten. <strong>Kante an Kante, nicht mittig.</strong> Der Verbinder stößt bündig an Treppenabschnitt und Kachelstufe — oben, unten und seitlich. Mittig gesetzt entstünden an jeder Ecke zwei um Millimeter versetzte Rechtecke, und daraus wieder Kantenlöcher.</div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;700&amp;display=swap">
+  <style>
+    body {
+      margin: 0;
+      background-color: #242c33;
+      font-family: Overpass, "Noto Sans", system-ui, sans-serif;
+    }
+    a { color: #4fc3f7; }
+    a:hover { color: #9ee2fc; }
+  </style>
+</helmet>
+<div>
+  <!-- Die Leiste haengt am oberen Bildrand: oben eckig, unten rund, kein Rand nach oben. -->
+  <div style="box-sizing: border-box; width: 1250px; margin: 0 auto; padding: 14px; border-radius: 0 0 12px 12px; background-color: rgba(16,23,36,0.9); border-left: 1px solid rgba(126,172,214,0.16); border-right: 1px solid rgba(126,172,214,0.16); border-bottom: 1px solid rgba(126,172,214,0.16); box-shadow: 0 8px 26px rgba(0,0,0,0.5); color: rgba(255,255,255,0.82)">
+    <div style="display: flex; align-items: stretch">
+
+      <div style="width: 108px; margin-right: 16px">
+        <div style="display: flex; align-items: center; margin-bottom: 12px">
+          <span style="width: 3px; height: 16px; margin-right: 7px; border-radius: 2px; background-color: #4fc3f7"></span>
+          <span style="font-size: 16px; font-weight: 700; letter-spacing: 0.04em; color: #ffffff">PARKPLATZ</span>
+        </div>
+        <div style="padding: 5px 8px; margin-bottom: 4px; border-radius: 5px; font-size: 13px; font-weight: 700; color: #0d1520; background-color: #4fc3f7">Entwurf</div>
+        <div style="padding: 5px 8px; margin-bottom: 12px; border-radius: 5px; font-size: 13px; color: rgba(242,114,92,0.85); background-color: rgba(242,114,92,0.12)">Fehler melden</div>
+        <!-- Alle Werte zuruecksetzen · gespeicherte Standards verwerfen · schliessen -->
+        <div style="display: flex">
+          <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 4px; border-radius: 4px; background-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+          <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 4px; border-radius: 4px; background-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10"></path><path d="M6 4V2.5h4V4"></path><path d="M4.5 4l.6 9h5.8l.6-9"></path></svg></span>
+          <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; background-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"></path></svg></span>
+        </div>
+      </div>
+
+      <div style="width: 1px; margin-right: 16px; background-color: rgba(255,255,255,0.08)"></div>
+
+      <div style="width: 224px; margin-right: 16px">
+        <div style="display: flex; align-items: center; margin-bottom: 11px">
+          <span style="font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: #f0ad3e">ZUSCHNITT</span>
+          <span style="flex: 1; height: 1px; margin-left: 9px; background-color: rgba(240,173,62,0.25)"></span>
+        </div>
+        <div style="margin-bottom: 9px">
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 13px; color: rgba(255,255,255,0.78)">Randabstand</span>
+            <span style="font-size: 13px; font-weight: 700; color: #f0ad3e">1,0 m</span>
+            <!-- Beide Knoepfe sind blass, solange der Wert dem Standard entspricht -
+                 genau wie heute (settingButtonOff). -->
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 3px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.09)">
+            <div style="position: absolute; top: 0; left: 0; width: 17%; height: 5px; border-radius: 3px; background-color: #f0ad3e"></div>
+            <div style="position: absolute; top: -2px; left: 17%; width: 9px; height: 9px; margin-left: -5px; border-radius: 5px; background-color: #ffffff"></div>
+          </div>
+        </div>
+        <div style="margin-bottom: 9px">
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 13px; color: rgba(255,255,255,0.78)">Reihenwinkel</span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 3px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </div>
+          <div style="display: flex">
+            <span style="flex: 1; margin-right: 3px; padding: 3px 0; border-radius: 4px; text-align: center; font-size: 12px; font-weight: 700; color: #f0ad3e; background-color: rgba(240,173,62,0.20)">Kante</span>
+            <span style="flex: 1; margin-right: 3px; padding: 3px 0; border-radius: 4px; text-align: center; font-size: 12px; color: rgba(255,255,255,0.5); background-color: rgba(255,255,255,0.06)">Meiste</span>
+            <span style="flex: 1; padding: 3px 0; border-radius: 4px; text-align: center; font-size: 12px; color: rgba(255,255,255,0.5); background-color: rgba(255,255,255,0.06)">Fest</span>
+          </div>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 13px; color: rgba(255,255,255,0.3)">Winkel</span>
+            <span style="font-size: 13px; color: rgba(255,255,255,0.3)">0 Grad</span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 3px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.05)">
+            <div style="position: absolute; top: -2px; left: 0; width: 9px; height: 9px; border-radius: 5px; background-color: rgba(255,255,255,0.22)"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width: 224px; margin-right: 16px">
+        <div style="display: flex; align-items: center; margin-bottom: 11px">
+          <span style="font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: #4fc3f7">FAHRWEGE</span>
+          <span style="flex: 1; height: 1px; margin-left: 9px; background-color: rgba(79,195,247,0.25)"></span>
+        </div>
+        <!-- Der einzige Wert, der hier vom Standard abweicht: nur an diesem Regler
+             sind die beiden Knoepfe hell und anklickbar. -->
+        <div style="margin-bottom: 9px">
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 13px; color: rgba(255,255,255,0.78)">Fahrgassenbreite</span>
+            <span style="font-size: 13px; font-weight: 700; color: #4fc3f7">7,5 m</span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 3px; border-radius: 3px; background-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.09)">
+            <div style="position: absolute; top: 0; left: 0; width: 50%; height: 5px; border-radius: 3px; background-color: #4fc3f7"></div>
+            <div style="position: absolute; top: -2px; left: 50%; width: 9px; height: 9px; margin-left: -5px; border-radius: 5px; background-color: #ffffff"></div>
+          </div>
+        </div>
+        <div style="margin-bottom: 9px">
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 13px; color: rgba(255,255,255,0.78)">Querstraßenbreite</span>
+            <span style="font-size: 13px; font-weight: 700; color: #4fc3f7">3,0 m</span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 3px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.09)">
+            <div style="position: absolute; top: -2px; left: 0; width: 9px; height: 9px; border-radius: 5px; background-color: #ffffff"></div>
+          </div>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 13px; color: rgba(255,255,255,0.78)">Abstand Verbindungen</span>
+            <span style="font-size: 13px; font-weight: 700; color: #4fc3f7">34 m</span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 3px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.09)">
+            <div style="position: absolute; top: 0; left: 0; width: 14%; height: 5px; border-radius: 3px; background-color: #4fc3f7"></div>
+            <div style="position: absolute; top: -2px; left: 14%; width: 9px; height: 9px; margin-left: -5px; border-radius: 5px; background-color: #ffffff"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width: 224px; margin-right: 16px">
+        <div style="display: flex; align-items: center; margin-bottom: 11px">
+          <span style="font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: #7cd455">GRÜN</span>
+          <span style="flex: 1; height: 1px; margin-left: 9px; background-color: rgba(124,212,85,0.25)"></span>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 10px">
+          <span style="flex: 1; font-size: 13px; color: rgba(255,255,255,0.78)">Mittelgrün</span>
+          <span style="position: relative; width: 26px; height: 14px; border-radius: 7px; background-color: #7cd455">
+            <span style="position: absolute; top: 2px; left: 14px; width: 10px; height: 10px; border-radius: 5px; background-color: #101724"></span>
+          </span>
+          <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+          <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 3px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 10px">
+          <span style="flex: 1; font-size: 13px; color: rgba(255,255,255,0.78)">Kappen an Querstraßen</span>
+          <span style="position: relative; width: 26px; height: 14px; border-radius: 7px; background-color: #7cd455">
+            <span style="position: absolute; top: 2px; left: 14px; width: 10px; height: 10px; border-radius: 5px; background-color: #101724"></span>
+          </span>
+          <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+          <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 3px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; margin-bottom: 4px">
+            <span style="flex: 1; font-size: 13px; color: rgba(255,255,255,0.78)">Grünstreifentiefe</span>
+            <span style="font-size: 13px; font-weight: 700; color: #7cd455">2,5 m</span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 3px; border-radius: 3px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.25)"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </div>
+          <div style="position: relative; height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.09)">
+            <div style="position: absolute; top: 0; left: 0; width: 31%; height: 5px; border-radius: 3px; background-color: #7cd455"></div>
+            <div style="position: absolute; top: -2px; left: 31%; width: 9px; height: 9px; margin-left: -5px; border-radius: 5px; background-color: #ffffff"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width: 1px; margin-right: 16px; background-color: rgba(255,255,255,0.08)"></div>
+
+      <div style="width: 184px; margin-right: 16px">
+        <div style="display: flex; align-items: flex-end; margin-bottom: 3px">
+          <span style="font-size: 32px; font-weight: 700; line-height: 0.9; color: #ffffff">298</span>
+          <span style="margin-left: 8px; margin-bottom: 2px; font-size: 13px; color: rgba(255,255,255,0.6)">Stellplätze</span>
+        </div>
+        <div style="font-size: 12px; color: rgba(255,255,255,0.5)">84 am Rand · 7 Fahrgassen</div>
+        <div style="margin-top: 2px; font-size: 12px; color: rgba(255,255,255,0.5)">48,9 m² je Bucht · 93,3°</div>
+        <div style="margin-top: 2px; font-size: 12px; color: rgba(255,255,255,0.5)">14.560 m² Areal</div>
+        <div style="display: flex; align-items: center; margin-top: 9px">
+          <span style="width: 6px; height: 6px; margin-right: 7px; border-radius: 3px; background-color: #7cd455"></span>
+          <span style="font-size: 12px; color: rgba(255,255,255,0.62)">16 Grasflächen, 5 Belagflächen</span>
+        </div>
+      </div>
+
+      <!-- Die beiden Handlungen als Blockpaar rechts, beide 66 x 132 - also 1:2.
+           Zufahrt bleibt magenta wie der Ring in der Welt; Bauen ist als einzige
+           Flaeche der Leiste voll gefuellt und traegt deshalb das meiste Gewicht. -->
+      <div style="width: 66px; height: 132px; margin-right: 8px; padding: 10px 6px; box-sizing: border-box; border-radius: 8px; background-color: rgba(255,95,176,0.14); border: 1px solid rgba(255,95,176,0.45); text-align: center; color: #ffb3da">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20V10L12 3l9 7v10"></path><path d="M12 20v-6"></path></svg>
+        <div style="margin-top: 6px; font-size: 13px; font-weight: 700; line-height: 1.15">Zufahrt</div>
+        <div style="margin-top: 5px; font-size: 12px; color: rgba(255,179,218,0.7)">3 / 10</div>
+      </div>
+
+      <div style="width: 66px; height: 132px; padding: 10px 6px; box-sizing: border-box; border-radius: 8px; background-color: #4fc3f7; text-align: center; color: #08141f">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3l7 7-3 3-7-7z"></path><path d="M11.5 9.5L4 17v3h3l7.5-7.5"></path></svg>
+        <div style="margin-top: 6px; font-size: 15px; font-weight: 700; line-height: 1.15">Bauen</div>
+        <div style="margin-top: 5px; font-size: 12px; color: rgba(8,20,31,0.6)">Enter</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin: 18px auto 0; width: 1250px; color: rgba(255,255,255,0.35); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase">C — Leiste am oberen Bildrand · 1250 × 161 rem</div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1400,"height":230}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

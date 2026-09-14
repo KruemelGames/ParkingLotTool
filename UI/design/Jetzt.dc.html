@@ -1,0 +1,286 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;700&amp;display=swap">
+  <style>
+    body {
+      margin: 0;
+      background-color: #20272e;
+      font-family: Overpass, "Noto Sans", system-ui, sans-serif;
+    }
+    a { color: #4bc3f1; }
+    a:hover { color: #9ee2fc; }
+    .feld { padding: 20px; }
+    .marke {
+      margin-bottom: 14px;
+      color: rgba(255,255,255,0.35);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    /* 1 CSS-Pixel = 1 rem im Spiel: html { font-size: .0925926vh }, bei 1080p genau ein Pixel. */
+    .panel {
+      box-sizing: border-box;
+      width: 300px;
+      padding: 14px;
+      border-radius: 12px;
+      background-color: rgba(42,55,83,0.55);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+      color: rgba(255,255,255,0.8);
+    }
+    .kopf { display: flex; align-items: center; margin-bottom: 14px; }
+    .titel { flex: 1; font-size: 16px; font-weight: 700; }
+    .knopfIcon {
+      display: flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; margin-left: 4px;
+      border-radius: 2px; color: rgba(255,255,255,0.8);
+    }
+    .reiter { display: flex; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .reiterEins {
+      flex: 1; padding: 6px 0; text-align: center; font-size: 16px;
+      color: rgba(255,255,255,0.6); border-bottom: 2px solid rgba(255,255,255,0);
+    }
+    .reiterAktiv {
+      color: rgba(255,255,255,0.8); font-weight: 700;
+      border-bottom-color: #4bc3f1;
+    }
+    .gruppe { margin-top: 20px; }
+    .gruppenTitel {
+      display: flex; align-items: center;
+      margin-bottom: 10px; padding: 4px 6px;
+      border-radius: 2px; background-color: #4bc3f1;
+      color: #ffffff; font-size: 14px; font-weight: 700;
+      text-transform: uppercase;
+    }
+    .gruppenTitel svg { margin-right: 4px; }
+    .regler { margin-top: 10px; }
+    .reglerKopf { display: flex; align-items: center; margin-bottom: 2px; }
+    .beschriftung { flex: 1; font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.8); }
+    .wert { font-size: 16px; color: rgba(255,255,255,0.6); }
+    .stellKnoepfe { display: flex; margin-left: 4px; }
+    .stellKnopf {
+      display: flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; margin-left: 2px;
+      border-radius: 2px; background-color: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.35);
+    }
+    .schiene { position: relative; height: 6px; border-radius: 2px; background-color: rgba(255,255,255,0.08); }
+    .fuellung { position: absolute; top: 0; left: 0; height: 100%; border-radius: 2px; background-color: #4bc3f1; }
+    .griff {
+      position: absolute; top: -2px; width: 10px; height: 10px;
+      margin-left: -5px; border-radius: 50%; background-color: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .aus .beschriftung, .aus .wert { color: rgba(240,251,255,0.45); }
+    .aus .fuellung { background-color: rgba(255,255,255,0.18); }
+    .schalterReihe { display: flex; align-items: center; }
+    .schalter {
+      display: flex; align-items: center; flex: 1;
+      padding: 4px 6px; border-radius: 2px;
+      background-color: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.8); font-size: 16px; font-weight: 700;
+    }
+    .schalter svg { margin-right: 6px; }
+    .modi { display: flex; }
+    .modus {
+      flex: 1; margin-right: 2px; padding: 4px 0; text-align: center;
+      border-radius: 2px; background-color: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.6); font-size: 14px;
+    }
+    .modus:last-child { margin-right: 0; }
+    .modusAktiv {
+      background-color: rgba(255,255,255,0.14);
+      border-bottom: 2px solid #4bc3f1;
+      color: rgba(255,255,255,0.8); font-weight: 700;
+    }
+    .grossKnopf {
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 10px; padding: 6px 0; border-radius: 2px;
+      background-color: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.8); font-size: 16px;
+    }
+    .grossKnopf svg { margin-right: 6px; }
+    .kennzahlen {
+      display: flex; flex-wrap: wrap;
+      margin-top: 20px; padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .kennzahl { width: 50%; margin-bottom: 10px; }
+    .kennzahlWert { font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.8); }
+    .kennzahlName { font-size: 14px; color: rgba(255,255,255,0.6); }
+    .statuszeile { margin-top: 4px; font-size: 14px; color: rgba(255,255,255,0.6); }
+    .hinweis { margin-top: 4px; font-size: 14px; color: rgba(240,251,255,0.45); }
+  </style>
+</helmet>
+<div class="feld">
+  <div class="marke">Stand heute — 300 rem breit, gut 570 rem hoch</div>
+  <div class="panel">
+    <div class="kopf">
+      <span class="titel">Parkplatz</span>
+      <span class="knopfIcon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+      <span class="knopfIcon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10"></path><path d="M6 4V2.5h4V4"></path><path d="M4.5 4l.6 9h5.8l.6-9"></path></svg></span>
+      <span class="knopfIcon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"></path></svg></span>
+    </div>
+
+    <div class="reiter">
+      <div class="reiterEins reiterAktiv">Entwurf</div>
+      <div class="reiterEins">Fehler melden</div>
+    </div>
+
+    <div class="gruppe">
+      <div class="gruppenTitel">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 5.5h13v5h-13z"></path><path d="M4.5 5.5v2M7 5.5v3M9.5 5.5v2M12 5.5v3"></path></svg>
+        <span>Zuschnitt</span>
+      </div>
+      <div class="regler">
+        <div class="reglerKopf">
+          <span class="beschriftung">Randabstand</span>
+          <span class="wert">1,0 m</span>
+          <span class="stellKnoepfe">
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </span>
+        </div>
+        <div class="schiene"><div class="fuellung" style="width: 17%"></div><div class="griff" style="left: 17%"></div></div>
+      </div>
+      <div class="regler">
+        <div class="reglerKopf">
+          <span class="beschriftung">Reihenwinkel</span>
+          <span class="stellKnoepfe">
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </span>
+        </div>
+        <div class="modi">
+          <div class="modus modusAktiv">Kante</div>
+          <div class="modus">Meiste</div>
+          <div class="modus">Fest</div>
+        </div>
+      </div>
+      <div class="regler aus">
+        <div class="reglerKopf">
+          <span class="beschriftung">Winkel</span>
+          <span class="wert">0 Grad</span>
+          <span class="stellKnoepfe">
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </span>
+        </div>
+        <div class="schiene"><div class="fuellung" style="width: 0%"></div><div class="griff" style="left: 0%"></div></div>
+      </div>
+    </div>
+
+    <div class="gruppe">
+      <div class="gruppenTitel">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 2L2.5 14M12 2l1.5 12M8 3v2.5M8 7.5v2M8 11.5V14"></path></svg>
+        <span>Fahrwege</span>
+      </div>
+      <div class="regler">
+        <div class="reglerKopf">
+          <span class="beschriftung">Fahrgassenbreite</span>
+          <span class="wert">7,0 m</span>
+          <span class="stellKnoepfe">
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </span>
+        </div>
+        <div class="schiene"><div class="fuellung" style="width: 44%"></div><div class="griff" style="left: 44%"></div></div>
+      </div>
+      <div class="regler">
+        <div class="reglerKopf">
+          <span class="beschriftung">Querstraßenbreite</span>
+          <span class="wert">3,0 m</span>
+          <span class="stellKnoepfe">
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </span>
+        </div>
+        <div class="schiene"><div class="fuellung" style="width: 0%"></div><div class="griff" style="left: 0%"></div></div>
+      </div>
+      <div class="regler">
+        <div class="reglerKopf">
+          <span class="beschriftung">Abstand Verbindungen</span>
+          <span class="wert">34 m</span>
+          <span class="stellKnoepfe">
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </span>
+        </div>
+        <div class="schiene"><div class="fuellung" style="width: 14%"></div><div class="griff" style="left: 14%"></div></div>
+      </div>
+    </div>
+
+    <div class="gruppe">
+      <div class="gruppenTitel">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 14v-4"></path><path d="M8 10c3.3 0 5-2 5-4.5S10.5 1.5 8 1.5 3 3 3 5.5 4.7 10 8 10z"></path></svg>
+        <span>Grün</span>
+      </div>
+      <div class="regler">
+        <div class="schalterReihe">
+          <div class="schalter">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5L13 4.5"></path></svg>
+            <span>Mittelgrün zwischen Doppelreihen</span>
+          </div>
+          <span class="stellKnoepfe">
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </span>
+        </div>
+      </div>
+      <div class="regler">
+        <div class="schalterReihe">
+          <div class="schalter">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5L13 4.5"></path></svg>
+            <span>Kappen an Querstrassen</span>
+          </div>
+          <span class="stellKnoepfe">
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </span>
+        </div>
+      </div>
+      <div class="regler">
+        <div class="reglerKopf">
+          <span class="beschriftung">Grünstreifentiefe</span>
+          <span class="wert">2,5 m</span>
+          <span class="stellKnoepfe">
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"></path><path d="M13 2v3h-3"></path></svg></span>
+            <span class="stellKnopf"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l2 2v8H3z"></path><path d="M5.5 3v3h5V3"></path></svg></span>
+          </span>
+        </div>
+        <div class="schiene"><div class="fuellung" style="width: 31%"></div><div class="griff" style="left: 31%"></div></div>
+      </div>
+    </div>
+
+    <div class="grossKnopf">
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 2L2.5 14M12 2l1.5 12M8 3v2.5M8 7.5v2M8 11.5V14"></path></svg>
+      <span>Platziere Zufahrt</span>
+    </div>
+
+    <div class="kennzahlen">
+      <div class="kennzahl"><div class="kennzahlWert">298</div><div class="kennzahlName">Stellplätze</div></div>
+      <div class="kennzahl"><div class="kennzahlWert">84</div><div class="kennzahlName">davon Randreihe</div></div>
+      <div class="kennzahl"><div class="kennzahlWert">48,9 m²</div><div class="kennzahlName">Fläche je Bucht</div></div>
+      <div class="kennzahl"><div class="kennzahlWert">7</div><div class="kennzahlName">Fahrgassen</div></div>
+      <div class="kennzahl"><div class="kennzahlWert">93,3°</div><div class="kennzahlName">Reihenwinkel</div></div>
+      <div class="kennzahl"><div class="kennzahlWert">14.560 m²</div><div class="kennzahlName">Areal</div></div>
+    </div>
+
+    <div class="statuszeile">Gebaut: 298 Buchten, 16 Grasflächen, 5 Belagflächen.</div>
+    <div class="hinweis">Linksklick setzt Punkte.</div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":340,"height":680}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

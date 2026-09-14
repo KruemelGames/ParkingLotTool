@@ -1,0 +1,44 @@
+Zufahrtsverlust (150 x 120 m, Gassen senkrecht zur Strasse):
+  ohne Zufahrt            456 Buchten
+      7 Gassen, Laengen 114,0 / 114,0 / 114,0 / 114,0 / 114,0 / 114,0 / 114,0
+      6 Querwege; Baender: Restgruen 2, Bucht 14, Fahrgasse 7, Gruenstreifen 6
+      Buchtbaender (14): 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9
+      Fussweg  A(    2,0/ -142,4)  B(    2,0/   -7,6)  Laenge  134,8  Breite 2,0
+      Fussweg  A(  118,0/ -142,4)  B(  118,0/   -7,6)  Laenge  134,8  Breite 2,0
+      Gassenachsen Y -138,9..-11,1
+      ! Randstraßen aus: 0 Autozufahrten; eine Autozufahrt setzen.
+  Zufahrt Mitte           432 Buchten
+      7 Gassen, Laengen 114,0 / 114,0 / 114,0 / 114,0 / 114,0 / 114,0 / 114,0
+      Zufahrt laeuft 3,0 m weit hinein, 7,0 m breit
+      12 Querwege; Baender: Restgruen 2, Bucht 14, Fahrgasse 7, Gruenstreifen 6
+      Buchtbaender (14): 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9
+      Fussweg  A(    2,0/ -142,4)  B(    2,0/   -7,6)  Laenge  134,8  Breite 2,0
+      Fussweg  A(  118,0/ -142,4)  B(  118,0/   -7,6)  Laenge  134,8  Breite 2,0
+      Gassenachsen Y -138,9..-11,1
+  Zufahrt bei 20 m        422 Buchten
+      7 Gassen, Laengen 114,0 / 114,0 / 114,0 / 114,0 / 114,0 / 114,0 / 114,0
+      Zufahrt laeuft 25,5 m weit hinein, 7,0 m breit
+      12 Querwege; Baender: Restgruen 2, Bucht 14, Fahrgasse 7, Gruenstreifen 6
+      Buchtbaender (14): 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9
+      Fussweg  A(    2,0/ -142,4)  B(    2,0/   -7,6)  Laenge  134,8  Breite 2,0
+      Fussweg  A(  118,0/ -142,4)  B(  118,0/   -7,6)  Laenge  134,8  Breite 2,0
+      Gassenachsen Y -138,9..-11,1
+
+Querstrassen weit auseinander (Abstand 300 m):
+  ohne Zufahrt            432 Buchten
+      7 Gassen, Laengen 109,4 / 109,4 / 109,4 / 109,4 / 109,4 / 109,4 / 109,4
+      6 Querwege; Baender: Restgruen 2, Bucht 14, Fahrgasse 7, Gruenstreifen 6
+      Buchtbaender (14): 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9
+      Fussweg  A(    6,9/ -140,3)  B(    6,9/   -5,5)  Laenge  134,8  Breite 2,0
+      Fussweg  A(  118,3/ -140,3)  B(  118,3/   -5,5)  Laenge  134,8  Breite 2,0
+      Gassenachsen Y -136,8..-9,0
+      ! Randstraßen aus: 0 Autozufahrten; eine Autozufahrt setzen.
+  Zufahrt Mitte           432 Buchten
+      7 Gassen, Laengen 109,4 / 109,4 / 109,4 / 109,4 / 109,4 / 109,4 / 109,4
+      Zufahrt laeuft 5,4 m weit hinein, 7,0 m breit
+      6 Querwege; Baender: Restgruen 2, Bucht 14, Fahrgasse 7, Gruenstreifen 6
+      Buchtbaender (14): 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9 / 5,9
+      Fussweg  A(    6,9/ -140,3)  B(    6,9/   -5,5)  Laenge  134,8  Breite 2,0
+      Fussweg  A(  118,3/ -140,3)  B(  118,3/   -5,5)  Laenge  134,8  Breite 2,0
+      Gassenachsen Y -136,8..-9,0
+Zufahrtsverlust: 0 Fehler

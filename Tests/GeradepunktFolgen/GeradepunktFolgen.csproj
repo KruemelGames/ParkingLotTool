@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <StartupObject>GeradepunktFolgen</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="obj/Werkzeugprobe.g.cs" />
+    <Compile Include="../GeometryParity/CSharp/*.cs" />
+    <Compile Include="../../Geometry/*.cs" />
+    <Compile Include="../../Geometry/Zellen/*.cs" />
+    <Reference Include="Unity.Mathematics">
+      <HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+  <Target Name="WerkzeugprobeLesen" BeforeTargets="BeforeCompile">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/Werkzeugprobe.ps1&quot;" />
+  </Target>
+</Project>

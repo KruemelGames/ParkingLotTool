@@ -1,0 +1,1967 @@
+/**
+ * EINE ABSTANDS- UND GROESSENSKALA, statt Werte nach Gefuehl.
+ *
+ * "Refactoring UI", Kapitel "Establish a spacing and sizing system": keine
+ * zwei Werte duerfen naeher als etwa 25 Prozent beieinander liegen, sonst
+ * hilft die Skala bei der Entscheidung nicht. Eine lineare Reihe ("alles
+ * durch 4 teilbar") leistet das ausdruecklich NICHT.
+ *
+ * Gemessen am 2026-08-27 benutzte dieses Panel 2, 3, 5, 6, 7, 9 und 11rem
+ * kreuz und quer - also gar keine Skala. Neue Bausteine halten sich ab jetzt
+ * an die Werte hier; der Bestand wandert nach und nach nach.
+ *
+ * Bewusst KEINE Skalierung mit `--fontScale` in diesen Werten. Dasselbe Buch,
+ * Kapitel "Relative sizing doesn't scale": Abstaende sollen sich unabhaengig
+ * feinjustieren lassen. Am 2026-08-27 hat genau die Mischung aus skalierten
+ * Breiten und festen Raendern das Knopfraster dreimal zerlegt.
+ */
+$raum-1: 2rem;
+$raum-2: 3rem;
+$raum-3: 4rem;
+$raum-4: 6rem;
+$raum-5: 8rem;
+$raum-6: 12rem;
+$raum-7: 16rem;
+$mass-symbol: 16rem;
+$mass-knopfhoehe: 32rem;
+
+/**
+ * Gestaltung der Leiste.
+ *
+ * Zwei Quellen, und die zweite hat Vorrang, wo sie widerspricht:
+ *   1. Refactoring UI - was gut aussieht
+ *   2. Cohtml 1.64 (Gameface) - was CS2 ueberhaupt darstellen kann
+ *
+ * WAS COHTML NICHT KANN, im UI.log als Parse-Warnung belegt (2026-08-11):
+ *   hsl()/hsla()              -> jede Farbangabe wurde verworfen, das
+ *                                Fenster war durchsichtig bis auf den Text
+ *   display: grid             -> Flex
+ *   gap                       -> Raender
+ *   align-items: baseline     -> center
+ *   box-shadow ... inset      -> nur aeussere Schatten
+ *   :disabled                 -> eigene Klasse
+ *   ::-webkit-slider-thumb    -> Regler aus Divs statt <input type=range>
+ *   font-feature-settings     -> ersatzlos
+ *   cursor: grab              -> kommt in index.css 0-mal vor; `pointer`
+ *                                ist der einzige belegte Zeiger neben
+ *                                `default`, `none` und `url(...)`
+ *
+ * WARUM WAAGERECHT. Die alte Fassung war 300 rem breit und ueber 570 rem
+ * hoch: neun Regler untereinander, jeder zweizeilig. Man las eine Saeule,
+ * die ein Drittel des Bildes verdeckte, und die Karte darunter war weg.
+ * Die Leiste ist rund 1400 x 180 rem, haengt am oberen Bildrand und laesst
+ * darunter alles frei. Beschriftung und Wert teilen sich eine Zeile, die
+ * Schiene liegt darunter - das ist die Haelfte der Hoehe je Regler.
+ */
+
+/**
+ * ABSTANDSSKALA: feste Werte, keine zwei naeher als etwa 25 %.
+ * 1rem ist in CS2 der Entwurfspixel - das Spiel setzt
+ * `html { font-size: .0925926vh }`, bei 1080p also genau ein Pixel, und
+ * alles skaliert von selbst mit der Aufloesung.
+ */
+$s1: 2rem;
+$s2: 4rem;
+$s3: 6rem;
+$s4: 10rem;
+$s5: 14rem;
+$s6: 20rem;
+
+/**
+ * SCHRIFT. Genau zwei Gewichte sind moeglich, nicht drei: unter
+ * Content/Game/UI/Fonts liegt von jeder Schrift nur Regular und Bold.
+ * `font-weight: 600` hat gar keinen Schnitt.
+ *
+ * DIE GROESSEN KOMMEN AUS DEM SPIEL, nicht aus meinem Kopf. Sie haengen an
+ * `--fontScale`, dem Regler fuer die Textgroesse in den Bedienungshilfen.
+ * Feste rem-Werte ignorieren ihn: wer die Schrift groesser stellt, haette in
+ * dieser Leiste nichts davon gemerkt. Genau das hatte ich beim Umbau auf die
+ * Leiste verloren - 12/13/16/32 rem waren fest.
+ *
+ * Nur DREI Groessen, wie vorher schon: mehr braucht eine Bedienflaeche nicht,
+ * und zwei Groessen, die nur zehn Prozent auseinanderliegen, unterscheiden
+ * gar nichts. Die Ueberschrift ist trotzdem klar groesser als die
+ * Beschriftung darunter - das war die Ansage, und `L` liegt je nach Thema bei
+ * 18 bis 20 rem gegen 12 bis 14 der Beschriftung.
+ *
+ *   --fontSizeXS  12-14 rem   Beschriftung, Wert, Nebentext
+ *   --fontSizeS   14-16 rem   der Name der Leiste
+ *   --fontSizeL   18-20 rem   Spaltenueberschriften
+ *
+ * `--fontSizeXXS` gibt es nur in EINEM der beiden Themen des Spiels; ein
+ * `calc()` darauf faellt im anderen aus. Deshalb ist die kleinste benutzte
+ * Groesse XS.
+ */
+$type-xs: var(--fontSizeXS);
+$type-sm: var(--fontSizeXS);
+$type-marke: var(--fontSizeS);
+$type-md: var(--fontSizeL);
+$type-xl: calc(var(--fontSizeXL) * 1.5);
+
+/**
+ * DIE VIER FARBEN, eine je Aufgabe.
+ *
+ * Vorher trugen alle drei Gruppenueberschriften dieselbe Akzentfarbe des
+ * Spiels; unterschieden hat sie nur der Text. Jetzt hat jede Spalte ihre
+ * eigene, und die beiden Handlungen haben ihre eigene dazu. Alle liegen auf
+ * etwa derselben Helligkeit - keine schreit lauter als die andere.
+ *
+ * Magenta ist nicht frei gewaehlt: genau in dieser Farbe zeichnet das
+ * Werkzeug den Zufahrtsring in die Welt. Fenster und Welt sagen dasselbe.
+ */
+$zuschnitt: #f0ad3e;
+$fahrwege: #4fc3f7;
+$gruen: #7cd455;
+$zufahrt: #ff5fb0;
+$melden: #f2725c;
+
+/**
+ * GRUND UND TEXT. Anders als vorher stehen hier feste Farben statt der
+ * Themenvariablen des Spiels. Das ist der Preis fuer die eigene Handschrift:
+ * die Leiste bleibt dunkel, auch wenn das Spiel auf ein helles Thema steht.
+ */
+$grund: rgba(16, 23, 36, 0.88);
+$rand: rgba(126, 172, 214, 0.16);
+$text-1: rgba(255, 255, 255, 0.82);
+$text-2: rgba(255, 255, 255, 0.78);
+$text-3: rgba(255, 255, 255, 0.5);
+$text-4: rgba(255, 255, 255, 0.3);
+$flaeche: rgba(255, 255, 255, 0.06);
+$flaeche-hell: rgba(255, 255, 255, 0.12);
+$schiene: rgba(255, 255, 255, 0.09);
+$linie: rgba(255, 255, 255, 0.08);
+
+/**
+ * Die Leiste haengt am oberen Bildrand: oben eckig, unten rund, und der
+ * Rand nach oben entfaellt. `top` und `left` stehen NICHT hier, sondern
+ * kommen als Prozentwert aus dem Panel - die Leiste ist verschiebbar. Der
+ * Wert liegt als ANTEIL des Bildschirms im Mod (0 bis 1), nicht in rem:
+ * rem haengt an der Fenstergroesse, Pixel laegen bei jeder anderen
+ * Aufloesung woanders.
+ */
+.panel {
+  position: absolute;
+  /**
+   * BREITE FOLGT DEM RAHMEN, NICHT DER SUMME DER KINDER.
+   *
+   * 88 Prozent lassen an beiden Seiten Karte und Spielsymbole sichtbar. Die
+   * Obergrenze entspricht etwa dem bisherigen Aussenmass, damit das Panel auf
+   * Ultrawide-Bildschirmen nicht unnoetig auseinandergezogen wird. Unterhalb
+   * davon schrumpft es mit seinem Bezugsrahmen; die Flex-Gruppen darunter
+   * brechen um, statt eine feste Spaltensumme zu verlangen.
+   *
+   * `fontScale` vergroessert nur die Schrift. Das ganze Panel ebenfalls zu
+   * zoomen war der Grund, weshalb skalierte Breiten und feste Zwischenraeume
+   * je nach Textgroesse eine andere Summe ergaben.
+   */
+  box-sizing: border-box;
+  width: 88%;
+  max-width: 1680rem;
+  padding: $s5;
+  border-left: 1rem solid $rand;
+  border-right: 1rem solid $rand;
+  border-bottom: 1rem solid $rand;
+  border-radius: 0 0 12rem 12rem;
+  background-color: $grund;
+  /**
+   * Auch bei 0.88 Deckung traegt die Unschaerfe: sie nimmt der Karte
+   * darunter die Struktur, an der das Auge sonst haengen bleibt. Genau so
+   * macht es jedes Fenster von CS2.
+   */
+  backdrop-filter: var(--panelBlur);
+  box-shadow: 0 8rem 26rem rgba(0, 0, 0, 0.5);
+  color: $text-1;
+  font-family: var(--fontFamily);
+  pointer-events: auto;
+}
+
+.reihe {
+  display: flex;
+  align-items: stretch;
+}
+
+/**
+ * Alles rechts der Schiene ist ein eigener, nachgiebiger Bereich. Seine zwei
+ * Kinder duerfen als ganze Gruppen umbrechen: Einstellungen oben, Ergebnis
+ * und Handlungen darunter. Dadurch landet nie ein einzelner Knopf ausserhalb
+ * des Panels und ein Trenner nie allein in einer neuen Zeile.
+ */
+.inhalt {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.spaltenGruppe {
+  flex: 4 1 900rem;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  /**
+   * UMBROCHENE ZEILEN OBEN SAMMELN.
+   *
+   * Ohne das verteilt die Flexbox uebrige Hoehe zwischen die Zeilen, und
+   * zwar unterschiedlich viel je nach Inhalt. Der Debug-Reiter hat sieben
+   * verschieden hohe Bloecke; das ergab genau das Bild, das der Nutzer am
+   * 2026-09-05 gemeldet hat: *"komplett unaufgeraeumt, es liegt alles
+   * verstreut und uebereinander."*
+   *
+   * KEIN `gap`. Die Spieloberflaeche laeuft in Cohtml, dort gibt es die
+   * Eigenschaft nicht - der Abstand haengt deshalb als Innenrand an den
+   * Spalten selbst.
+   */
+  align-content: flex-start;
+}
+
+.abschluss {
+  box-sizing: border-box;
+  flex: 2 1 400rem;
+  min-width: 350rem;
+  display: flex;
+  align-items: stretch;
+  padding-left: $raum-7;
+  border-left: 1rem solid $linie;
+}
+
+/** Die durchsichtige Flaeche, die waehrend des Ziehens die Maus einfaengt. */
+.dragLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* ------------------------------------------------------------------ Schiene */
+
+/**
+ * Name, Reiter und die drei Kopfknoepfe stehen hochkant links. Dadurch
+ * bleibt die Leiste flach - waagerecht nebeneinander waeren sie eine
+ * zweite Zeile ueber allem gewesen.
+ *
+ * Die ganze Spalte ist zugleich der GRIFF zum Verschieben; Reiter und
+ * Knoepfe halten das Mausereignis selbst auf.
+ */
+.rail {
+  flex-shrink: 0;
+  width: 140rem;
+  margin-right: $s5 + $s1;
+  cursor: pointer;
+}
+
+.marke {
+  display: flex;
+  align-items: center;
+  margin-bottom: $s5 - $s1;
+}
+
+.markeStrich {
+  width: 3rem;
+  height: 16rem;
+  margin-right: 7rem;
+  border-radius: 2rem;
+  background-color: $fahrwege;
+}
+
+.markeText {
+  white-space: nowrap;
+  font-size: $type-marke;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+}
+
+/**
+ * REITER als Pillen. Zwei Aufgaben, die nichts miteinander zu tun haben -
+ * Parkplatz entwerfen und einen Fehler melden - gehoeren nicht
+ * untereinander in eine Ansicht.
+ */
+.tab {
+  padding: 5rem 8rem;
+  margin-bottom: $s2;
+  border: none;
+  border-radius: 5rem;
+  background-color: rgba(255, 255, 255, 0);
+  color: $text-3;
+  font-size: $type-sm;
+  white-space: nowrap;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche; }
+}
+
+.tabAktiv {
+  background-color: $fahrwege;
+  color: #0d1520;
+  font-weight: bold;
+
+  &:hover { background-color: $fahrwege; }
+}
+
+/**
+ * Ein Reiter, der noch nichts zu zeigen hat.
+ *
+ * Gesperrt statt versteckt: wer den Reiter kennt und ihn nicht findet,
+ * sucht - wer ihn ausgegraut sieht, versteht, dass ihm etwas fehlt. Der
+ * Tooltip sagt was.
+ */
+.tabAus {
+  color: rgba(255, 255, 255, 0.28);
+  cursor: default;
+
+  &:hover { background-color: transparent; }
+}
+
+/** Der Meldereiter traegt Korallrot - dieselbe Farbe wie der Bericht. */
+.tabMelden {
+  margin-bottom: $s4 + $s1;
+  color: rgba(242, 114, 92, 0.85);
+}
+
+.tabMeldenAktiv {
+  background-color: $melden;
+  color: #24080a;
+  font-weight: bold;
+
+  &:hover { background-color: $melden; }
+}
+
+.kopfKnoepfe {
+  display: flex;
+}
+
+.iconButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22rem;
+  height: 22rem;
+  margin-right: $s2;
+  padding: 0;
+  border: none;
+  border-radius: $s2;
+  background-color: $flaeche;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+  &:last-child { margin-right: 0; }
+
+  img { width: 13rem; height: 13rem; }
+}
+
+.iconButtonAus {
+  opacity: 0.38;
+  cursor: default;
+
+  &:hover { background-color: $flaeche; }
+}
+
+.undoSymbol {
+  font-size: 17rem;
+  line-height: 1;
+  color: $text-1;
+}
+
+.trenner {
+  flex-shrink: 0;
+  width: 1rem;
+  margin-right: $s5 + $s1;
+  background-color: $linie;
+}
+
+/* ------------------------------------------------------------------- Spalte */
+
+.spalte {
+  box-sizing: border-box;
+  flex: 1 1 210rem;
+  min-width: 180rem;
+  padding-right: $raum-7;
+  /**
+   * Der Abstand zur naechsten UMBROCHENEN Zeile. Ohne ihn klebt die zweite
+   * Reihe an der ersten, und zwei Bloecke sehen aus wie einer.
+   *
+   * Er ist bewusst so gross wie der seitliche Abstand: gleiche Luecke in
+   * beide Richtungen, damit die Gruppierung eindeutig bleibt. Ein kleinerer
+   * Wert waere mehrdeutig - man saehe nicht, ob zwei Bloecke zusammen-
+   * gehoeren oder nur zufaellig untereinander stehen.
+   */
+  padding-bottom: $raum-7;
+}
+
+/** Innere Huelle, damit ein Debug-Werkzeug Titel, Erklaerung und Knopf als
+    eine einzige, mit der Spalte mitwachsende Tooltip-Flaeche bekommt. */
+.spaltenInhalt {
+  height: 100%;
+}
+
+/**
+ * DIE UEBERSCHRIFT. Gross, in Grossbuchstaben, in der Farbe ihrer Spalte,
+ * und die Haarlinie fuehrt sie bis zum Spaltenende. Sie sitzt damit klar
+ * ueber allem, was zu ihr gehoert - vorher war sie kleiner als der Text
+ * darunter und in derselben Farbe wie die beiden Nachbarn.
+ */
+.spaltenTitel {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  margin-bottom: 11rem;
+  font-size: $type-md;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.spaltenLinie {
+  flex: 1;
+  height: 1rem;
+  margin-left: 9rem;
+}
+
+.titelZuschnitt { color: $zuschnitt; }
+.titelFahrwege { color: $fahrwege; }
+.titelGruen { color: $gruen; }
+.titelZufahrt { color: $zufahrt; }
+.titelMelden { color: $melden; }
+
+.linieZuschnitt { background-color: rgba(240, 173, 62, 0.25); }
+.linieFahrwege { background-color: rgba(79, 195, 247, 0.25); }
+.linieGruen { background-color: rgba(124, 212, 85, 0.25); }
+.linieZufahrt { background-color: rgba(255, 95, 176, 0.25); }
+.linieMelden { background-color: rgba(242, 114, 92, 0.25); }
+
+/* ------------------------------------------------------------------ Regler */
+
+.control {
+  margin-bottom: 9rem;
+
+  &:last-child { margin-bottom: 0; }
+}
+
+/**
+ * Beschriftung und Regler sind EIN normal fliessender Flex-Bereich. Die
+ * beiden Standardknoepfe sind Geschwister daneben und koennen ihren eigenen
+ * Tooltip zeigen, ohne die Funktionsflaeche zu ueberlagern.
+ */
+.funktionsZeile {
+  display: flex;
+  align-items: flex-start;
+}
+
+.funktionsBereich {
+  flex: 1;
+  min-width: 0;
+}
+
+/**
+ * Beschriftung, Wert und die beiden Stellknoepfe in EINER Zeile, die
+ * Schiene darunter. Vorher standen Beschriftung und Wert in einer Zeile und
+ * die Schiene in der naechsten - bei neun Reglern sind das neun Zeilen
+ * Unterschied.
+ */
+.controlHead {
+  display: flex;
+  align-items: center;
+  margin-bottom: $s2;
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: $text-2;
+  font-size: $type-sm;
+}
+
+.value {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: $type-sm;
+  font-weight: bold;
+}
+
+.wertZuschnitt { color: $zuschnitt; }
+.wertFahrwege { color: $fahrwege; }
+.wertGruen { color: $gruen; }
+
+.controlOff {
+  .label, .value { color: $text-4; }
+}
+
+.settingActions {
+  flex-shrink: 0;
+  display: flex;
+  margin-left: $s3;
+}
+
+/**
+ * Zuruecksetzen und als Standard speichern - an JEDEM Regler, wie bisher.
+ * Beide wirken nur, wenn der Wert vom Standard abweicht; Cohtml wertet
+ * `:disabled` nicht aus, deshalb nimmt die Klasse Hover und Klickversprechen
+ * gemeinsam zurueck, waehrend der Klickschutz im JSX sperrt.
+ */
+.settingButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16rem;
+  height: 16rem;
+  margin-left: 3rem;
+  padding: 0;
+  border: none;
+  border-radius: 3rem;
+  background-color: $flaeche-hell;
+  cursor: pointer;
+
+  &:first-child { margin-left: 0; }
+  &:hover { background-color: rgba(255, 255, 255, 0.2); }
+
+  img { width: 10rem; height: 10rem; }
+}
+
+.settingButtonOff {
+  background-color: rgba(255, 255, 255, 0.04);
+  cursor: default;
+
+  &:hover { background-color: rgba(255, 255, 255, 0.04); }
+  img { opacity: 0.3; }
+}
+
+/** Regler aus Divs - <input type=range> hat in Cohtml keinen Griff. */
+.track {
+  position: relative;
+  height: 5rem;
+  border-radius: 3rem;
+  background-color: $schiene;
+  cursor: pointer;
+}
+
+.trackOff {
+  background-color: rgba(255, 255, 255, 0.05);
+  cursor: default;
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 5rem;
+  border-radius: 3rem;
+}
+
+.fillZuschnitt { background-color: $zuschnitt; }
+.fillZufahrt { background-color: $zufahrt; }
+.fillFahrwege { background-color: $fahrwege; }
+.fillGruen { background-color: $gruen; }
+
+.knob {
+  position: absolute;
+  top: -2rem;
+  width: 9rem;
+  height: 9rem;
+  margin-left: -5rem;
+  border-radius: 5rem;
+  background-color: #ffffff;
+}
+
+.knobOff { background-color: rgba(255, 255, 255, 0.22); }
+
+/* ------------------------------------------------------------- Auswahl */
+
+.modes { display: flex; }
+
+/* ZWEI SPALTEN, GEBAUT AUS FLEX - derselbe Weg wie bei den Flaechenkacheln
+   weiter unten: Cohtml kann weder `display: grid` noch `gap`. Also
+   `flex-wrap` plus halbe Breite je Kachel; die Luft dazwischen kommt aus dem
+   Rand der Kachel, nicht aus einem Zwischenraum. Deshalb `box-sizing`, sonst
+   sprengen Innenrand und Rahmen die 50 %. */
+.modesRaster {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.modeKachel {
+  box-sizing: border-box;
+  width: 50%;
+  margin: 0;
+  padding: 3rem 0;
+  border: none;
+  border-radius: $s2;
+  background-color: $flaeche;
+  color: $text-3;
+  font-size: $type-sm;
+  text-align: center;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+}
+
+/* In der Zeile teilen sich beide Knoepfe die Breite. `width: 100%` von oben
+   wuerde sonst jeden auf die volle Zeile zwingen und den zweiten
+   herausdruecken. */
+.ausrichtReihe .ausrichtKnopf {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+
+/* "Fertig" ist der bestaetigende Knopf und traegt deshalb den Zuschnitt-Ton
+   der Spalte - so, wie ein aktiver Modus in derselben Spalte leuchtet. Der
+   linke Nachbar bleibt neutral: Zuruecksetzen ist kein Ziel, sondern ein
+   Rueckweg. */
+.ausrichtFertig {
+  /* Nimmt nur, was das kurze Wort braucht - den Rest bekommt der linke
+     Nachbar. Halbe-halbe wuerde "Ausrichtung zuruecksetzen" in zwei Zeilen
+     brechen, waehrend daneben Platz leer stuende. */
+  flex: 0 0 auto;
+  margin-left: $s2;
+  padding-left: $s4;
+  padding-right: $s4;
+  background-color: rgba(242, 193, 78, 0.18);
+  color: rgba(242, 193, 78, 0.92);
+
+  &:hover { background-color: rgba(242, 193, 78, 0.28); }
+}
+
+.mode {
+  flex: 1;
+  margin-right: 3rem;
+  padding: 3rem 0;
+  border: none;
+  border-radius: $s2;
+  background-color: $flaeche;
+  color: $text-3;
+  font-size: $type-xs;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+  &:last-child { margin-right: 0; }
+}
+
+// Die Flaechenspalte benutzt den Zufahrt-Ton. Farbe und Titelklasse gab es
+// schon, nur die zwei Klassen fuer Auswahlfelder und Regler fehlten.
+// Die zwei Knoepfe fuer den Rechenweg, in der Schiene unter dem Modnamen.
+.rechenweg {
+  display: flex;
+  margin-top: 6rem;
+  margin-bottom: 2rem;
+}
+
+.modeAktivZufahrt {
+  background-color: rgba(255, 95, 176, 0.2);
+  color: $zufahrt;
+  font-weight: bold;
+
+  &:hover { background-color: rgba(255, 95, 176, 0.2); }
+}
+
+.modeAktivZuschnitt {
+  background-color: rgba(240, 173, 62, 0.2);
+  color: $zuschnitt;
+  font-weight: bold;
+
+  &:hover { background-color: rgba(240, 173, 62, 0.2); }
+}
+
+.modeAktivFahrwege {
+  background-color: rgba(79, 195, 247, 0.2);
+  color: $fahrwege;
+  font-weight: bold;
+
+  &:hover { background-color: rgba(79, 195, 247, 0.2); }
+}
+
+.modeAktivGruen {
+  background-color: rgba(124, 212, 85, 0.2);
+  color: $gruen;
+  font-weight: bold;
+
+  &:hover { background-color: rgba(124, 212, 85, 0.2); }
+}
+
+/* Cohtml wertet `:disabled` nicht aus; der Klickschutz sitzt im JSX. */
+.modeOff {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: $text-4;
+  font-weight: normal;
+  cursor: default;
+
+  &:hover { background-color: rgba(255, 255, 255, 0.03); }
+}
+
+/* ------------------------------------------------------------ Kippschalter */
+
+/**
+ * Der Schalter war vorher ein Knopf ueber die volle Breite mit Haekchen und
+ * Text. Als Kippschalter ist er halb so hoch, und an/aus steht in der Form
+ * selbst - man muss den Text nicht lesen, um den Zustand zu sehen.
+ */
+.schalterReihe {
+  display: flex;
+  align-items: center;
+  margin-bottom: $s4;
+}
+
+.schalterBereich {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.schalter {
+  flex-shrink: 0;
+  position: relative;
+  width: 26rem;
+  height: 14rem;
+  padding: 0;
+  border: none;
+  border-radius: 7rem;
+  background-color: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+}
+
+/* In der Flaechenauswahl ist der Schalter eine Handlung vor dem Titel. */
+.schalterImKopf {
+  margin-right: $raum-2;
+}
+
+.schalterAn { background-color: $gruen; }
+
+.schalterGriff {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  width: 10rem;
+  height: 10rem;
+  border-radius: 5rem;
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.schalterGriffAn {
+  left: 14rem;
+  background-color: #101724;
+}
+
+/* ------------------------------------------------------------- Ergebnis */
+
+.ergebnis {
+  flex: 1 1 200rem;
+  min-width: 150rem;
+  margin-right: $raum-7;
+}
+
+.ergebnisKopf {
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 3rem;
+}
+
+.ergebnisZahl {
+  white-space: nowrap;
+  font-size: $type-xl;
+  font-weight: bold;
+  line-height: 0.9;
+  color: #ffffff;
+}
+
+.ergebnisName {
+  white-space: nowrap;
+  margin-left: $s2 + $s2;
+  margin-bottom: $s1;
+  font-size: $type-sm;
+  color: $text-3;
+}
+
+.ergebnisZeile {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin-top: $s1;
+  font-size: $type-xs;
+  color: $text-3;
+}
+
+.statusZeile {
+  display: flex;
+  /**
+   * Oben ausrichten, nicht mittig.
+   *
+   * Seit die Statuszeile umbrechen darf, kann sie zwei oder drei Zeilen hoch
+   * sein. Mittig zentriert waere der Punkt dann irgendwo in der Mitte des
+   * Absatzes statt neben der ersten Zeile.
+   */
+  align-items: flex-start;
+  margin-top: 9rem;
+}
+
+.hinweisZeile {
+  margin-top: 5rem;
+  font-size: $type-xs;
+  line-height: 1.35;
+  color: rgba(242, 114, 92, 0.92);
+}
+
+.statusPunkt {
+  flex-shrink: 0;
+  width: 6rem;
+  height: 6rem;
+  /* Auf die Grundlinie der ersten Textzeile heruntergesetzt. */
+  margin-top: 5rem;
+  margin-right: 7rem;
+  border-radius: 3rem;
+  background-color: $gruen;
+}
+
+.statusText {
+  flex: 1;
+  min-width: 0;
+  /**
+   * LANGE MELDUNGEN DUERFEN UMBRECHEN.
+   *
+   * Hier stand `white-space: nowrap` mit `text-overflow: ellipsis`. Solange in
+   * der Zeile "Bereit." stand, fiel das nicht auf. Inzwischen erscheinen dort
+   * Saetze wie "Nothing built: 1 of 1 surfaces were accepted in time." und die
+   * Ausnahmemeldungen der Geometrie - und die wurden mitten im Wort
+   * abgeschnitten. Nutzerbefund am 2026-08-24.
+   *
+   * Eine Meldung, die man nicht zu Ende lesen kann, ist keine Meldung. Sie
+   * darf jetzt so hoch werden, wie sie braucht; `overflow-wrap` faengt lange
+   * Pfade und Zahlen ab, die sonst seitlich herauslaufen.
+   */
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.35;
+  font-size: $type-xs;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+/* ------------------------------------------------------------- Handlungen */
+
+/**
+ * Die beiden Handlungen uebereinander, jede 148 x 74 rem - also genau 2:1.
+ *
+ * Vorher standen sie nebeneinander und hochkant (1:2). Der Platz ist
+ * derselbe, aber liegend hat die Beschriftung 136 statt 62 rem Breite: Wort
+ * und Zaehler passen nebeneinander, und das Symbol steht davor statt
+ * darueber. Zusammen bilden sie eine Spalte, damit "Bauen" trotzdem rechts
+ * unten buendig bleibt.
+ */
+.aktionSpalte {
+  flex: 0 1 196rem;
+  min-width: 180rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /*
+   * Breiter als frueher, damit zwei Knoepfe samt Beschriftung nebeneinander
+   * passen. Der Platz kommt vom Textbereich links: der traegt `flex: 1` und
+   * gibt nach, seine Meldungen brechen ohnehin um. Freigabe des Nutzers am
+   * 2026-08-27: "Wir koennen den Bereich links etwas einruecken."
+   */
+}
+
+.aktion {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  /**
+   * SPALTE AUS FLEX, nicht drei Block-Kinder in einem <button>.
+   *
+   * Bild, Name und Nebentext sollen untereinander stehen - so steht es im
+   * Entwurf. Darauf zu vertrauen, dass ein <button> seine Block-Kinder in
+   * Cohtml von selbst untereinander setzt, war die Ursache des
+   * Umbruchfehlers. Flex ist der Weg, den das Spiel selbst ueberall geht.
+   */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 74rem;
+  margin-bottom: $s2 + $s2;
+  padding: $s3 $s4;
+  border: none;
+  border-radius: $s3 + $s1;
+  text-align: center;
+  cursor: pointer;
+
+  &:last-child { margin-bottom: 0; }
+
+  img {
+    flex-shrink: 0;
+    width: 22rem;
+    height: 22rem;
+    margin-right: $s4;
+  }
+}
+
+/** Wort und Zaehler untereinander, damit sie zusammen eine Einheit bilden. */
+.aktionText {
+  text-align: left;
+}
+
+.aktionName {
+  white-space: nowrap;
+  font-size: $type-sm;
+  font-weight: bold;
+  line-height: 1.15;
+}
+
+.aktionNebentext {
+  white-space: nowrap;
+  margin-top: 2rem;
+  font-size: $type-xs;
+}
+
+.aktionZufahrt {
+  border: 1rem solid rgba(255, 95, 176, 0.45);
+  background-color: rgba(255, 95, 176, 0.14);
+  color: #ffb3da;
+
+  &:hover { background-color: rgba(255, 95, 176, 0.24); }
+
+  .aktionNebentext { color: rgba(255, 179, 218, 0.7); }
+}
+
+/**
+ * Der Gegenzustand des Umschalters: der Zufahrtsmodus laeuft, der Klick
+ * fuehrt also ZURUECK zum Polygon. Bernstein ist die Farbe des Zuschnitts -
+ * dieselbe wie ueber der Spalte, in der man die Form einstellt.
+ */
+.aktionPolygon {
+  border: 1rem solid rgba(240, 173, 62, 0.45);
+  background-color: rgba(240, 173, 62, 0.16);
+  color: #f7d49a;
+
+  &:hover { background-color: rgba(240, 173, 62, 0.26); }
+
+  .aktionNebentext { color: rgba(247, 212, 154, 0.7); }
+}
+
+.aktionBauen {
+  background-color: $fahrwege;
+  color: #08141f;
+
+  &:hover { background-color: #6fd0fa; }
+
+  .aktionNebentext { color: rgba(8, 20, 31, 0.6); }
+}
+
+/** Cohtml wertet `:disabled` nicht aus; der Klickschutz sitzt im JSX. */
+.aktionAus {
+  border: 1rem solid rgba(255, 255, 255, 0);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: $text-4;
+  cursor: default;
+
+  &:hover { background-color: rgba(255, 255, 255, 0.05); }
+
+  img { opacity: 0.3; }
+  .aktionNebentext { color: $text-4; }
+}
+
+/* ---------------------------------------------------------------- Melden */
+
+.meldeSpalte {
+  /**
+   * Auch Melden und Debuggen benutzen dieselbe umbrechende Spaltengruppe wie
+   * der Entwurf. 230rem ist der bevorzugte Platz, 180rem die lesbare
+   * Untergrenze; danach geht die naechste Spalte in eine neue Zeile.
+   *
+   * Der Innenrand gehoert eindeutig zur Spalte. Ein Aussenrand an jedem Kind
+   * wuerde wieder als unsichtbare Zusatzbreite in der Flex-Zeile landen.
+   */
+  box-sizing: border-box;
+  flex: 1 1 230rem;
+  min-width: 180rem;
+  padding-right: $raum-7;
+  // Derselbe Abstand nach unten wie bei `.spalte` - siehe dort.
+  padding-bottom: $raum-7;
+}
+
+.explain {
+  font-size: $type-sm;
+  color: $text-3;
+}
+
+.meldeKnopf {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 9rem;
+  padding: $s3 $s4;
+  border: none;
+  border-radius: $s3;
+  background-color: $flaeche;
+  color: $text-1;
+  font-size: $type-sm;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+
+  img {
+    flex-shrink: 0;
+    width: 13rem;
+    height: 13rem;
+    margin-right: $s3;
+  }
+}
+
+.meldeKnopfAn {
+  background-color: $melden;
+  color: #24080a;
+  font-weight: bold;
+
+  &:hover { background-color: $melden; }
+}
+
+/**
+ * Gesperrt, weil die Voraussetzung fehlt - nicht kaputt.
+ *
+ * Cohtml wertet `:disabled` nicht aus; der Klickschutz sitzt im JSX,
+ * diese Klasse macht ihn nur sichtbar. Gleiche Machart wie `.aktionAus`.
+ */
+.meldeKnopfAus {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: $text-4;
+  cursor: default;
+
+  &:hover { background-color: rgba(255, 255, 255, 0.05); }
+}
+
+.rowButtons {
+  display: flex;
+  margin-top: $s2;
+}
+
+.smallButton {
+  flex: 1;
+  white-space: nowrap;
+  margin-right: $s2;
+  padding: $s2 0;
+  border: none;
+  border-radius: $s2;
+  background-color: $flaeche;
+  color: $text-3;
+  font-size: $type-xs;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+  &:last-child { margin-right: 0; }
+}
+
+.smallButtonSelected {
+  background-color: $melden;
+  color: #24080a;
+  font-weight: bold;
+
+  &:hover { background-color: $melden; }
+}
+
+.pathBox {
+  margin-top: 9rem;
+  padding: $s3;
+  border-radius: $s2;
+  background-color: $flaeche;
+  color: $text-3;
+  font-size: $type-xs;
+  /**
+   * Ein Dateipfad bricht sonst aus der Leiste heraus. `word-break` benutzt
+   * das Spiel selbst nirgends, ist in Cohtml also unbelegt - deshalb
+   * zusaetzlich `overflow: hidden` als Netz, damit der Pfad im schlimmsten
+   * Fall abgeschnitten wird statt die Leiste zu sprengen.
+   */
+  word-break: break-all;
+  overflow: hidden;
+}
+
+/**
+ * `StringTooltip` kann nur die Textfarbe umschalten. Sein Warning-Kind ist
+ * waehrend des Zufahrt-Modus exklusiv unser Hinweis; die negative Einrueckung
+ * fuellt deshalb dessen vorhandene 3/6-rem-Polsterung mit Dunkelorange aus.
+ * Success (die bisherigen Debug-Meldungen) wird von diesem Selektor nie erfasst.
+ */
+:global(body.pltEntranceHintActive [class*="row-item_"] [class*="warning_"]) {
+  flex: 1;
+  align-self: stretch;
+  margin: -3rem -6rem;
+  padding: 3rem 10rem;
+  border-radius: 4rem;
+  background-color: #8a4300;
+  color: #ffffff;
+}
+
+/* ------------------------------------------------- Flaechenauswahl mit Bild */
+
+/**
+ * Schalter, Auswahl und Standardknoepfe sind drei Geschwister. Damit hat
+ * jede der zwei Flaechenfunktionen genau ihren eigenen Hoverbereich; die
+ * Grenzen folgen der Flexzeile auch nach Umbruch oder Breitenwechsel.
+ */
+.flaechenFunktionsZeile {
+  display: flex;
+  align-items: flex-start;
+}
+
+.flaechenAktionen {
+  flex-shrink: 0;
+
+  .settingActions {
+    margin-bottom: $raum-2;
+  }
+
+  .settingActions:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/**
+ * DIE FLAECHEN HABEN VORSCHAUBILDER.
+ *
+ * Bis zum 2026-08-25 stand in den zwei Auswahlfeldern nur der Prefab-Name.
+ * Die Bilder kommen aus der Asset Icon Library; wir lesen sie am Prefab aus
+ * `UIObject.m_Icon` und geben sie mit der Liste ans Panel weiter.
+ *
+ * ZWEI SPALTEN, GEBAUT AUS FLEX. Cohtml kann weder `display: grid` noch
+ * `gap` (Parse-Warnungen vom 2026-08-11, siehe Kopf dieser Datei). Also
+ * `flex-wrap` plus `width: 50%` je Kachel, und die Luft dazwischen kommt aus
+ * dem Innenrand der Kachel statt aus einem Zwischenraum.
+ *
+ * Die Spalte ist 230 rem breit; eine Kachel bekommt davon rund 115 rem, das
+ * Bild 34 rem. Kleiner wird die Flaeche im Bild unkenntlich, groesser passen
+ * nicht mehr zwei nebeneinander.
+ */
+
+.flaecheKnopf {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 3rem $s1;
+  border: none;
+  border-radius: $s2;
+  background-color: $flaeche;
+  color: $text-3;
+  font-size: $type-xs;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+}
+
+.flaecheKnopfBild {
+  flex-shrink: 0;
+  width: 18rem;
+  height: 18rem;
+  margin-right: $s2;
+  border-radius: 2rem;
+}
+
+/** Der Name darf gekuerzt werden - die Kachelliste zeigt ihn ohnehin voll. */
+.flaecheKnopfName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+/**
+ * Der aufgeklappte Kasten. Feste Hoehe und Scrollen, damit ein Flaechen-Mod
+ * mit fuenfzig Eintraegen das Panel nicht sprengt.
+ */
+.flaechenGitter {
+  display: flex;
+  flex-wrap: wrap;
+  max-height: 200rem;
+  margin-top: $s1;
+  overflow-y: auto;
+}
+
+.flaecheKachel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 50%;
+  padding: $s2 2rem;
+  border: none;
+  border-radius: $s2;
+  background-color: transparent;
+  color: $text-3;
+  font-size: $type-xs;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche; }
+}
+
+.flaecheBild {
+  width: 34rem;
+  height: 34rem;
+  margin-bottom: 3rem;
+  border-radius: 3rem;
+}
+
+/**
+ * Platzhalter fuer eine Flaeche ohne Bild - fremde Flaechen bringen nicht
+ * immer eines mit. Er haelt exakt die Hoehe des Bildes, damit die Namen in
+ * einer Zeile bleiben und die Kacheln nicht verspringen.
+ */
+.flaecheOhneBild {
+  width: 34rem;
+  height: 34rem;
+  margin-bottom: 3rem;
+  border: 1rem dashed $rand;
+  border-radius: 3rem;
+}
+
+/**
+ * Der Name darf zweizeilig werden - "Agriculture Surface 01" passt nicht in
+ * 115 rem. Mehr als zwei Zeilen gibt es im Grundspiel nicht; `line-clamp`
+ * kennt Cohtml nicht, deshalb begrenzt die Hoehe.
+ */
+.flaecheName {
+  max-height: 24rem;
+  overflow: hidden;
+  text-align: center;
+  line-height: 12rem;
+}
+
+.flaecheAktivZufahrt {
+  background-color: rgba(255, 95, 176, 0.2);
+  color: $zufahrt;
+  font-weight: bold;
+
+  &:hover { background-color: rgba(255, 95, 176, 0.2); }
+}
+
+.flaecheAktivZuschnitt {
+  background-color: rgba(240, 173, 62, 0.2);
+  color: $zuschnitt;
+  font-weight: bold;
+
+  &:hover { background-color: rgba(240, 173, 62, 0.2); }
+}
+
+.flaecheAktivFahrwege {
+  background-color: rgba(79, 195, 247, 0.2);
+  color: $fahrwege;
+  font-weight: bold;
+
+  &:hover { background-color: rgba(79, 195, 247, 0.2); }
+}
+
+.flaecheAktivGruen {
+  background-color: rgba(124, 212, 85, 0.2);
+  color: $gruen;
+  font-weight: bold;
+
+  &:hover { background-color: rgba(124, 212, 85, 0.2); }
+}
+
+/* --------------------------------------------------- Nachfrage-Dialog */
+
+/**
+ * NACHFRAGE VOR DEM ALTEN RECHENWEG.
+ *
+ * Kein `display: grid`, kein `gap` - Cohtml kennt beides nicht (siehe Kopf
+ * dieser Datei). Der Kasten steht mittig ueber allem; der Grund darunter
+ * faengt Klicks ab, damit man beim Wegklicken nicht versehentlich einen
+ * Regler der Leiste verstellt.
+ */
+.frageGrund {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(8, 12, 20, 0.55);
+  pointer-events: auto;
+}
+
+.frage {
+  width: 420rem;
+  padding: $s6;
+  border: 1rem solid $rand;
+  border-radius: $s3;
+  background-color: rgb(16, 23, 36);
+  color: $text-1;
+}
+
+.frageTitel {
+  margin-bottom: $s4;
+  color: $zuschnitt;
+  font-size: $type-md;
+  font-weight: bold;
+}
+
+.frageText {
+  margin-bottom: $s3;
+  color: $text-2;
+  font-size: $type-xs;
+  line-height: 1.45;
+}
+
+/** Der Haken sitzt abgesetzt: er gehoert nicht zum Fliesstext. */
+.frageHaken {
+  display: flex;
+  align-items: center;
+  margin-top: $s5;
+  padding-top: $s4;
+  border-top: 1rem solid $linie;
+  cursor: pointer;
+}
+
+.frageHakenText {
+  margin-left: $s3;
+  color: $text-3;
+  font-size: $type-xs;
+}
+
+.frageKnoepfe {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: $s5;
+}
+
+/**
+ * Die zustimmende Antwort ist bewusst NICHT die auffaelligere. Sie fuehrt auf
+ * den Rueckfallweg, also soll sie nicht einladen - "Abbrechen" ist hier der
+ * gute Ausgang.
+ */
+.frageKnopfNein,
+.frageKnopfJa {
+  margin-left: $s3;
+  padding: $s2 $s5;
+  border: none;
+  border-radius: $s2;
+  font-size: $type-xs;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.frageKnopfNein {
+  background-color: $flaeche-hell;
+  color: $text-1;
+  font-weight: bold;
+
+  &:hover { background-color: rgba(255, 255, 255, 0.18); }
+}
+
+.frageKnopfJa {
+  background-color: $flaeche;
+  color: $text-3;
+
+  &:hover { background-color: $flaeche-hell; }
+}
+
+/**
+ * DIE VIER ZUFAHRTSARTEN.
+ *
+ * Farbe ist hier Bedeutung, nicht Schmuck: jeder Knopf traegt denselben Ton
+ * wie sein Ring in der Vorschau. Wer eine Ausfahrt gesetzt hat, erkennt sie
+ * in der Welt an der Farbe des Knopfes, den er gedrueckt hat.
+ *
+ * Cohtml: kein gap, kein grid - Flex und Raender.
+ */
+/**
+ * ZWEI MAL ZWEI, JEDER KNOPF DOPPELT SO BREIT WIE HOCH.
+ *
+ * Vorgabe des Nutzers am 2026-08-27. Cohtml kennt kein `grid` und kein
+ * `gap` - das Raster entsteht deshalb aus Flex mit Umbruch und aus
+ * Raendern, die nur rechts und unten sitzen. Zwei Knoepfe je Zeile heisst
+ * `width: 50%` minus dem halben Rand, sonst bricht die zweite Spalte um.
+ *
+ * Reihenfolge: Zufahrt, Fussweg, Einfahrt, Ausfahrt - die beiden
+ * zweispurigen Sorten oben, die beiden einspurigen darunter.
+ */
+.artZeile {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+/**
+ * DIE ZELLE HAELT DIE BREITE, DER KNOPF FUELLT SIE AUS.
+ *
+ * Dritter Anlauf an dieser Stelle - die ersten beiden sind an gemischten
+ * Einheiten gescheitert:
+ *
+ *   1. `calc(50% - 3rem)`  Cohtml kann Prozent nicht mit rem mischen; die
+ *                          Breite fiel ganz aus und der Fehler lief im Log
+ *                          alle 100 ms mit (Bildrate).
+ *   2. `95rem * fontScale` plus `6rem` Rand  Breite skaliert, Rand nicht.
+ *                          Bei fontScale unter 1 ist die Zeile IMMER breiter
+ *                          als die Spalte, bei genau 1 passt es auf den
+ *                          Millimeter und jede Rundung kippt es.
+ *
+ * Jetzt ohne jede Rechnung: die Zelle ist 50 Prozent breit, der Abstand
+ * entsteht aus ihrer INNEREN Polsterung. Mit `border-box` aendert Polsterung
+ * die Aussenbreite nicht - zwei Zellen sind exakt 100 Prozent, was auch
+ * immer `fontScale` gerade ist. Beide Seiten bekommen dasselbe Polster; ein
+ * `nth-child(2n+1)` dafuer wird von Cohtml laut UI.log nicht geparst.
+ */
+.artZelle {
+  box-sizing: border-box;
+  width: 50%;
+  padding-left: $raum-2;
+  padding-right: $raum-2;
+  padding-bottom: $raum-4;
+}
+
+.artKnopf {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  /*
+   * Hoehe und Polsterung stehen fest, nicht relativ zur Schriftgroesse.
+   * Ein Knopf soll sich bei kleiner Schrift nicht einfach mitverkleinern,
+   * sondern anfassbar bleiben - "Relative sizing doesn't scale".
+   */
+  height: $mass-knopfhoehe;
+  padding: 0 $raum-5;
+  border: $raum-1 solid rgba(255, 255, 255, 0.16);
+  border-radius: $raum-3;
+  background-color: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+
+  img {
+    flex-shrink: 0;
+    width: $mass-symbol;
+    height: $mass-symbol;
+    margin-right: $raum-4;
+  }
+
+  &:hover { background-color: rgba(255, 255, 255, 0.14); }
+}
+
+
+/**
+ * Der Text steht IM Knopf, solange er passt.
+ *
+ * `text-overflow` kennt Cohtml nicht zuverlaessig; bei einer langen
+ * Uebersetzung wuerde der Name sonst stumm ueber den Rand laufen. Deshalb
+ * `overflow: hidden` und `white-space: nowrap`: er wird abgeschnitten statt
+ * das Raster zu sprengen.
+ */
+.artName {
+  overflow: hidden;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: var(--fontSizeXS);
+}
+
+/* Der aktive Knopf ist ausgefuellt, nicht nur umrandet - ein Rahmen allein
+   ist bei vier gleich grossen Knoepfen zu leise. */
+.artAktiv {
+  border-color: #ffffff;
+}
+
+.artZufahrt  { border-left: 5rem solid #e05a2b; }
+.artEinfahrt { border-left: 5rem solid #4fc3f7; }
+.artAusfahrt { border-left: 5rem solid #f2c14e; }
+.artFussweg  { border-left: 5rem solid #7ed957; }
+
+.artZufahrt.artAktiv  { background-color: rgba(224, 90, 43, 0.40); }
+.artEinfahrt.artAktiv { background-color: rgba(79, 195, 247, 0.40); }
+.artAusfahrt.artAktiv { background-color: rgba(242, 193, 78, 0.40); }
+.artFussweg.artAktiv  { background-color: rgba(126, 217, 87, 0.40); }
+
+/*
+ * DIE OBERGRENZE IST EINE BILDUNTERSCHRIFT, KEIN FUENFTER KNOPF.
+ *
+ * Deshalb steht sie ausserhalb der umbrechenden Flexzeile. Im Raster war
+ * ihre Platzierung nur ueber `width: 100%` als gewuenschtes Verhalten eines
+ * fuenften Flex-Kindes beschrieben; als eigener Block ist die neue Zeile
+ * stattdessen schon durch die Struktur festgelegt.
+ *
+ * Der JSX-Ausdruck ist ausserdem absichtlich EIN Textknoten. Fuer Cohtml ist
+ * in `texte.ts` bereits gemessen, dass `white-space` nicht ueber getrennte
+ * Textknoten hinweg wirkt. Genau deshalb half `nowrap` bei `{zahl} / {max}`
+ * nicht.
+ */
+.artZaehler {
+  margin-left: $raum-2;
+  margin-bottom: $raum-6;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: var(--fontSizeXS);
+}
+
+/**
+ * Warum gerade nicht gebaut werden kann.
+ *
+ * Zurueckgenommen, aber lesbar: es ist ein Hinweis, keine Fehlermeldung.
+ * Der Abstand nach oben ist kleiner als der zum naechsten Block, damit er
+ * sichtbar zum Zaehler und zu den Knoepfen gehoert - "Avoid ambiguous
+ * spacing".
+ */
+.zugangFehlt {
+  width: 100%;
+  margin-top: $raum-2;
+  color: rgba(242, 193, 78, 0.92);
+  font-size: var(--fontSizeXS);
+}
+
+/* Die Knopfzeile unter dem 2x2-Raster.
+
+   Zwei Knoepfe, die einzeln oder zu zweit auftreten - deshalb `flex` mit
+   `flex: 1` auf den Knoepfen selbst statt fester Breiten: allein nimmt einer
+   die ganze Zeile, zu zweit teilen sie sich. Kein `gap` - Cohtml kennt es
+   nicht; der Abstand kommt aus dem Rand des zweiten Knopfes. */
+.ausrichtReihe {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+/* Der Zuruecksetzen-Knopf unter dem 2x2-Raster.
+
+   ERSTER ANLAUF WAR SELBSTGEBAUT und sah entsprechend fremd aus - der Nutzer
+   meldete "alleine die Buttons bzw die Schrift sieht anders aus". Schrift und
+   Farbe fehlten schlicht, also erbten sie irgendwas. Jetzt dieselben Marken
+   wie die uebrigen Panelknoepfe: $type-sm, $text-3, Flaeche beim Ueberfahren.
+
+   Volle Breite, kein Symbol - so ausdruecklich gewuenscht. */
+.ausrichtKnopf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: $s2;
+  padding: 3rem 0;
+  border: none;
+  border-radius: $s2;
+  background-color: $flaeche;
+  color: $text-3;
+  font-size: $type-sm;
+  text-align: center;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+}
+
+/* ==================================================================== *
+ * Parkplatzliste
+ *
+ * KACHELN, HOECHSTENS DREI NEBENEINANDER - so und nicht als Zeilen ueber
+ * die volle Panelbreite. Der Nutzer dazu woertlich: „das Content aware
+ * sollte nicht heissen 'strecke einen Reiter auf breite des Panels'
+ * sondern eher dass max 3 nebeneinander liegen in klaren Kacheln."
+ *
+ * Die Zelle nimmt ein Drittel, hat aber eine Mindestbreite. Wird das Panel
+ * schmal, faellt die Reihe von selbst auf zwei oder eine Kachel zurueck,
+ * statt drei unlesbare zu quetschen. Cohtml kann kein `grid` und kein
+ * `gap`; die Abstaende sitzen deshalb als Innenabstand in der Zelle.
+ * ==================================================================== */
+
+.listeRahmen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.listeLeer {
+  padding: $raum-4 $raum-3;
+  color: $text-3;
+  text-align: center;
+}
+
+/* --- Kopfzeile mit Summe und Rundensteuerung ------------------------ */
+
+.listeKopf {
+  display: flex;
+  align-items: center;
+  margin-bottom: $s4;
+  padding-bottom: $s3;
+  border-bottom: 1rem solid $rand;
+}
+
+.listeKopfText {
+  color: $text-3;
+}
+
+.listeLuecke {
+  flex-grow: 1;
+}
+
+/* Haelt Name, Balken und Geldzeile aller Kacheln auf gleicher Hoehe,
+   egal wie lang der Hinweis darunter wird. */
+.listeLueckeHoch {
+  flex-grow: 1;
+  min-height: $s3;
+}
+
+.listePunkte {
+  display: flex;
+  align-items: center;
+  margin: 0 $s2;
+}
+
+.listePunkt {
+  width: 5rem;
+  height: 5rem;
+  margin-right: $s1;
+  border-radius: 3rem;
+  background-color: rgba(255, 255, 255, 0.18);
+
+  &:last-child { margin-right: 0; }
+}
+
+.listePunktAktiv {
+  background-color: $fahrwege;
+}
+
+/* --- Das Kachelgitter ----------------------------------------------- */
+
+.listeGitter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  width: 100%;
+}
+
+.listeZelle {
+  display: flex;
+  /* Ein Drittel - aber nie schmaler als lesbar. Genau diese Mindestbreite
+     macht aus „immer drei" ein „hoechstens drei". */
+  flex: 0 0 33.333%;
+  min-width: 330rem;
+  max-width: 100%;
+  padding: 0 $s3 $s3 0;
+  box-sizing: border-box;
+}
+
+.listeKachel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  padding: $s4;
+  border: 1rem solid $rand;
+  border-radius: $s3;
+  background-color: rgba(255, 255, 255, 0.06);
+  box-sizing: border-box;
+}
+
+/* Ein Mangel faellt schon am Rahmen auf - man muss den Satz unten nicht
+   erst lesen. Dafuer ist eine Uebersicht da. */
+.listeKachelMangel {
+  border-color: rgba(242, 114, 92, 0.35);
+}
+
+/* --- Kopf der Kachel ------------------------------------------------ */
+
+.listeKopfzeile {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: $s4;
+}
+
+.listeTitelblock {
+  flex-grow: 1;
+  min-width: 0;
+  padding-right: $s3;
+}
+
+.listeName {
+  display: inline-flex;
+  align-items: center;
+  padding-bottom: 1rem;
+  /* Die gestrichelte Linie ist die einzige Anzeige, dass hier etwas geht.
+     Auf eine Ueberschrift klickt sonst niemand. */
+  border-bottom: 1rem dashed rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+
+  &:hover {
+    border-bottom-color: $fahrwege;
+    .listeNameText { color: $fahrwege; }
+    .listeNameStift { opacity: 0.85; }
+  }
+}
+
+.listeNameText {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: bold;
+}
+
+.listeNameStift {
+  width: 11rem;
+  height: 11rem;
+  margin-left: $s2;
+  opacity: 0.35;
+}
+
+.listeNameFeld {
+  width: 100%;
+  padding: $s1 $s2;
+  border: 1rem solid $fahrwege;
+  border-radius: $s2;
+  background-color: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: bold;
+}
+
+.listeUntertitel {
+  margin-top: $s1;
+  color: $text-4;
+}
+
+.listeSymbol {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26rem;
+  height: 26rem;
+  margin-left: $s2;
+  border-radius: $s2;
+  background-color: $flaeche;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+
+  img { width: 13rem; height: 13rem; }
+}
+
+/* Der Sprung zum Parkplatz ist die haeufigste Handlung - er traegt
+   deshalb als einziger Farbe. */
+.listeSymbolFokus {
+  background-color: rgba(79, 195, 247, 0.16);
+
+  &:hover { background-color: rgba(79, 195, 247, 0.28); }
+}
+
+/* --- Belegung ------------------------------------------------------- */
+
+.listeBalkenBett {
+  height: 6rem;
+  border-radius: 3rem;
+  background-color: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+
+.listeBalkenGut,
+.listeBalkenVoll,
+.listeBalkenStill {
+  height: 6rem;
+  border-radius: 3rem;
+}
+
+.listeBalkenGut { background-color: $gruen; }
+.listeBalkenVoll { background-color: $zuschnitt; }
+
+/* Solange zu wenig gemessen wurde, faerbt der Balken nichts ein - eine
+   gruene Anzeige aus zwei Beobachtungen waere eine Behauptung. */
+.listeBalkenStill { background-color: rgba(255, 255, 255, 0.25); }
+
+.listeBalkenZeile {
+  display: flex;
+  align-items: center;
+  margin-top: $s2;
+  color: $text-3;
+}
+
+/* --- Gebuehr und Monatsergebnis ------------------------------------- */
+
+.listeGeldzeile {
+  display: flex;
+  align-items: center;
+  margin-top: $s4;
+}
+
+.listeGeldName {
+  margin-right: $s3;
+  color: $text-3;
+}
+
+/* Ein Regler waere in dieser Kachelbreite unbedienbar: ein Pixel Zugweg
+   entspraeche mehr als ein Waehrungsschritt. Zwei Knoepfe treffen immer. */
+.listeSteller {
+  display: flex;
+  align-items: center;
+  border-radius: $s2;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.listeStellerKnopf {
+  width: 24rem;
+  height: 26rem;
+  line-height: 26rem;
+  text-align: center;
+  color: $text-3;
+  cursor: pointer;
+
+  &:hover { color: rgba(255, 255, 255, 0.9); }
+}
+
+.listeStellerWert {
+  min-width: 46rem;
+  text-align: center;
+  color: $gruen;
+  font-weight: bold;
+}
+
+.listeErgebnisBlock {
+  text-align: right;
+}
+
+.listeErgebnis {
+  font-weight: bold;
+}
+
+.listeJeMonat {
+  color: $text-4;
+}
+
+.listeGut { color: $gruen; }
+.listeSchlecht { color: $melden; }
+
+/* --- Hinweise ganz unten -------------------------------------------- */
+
+.listeHinweis {
+  display: flex;
+  align-items: flex-start;
+  margin-top: $s3;
+  padding: $s3 $s4;
+  border-radius: $s2;
+  color: $text-2;
+
+  img {
+    flex-shrink: 0;
+    width: 13rem;
+    height: 13rem;
+    margin-top: 2rem;
+    margin-right: $s3;
+  }
+}
+
+.listeHinweisGut { background-color: rgba(0, 0, 0, 0.18); }
+.listeHinweisJung { background-color: rgba(79, 195, 247, 0.12); }
+
+/* Maengel rotieren nicht mit; sie stehen fest, solange sie zutreffen. */
+.listeHinweisMangel { background-color: rgba(242, 114, 92, 0.13); }
+
+/* Ein anklickbarer Ortsname im Satz. Er sieht anklickbar aus, weil er es
+   ist: ein Klick waehlt das Gebaeude aus und schickt die Kamera hin. */
+.listeOrt {
+  color: $fahrwege;
+  cursor: pointer;
+
+  &:hover { color: #8fd8fb; }
+}
+
+/* Parkplatzverwaltung: begrenzte Hoehe, scharfe Kontraste wie im Draft. */
+.listeRahmen { font-size: $type-xs; color: rgba(255,255,255,0.86); min-width: 0; }
+.listeKopf { margin-bottom: $s3; padding-bottom: $s4; }
+.listeUebersicht { display: flex; flex-wrap: wrap; align-items: center;
+  span { margin-left: $s6; color: rgba(255,255,255,0.72); }
+  strong { font-size: $type-md; color: #fff; }
+  .listeFrei { color: $fahrwege; }
+}
+.listeWerkzeuge { display: flex; flex-wrap: wrap; align-items: center; margin-bottom: $s2; }
+.listeSuche { width: 210rem; max-width: 100%; margin: 0 $s3 $s2 0; padding: $s3 $s4;
+  color: #fff; background-color: rgba(0,0,0,0.3); border: 1rem solid $rand;
+  border-radius: $s2; font-size: $type-xs; }
+.listeFilter { display: flex; flex-wrap: wrap; }
+.listeTextknopf { border: 1rem solid $rand; border-radius: $s2; padding: $s3 $s4;
+  margin: 0 $s2 $s2 0; background-color: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85);
+  font-size: $type-xs; cursor: pointer;
+  &:hover { background-color: rgba(255,255,255,0.14); }
+}
+.listeAktiv { border-color: $fahrwege; background-color: rgba(79,195,247,0.18); color: #fff; }
+.listeSortierung { position: relative; margin-left: auto; }
+.listeSortiermenue { position: absolute; right: 0; top: 100%; z-index: 10; padding: $s2;
+  background-color: #182637; border: 1rem solid $rand; border-radius: $s2; min-width: 160rem;
+  .listeTextknopf { display: block; width: 100%; text-align: left; }
+}
+.listeInfosteuerung { display: flex; align-items: center; flex-wrap: wrap; padding: $s2 0 $s3;
+  color: rgba(255,255,255,0.65);
+  strong { color: $fahrwege; margin-right: $s4; }
+  span { margin-right: $s3; }
+  .listeTextknopf { margin: 0 $s2; }
+}
+.listeScroll { max-height: 420rem; overflow-y: auto; overflow-x: hidden; }
+.listeGitter { align-content: flex-start; }
+.listeZelle { flex-basis: 33.333%; min-width: 320rem; }
+.listeKachel { background-color: #1c2b3e; border-color: rgba(126,172,214,0.3); border-radius: $s2; }
+.listeKachelMangel { border-left: 3rem solid $melden; }
+.listeKopfzeile { margin-bottom: $s3; }
+.listeName { max-width: 100%; padding: 0; background-color: transparent; border: none;
+  font-size: $type-marke; text-align: left; }
+.listeNameText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.listeNameStift { flex-shrink: 0; }
+.listeUntertitel, .listeJeMonat { color: rgba(255,255,255,0.62); }
+.listeSymbol { border: 1rem solid $rand; color: #fff; font-size: $type-marke; }
+.listeBearbeiten { width: auto; padding: 0 $s3; font-size: $type-xs; }
+.listeFastVoll { color: $zuschnitt; }
+.listeGeldzeile { flex-wrap: wrap; margin-top: $s3; }
+.listeGeldName { color: rgba(255,255,255,0.72); }
+.listeErgebnisBlock { margin-left: $s3; }
+.listeBalkenZeile { color: rgba(255,255,255,0.78); }
+.listeHinweis { padding: $s3; margin-top: $s3; }
+.listeHinweisJung { background-color: rgba(0,0,0,0.18); }
+.listeOrt { padding: 0; border: none; background-color: transparent; font: inherit; text-align: left; }
+.listeGebuehr { display: flex; align-items: center; margin-right: $s2; }
+.listeGebuehrSchiene { position: relative; width: 84rem; height: 26rem; margin: 0 $s4 0 $s2;
+  cursor: pointer; }
+.listeGebuehrBett { position: absolute; top: 10rem; left: 0; right: 0; height: 6rem;
+  background-color: rgba(255,255,255,0.18); border-radius: 3rem; }
+.listeGebuehrFuellung { height: 100%; border-radius: 3rem; background-color: $fahrwege; }
+.listeGebuehrGriff { position: absolute; top: 7rem; width: 12rem; height: 12rem;
+  margin-left: -6rem; border-radius: 6rem; background-color: #fff; }
+.listeGebuehrEingabe { width: 34rem; padding: $s2; color: #fff; text-align: center;
+  background-color: rgba(0,0,0,0.32); border: 1rem solid $rand; border-radius: $s2;
+  font-size: $type-xs; }
+.listeGebuehrEinheit { min-width: 22rem; margin-left: $s2; color: rgba(255,255,255,0.72); }
+.listeEingabeFehler { border-color: $melden; }
+.listeSeiten { display: flex; justify-content: center; align-items: center; padding-top: $s2;
+  span { margin: 0 $s4; } }
+.listeRahmen button[disabled] { opacity: 0.35; cursor: default; }
+.listeRahmen button:focus, .listeRahmen input:focus, .listeGebuehrSchiene:focus {
+  border-color: $fahrwege; outline: 1rem solid $fahrwege;
+}
+
+/* Suche und Sortieren rechts im Kopf; jede Note blaettert fuer sich. */
+.listeKopf { flex-wrap: wrap; }
+.listeKopfAktionen { display: flex; flex: 1 1 620rem; justify-content: flex-end; flex-wrap: wrap;
+  align-items: center; margin-left: 0; padding-left: $s4; }
+.listeKopfAktionen .listeSortierung { margin-left: 0; }
+.listeKopfAktionen .listeSuche { width: 120rem; margin: 0; border: none; background-color: transparent; }
+.listeKopfAktionen .listeFilter { justify-content: flex-end; }
+.listeSuchfeld { display: flex; align-items: center; margin-right: $s3;
+  border: 1rem solid $rand; border-radius: $s2; background-color: rgba(0,0,0,0.3);
+  span { padding-left: $s3; color: rgba(255,255,255,0.65); white-space: nowrap; }
+}
+.listeUebersicht { flex: 0 0 auto; }
+.listeUebersicht strong { white-space: nowrap; }
+.listeKopfAktionen .listeTextknopf { white-space: nowrap; margin-bottom: 0; }
+.listeKopfAktionen .listeSortierung { flex: 0 0 auto; }
+.listeInfosteuerung { padding-top: $s3; padding-bottom: 0; }
+.listeSummen { white-space: normal; }
+.listeErgebnis, .listeBalkenZeile, .listeNotizKopf span { white-space: nowrap; }
+.listeErgebnisBlock { flex-shrink: 0; }
+.listeNotiz .listeHinweis > div { flex: 1 1 0; min-width: 0; }
+
+.listeNotiz { margin-top: $s3; background-color: rgba(0,0,0,0.18); border-radius: $s2; }
+.listeNotizKopf { display: flex; align-items: center; justify-content: space-between;
+  padding: $s1 $s2; color: rgba(255,255,255,0.66); font-size: $type-xs; }
+.listeNotizPfeil { width: 22rem; height: 20rem; padding: 0; border: none;
+  border-radius: $s2; background-color: transparent; color: $fahrwege; cursor: pointer;
+  font-size: $type-marke;
+  &:hover { background-color: rgba(79,195,247,0.18); }
+}
+.listeNotiz .listeHinweis { margin-top: 0; background-color: transparent; }

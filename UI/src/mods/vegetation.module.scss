@@ -1,0 +1,17 @@
+.root { margin-top: 8rem; min-width: 0; }
+.row { display:flex; flex-wrap:wrap; align-items:center; }
+.label { color:rgba(255,255,255,.65); font-size:var(--fontSizeXS); margin:6rem 0; }
+.choice { display:flex; align-items:center; justify-content:center; width:32rem; height:32rem; flex-shrink:0; padding:3rem; margin:0 4rem 4rem 0; border:1rem solid rgba(255,255,255,.15); border-radius:4rem; background-color:rgba(255,255,255,.06); color:white; font-size:var(--fontSizeXS); }
+.choice img { width:24rem; height:24rem; }
+.choice span { flex:1 1 0; min-width:0; }
+.choice:hover { background-color:rgba(79,195,247,.15); }
+.selected { border-color:#4fc3f7; background-color:rgba(79,195,247,.2); }
+.choice[disabled] { opacity:.4; }
+.sets { display:flex; flex-wrap:wrap; max-height:104rem; overflow-y:auto; }
+.set { display:flex; align-items:center; }
+
+.remove { background-color:transparent; color:white; font-size:18rem; }
+.picker { margin-top:6rem; padding:5rem; background-color:rgba(0,0,0,.15); }
+.root input { width:130rem; min-width:0; padding:5rem; color:white; background-color:rgba(0,0,0,.2); border:1rem solid rgba(255,255,255,.2); font-size:var(--fontSizeXS); }
+.assets { display:flex; flex-wrap:wrap; max-height:180rem; overflow-y:auto; margin:5rem 0; }
+

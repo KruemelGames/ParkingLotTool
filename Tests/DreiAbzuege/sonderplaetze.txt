@@ -1,0 +1,124 @@
+SONDERPLAETZE: Abstand zum Anker, je Zufahrtslage
+
+  Rand an  Kante 0 bei   51,4 m, Fussweg  naechste Bucht   5,3 m | Behindert   5,3- 14,1 | Elektro  17,9- 26,8 | Anzahl B/E 6/8 | Grenze  20,3 | OK
+      Anker: 1 Linien, davon gesetzt 1 (Fussweg 1), Zoning 0 -> 1 Ziel(e)
+          Ziel (-1199,7/853,1)
+          Reihe 27 Buchten, naechste   6,9 m, bester Abschnitt   6,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 19 Buchten, naechste  10,8 m, bester Abschnitt  10,8 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+          Reihe 19 Buchten, naechste  10,9 m, bester Abschnitt  10,9 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+          Reihe 19 Buchten, naechste  17,2 m, bester Abschnitt  17,2 m | Sw 3,00 | Abstaende 3 3 3 3 12,73 3 3 3 3 3
+          Reihe 19 Buchten, naechste  17,3 m, bester Abschnitt  17,3 m | Sw 3,00 | Abstaende 3 3 3 3 12,58 3 3 3 3 3
+      Gruppe 0: 10 Reihen, 30 mit Abschnitt, naechster 6,9 m, Felder je Block 5, Reihenlaengen 19/19/19/19/19/19
+          Reihe 22 Buchten, naechste   6,9 m, bester Abschnitt   6,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 19 Buchten, naechste  10,8 m, bester Abschnitt  10,8 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+          Reihe 19 Buchten, naechste  10,9 m, bester Abschnitt  10,9 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+          Reihe 19 Buchten, naechste  17,2 m, bester Abschnitt  17,2 m | Sw 3,00 | Abstaende 3 3 3 3 12,73 3 3 3 3 3
+          Reihe 19 Buchten, naechste  17,3 m, bester Abschnitt  17,3 m | Sw 3,00 | Abstaende 3 3 3 3 12,58 3 3 3 3 3
+      Gruppe 1: 10 Reihen, 30 mit Abschnitt, naechster 6,9 m, Felder je Block 5, Reihenlaengen 19/19/19/19/19/19
+  Rand an  Kante 1 bei   37,9 m, Fussweg  naechste Bucht   5,3 m | Behindert   5,3- 14,1 | Elektro  17,9- 26,8 | Anzahl B/E 6/8 | Grenze  20,3 | OK
+      Anker: 1 Linien, davon gesetzt 1 (Fussweg 1), Zoning 0 -> 1 Ziel(e)
+          Ziel (-1160,4/881,3)
+          Reihe 31 Buchten, naechste   6,9 m, bester Abschnitt   6,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 5
+          Reihe 19 Buchten, naechste  13,2 m, bester Abschnitt  13,2 m | Sw 3,00 | Abstaende 3 3 3 3 12,58 3 3 3 3 3
+          Reihe 19 Buchten, naechste  25,4 m, bester Abschnitt  25,4 m | Sw 3,00 | Abstaende 3 3 3 3 12,58 3 3 3 3 3
+          Reihe 19 Buchten, naechste  33,7 m, bester Abschnitt  33,7 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+          Reihe 28 Buchten, naechste  34,2 m, bester Abschnitt  34,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+      Gruppe 0: 10 Reihen, 30 mit Abschnitt, naechster 6,9 m, Felder je Block 5, Reihenlaengen 19/19/19/19/19/19
+          Reihe 26 Buchten, naechste   6,9 m, bester Abschnitt   6,9 m | Sw 3,00 | Abstaende 3 3 3 3 20 3 3 3 3 3
+          Reihe 19 Buchten, naechste  13,2 m, bester Abschnitt  13,2 m | Sw 3,00 | Abstaende 3 3 3 3 12,58 3 3 3 3 3
+          Reihe 19 Buchten, naechste  25,4 m, bester Abschnitt  25,4 m | Sw 3,00 | Abstaende 3 3 3 3 12,58 3 3 3 3 3
+          Reihe 19 Buchten, naechste  33,7 m, bester Abschnitt  33,7 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+          Reihe 28 Buchten, naechste  34,2 m, bester Abschnitt  34,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+      Gruppe 1: 10 Reihen, 30 mit Abschnitt, naechster 6,9 m, Felder je Block 5, Reihenlaengen 19/19/19/19/19/19
+  Rand an  Kante 2 bei   51,8 m, Fussweg  naechste Bucht   5,3 m | Behindert   5,3- 14,1 | Elektro  17,9- 26,8 | Anzahl B/E 6/8 | Grenze  20,3 | OK
+      Anker: 1 Linien, davon gesetzt 1 (Fussweg 1), Zoning 0 -> 1 Ziel(e)
+          Ziel (-1200,8/943,8)
+          Reihe 28 Buchten, naechste   6,9 m, bester Abschnitt   6,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 19 Buchten, naechste  10,7 m, bester Abschnitt  10,7 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+          Reihe 19 Buchten, naechste  10,8 m, bester Abschnitt  10,8 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+          Reihe 19 Buchten, naechste  17,0 m, bester Abschnitt  17,0 m | Sw 3,00 | Abstaende 3 3 3 3 12,73 3 3 3 3 3
+          Reihe 19 Buchten, naechste  17,3 m, bester Abschnitt  17,3 m | Sw 3,00 | Abstaende 3 3 3 3 12,58 3 3 3 3 3
+      Gruppe 0: 10 Reihen, 30 mit Abschnitt, naechster 6,9 m, Felder je Block 5, Reihenlaengen 19/19/19/19/19/19
+          Reihe 23 Buchten, naechste   6,9 m, bester Abschnitt   6,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 19 Buchten, naechste  10,7 m, bester Abschnitt  10,7 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+          Reihe 19 Buchten, naechste  10,8 m, bester Abschnitt  10,8 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+          Reihe 19 Buchten, naechste  17,0 m, bester Abschnitt  17,0 m | Sw 3,00 | Abstaende 3 3 3 3 12,73 3 3 3 3 3
+          Reihe 19 Buchten, naechste  17,3 m, bester Abschnitt  17,3 m | Sw 3,00 | Abstaende 3 3 3 3 12,58 3 3 3 3 3
+      Gruppe 1: 10 Reihen, 30 mit Abschnitt, naechster 6,9 m, Felder je Block 5, Reihenlaengen 19/19/19/19/19/19
+  Rand an  Kante 3 bei   74,0 m, Fussweg  naechste Bucht   5,3 m | Behindert   5,3- 14,1 | Elektro  17,9- 26,8 | Anzahl B/E 6/8 | Grenze  20,3 | OK
+      Anker: 1 Linien, davon gesetzt 1 (Fussweg 1), Zoning 0 -> 1 Ziel(e)
+          Ziel (-1241,0/880,1)
+          Reihe 31 Buchten, naechste   6,9 m, bester Abschnitt   6,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 19 Buchten, naechste  14,6 m, bester Abschnitt  14,6 m | Sw 3,00 | Abstaende 3 3 3 3 12,73 3 3 3 3 3
+          Reihe 19 Buchten, naechste  26,9 m, bester Abschnitt  26,9 m | Sw 3,00 | Abstaende 3 3 3 3 12,73 3 3 3 3 3
+          Reihe 28 Buchten, naechste  33,9 m, bester Abschnitt  33,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 19 Buchten, naechste  35,1 m, bester Abschnitt  35,1 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+      Gruppe 0: 10 Reihen, 30 mit Abschnitt, naechster 6,9 m, Felder je Block 5, Reihenlaengen 19/19/19/19/19/19
+          Reihe 26 Buchten, naechste   6,9 m, bester Abschnitt   6,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 19 Buchten, naechste  14,6 m, bester Abschnitt  14,6 m | Sw 3,00 | Abstaende 3 3 3 3 12,73 3 3 3 3 3
+          Reihe 19 Buchten, naechste  26,9 m, bester Abschnitt  26,9 m | Sw 3,00 | Abstaende 3 3 3 3 12,73 3 3 3 3 3
+          Reihe 28 Buchten, naechste  33,9 m, bester Abschnitt  33,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 19 Buchten, naechste  35,1 m, bester Abschnitt  35,1 m | Sw 3,00 | Abstaende 3 3 3 3 12,65 3 3 3 3 3
+      Gruppe 1: 10 Reihen, 30 mit Abschnitt, naechster 6,9 m, Felder je Block 5, Reihenlaengen 19/19/19/19/19/19
+  Rand aus Kante 0 bei   51,4 m, Fussweg  naechste Bucht   9,6 m | Behindert   9,6- 19,2 | Elektro  23,1- 32,0 | Anzahl B/E 6/8 | Grenze  24,6 | OK
+      Anker: 3 Linien, davon gesetzt 1 (Fussweg 1), Zoning 0 -> 1 Ziel(e)
+          Ziel (-1199,6/844,7)
+          Reihe 30 Buchten, naechste   7,0 m, bester Abschnitt   7,0 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste   7,2 m, bester Abschnitt   7,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  17,8 m, bester Abschnitt  17,8 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  18,2 m, bester Abschnitt  18,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  25,9 m, bester Abschnitt  25,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+      Gruppe 0: 8 Reihen, 24 mit Abschnitt, naechster 7,0 m, Felder je Block 5, Reihenlaengen 33/30/30/30/30/30
+          Reihe 30 Buchten, naechste   7,2 m, bester Abschnitt   7,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  17,8 m, bester Abschnitt  17,8 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  18,2 m, bester Abschnitt  18,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 25 Buchten, naechste  21,1 m, bester Abschnitt  21,1 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  25,9 m, bester Abschnitt  25,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+      Gruppe 1: 8 Reihen, 24 mit Abschnitt, naechster 7,2 m, Felder je Block 5, Reihenlaengen 33/30/30/25/30/30
+  Rand aus Kante 1 bei   37,9 m, Fussweg  naechste Bucht  11,8 m | Behindert  12,1- 26,6 | Elektro  11,8- 33,3 | Anzahl B/E 6/8 | Grenze  26,8 | OK
+      Anker: 3 Linien, davon gesetzt 1 (Fussweg 1), Zoning 0 -> 1 Ziel(e)
+          Ziel (-1167,9/881,4)
+          Reihe 30 Buchten, naechste   6,5 m, bester Abschnitt   6,5 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 32 Buchten, naechste   7,0 m, bester Abschnitt   7,0 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  14,9 m, bester Abschnitt  14,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  27,8 m, bester Abschnitt  27,8 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  36,2 m, bester Abschnitt  36,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+      Gruppe 0: 8 Reihen, 24 mit Abschnitt, naechster 6,5 m, Felder je Block 5, Reihenlaengen 33/30/30/30/30/30
+          Reihe 32 Buchten, naechste   7,0 m, bester Abschnitt   7,0 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 25 Buchten, naechste   7,4 m, bester Abschnitt   7,4 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  14,9 m, bester Abschnitt  14,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  27,8 m, bester Abschnitt  27,8 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  36,2 m, bester Abschnitt  36,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+      Gruppe 1: 8 Reihen, 24 mit Abschnitt, naechster 7,0 m, Felder je Block 5, Reihenlaengen 33/30/30/30/30/30
+  Rand aus Kante 2 bei   51,8 m, Fussweg  naechste Bucht   9,3 m | Behindert   9,3- 18,9 | Elektro  22,7- 31,7 | Anzahl B/E 6/8 | Grenze  24,3 | OK
+      Anker: 3 Linien, davon gesetzt 1 (Fussweg 1), Zoning 0 -> 1 Ziel(e)
+          Ziel (-1200,9/952,0)
+          Reihe 30 Buchten, naechste   6,5 m, bester Abschnitt   6,5 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste   6,8 m, bester Abschnitt   6,8 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  17,7 m, bester Abschnitt  17,7 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  18,0 m, bester Abschnitt  18,0 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  25,8 m, bester Abschnitt  25,8 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+      Gruppe 0: 8 Reihen, 24 mit Abschnitt, naechster 6,5 m, Felder je Block 5, Reihenlaengen 33/30/30/30/30/30
+          Reihe 30 Buchten, naechste   6,8 m, bester Abschnitt   6,8 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  17,7 m, bester Abschnitt  17,7 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  18,0 m, bester Abschnitt  18,0 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 25 Buchten, naechste  20,5 m, bester Abschnitt  20,5 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 12,44
+          Reihe 30 Buchten, naechste  25,8 m, bester Abschnitt  25,8 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+      Gruppe 1: 8 Reihen, 24 mit Abschnitt, naechster 6,8 m, Felder je Block 5, Reihenlaengen 33/30/30/25/30/30
+  Rand aus Kante 3 bei   74,0 m, Fussweg  naechste Bucht  13,5 m | Behindert  13,8- 28,3 | Elektro  13,5- 35,0 | Anzahl B/E 6/8 | Grenze  28,5 | OK
+      Anker: 3 Linien, davon gesetzt 1 (Fussweg 1), Zoning 0 -> 1 Ziel(e)
+          Ziel (-1231,8/880,2)
+          Reihe 30 Buchten, naechste   6,5 m, bester Abschnitt   6,5 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 32 Buchten, naechste   7,1 m, bester Abschnitt   7,1 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  14,9 m, bester Abschnitt  14,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  27,8 m, bester Abschnitt  27,8 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  36,2 m, bester Abschnitt  36,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+      Gruppe 0: 8 Reihen, 24 mit Abschnitt, naechster 6,5 m, Felder je Block 5, Reihenlaengen 32/30/30/30/30/30
+          Reihe 32 Buchten, naechste   7,1 m, bester Abschnitt   7,1 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 25 Buchten, naechste   7,2 m, bester Abschnitt   7,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  14,9 m, bester Abschnitt  14,9 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  27,8 m, bester Abschnitt  27,8 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+          Reihe 30 Buchten, naechste  36,2 m, bester Abschnitt  36,2 m | Sw 3,00 | Abstaende 3 3 3 3 3 3 3 3 3 3
+      Gruppe 1: 8 Reihen, 24 mit Abschnitt, naechster 7,1 m, Felder je Block 5, Reihenlaengen 32/25/30/30/30/30
+
+ALLE LAGEN OK

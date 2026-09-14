@@ -1,0 +1,59 @@
+bin/
+obj/
+node_modules/
+*.user
+
+# UI-Projekt: Abhaengigkeiten und Build gehoeren nicht ins Repo.
+UI/node_modules/
+UI/build/
+
+# Codex legt beim Messen eigene Build-Ordner an; die gehoeren nicht ins Repo.
+.codex-bin/
+.codex-obj/
+.codex-build/
+
+# Von der Toolchain bei jedem Build neu geschrieben - im Repo nur Rauschen.
+Library/ilpp.pid
+
+# Erzeugte Messbilder und Messdateien - jederzeit neu zu bauen.
+Tests/GeometryParity/fehlerbilder.html
+Tests/GeometryParity/flaechen-naehte.jsonl
+qualitaet-*.log
+artifacts/
+**/artifacts/
+
+# ---------------------------------------------------------------------------
+# WERKSTATTNOTIZEN BLEIBEN DRAUSSEN.
+#
+# Im Wurzelverzeichnis liegen rund neunzig Markdown-Dateien: Auftraege an
+# Codex, Berichte, Befunde, Plaene, Absturznotizen, Uebergaben. Sie sind beim
+# Arbeiten unentbehrlich und fuer jemanden, der den Quelltext anschaut,
+# vollkommen wertlos - sie stehen voller Zwischenstaende, halber Theorien und
+# woertlicher Zitate aus der Zusammenarbeit.
+#
+# Statt neunzig Namen einzeln zu pflegen, gilt die Regel andersherum: im
+# Wurzelverzeichnis wird JEDE Markdown-Datei ignoriert, und nur die beiden,
+# die nach aussen gehoeren, sind ausgenommen. Eine neue Notiz ist damit
+# automatisch draussen - und genau das ist der Punkt, denn daran denkt beim
+# Schreiben niemand.
+#
+# Die Dateien bleiben auf der Platte liegen. Ignoriert heisst nicht geloescht.
+# ---------------------------------------------------------------------------
+/*.md
+!/README.md
+!/CHANGELOG.md
+
+# ---------------------------------------------------------------------------
+# DIE FERTIG GESCHNUERTEN DESIGN-LEINWAENDE BLEIBEN DRAUSSEN.
+#
+# `<name>.html` neben einer `.dc.html` ist die ausgelieferte Leinwand samt
+# eingebautem Editor - eine einzige davon wiegt 2,4 MB und ist damit die
+# groesste Datei im ganzen Projekt. Der INHALT steht in den `.dc.html`-Dateien
+# daneben, die ein paar Kilobyte gross und lesbar sind; die dicke Datei laesst
+# sich daraus jederzeit neu schnueren.
+# ---------------------------------------------------------------------------
+design/randzoning-an-fahrgassen.html
+
+# Anweisungen fuer die KI-Werkzeuge - Projektinterna, kein Nutzen fuer andere.
+AGENTS.md
+CLAUDE.md

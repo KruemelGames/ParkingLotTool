@@ -1,0 +1,16 @@
+  7 Gassen, Buchten 530
+    quer   1052,4   laengs   -114,0 ..     80,0
+    quer   1073,7   laengs   -114,0 ..     80,0
+    quer   1095,0   laengs   -114,0 ..     80,0
+    quer   1116,3   laengs   -114,0 ..     80,0
+    quer   1137,6   laengs   -114,0 ..    -13,4
+    quer   1158,9   laengs   -114,0 ..    -13,4
+    quer   1180,2   laengs   -114,0 ..    -13,4
+  Endfusswege (quer zur Gasse):
+    quer   1048,9 ..   1183,7   Laenge  134,8   Gassen dazwischen 7
+    quer   1134,1 ..   1183,7   Laenge   49,6   Gassen dazwischen 3
+    quer   1048,9 ..   1119,8   Laenge   70,9   Gassen dazwischen 4
+    quer   1040,5 ..   1052,4   Laenge   11,9   Gassen dazwischen 0   (gesetzter Zugang, nicht geprueft)
+    quer   1040,5 ..   1052,4   Laenge   11,9   Gassen dazwischen 0   (gesetzter Zugang, nicht geprueft)
+    quer   1040,5 ..   1052,4   Laenge   11,9   Gassen dazwischen 0   (gesetzter Zugang, nicht geprueft)
+Endwegbreite: 0 Fehler

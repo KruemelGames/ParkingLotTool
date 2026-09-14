@@ -1,0 +1,12 @@
+Hier hinein kommen die Workshop-Screenshots.
+
+Die Dateinamen sind in Properties/PublishConfiguration.xml schon
+eingetragen - dort nur noch die passenden Zeilen einkommentieren:
+
+    01-fertiger-parkplatz.png
+    02-panel.png
+    03-zeichnen.png
+    04-parkende-autos.png
+
+Was drauf soll, steht in RELEASE.md.
+Diese Datei darf bleiben; sie stoert nichts.

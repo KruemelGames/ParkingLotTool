@@ -1,0 +1,11 @@
+Buchten 659, Gassen 6, Winkel 88,03425839973016
+Gasse 0 193,36 m 13,5324 m (-1067,928,-84,126) -> (-1061,295,109,117)
+Gasse 1 193,36 m 34,8324 m (-1089,215,-83,396) -> (-1082,583,109,847)
+Gasse 2 193,36 m 26,2614 m (-1110,503,-82,665) -> (-1103,870,110,577)
+Gasse 3 193,36 m 13,3614 m (-1123,395,-82,222) -> (-1116,762,111,019)
+Gasse 4 104,37 m 34,8322 m (-1153,077,-81,204) -> (-1149,497,23,105)
+Gasse 5 104,37 m 13,5321 m (-1174,365,-80,473) -> (-1170,785,23,836)
+Unerreichbare Buchten 0, Buchtueberlappungen 0, Buchten auf Fahrbahn 0, abgelehnte Ringe 0
+Paritaets-L, Kappen True: 148 Buchten, 2 Gassen, Abstaende 34,6000 / 13,3000 m, unerreichbar 0
+Paritaets-L, Kappen False: 156 Buchten, 2 Gassen, Abstaende 34,6000 / 13,3000 m, unerreichbar 0
+Gassenabstand: 0 Fehler
