@@ -28,8 +28,54 @@ namespace ParkingLotTool.Tools
             }
         }
 
+        /**
+         * WORAN HAENGEN WIR UNS UEBERHAUPT?
+         *
+         * Der Nutzer am 2026-09-15, mit Bild: *"Die Strasse war auch enorm
+         * verformt an die das angeschlossen wurde."* Solange nicht im Log
+         * steht, WAS die Zielkante ist, ist das nicht zu beantworten - ein
+         * eigenstaendiges Rohr und eine Strasse mit eingebauten Rohren sind
+         * voellig verschiedene Anschlusspartner.
+         *
+         * In CS2 tragen Strassen ihre Versorgung selbst; unsere beiden
+         * Prefabs fuehren `Road` in ihren Layern und duerfen sich deshalb
+         * auch an eine Strasse haengen. Wenn CS2 dafuer die Strasse TEILT,
+         * entsteht dort ein Knoten - und der zieht die Geometrie.
+         *
+         * Deshalb nennt diese Meldung jetzt Prefab, Art und Hoehenlage der
+         * Zielkante. Danach ist es eine Messung statt einer Vermutung.
+         */
+        private void AvMeldeZielart(Versorgungstrasse trasse)
+        {
+            var z = trasse.Zielkante;
+            if (z == Entity.Null || !EntityManager.Exists(z)) return;
+            var name = "unbekannt";
+            if (EntityManager.HasComponent<PrefabRef>(z)
+                && _prefabSystem != null
+                && _prefabSystem.TryGetPrefab<PrefabBase>(
+                    EntityManager.GetComponentData<PrefabRef>(z).m_Prefab,
+                    out var pb) && pb != null)
+                name = pb.name;
+
+            var art = EntityManager.HasComponent<Game.Net.Road>(z)
+                ? "STRASSE"
+                : "eigenstaendige Leitung";
+            var hoehe = "unbekannt";
+            if (EntityManager.HasComponent<Curve>(z))
+            {
+                var b = EntityManager.GetComponentData<Curve>(z).m_Bezier;
+                hoehe = $"Welt-Y {b.a.y:F2}/{b.d.y:F2}";
+            }
+            Mod.log.Info($"PLT-Autoversorgung ZIELART [{trasse.Herkunft}]: "
+                + $"Kante {z}, Prefab '{name}', Art {art}, {hoehe}. Unsere "
+                + "Leitung endet auf Elevation -10. Ist die Art STRASSE, "
+                + "haengen wir uns an eine Strasse mit eingebauten Rohren - "
+                + "dann teilt CS2 sie fuer den Anschluss.");
+        }
+
         private void AvMeldeZielstrasse(Versorgungstrasse trasse)
         {
+            AvMeldeZielart(trasse);
             if (!EntityManager.HasComponent<Edge>(trasse.Zielkante)) return;
             var e = EntityManager.GetComponentData<Edge>(trasse.Zielkante);
             AvMeldeAnschlussknoten(e.m_Start, trasse.Herkunft, "ZIEL");

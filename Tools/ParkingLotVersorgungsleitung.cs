@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Colossal.Serialization.Entities;
 using Game.Common;
 using Unity.Entities;
@@ -100,7 +101,15 @@ namespace ParkingLotTool.Tools
             foreach (var kurs in _avGebaut)
             {
                 var iststrom = kurs.Name != null && kurs.Name.EndsWith("Strom");
-                foreach (var kante in kurs.Kanten)
+                /*
+                 * Die senkrechten Anschlussstuecke gehoeren dazu. Ohne sie
+                 * bleibt beim Abriss ein Rohrstummel nach oben stehen - der
+                 * Befund des Nutzers vom 2026-09-14. Warum sie getrennt
+                 * gefuehrt werden, steht bei `AvKurs.Anschlussstuecke`.
+                 */
+                var alleKanten = new List<Entity>(kurs.Kanten);
+                alleKanten.AddRange(kurs.Anschlussstuecke);
+                foreach (var kante in alleKanten)
                 {
                     if (kante == Entity.Null || !EntityManager.Exists(kante))
                         continue;

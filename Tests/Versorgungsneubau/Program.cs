@@ -92,6 +92,35 @@ namespace ParkingLotTool.Tools {
    Check(_avAbrissKanten.Count==0&&_avAbrissTraeger==Entity.Null,"fertiger Auftrag bereinigt");
    AvMerkeAbriss(lot,carrier);AvMerkeAbriss(Entity.Null,Entity.Null);
    Check(AvAbrissFertig(),"normaler Neubau erbt keinen alten Abrissauftrag");
+
+   // KNOTENWARTEN - die Absturzursache vom 2026-09-14.
+   //
+   // Der Aufraeumer markiert mit Absicht nur KANTEN; Knoten selbst zu
+   // markieren war der Absturz vom 2026-09-10. CS2 raeumt die verwaisten
+   // Knoten danach selbst ab, aber ein paar Frames spaeter. Faengt der
+   // Neubau in diesem Fenster an, sucht GenerateEdgesSystem den Knoten des
+   // Kursendes ueber die POSITION - und findet genau den sterbenden, denn
+   // die neue Leitung beginnt dort, wo die alte begann.
+   //
+   // Geprueft werden beide Gestalten des Fensters: der schon als geloescht
+   // markierte Knoten und der noch unauffaellige ohne jede Kante.
+   var altKante=new Entity(50);var unser=new Entity(51);var strasse=new Entity(52);
+   EntityManager.Add(altKante,new Edge{m_Start=unser,m_End=strasse});
+   EntityManager.Add(altKante,new ParkingLotVersorgungsleitung{Lot=lot,Carrier=carrier});
+   var unserPuffer=new List<ConnectedEdge>{new(){m_Edge=altKante}};
+   EntityManager.Add(unser,unserPuffer);
+   EntityManager.Add(strasse,new List<ConnectedEdge>{new(){m_Edge=altKante},new(){m_Edge=street}});
+   AvMerkeAbriss(lot,carrier);
+   Check(_avAbrissKnoten.Contains(unser)&&_avAbrissKnoten.Contains(strasse),
+     "beide Endknoten der alten Leitung werden gemerkt");
+   EntityManager.Data.Remove(altKante);
+   EntityManager.Add(unser,new Deleted());
+   Check(!AvAbrissFertig(),"als geloescht markierter Endknoten haelt den Neubau auf");
+   EntityManager.Data[unser].Remove(typeof(Deleted));unserPuffer.Clear();
+   Check(!AvAbrissFertig(),"Endknoten ohne Kante haelt den Neubau auf, auch ohne Deleted");
+   EntityManager.Data.Remove(unser);
+   Check(AvAbrissFertig(),"lebender Strassenknoten mit Kanten gibt den Neubau frei");
+   Check(_avAbrissKnoten.Count==0,"fertiger Auftrag bereinigt auch die Knoten");
    Console.WriteLine($"Versorgungsneubau: {count} Pruefungen, 0 Fehler.");
   }
  }

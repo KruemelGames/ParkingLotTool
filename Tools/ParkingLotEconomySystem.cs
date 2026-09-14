@@ -91,6 +91,7 @@ namespace ParkingLotTool.Tools
         internal const int UpkeepBasis = 65536;
 
         private EntityQuery _lots;
+        private EntityQuery _begleiter;
         private EntityQuery _parkingPrefabSources;
         private PrefabSystem _prefabSystem;
         private Entity _roadsService = Entity.Null;
@@ -123,6 +124,21 @@ namespace ParkingLotTool.Tools
                     ComponentType.ReadOnly<Temp>(),
                 },
             });
+            _begleiter = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<ParkingLotBuildingEconomyEnabled>(),
+                    ComponentType.ReadOnly<ParkingLotPartRelation>(),
+                    ComponentType.ReadOnly<Building>(),
+                    ComponentType.ReadOnly<PrefabRef>(),
+                },
+                None = new[]
+                {
+                    ComponentType.ReadOnly<Deleted>(),
+                    ComponentType.ReadOnly<Temp>(),
+                },
+            });
             _parkingPrefabSources = GetEntityQuery(
                 ComponentType.ReadOnly<ParkingFacilityData>(),
                 ComponentType.ReadOnly<ServiceObjectData>());
@@ -132,6 +148,10 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            // Absturzsperre, keine Wirtschaftsarbeit - deshalb VOR dem
+            // Hauptschalter. Siehe EntferneUpdateFrame.
+            RaeumeUpdateFrames();
+
             /*
              * Den Wechsel MELDEN, nicht nur befolgen. Am 2026-08-27 liess sich
              * aus dem Log nicht ablesen, ob dieses System den Schalter
@@ -152,9 +172,38 @@ namespace ParkingLotTool.Tools
                 return;
             }
             if (!TryResolveRoadsService()) return;
+            var begleiter = BegleiterJeLot();
             using var lots = _lots.ToEntityArray(Allocator.Temp);
             for (var i = 0; i < lots.Length; i++)
-                UpdateLot(lots[i]);
+                UpdateLot(lots[i], begleiter);
+        }
+
+        /**
+         * Ordnet jedem Parkplatz seinen unsichtbaren Begleiter zu.
+         *
+         * Die Beziehung steht am Begleiter (`ParkingLotPartRelation.Lot`),
+         * nicht am Parkplatz - deshalb wird sie hier einmal je Durchgang
+         * umgedreht statt je Parkplatz einzeln gesucht.
+         *
+         * Die Abfrage verlangt neben der Beziehung ausdruecklich den Marker
+         * `ParkingLotBuildingEconomyEnabled` UND `Building`: die Beziehung
+         * allein traegt jedes Bauteil, auch jeder Aufkleber.
+         */
+        private System.Collections.Generic.Dictionary<Entity, Entity>
+            BegleiterJeLot()
+        {
+            var tabelle =
+                new System.Collections.Generic.Dictionary<Entity, Entity>();
+            if (_begleiter.IsEmptyIgnoreFilter) return tabelle;
+            using var alle = _begleiter.ToEntityArray(Allocator.Temp);
+            for (var i = 0; i < alle.Length; i++)
+            {
+                var relation = EntityManager
+                    .GetComponentData<ParkingLotPartRelation>(alle[i]);
+                if (relation.Lot != Entity.Null)
+                    tabelle[relation.Lot] = alle[i];
+            }
+            return tabelle;
         }
 
         /**
@@ -177,23 +226,37 @@ namespace ParkingLotTool.Tools
          */
         private void Abschalten()
         {
+            // Der Nutzungsanteil sitzt seit dem 2026-09-14 am Begleiter, denn
+            // dort wird auch abgerechnet. Alte Parkplaetze tragen ihn noch an
+            // der Flaeche; beide werden hier auf null gezogen, damit ein
+            // Ausschalten auch in einem alten Spielstand wirklich wirkt.
             if (_lots.IsEmptyIgnoreFilter) return;
             using var lots = _lots.ToEntityArray(Allocator.Temp);
+            var begleiter = BegleiterJeLot();
             var gestoppt = 0;
             for (var i = 0; i < lots.Length; i++)
             {
                 var lot = lots[i];
-                if (!EntityManager.HasComponent<ServiceUsage>(lot)) continue;
-                var usage = EntityManager.GetComponentData<ServiceUsage>(lot);
-                if (usage.m_Usage == 0f) continue;
-                usage.m_Usage = 0f;
-                EntityManager.SetComponentData(lot, usage);
-                gestoppt++;
+                if (begleiter.TryGetValue(lot, out var b) && NullenFalls(b))
+                    gestoppt++;
+                if (NullenFalls(lot)) gestoppt++;
             }
             if (gestoppt > 0)
                 Mod.log.Info("PLT-Wirtschaft aus: Unterhalt an " + gestoppt
-                    + " Parkplaetzen auf null gesetzt. Die eingestellten "
+                    + " Stellen auf null gesetzt. Die eingestellten "
                     + "Gebuehren bleiben gespeichert.");
+        }
+
+        /** Zieht einen vorhandenen Nutzungsanteil auf null. */
+        private bool NullenFalls(Entity e)
+        {
+            if (e == Entity.Null || !EntityManager.Exists(e)
+                || !EntityManager.HasComponent<ServiceUsage>(e)) return false;
+            var usage = EntityManager.GetComponentData<ServiceUsage>(e);
+            if (usage.m_Usage == 0f) return false;
+            usage.m_Usage = 0f;
+            EntityManager.SetComponentData(e, usage);
+            return true;
         }
 
         /**
@@ -223,7 +286,17 @@ namespace ParkingLotTool.Tools
             return false;
         }
 
-        private void UpdateLot(Entity lot)
+        /** Nimmt allen Parkplaetzen eine noch anhaengende UpdateFrame ab. */
+        private void RaeumeUpdateFrames()
+        {
+            if (_lots.IsEmptyIgnoreFilter) return;
+            using var lots = _lots.ToEntityArray(Allocator.Temp);
+            for (var i = 0; i < lots.Length; i++)
+                EntferneUpdateFrame(lots[i]);
+        }
+
+        private void UpdateLot(Entity lot,
+            System.Collections.Generic.Dictionary<Entity, Entity> begleiter)
         {
             var prefab = EntityManager.GetComponentData<PrefabRef>(lot).m_Prefab;
             if (!EnsureServiceObject(prefab))
@@ -278,7 +351,60 @@ namespace ParkingLotTool.Tools
                     + economy.ParkingFee + " vorbelegt.");
             }
 
-            RestoreRuntimeComponents(lot, economy);
+            begleiter.TryGetValue(lot, out var b);
+            RestoreRuntimeComponents(lot, b, economy);
+        }
+
+        /**
+         * NIEMALS EINE `UpdateFrame` AN DER FLAECHE. SIE IST TOEDLICH.
+         *
+         * Bis zum 2026-09-14 hat dieses System der Parkplatzflaeche eine
+         * `UpdateFrame` angehaengt, weil `CityServiceUpkeepSystem` sie in
+         * seiner Abfrage verlangt. Das war der Absturz beim Edit.
+         *
+         * `UpdateGroupSystem` sammelt naemlich JEDE Entity mit `UpdateFrame`
+         * ein, sobald sie `Created` oder `Deleted` ist, und fragt sie nach
+         * ihrer Art. Fahrzeug, Baum, Gebaeude, Netzknoten, Kante, Spur, Firma,
+         * Haushalt, Buerger, Haustier - mehr kennt es nicht. Eine Flaeche ist
+         * nichts davon, und dann meldet es das mit 38 `Debug.Log`-Zeilen aus
+         * einem Burst-Job auf einem Arbeitsthread heraus. Das bringt Mono um.
+         *
+         * GEMESSEN AM 2026-09-14: Player.log endet mit "UpdateFrame added to
+         * unsupported type" und 37 Komponentenzeilen; die abgerissene Flaeche
+         * hatte 36 Komponenten, mit `Deleted` sind es 37.
+         *
+         * Abgerechnet wird deshalb am Begleiter. Hier wird nur noch
+         * AUFGERAEUMT: Parkplaetze aus einem Spielstand VOR dieser Fassung
+         * tragen die Komponente noch, und solange sie dranhaengt, stuerzt das
+         * Spiel beim naechsten Loeschen ab - auch beim Vanilla-Bulldozer, wo
+         * wir gar nicht dazwischenkommen. Deshalb wird sie hier abgenommen,
+         * lange bevor jemand den Parkplatz anfasst.
+         *
+         * Der Preis ist ehrlich zu nennen: so ein alter Parkplatz zahlt ab
+         * jetzt keinen Unterhalt mehr, denn sein Begleiter hat den noetigen
+         * Archetyp nicht - der entsteht einmalig beim Anmelden des Prefabs.
+         * Einmal "Bearbeiten" und neu bauen, und er rechnet wieder mit. Das
+         * ist derselbe Fall, den RestoreRuntimeComponents weiter unten schon
+         * fuer den alten Flaechenarchetyp beschreibt.
+         *
+         * `Created` und `Deleted` schliesst die Abfrage dieses Systems bereits
+         * aus; `Created` wird hier trotzdem geprueft, weil das Entfernen einer
+         * Shared Component den Archetyp wechselt und genau das im selben Frame
+         * nicht passieren soll, in dem CS2 die Entity noch einsortiert.
+         */
+        private void EntferneUpdateFrame(Entity lot)
+        {
+            if (!EntityManager.HasComponent<UpdateFrame>(lot)) return;
+            if (EntityManager.HasComponent<Created>(lot)
+                || EntityManager.HasComponent<Deleted>(lot)
+                || EntityManager.HasComponent<Temp>(lot)) return;
+            EntityManager.RemoveComponent<UpdateFrame>(lot);
+            Mod.log.Info("PLT-Wirtschaft: UpdateFrame von Lot " + lot.Index
+                + " abgenommen. Eine Flaeche darf sie nicht tragen - "
+                + "UpdateGroupSystem stuerzt daran ab. Der Unterhalt laeuft "
+                + "jetzt ueber den Begleiter; dieser Parkplatz stammt aus "
+                + "einem aelteren Bau und zahlt erst nach einem Neubau "
+                + "wieder mit.");
         }
 
         /**
@@ -310,7 +436,11 @@ namespace ParkingLotTool.Tools
             else EntityManager.AddComponentData(lot, economy);
 
             if (Mod.WirtschaftAn && TryResolveRoadsService())
-                RestoreRuntimeComponents(lot, economy);
+            {
+                EntferneUpdateFrame(lot);
+                BegleiterJeLot().TryGetValue(lot, out var b);
+                RestoreRuntimeComponents(lot, b, economy);
+            }
             Mod.log.Info("PLT-Wirtschaft: Ersatz-Lot " + lot.Index + " aus "
                 + lanes + " echten Parkspuren neu geeicht: " + capacity
                 + " Plätze, Unterhalt " + economy.Upkeep + ", Parkgebühr "
@@ -414,11 +544,69 @@ namespace ParkingLotTool.Tools
             return true;
         }
 
-        private void RestoreRuntimeComponents(Entity lot,
+        /**
+         * Dasselbe fuer das Begleiter-Prefab, denn dort faellt der Unterhalt
+         * seit dem 2026-09-14 an.
+         *
+         * `ServiceUpkeepData` allein reicht fuer die Anzeige, aber nicht fuer
+         * die echte Stadtausgabe: das Budgetsystem ordnet Geldunterhalt ueber
+         * `ServiceObjectData` einem Dienst zu. Ohne diesen Eintrag zahlte der
+         * Parkplatz zwar laut Fenster, aber nicht laut Stadtkasse.
+         *
+         * Die Namenspruefung ist dieselbe Vorsichtsmassnahme wie oben: es darf
+         * unter keinen Umstaenden ein fremdes Gebaeudeprefab getroffen werden.
+         */
+        private bool EnsureBegleiterDienstobjekt(Entity prefab)
+        {
+            if (prefab == Entity.Null || !EntityManager.Exists(prefab))
+                return false;
+            if (!_prefabSystem.TryGetPrefab<PrefabBase>(prefab, out var p)
+                || p == null
+                || p.name != ParkingLotBuildingEconomySystem.CompanionPrefabName)
+                return false;
+            if (!EntityManager.HasComponent<CollectedServiceBuildingBudgetData>(
+                    prefab))
+                return false;
+            if (!EntityManager.HasComponent<ServiceObjectData>(prefab))
+            {
+                EntityManager.AddComponentData(prefab,
+                    new ServiceObjectData { m_Service = _roadsService });
+                Mod.log.Info("PLT-Wirtschaft: Begleiter-Prefab dem "
+                    + "Roads-Dienst zugeordnet.");
+            }
+            return true;
+        }
+
+        /**
+         * Setzt den Nutzungsanteil, aus dem `CityServiceUpkeepSystem` den
+         * wirklichen Unterhalt rechnet - AM BEGLEITER.
+         *
+         * Der Parkplatz selbst ist eine Flaeche und darf die dafuer noetige
+         * `UpdateFrame` nicht tragen (siehe EntferneUpdateFrame). Der
+         * Begleiter ist ein echtes Gebaeude, traegt sie seit jeher und wird
+         * von CS2 anstandslos einsortiert.
+         *
+         * Gerechnet wird weiterhin aus dem Wert, der am PARKPLATZ gespeichert
+         * ist. Der Begleiter ist nur der Traeger der Abrechnung, nicht die
+         * Quelle der Zahl - der Bauzettel bleibt die Wahrheit.
+         */
+        private void RestoreRuntimeComponents(Entity lot, Entity begleiter,
                                                ParkingLotEconomyData economy)
         {
-            if (!EntityManager.HasComponent<CityServiceUpkeep>(lot)
-                || !EntityManager.HasBuffer<Game.Economy.Resources>(lot))
+            if (begleiter == Entity.Null || !EntityManager.Exists(begleiter))
+            {
+                Melde(lot, "es gibt noch keinen Begleiter");
+                return;
+            }
+            if (!EnsureBegleiterDienstobjekt(
+                    EntityManager.GetComponentData<PrefabRef>(begleiter)
+                        .m_Prefab))
+            {
+                Melde(lot, "das Begleiter-Prefab taugt nicht als Dienstobjekt");
+                return;
+            }
+            if (!EntityManager.HasComponent<CityServiceUpkeep>(begleiter)
+                || !EntityManager.HasBuffer<Game.Economy.Resources>(begleiter))
             {
                 /*
                  * Diese beiden Typen muessen aus CityServiceBuilding im
@@ -437,7 +625,8 @@ namespace ParkingLotTool.Tools
                  */
                 if (_archetypBemaengelt.Add(lot))
                 {
-                    Mod.log.Warn("PLT-Wirtschaft: Lot " + lot.Index
+                    Mod.log.Warn("PLT-Wirtschaft: Begleiter "
+                        + begleiter.Index + " von Lot " + lot.Index
                         + " hat den alten Archetyp ohne CityServiceUpkeep "
                         + "und bleibt ohne Unterhalt. Vor dieser Fassung "
                         + "gebaut - neu bauen, dann rechnet er mit.");
@@ -445,33 +634,31 @@ namespace ParkingLotTool.Tools
                 return;
             }
 
+            // Eine Flaeche, die noch ihren alten Unterhalt traegt, wuerde sonst
+            // doppelt zahlen, sobald der Begleiter uebernimmt.
+            NullenFalls(lot);
+
             var usage = (float)economy.Upkeep / UpkeepBasis;
-            if (!EntityManager.HasComponent<ServiceUsage>(lot))
+            if (!EntityManager.HasComponent<ServiceUsage>(begleiter))
             {
-                EntityManager.AddComponentData(lot,
+                EntityManager.AddComponentData(begleiter,
                     new ServiceUsage { m_Usage = usage });
-                Mod.log.Info("PLT-Wirtschaft: ServiceUsage an Lot "
-                    + lot.Index + " gesetzt (" + economy.Upkeep + ").");
+                Mod.log.Info("PLT-Wirtschaft: ServiceUsage an Begleiter "
+                    + begleiter.Index + " von Lot " + lot.Index + " gesetzt ("
+                    + economy.Upkeep + ").");
             }
             else
             {
-                var current = EntityManager.GetComponentData<ServiceUsage>(lot);
+                var current = EntityManager
+                    .GetComponentData<ServiceUsage>(begleiter);
                 if (current.m_Usage != usage)
                 {
                     current.m_Usage = usage;
-                    EntityManager.SetComponentData(lot, current);
-                    Mod.log.Info("PLT-Wirtschaft: ServiceUsage an Lot "
-                        + lot.Index + " nach dem Laden korrigiert ("
-                        + economy.Upkeep + ").");
+                    EntityManager.SetComponentData(begleiter, current);
+                    Mod.log.Info("PLT-Wirtschaft: ServiceUsage an Begleiter "
+                        + begleiter.Index + " von Lot " + lot.Index
+                        + " nachgezogen (" + economy.Upkeep + ").");
                 }
-            }
-
-            if (!EntityManager.HasComponent<UpdateFrame>(lot))
-            {
-                EntityManager.AddSharedComponent(lot,
-                    new UpdateFrame((uint)lot.Index & 0xFu));
-                Mod.log.Info("PLT-Wirtschaft: UpdateFrame an Lot "
-                    + lot.Index + " gesetzt.");
             }
         }
 

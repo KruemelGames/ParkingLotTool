@@ -266,6 +266,20 @@ namespace ParkingLotTool
             // reisst das Spiel ab.
             updateSystem.UpdateAt<ParkingLotCleanupSystem>(
                 SystemUpdatePhase.Modification3);
+            /*
+             * MODIFICATION2, NICHT 3 - UND DAS IST DER GANZE WITZ.
+             *
+             * `Game.Net.ReferencesSystem` laeuft in `Modification2B` und nimmt
+             * eine geloeschte Kante aus den Puffern beider Endknoten. Wer
+             * spaeter loescht, laesst dort Verweise auf eine Entity zurueck,
+             * die es gleich nicht mehr gibt - und genau darueber stuerzt CS2
+             * ab, wenn es den verwaisten Knoten abraeumt.
+             *
+             * Die vollstaendige Herleitung samt Messung steht im Kopf von
+             * ParkingLotLeitungsabriss.cs.
+             */
+            updateSystem.UpdateAt<ParkingLotLeitungsabrissSystem>(
+                SystemUpdatePhase.Modification2);
             // Direkt HINTER `ParkingLaneDataSystem`, das in derselben Phase
             // laeuft (Game.Common.SystemOrder Zeile 251) und den Komfortwert
             // unserer Parkspuren bei jedem Nachrechnen auf 0 setzt, weil unser

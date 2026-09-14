@@ -163,13 +163,23 @@ namespace ParkingLotTool.Tools
         private static void Rette()
         {
             var gerettet = 0;
+            /*
+             * JEDER ABSTURZ BEKOMMT SEINEN EIGENEN STEMPEL.
+             *
+             * Der Name war bis zum 2026-09-14 fest. Zwei Abstuerze kurz
+             * hintereinander, und der zweite hat die Spur des ersten
+             * ueberschrieben - beim Bulldozer-Absturz an diesem Abend genau
+             * so geschehen. Eine geloeschte Spur ist schlimmer als keine, weil
+             * man sie fuer vorhanden haelt.
+             */
+            var stempel = DateTime.Now.ToString("yyyyMMdd-HHmmss");
             try
             {
                 var spur = Path.Combine(Ordner, "ParkingLotTool-schritt.log");
                 if (File.Exists(spur))
                 {
-                    File.Copy(spur, Path.Combine(Ordner, Rettung + "schritte.log"),
-                        true);
+                    File.Copy(spur, Path.Combine(Ordner,
+                        Rettung + stempel + "-schritte.log"), true);
                     gerettet++;
                 }
 
@@ -183,7 +193,8 @@ namespace ParkingLotTool.Tools
                         .FirstOrDefault();
                     if (juengste == null) continue;
                     File.Copy(juengste, Path.Combine(Ordner,
-                        Rettung + Path.GetFileName(juengste)), true);
+                        Rettung + stempel + "-" + Path.GetFileName(juengste)),
+                        true);
                     gerettet++;
                 }
 

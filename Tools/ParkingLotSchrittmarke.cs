@@ -36,11 +36,15 @@ namespace ParkingLotTool.Tools
         /**
          * Soviele Schritte bleiben stehen.
          *
-         * Zwanzig, weil die interessante Frage "was war unmittelbar davor?"
-         * lautet und nicht "was war vor einer Stunde?". Die Datei bleibt damit
-         * unter zwei Kilobyte und das Schreiben unter einer Millisekunde.
+         * Waren zwanzig. Das hat am 2026-09-14 nicht gereicht: der Abriss
+         * eines mittleren Parkplatzes schreibt allein acht Zeilen, und die
+         * Bauschritte davor waren beim Absturz schon herausgerutscht. Man sah
+         * das Ende und nicht den Weg dorthin.
+         *
+         * Sechzig sind rund vier Kilobyte. Geschrieben wird weiterhin nur bei
+         * einem neuen Schritt und nie je Bild.
          */
-        private const int Schritte = 20;
+        private const int Schritte = 60;
 
         private static readonly string[] _ring = new string[Schritte];
         private static int _naechste;

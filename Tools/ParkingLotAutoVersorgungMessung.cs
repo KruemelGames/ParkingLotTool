@@ -30,6 +30,8 @@ namespace ParkingLotTool.Tools
             foreach (var kurs in _avKurse)
             {
                 kurs.Kanten.Clear();
+                kurs.Anschlussstuecke.Clear();
+                var fremdeStuecke = new List<string>();
                 foreach (var definition in kurs.Definitionen)
                 if (EntityManager.Exists(definition))
                 {
@@ -59,7 +61,59 @@ namespace ParkingLotTool.Tools
                     for (var i = 1; i < kurs.Punkte.Count; i++)
                         if (VersorgungskursPruefung.Abschnitt(kurs.Punkte[i - 1].xz, kurs.Punkte[i].xz,
                             b.a.xz, b.b.xz, b.c.xz, b.d.xz, out abschnitt)) { segment = i - 1; break; }
-                    if (segment < 0) continue;
+                    if (segment < 0)
+                    {
+                        /*
+                         * SENKRECHT HEISST IN DER DRAUFSICHT: KEINE LAENGE.
+                         *
+                         * Unsere Leitung liegt auf -10 m, die Rohre der Stadt
+                         * liegen hoeher. Fuer den Anschluss baut CS2 ein
+                         * kurzes SENKRECHTES Stueck dazwischen. Die Zuordnung
+                         * oben rechnet aber mit `Abschnitt` in X und Z - und
+                         * dort hat so ein Stueck keine Laenge, Anfang und Ende
+                         * liegen uebereinander. Es faellt durch, bekommt nie
+                         * die Markierung `ParkingLotVersorgungsleitung` und
+                         * bleibt beim Abriss stehen.
+                         *
+                         * Der Nutzer am 2026-09-14, nachdem der Knoten weg war
+                         * und das Stueck nicht: *"Ein Beispiel: ich sage
+                         * loesche die Zahl 3.1274 und du kommst mit 3."*
+                         *
+                         * Dieselbe Fehlerklasse wie schon zweimal in diesem
+                         * Projekt: in der Draufsicht gemessen, wo es um die
+                         * Hoehe geht.
+                         *
+                         * Die Schranke ist eng: unser eigenes Prefab, frisch
+                         * gebaut, in der Draufsicht unter einem Meter, mit
+                         * echtem Hoehenunterschied, und ein Ende nahe an
+                         * einem Punkt unseres eigenen Kurses.
+                         */
+                        var flach = math.distance(b.a.xz, b.d.xz);
+                        var hoch = math.abs(b.a.y - b.d.y);
+                        var nah = false;
+                        for (var i = 0; i < kurs.Punkte.Count; i++)
+                        {
+                            var pk = kurs.Punkte[i].xz;
+                            if (math.distance(b.a.xz, pk) < 2f
+                                || math.distance(b.d.xz, pk) < 2f)
+                            { nah = true; break; }
+                        }
+                        var tempStueck = EntityManager.GetComponentData<Temp>(e);
+                        var frisch = tempStueck.m_Original == Entity.Null
+                            && (tempStueck.m_Flags
+                                & (TempFlags.Delete | TempFlags.Cancel)) == 0;
+                        if (frisch && nah && flach < 1f && hoch > 0.5f)
+                        {
+                            kurs.Anschlussstuecke.Add(e);
+                            continue;
+                        }
+                        // Alles andere unseres Prefabs nur MELDEN. Falls
+                        // weiter etwas stehen bleibt, steht hier, was es ist.
+                        if (frisch && fremdeStuecke.Count < 4)
+                            fremdeStuecke.Add($"{e} (waagerecht {flach:F2} m, "
+                                + $"senkrecht {hoch:F2} m, nah={(nah ? 1 : 0)})");
+                        continue;
+                    }
                     passend++;
                     var temp = EntityManager.GetComponentData<Temp>(e);
                     if (temp.m_Original != Entity.Null
@@ -76,6 +130,15 @@ namespace ParkingLotTool.Tools
                     fertig &= VersorgungskursPruefung.Vollstaendig(
                         math.distance(kurs.Punkte[i].xz, kurs.Punkte[i + 1].xz), abschnitte[i]);
                 if (fertig) voll++;
+                if (kurs.Anschlussstuecke.Count > 0 || fremdeStuecke.Count > 0)
+                    Mod.log.Info($"PLT-Autoversorgung ANSCHLUSSSTUECKE "
+                        + $"[{kurs.Name}]: {kurs.Anschlussstuecke.Count} "
+                        + "senkrechte(s) Stueck(e) als unseres uebernommen"
+                        + (fremdeStuecke.Count == 0 ? "."
+                            : "; nicht zugeordnet: "
+                              + string.Join(", ", fremdeStuecke)
+                              + ". Bleibt davon etwas stehen, steht hier, "
+                              + "was es ist."));
                 details.Add($"{kurs.Name}: {kurs.Kanten.Count} Kanten, voll={(fertig ? 1 : 0)}, "
                     + $"Prefab-Temp insgesamt {prefabTemp}, naechste {naechste}");
             }

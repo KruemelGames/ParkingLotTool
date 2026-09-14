@@ -70,7 +70,6 @@ namespace ParkingLotTool.Tools
         {
             base.OnCreate();
             _barrier = World.GetOrCreateSystemManaged<ModificationBarrier3>();
-            InitialisiereVersorgungsaufraeumung();
 
             _deletedLotQuery = GetEntityQuery(new EntityQueryDesc
             {
@@ -137,16 +136,21 @@ namespace ParkingLotTool.Tools
             var buffer = _barrier.CreateCommandBuffer();
             var (marked, remaining) = MarkRelatedParts(buffer, work.Lot);
             /*
-             * DIE LEITUNGEN GEHOEREN ZUM ABRISS, NICHT ZU DEN TEILEN.
+             * DIE LEITUNGEN WERDEN HIER NICHT MEHR ANGEFASST.
              *
-             * Sie tragen bewusst keine `ParkingLotPartRelation` - siehe
-             * `ParkingLotVersorgungsleitung`. Deshalb ein eigener Griff, aber
-             * dieselbe Portionsrechnung: ihre Zahl zaehlt in `marked` mit,
-             * damit ein grosser Abriss nicht in einem Frame stattfindet und
-             * der Traeger erst faellt, wenn wirklich nichts mehr uebrig ist.
+             * Sie fielen frueher in derselben Portion wie die uebrigen Teile.
+             * Das war die Absturzursache: `Modification3` ist zu spaet, um
+             * eine NETZKANTE zu loeschen - `Game.Net.ReferencesSystem` laeuft
+             * in `Modification2B` und bekommt sie nie zu sehen. Seit dem
+             * 2026-09-14 erledigt das `ParkingLotLeitungsabrissSystem` in
+             * `Modification2`; die vollstaendige Herleitung steht in dessen
+             * Dateikopf.
+             *
+             * Fuer die Portionsrechnung aendert das nichts: die Leitungen
+             * tragen keine `ParkingLotPartRelation` und zaehlten nie in
+             * `remaining` mit. Der Traeger faellt weiterhin erst, wenn kein
+             * relationiertes Teil mehr uebrig ist.
              */
-            marked += MarkiereVersorgungsleitungen(
-                buffer, work.Lot, work.Carrier);
 
             if (marked > 0)
             {
@@ -196,6 +200,11 @@ namespace ParkingLotTool.Tools
             Mod.log.Info("PLT-Aufraeumer: relationsbasierter Abriss vollstaendig; "
                 + (carrierRemoved ? "technischer Traeger entfernt."
                                   : "technischer Traeger war bereits fort."));
+            // "0 uebrig" heisst nur, dass nichts mehr VORGEMERKT wird. Der
+            // Traeger faellt einen Durchgang spaeter - und genau dieser
+            // letzte Schritt war in der Spur bisher unsichtbar.
+            ParkingLotSchrittmarke.Setze("Abriss: fertig, Traeger "
+                + (carrierRemoved ? "entfernt" : "war schon fort"));
         }
 
         private (int Marked, int Remaining) MarkRelatedParts(

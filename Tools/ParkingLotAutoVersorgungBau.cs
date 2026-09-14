@@ -26,6 +26,15 @@ namespace ParkingLotTool.Tools
             /** Haengen BEIDE Enden? Entscheidet, ob dieser Kurs bleibt. */
             internal bool Angeschlossen;
             internal readonly List<Entity> Kanten = new List<Entity>();
+            /**
+             * Die senkrechten Stuecke, mit denen CS2 unsere Leitung an das
+             * hoeher liegende Rohr der Stadt anschliesst.
+             *
+             * Getrennt von `Kanten`, weil an dieser Liste die Abnahme haengt.
+             * Gebraucht werden sie nur zum Markieren - siehe
+             * MarkiereVersorgungsleitungen - damit sie beim Abriss mitgehen.
+             */
+            internal readonly List<Entity> Anschlussstuecke = new List<Entity>();
             internal long StromMax, FrischMax, AbwasserMax;
         }
 
@@ -40,6 +49,7 @@ namespace ParkingLotTool.Tools
          * geltende Regel.
          */
         private AvPhase _avPhase;
+        private AvPhase _avGemeldetePhase = AvPhase.Idle;
         private int _avFrame, _avTempStabil = -1;
         private uint _avSimStart, _avSimLetzteMessung;
         private string _avLetzterBefund;
@@ -156,6 +166,20 @@ namespace ParkingLotTool.Tools
             _avLetzterBefund = null;
         }
 
+        /**
+         * Schreibt jeden Phasenwechsel in die Schrittspur.
+         *
+         * Nur beim Wechsel. Eine Marke je Bild wuerde die Spur in einer
+         * Sekunde vollschreiben und nebenbei die Platte beschaeftigen - die
+         * Warnung im Kopf von ParkingLotSchrittmarke meint genau das.
+         */
+        private void MeldePhase()
+        {
+            if (_avPhase == _avGemeldetePhase) return;
+            _avGemeldetePhase = _avPhase;
+            ParkingLotSchrittmarke.Setze("Versorgung: Phase " + _avPhase);
+        }
+
         private void LegeVersorgungskurs(AvKurs kurs, int abschnitt)
         {
             // Hier ist CS2 am 2026-09-14 abgestuerzt, und am 2026-09-10 in
@@ -193,6 +217,7 @@ namespace ParkingLotTool.Tools
         // true reserviert den Werkzeugdurchlauf bis einschliesslich Apply/Clear.
         private bool PflegeAutoVersorgung()
         {
+            MeldePhase();
             if (_avPhase == AvPhase.Idle) return false;
             var frame = UnityEngine.Time.frameCount;
             var vergangen = frame - _avFrame;
