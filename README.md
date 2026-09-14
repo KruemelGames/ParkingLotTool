@@ -1,4 +1,4 @@
-# Parking Lot Tool
+# Parking Lot Tool (Beta)
 
 A Cities: Skylines II mod that generates a complete, working parking lot inside
 any polygon you draw — bays, aisles, connecting roads, a perimeter road,
