@@ -79,6 +79,12 @@ namespace ParkingLotTool
                 ? "unbekannt"
                 : File.GetLastWriteTime(dll).ToString("yyyy-MM-dd HH:mm:ss");
             log.Info($"===== Parking Lot Tool geladen =====");
+            // Die Version gehoert in die ERSTE Zeile jedes Berichts. Seit
+            // Fehler ueber GitHub-Issues kommen, ist "welche Fassung hattest
+            // du?" die erste Rueckfrage - und die kostet einen halben Tag
+            // Wartezeit, wenn sie nicht im Log steht.
+            log.Info($"  Version:    "
+                + $"{typeof(Mod).Assembly.GetName().Version}");
             log.Info($"  DLL:        {dll}");
             // Im Abzug 01:52 war Assembly.Location leer; Dateizeiten allein
             // unterschieden den geladenen Stand nicht vom neueren Quelltext.
@@ -280,6 +286,17 @@ namespace ParkingLotTool
              */
             updateSystem.UpdateAt<ParkingLotLeitungsabrissSystem>(
                 SystemUpdatePhase.Modification2);
+            /*
+             * UIUpdate, und das ist keine Geschmacksfrage.
+             *
+             * `NameSystem.SetCustomName` braucht die `EndFrameBarrier`. Deren
+             * Fenster oeffnet `AllowBarrier<EndFrameBarrier>` (SystemOrder
+             * Zeile 62); `ToolSystem` laeuft in Zeile 58, also davor, und
+             * `UIUpdateSystem` in Zeile 67, also danach. Aus dem Werkzeug
+             * heraus ging es deshalb nie.
+             */
+            updateSystem.UpdateAt<ParkingLotStrassennameSystem>(
+                SystemUpdatePhase.UIUpdate);
             // Direkt HINTER `ParkingLaneDataSystem`, das in derselben Phase
             // laeuft (Game.Common.SystemOrder Zeile 251) und den Komfortwert
             // unserer Parkspuren bei jedem Nachrechnen auf 0 setzt, weil unser

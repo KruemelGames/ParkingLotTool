@@ -68,6 +68,8 @@ namespace ParkingLotTool.Tools
          */
         private const int ZoningNamenAbstand = 30;
         private const int ZoningNamenDurchgaenge = 12;
+        /** Wie viele Durchgaenge hintereinander nichts mehr zu tun war. */
+        private int _zoningNamenRuhig;
         private int _zoningNamenFrames;
         private int _zoningNamenRest;
         private Entity _zoningNamenTraeger = Entity.Null;
@@ -116,8 +118,24 @@ namespace ParkingLotTool.Tools
             _zoningNamenRest--;
             var offen = BenenneZoningstrassen(_zoningNamenTraeger);
 
-            // Fertig, sobald nichts mehr offen ist - oder wenn die
-            // Durchgaenge aufgebraucht sind. Beide Faelle werden gemeldet.
+            /*
+             * EIN LEERER DURCHGANG IST NOCH KEIN ERFOLG.
+             *
+             * Bis zum 2026-09-15 war er einer, und die Wache schaltete sich
+             * nach dem ersten ab. Das war doppelt falsch: der Name kam
+             * ueberhaupt nicht an (siehe Unsichtbarername), und selbst wenn
+             * er angekommen waere, bildet CS2 den Strassenzug spaeter neu -
+             * dann entsteht eine NEUE Entity ohne Namen, und niemand schaut
+             * mehr hin.
+             *
+             * Jetzt zaehlt `offen` echte Rueckfragen: Strassenzuege ohne
+             * `CustomName`. Erst wenn zwei Durchgaenge hintereinander nichts
+             * mehr zu tun hatten, ist es stabil - einer koennte zufaellig in
+             * eine Neubildung gefallen sein.
+             */
+            if (offen == 0 && ++_zoningNamenRuhig < 2) return;
+            if (offen > 0) _zoningNamenRuhig = 0;
+
             if (offen == 0)
             {
                 Mod.log.Info("PLT-Zoningstrasse: alle Strassenzuege ohne "
@@ -125,6 +143,7 @@ namespace ParkingLotTool.Tools
                     + (ZoningNamenDurchgaenge - _zoningNamenRest)
                     + " Durchgang/Durchgaengen fertig).");
                 _zoningNamenRest = 0;
+                _zoningNamenRuhig = 0;
                 _zoningNamenTraeger = Entity.Null;
                 return;
             }
@@ -194,6 +213,7 @@ namespace ParkingLotTool.Tools
             _zoningBlockFrames = ZoningSeitenWartezeit + ZoningBlockWartezeit;
             _zoningNamenTraeger = traeger;
             _zoningNamenRest = ZoningNamenDurchgaenge;
+            _zoningNamenRuhig = 0;
             _zoningNamenFrames = ZoningSeitenWartezeit + ZoningNamenAbstand;
         }
 

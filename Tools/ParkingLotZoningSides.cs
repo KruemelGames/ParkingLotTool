@@ -281,27 +281,44 @@ namespace ParkingLotTool.Tools
          * angefasst.
          */
         /**
-         * Ein geschuetztes Leerzeichen, U+00A0.
+         * Ein Zeichen ohne Breite, U+200B - NICHT das geschuetzte
+         * Leerzeichen.
+         *
+         * HIER STAND U+00A0, UND DAMIT HAT ES NIE FUNKTIONIERT.
+         *
+         * `Game.UI.NameSystem.SetCustomName` (Zeile 207) faengt den Fall ab:
+         *
+         *     if (string.IsNullOrWhiteSpace(name))
+         *     {   // Namen LOESCHEN und Eintrag entfernen
+         *         entityCommandBuffer.RemoveComponent<CustomName>(entity);
+         *         m_Names.Remove(entity);
+         *     }
+         *     else { m_Names[entity] = name; ... }
+         *
+         * Ein geschuetztes Leerzeichen IST fuer .NET ein Leerzeichen -
+         * `char.IsWhiteSpace('\u00A0')` ist wahr. CS2 nahm also jedes Mal
+         * den ersten Zweig und hat den Namen GELOESCHT statt ihn zu setzen.
+         * Danach vergibt das Spiel wieder seinen eigenen, "Gasse 12".
+         *
+         * U+200B ist dagegen ein Formatzeichen, kein Leerzeichen:
+         * `IsNullOrWhiteSpace` ist damit falsch, der Name wird gespeichert -
+         * und er hat keine Breite, ist also genauso unsichtbar.
          *
          * ALS ZEICHENCODE, NICHT ALS LITERAL: direkt in die Quelle
          * geschrieben waere es unsichtbar, und niemand koennte spaeter
          * erkennen, warum dort scheinbar ein leerer Text steht.
          */
-        private static readonly string Unsichtbarername
-            = ((char)0x00A0).ToString();
+        internal static readonly string Unsichtbarername
+            = ((char)0x200B).ToString();
 
-        /**
-         * WELCHE SCHON BENANNT SIND, WIRD GEMERKT - nicht am Aggregat
-         * abgelesen.
+        /*
+         * HIER STAND `_zoningBenannteAggregate`.
          *
-         * Der Grund ist derselbe, aus dem es die Namenswache ueberhaupt
-         * gibt: bildet CS2 den Strassenzug neu, entsteht eine NEUE Entity.
-         * Die steht dann nicht in dieser Liste und gilt damit richtigerweise
-         * wieder als unbenannt.
+         * Eine Liste "die habe ich schon angefasst". Sie war die Grundlage
+         * fuer die Erfolgsmeldung der Wache - und damit eine Selbstauskunft:
+         * angefasst heisst nicht angenommen. Gefragt wird jetzt CS2 selbst,
+         * ueber `CustomName`. Siehe BenenneZoningstrassen.
          */
-        private readonly System.Collections.Generic.HashSet<Unity.Entities.Entity>
-            _zoningBenannteAggregate =
-                new System.Collections.Generic.HashSet<Unity.Entities.Entity>();
 
         /**
          * Rueckgabe: wie viele Strassenzuege in DIESEM Durchgang benannt
@@ -330,8 +347,10 @@ namespace ParkingLotTool.Tools
                 return 0;
             }
 
-            var nameSystem = World.GetOrCreateSystemManaged<Game.UI.NameSystem>();
-            if (nameSystem == null)
+            // Gesetzt wird anderswo (siehe unten), aber wenn es das System
+            // gar nicht gibt, ist auch dort nichts zu holen - dann lieber
+            // hier melden als spaeter still scheitern.
+            if (World.GetOrCreateSystemManaged<Game.UI.NameSystem>() == null)
             {
                 Mod.log.Warn("PLT-Zoningstrasse: kein NameSystem.");
                 return 0;
@@ -363,22 +382,40 @@ namespace ParkingLotTool.Tools
                     || !EntityManager.Exists(aggregat)) continue;
                 if (!erledigt.Add(aggregat)) continue;
                 gesehen++;
-                if (!_zoningBenannteAggregate.Add(aggregat)) continue;
 
-                try
-                {
-                    nameSystem.SetCustomName(aggregat, Unsichtbarername);
-                    if (!EntityManager.HasComponent<Game.UI.CustomName>(aggregat))
-                        EntityManager.AddComponent<Game.UI.CustomName>(aggregat);
-                    benannt++;
-                }
-                catch (System.Exception ausnahme)
-                {
-                    Mod.log.Warn("PLT-Zoningstrasse: Name nicht gesetzt - "
-                        + ausnahme.Message);
-                    _zoningBenannteAggregate.Remove(aggregat);
-                    return benannt;
-                }
+                /*
+                 * DIE RUECKFRAGE STATT DER EIGENEN LISTE.
+                 *
+                 * Vorher wurde hier `_zoningBenannteAggregate` gefragt: "habe
+                 * ich den schon mal angefasst?" - und wenn ja, uebersprungen.
+                 * Damit meldete die Wache Erfolg, sobald sie jeden
+                 * Strassenzug EINMAL angefasst hatte, voellig unabhaengig
+                 * davon, ob der Name auch ankam. Er kam nie an.
+                 *
+                 * `CustomName` ist die ehrliche Antwort: CS2 heftet die
+                 * Komponente in `SetCustomName` NUR im else-Zweig an, also
+                 * nur, wenn der Name angenommen wurde. Wir heften sie
+                 * deshalb auch nicht mehr selbst an - genau das hat den
+                 * Fehlschlag verdeckt.
+                 *
+                 * Sie erscheint einen Frame spaeter (EndFrameBarrier); die
+                 * Wache laeuft alle 30 Frames, das reicht reichlich.
+                 */
+                if (EntityManager.HasComponent<Game.UI.CustomName>(aggregat))
+                    continue;
+
+                /*
+                 * NUR ABLEGEN, NICHT SETZEN.
+                 *
+                 * `SetCustomName` braucht die `EndFrameBarrier`, und deren
+                 * Fenster ist aus dem Werkzeug heraus immer zu - `ToolSystem`
+                 * laeuft vor `AllowBarrier<EndFrameBarrier>`. Gesetzt wird in
+                 * `ParkingLotStrassennameSystem` (Phase `UIUpdate`), im
+                 * selben Frame ein paar Systeme spaeter. Dort steht auch die
+                 * vollstaendige Begruendung.
+                 */
+                ParkingLotStrassennameSystem.Merke(aggregat);
+                benannt++;
             }
 
             /*
@@ -393,8 +430,8 @@ namespace ParkingLotTool.Tools
                     + "Aggregat - CS2 hat den Strassenzug noch nicht gebildet.");
             if (benannt > 0)
                 Mod.log.Info($"PLT-Zoningstrasse: {benannt} von {gesehen} "
-                    + "Strassenzug/Strassenzuegen auf den unsichtbaren Namen "
-                    + "gesetzt.");
+                    + "Strassenzug/Strassenzuegen zum Umbenennen abgelegt; "
+                    + "gesetzt wird in UIUpdate.");
             return benannt;
         }
 
