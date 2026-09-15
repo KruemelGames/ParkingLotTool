@@ -1,5 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-<g transform="rotate(10 32 32)" fill="#fff">
+<!-- translate GLEICHT DIE DREHUNG AUS.
+     Die 10 Grad schieben die Umrandung schraeg aus dem Quadrat: ohne
+     Ausgleich blieben oben 4,30 und unten nur 1,49 Einheiten Rand, das
+     Logo sass also sichtbar zu tief und zu weit rechts. Gerechnet aus
+     der gedrehten Umrandung des Inhalts (Fuellpfade 10..58 / 8..30,
+     Rahmenpfade 10..54 / 35..57 zuzueglich 1,4 Strichhaelfte).
+     Reihenfolge beachten: SVG wendet rechts zuerst an, also erst
+     drehen, dann verschieben. -->
+<g transform="translate(-1.07 -1.41) rotate(10 32 32)" fill="#fff">
 <path fill-rule="evenodd" d="M10 8H19C25 8 28 11 28 16S25 24 19 24H16V30H10ZM16 13V19H19C21 19 22 18 22 16S21 13 19 13Z"/>
 <path d="M30 8H36V24H43V30H30Z M40 8H58V14H52V30H46V14H40Z"/>
 <path d="M27 35H10V57H27 M10 42.33H25 M10 49.67H25 M37 35H54V57H37 M39 42.33H54 M39 49.67H54" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>

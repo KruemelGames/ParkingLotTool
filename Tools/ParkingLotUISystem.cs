@@ -794,6 +794,10 @@ namespace ParkingLotTool.Tools
                 EditSelectedParkingLot));
             AddBinding(new TriggerBinding(Group, "MeldeGewaehltenParkplatz",
                 MeldeGewaehltenParkplatz));
+            AddBinding(_meldeLotWahl = new ValueBinding<bool>(
+                Group, "MeldeLotWahl", false));
+            AddBinding(new TriggerBinding<bool>(Group, "SchalteMeldeLotWahl",
+                an => Tool()?.SchalteMeldeLotWahl(an)));
 
             Bind(_edgeSetback, "SetEdgeSetback");
             Bind(_aisleWidth, "SetAisleWidth");
@@ -1878,11 +1882,29 @@ namespace ParkingLotTool.Tools
                     "Kein Parkplatz gewählt.", "No parking lot selected."));
                 return;
             }
+            MeldeParkplatz(lot);
+        }
+
+        /**
+         * Der eine Meldeweg fuer einen bestimmten Parkplatz.
+         *
+         * Aufgerufen aus dem Auswahlfenster UND aus dem Melden-Reiter, wo man
+         * den Parkplatz im Gelaende anklickt. Zwei Wege zum selben Ergebnis
+         * waeren zwei Wege, die auseinanderlaufen koennen.
+         */
+        internal void MeldeParkplatz(Unity.Entities.Entity lot)
+        {
+            if (lot == Unity.Entities.Entity.Null) return;
             Tool()?.FordereLotAbzug(lot);
             _meldungNachAbzug = true;
             SetStatus(ParkingLotTexte.T(
                 "Bericht wird erstellt …", "Creating report …"));
         }
+
+        /** Laeuft die Parkplatzwahl gerade? Fuer den Knopf im Reiter. */
+        private ValueBinding<bool> _meldeLotWahl;
+
+        internal void SetMeldeLotWahl(bool an) => _meldeLotWahl?.Update(an);
 
         /**
          * Steht der Abzug noch aus? Siehe `MeldeGewaehltenParkplatz`.

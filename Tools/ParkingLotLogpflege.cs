@@ -51,7 +51,7 @@ namespace ParkingLotTool.Tools
         /**
          * Wie viele Bauten im Protokoll bleiben.
          *
-         * `ParkingLotTool-bauten.jsonl` waechst um eine Zeile je Bau und wird
+         * `ParkingLotTool-builds.jsonl` waechst um eine Zeile je Bau und wird
          * nie kuerzer. Es ist die einzige Quelle, mit der sich ein Bau
          * nachstellen laesst (siehe plt-berichte-und-bauprotokoll), darf also
          * nicht verschwinden - aber tausend Bauten reichen weit zurueck.
@@ -148,14 +148,14 @@ namespace ParkingLotTool.Tools
         /**
          * Der Name bis zum Datum - alles danach gehoert zum einzelnen Abzug.
          *
-         * `ParkingLotTool-bauteile-20260811-145639.txt` wird zu
+         * `ParkingLotTool-parts-20260811-145639.txt` wird zu
          * `ParkingLotTool-bauteile`. Gibt es kein Datum, ist der ganze Name
          * die Sorte; so bleibt `bauten.jsonl` fuer sich und wird gesondert
          * gekuerzt.
          *
          * ERSTER ANLAUF SCHNITT VON HINTEN - solange die Endung aus Ziffern
          * bestand. Der Trockenlauf am 2026-09-14 zeigte den Fehler sofort:
-         * `ParkingLotTool-Versorgungsschutz-20260906-213722-310-5a538cb6`
+         * `ParkingLotTool-utilityguard-20260906-213722-310-5a538cb6`
          * endet auf einen Hash, nicht auf Ziffern. Jede solche Datei wurde
          * damit ihre EIGENE Sorte, und eine Sorte mit einer Datei raeumt man
          * nie auf. Genau die Dateien mit 266 kB waeren liegengeblieben.
@@ -175,7 +175,7 @@ namespace ParkingLotTool.Tools
         private static void KuerzeBauprotokoll(string ordner,
             ref long frei, ref int weg)
         {
-            var pfad = Path.Combine(ordner, "ParkingLotTool-bauten.jsonl");
+            var pfad = Path.Combine(ordner, "ParkingLotTool-builds.jsonl");
             if (!File.Exists(pfad)) return;
 
             var zeilen = File.ReadAllLines(pfad);

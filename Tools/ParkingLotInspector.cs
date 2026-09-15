@@ -268,7 +268,7 @@ namespace ParkingLotTool.Tools
                 var folder = Path.Combine(Application.persistentDataPath, "Logs");
                 Directory.CreateDirectory(folder);
                 var path = Path.Combine(folder,
-                    "ParkingLotTool-bauteile-"
+                    "ParkingLotTool-parts-"
                     + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt");
                 File.WriteAllText(path, text.ToString());
                 Mod.log.Info("PLT-Bauteilliste geschrieben: " + path);

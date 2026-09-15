@@ -47,9 +47,41 @@ namespace ParkingLotTool.Geometry
                 return System.Array.Empty<string>();
             var sichtbar = new List<string>(warnungen.Count);
             for (var i = 0; i < warnungen.Count; i++)
-                if (!IstBelanglos(warnungen[i])) sichtbar.Add(warnungen[i]);
+                if (!IstBelanglos(warnungen[i])
+                    && !IstEntwicklerbefund(warnungen[i]))
+                    sichtbar.Add(warnungen[i]);
             return sichtbar.ToArray();
         }
+
+        /**
+         * IST DAS EIN BEFUND UEBER UNSERE KONSTRUKTION - ALSO NICHTS FUER
+         * DEN NUTZER?
+         *
+         * Zweite Sorte neben der Nullflaeche, und aus einem anderen Grund.
+         * Die Nullflaechen sind belanglos; diese hier sind WICHTIG - nur
+         * eben fuer den, der den Quelltext kennt.
+         *
+         * Der Nutzer am 2026-09-15 ueber die Lochtrennungsmeldung: *"Aber ist
+         * das wirklich was fuer die Statusmeldung weil wir das IMMER bekommen
+         * wenn ich eine ZF erstelle. Das kann den User evtl verwirren."*
+         *
+         * Er hat doppelt recht. Ein Alarm, der bei jedem Mal angeht, wird
+         * weggelesen - und dann uebersieht man ihn, wenn er einmal wirklich
+         * etwas Neues meldet. Und der Satz ist an einen Entwickler gerichtet:
+         * *"that is a construction fault upstream, not a repair job"* sagt
+         * jemandem ohne Quelltext nichts.
+         *
+         * WEG IST SIE DAMIT NICHT. Wie bei der Nullflaeche filtert nur die
+         * ANZEIGE: im Bauzettel, im Baubefund des Meldereiters und im
+         * Modlog steht sie unveraendert. Genau dort gehoert sie hin.
+         *
+         * Erkannt wird an einer festen Textstelle. Faellt die weg, erscheint
+         * der Hinweis wieder in der Statusleiste - laut, nicht still. Das ist
+         * dieselbe Richtung wie unten: lieber einmal zu viel zeigen.
+         */
+        public static bool IstEntwicklerbefund(string warnung)
+            => !string.IsNullOrEmpty(warnung)
+               && warnung.Contains("hole separation");
 
         /**
          * Meldet dieser Hinweis nur verschwundene Nullflaeche?

@@ -14,6 +14,16 @@ namespace ParkingLotTool.Tools
     {
         // Layout-Baender; Polygonbelaege kommen aus ParkingLotAreaPreview.
         private readonly List<Band> _green = new List<Band>();
+
+        /**
+         * Das Flaechennetz, wenn es zeichnen kann. Wird vom Werkzeug gesetzt.
+         *
+         * Steht hier `null`, faellt die Teilflaechen-Einfaerbung auf das alte
+         * Klickrechteck zurueck. Lieber ein zu grobes Rechteck als gar keine
+         * Anzeige, welche Teilflaeche gerade gemeint ist.
+         */
+        internal ParkingLotFlaechennetzSystem Flaechennetz;
+
         private readonly List<Band> _roads = new List<Band>();
         private readonly List<Band> _bays = new List<Band>();
         private readonly List<(float3 Position, bool Tree)> _vegetation = new List<(float3, bool)>();
@@ -65,7 +75,7 @@ namespace ParkingLotTool.Tools
          */
         internal void SetLayout(ParkingLayout layout, LayoutSettings settings,
             TerrainSystem terrainSystem, float2[][] vorflaechen = null,
-            int[] vorflaechenArt = null)
+            int[] vorflaechenArt = null, bool gruenAlsNetz = false)
         {
             ClearLayout();
             if (layout == null || settings == null || terrainSystem == null) return;
@@ -167,19 +177,37 @@ namespace ParkingLotTool.Tools
                 }
                 return inside;
             }
+            /*
+             * ZWEI WEGE, EINE AUSWAHL.
+             *
+             * `gruenAlsNetz` heisst: das Dreiecksnetz hat ein Material
+             * gefunden und uebernimmt die Fuellung - dann aus den
+             * VERSCHMOLZENEN Grasringen, nicht aus diesen Entwurfsteilen.
+             * Die Streifen bleiben dann weg, sonst laege beides uebereinander.
+             *
+             * Findet sich KEIN Shader, fallen wir auf die Streifen zurueck.
+             * Sie haben Naehte, aber sie sind da - ein Werkzeug, das gar
+             * nichts anzeigt, waere schlimmer als eines mit einem sichtbaren
+             * Mangel.
+             */
+            void Gruen(float2[][] polygons)
+            {
+                if (polygons == null || gruenAlsNetz) return;
+                AddStrips(_green, polygons, GreenColor);
+            }
+
             void AddMaterialGreen(float2[][] polygons, bool insideGreen)
             {
                 if (polygons == null) return;
-                AddStrips(_green, insideGreen
+                Gruen(insideGreen
                     ? polygons
-                    : polygons.Where(polygon => !LogicalInsideRing(polygon)).ToArray(),
-                    GreenColor);
+                    : polygons.Where(polygon => !LogicalInsideRing(polygon)).ToArray());
             }
 
             // Mittelstreifen sind immer gruen, es gibt dafuer keinen Schalter.
-            AddStrips(_green, layout.Median, GreenColor);
+            Gruen(layout.Median);
             AddMaterialGreen(layout.Cap, settings.Qk);
-            AddStrips(_green, layout.Green, GreenColor);
+            Gruen(layout.Green);
             AddMaterialGreen(layout.Fill, settings.Qk);
             // qk=false erzeugt den Rest zwischen erster Bucht und
             // Querstrasse als Belag. Nur ein theoretischer Anteil ausserhalb

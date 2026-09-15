@@ -613,10 +613,14 @@ $linie: rgba(255, 255, 255, 0.08);
   min-width: 0;
 }
 
-/* "Fertig" ist der bestaetigende Knopf und traegt deshalb den Zuschnitt-Ton
-   der Spalte - so, wie ein aktiver Modus in derselben Spalte leuchtet. Der
+/* "Fertig" schliesst das Ausrichten ab - derselbe Rang wie "Bauen", also
+   derselbe Auftritt: voll gefuellt und dunkler Text, nicht nur getoent. Der
    linke Nachbar bleibt neutral: Zuruecksetzen ist kein Ziel, sondern ein
-   Rueckweg. */
+   Rueckweg.
+
+   Ansage des Nutzers am 2026-09-15: *"mach mal den button Done gruen damit
+   der besser raussticht."* Der Bauen-Knopf ist in Wahrheit hellblau
+   ($fahrwege); genommen ist deshalb das Gruen der Palette. */
 .ausrichtFertig {
   /* Nimmt nur, was das kurze Wort braucht - den Rest bekommt der linke
      Nachbar. Halbe-halbe wuerde "Ausrichtung zuruecksetzen" in zwei Zeilen
@@ -625,10 +629,10 @@ $linie: rgba(255, 255, 255, 0.08);
   margin-left: $s2;
   padding-left: $s4;
   padding-right: $s4;
-  background-color: rgba(242, 193, 78, 0.18);
-  color: rgba(242, 193, 78, 0.92);
+  background-color: $gruen;
+  color: #0b1a08;
 
-  &:hover { background-color: rgba(242, 193, 78, 0.28); }
+  &:hover { background-color: #92e46f; }
 }
 
 .mode {
@@ -1059,6 +1063,41 @@ $linie: rgba(255, 255, 255, 0.08);
 
   &:hover { background-color: $flaeche-hell; }
   &:last-child { margin-right: 0; }
+}
+
+/**
+ * ZWEI MAL ZWEI, ALLE GLEICH BREIT.
+ *
+ * Die vier Meldeknoepfe standen als Dreierreihe plus ein breiter Knopf
+ * darunter - drei schmale und einer ueber die ganze Spalte, in zwei
+ * verschiedenen Stilen. Ansage des Nutzers am 2026-09-15: *"Kannst du die 4
+ * Buttons bitte ordentlich in 2x2 packen und nicht zu breit machen? Und
+ * bitte bei den 4 Buttons den gleichen Style nehmen."*
+ *
+ * `flex-wrap` statt Raster: Cohtml kennt kein `grid` und kein `gap` (siehe
+ * die Pruefregel gegen `Content/Game/UI/index.css`). Die halbe Breite kommt
+ * deshalb aus `flex-basis` und der Abstand aus Raendern.
+ *
+ * Die Obergrenze ist Absicht: vier Knoepfe, die sich ueber die ganze Spalte
+ * ziehen, sehen aus wie ein Formular. So bleiben sie eine Gruppe.
+ */
+.meldeGitter {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 420rem;
+  margin-top: $s2;
+}
+
+.meldeGitterKnopf {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 50%;
+  margin: 0;
+  padding: $s2 $s2;
+
+  /* Nur rechts und unten Luft - so bleibt der Block aussen buendig. */
+  &:nth-child(odd) { padding-right: $s3; }
+  &:nth-child(even) { padding-left: $s3; }
 }
 
 .smallButtonSelected {

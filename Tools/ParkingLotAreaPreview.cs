@@ -116,6 +116,67 @@ namespace ParkingLotTool.Tools
         private Entity _dekoBelagPrefab = Entity.Null;
         private Entity _zoningBodenPrefab = Entity.Null;
         private ParkingLayout _areaPreviewLayout;
+
+        /*
+         * VORVERSUCH. Siehe ParkingLotFlaechennetz.cs; mit Alt+F an und aus.
+         *
+         * Gefuettert wird genau dort, wo die Vorschau ihr Ergebnis bekommt -
+         * also einmal je Lauf und nicht je Bild. Genau das ist die Behauptung,
+         * die der Versuch pruefen soll: die Rechenzeit faellt beim Bauen des
+         * Netzes an, nicht beim Zeichnen.
+         */
+        private ParkingLotFlaechennetzSystem _flaechennetz;
+
+        private ParkingLotFlaechennetzSystem Flaechennetz
+            => _flaechennetz ??= World
+                .GetOrCreateSystemManaged<ParkingLotFlaechennetzSystem>();
+
+        /** Uebernimmt das Netz die Fuellung? Nur wenn es zeichnen kann. */
+        private bool FuellungAlsNetz => Flaechennetz.Einsatzbereit;
+
+        /**
+         * Gibt dem Netz die GRASRINGE - die Form, die gebaut werden wird.
+         *
+         * Nicht die Entwurfsteile. Die sind Vierecke, und ein Teppich aus
+         * Vierecken ist genau das, was der Nutzer nicht mehr sehen will.
+         * `GrassSurface` ist die verschmolzene Form, aus der beim Bauen
+         * `Grass Surface 01` entsteht, und sie haengt am Schalter
+         * "Dekoration": ist er aus, gibt es nichts zu fuellen, weil nichts
+         * gebaut wird.
+         *
+         * Die Farbe kommt aus dem vorhandenen Vorschau-Stil, nicht aus einem
+         * eigenen Wert. Ansage des Nutzers zum Vorversuch: *"Aber halt sehr
+         * Gruen waere halt gut wenn das vom aussehen zu dem Passen wuerde was
+         * wir derzeit schon haben."* Also genau `GreenColor` - dieselbe
+         * Farbe, die die Streifen vorher hatten.
+         */
+        private void FuettereFlaechennetz(ParkingLayout layout)
+        {
+            if (!FuellungAlsNetz) return;
+            // Das Overlay faerbt damit die Teilflaechen in ihrer echten Form
+            // ein. Es holt sich das System nicht selbst - es ist kein System
+            // und hat keine Welt.
+            _overlay.Flaechennetz = Flaechennetz;
+            /*
+             * MESSBAU 2026-09-15 - VORUEBERGEHEND NEUTRALGRAU.
+             *
+             * Der Nutzer hat zweimal im Spiel nachgemessen: geschrieben
+             * (0,072 / 0,381 / 0,072) kam `#005a00` heraus, geschrieben
+             * (0,298 / 0,651 / 0,298) kam `#00c400` heraus. Beide Male ist
+             * Rot UND Blau exakt null - bei voellig verschiedenen
+             * Eingangswerten. Das ist keine Frage der Helligkeit mehr.
+             *
+             * Ein gesaettigtes Gruen kann das nicht beantworten, weil man
+             * Verstaerkung und Saettigung nicht auseinanderhalten kann. Ein
+             * neutrales Grau kann es: alle drei Kanaele gleich, volle
+             * Deckung, nichts zum Mischen. Was davon ankommt, sagt genau, was
+             * die Bildaufbereitung mit unserer Farbe macht.
+             *
+             * Danach fliegt das hier wieder raus.
+             */
+            Flaechennetz.SetzeFlaechen(layout?.GrassSurface,
+                ParkingLotPreviewStyle.FlaechennetzGruen);
+        }
         private LayoutSettings _areaPreviewSettings;
         private bool _ghostsActive;
         private bool _missingGrassPrefabLogged;
@@ -145,6 +206,10 @@ namespace ParkingLotTool.Tools
 
         private void ClearAreaPreviewLayout(string context)
         {
+            // Kein Layout, keine Fuellung. Steht hier und nicht an den elf
+            // Aufrufstellen: `_overlay.ClearLayout()` und diese Methode laufen
+            // immer zusammen, und eine von beiden vergisst man sonst.
+            _flaechennetz?.Leere();
             _areaPreviewLayout = null;
             _areaPreviewSettings = null;
             ClearAreaPreviewGhosts(context);
@@ -640,7 +705,17 @@ namespace ParkingLotTool.Tools
             created += CreateBayDecalDefinitions(layout, _areaPreviewSettings,
                 ref heightData);
             ProtokolliereBauschritt("CreateVegetationDefinitions");
-            created += CreateVegetationDefinitions(dekoAn ? gras : Array.Empty<float2[]>(), ref heightData);
+            /*
+             * DIE BEPFLANZUNG HAENGT NICHT AM DEKO-SCHALTER.
+             *
+             * Hier stand `dekoAn ? gras : leer`. Damit setzte ein
+             * abgeschalteter Deko-Belag auch die Baeume ab - der Befund des
+             * Nutzers vom 2026-09-15. Die Gruenflaechen sind weiterhin da,
+             * sie bekommen nur keinen Belag; ein Baum braucht darunter
+             * keinen.
+             */
+            created += CreateVegetationDefinitions(
+                layout.GrassForVegetation, ref heightData);
             ProtokolliereBauschritt("CreateEntranceArrowDefinitions");
             created += CreateEntranceArrowDefinitions(layout, ref heightData);
             return created;

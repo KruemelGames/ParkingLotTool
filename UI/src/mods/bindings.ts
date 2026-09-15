@@ -382,6 +382,11 @@ export const baukurzinfo$ = bindValue<string>(MOD, "Baukurzinfo", "");
 export const meldeGewaehltenParkplatz = () =>
   trigger(MOD, "MeldeGewaehltenParkplatz");
 
+/** Laeuft die Parkplatzwahl im Melden-Reiter gerade? */
+export const meldeLotWahl$ = bindValue<boolean>(MOD, "MeldeLotWahl", false);
+export const schalteMeldeLotWahl = (an: boolean) =>
+  trigger(MOD, "SchalteMeldeLotWahl", an);
+
 export const setEdgeSetback = (v: number) => trigger(MOD, "SetEdgeSetback", v);
 export const setAisleWidth = (v: number) => trigger(MOD, "SetAisleWidth", v);
 export const setCrossWidth = (v: number) => trigger(MOD, "SetCrossWidth", v);

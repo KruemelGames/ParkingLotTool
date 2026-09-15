@@ -86,7 +86,7 @@ internal static partial class Program
      * EINE BESTIMMTE FORM UNTERSUCHEN, statt Zufallsformen.
      *
      * Der Nutzer meldet Formen aus dem Spiel; sein Bauprotokoll
-     * (`ParkingLotTool-bauten.jsonl`) enthaelt jedes Polygon mit voller
+     * (`ParkingLotTool-builds.jsonl`) enthaelt jedes Polygon mit voller
      * Genauigkeit. Damit laesst sich sein Fall hier exakt nachrechnen - und
      * genau das brauchte es am 2026-08-17, als er meldete, dass das Gruen aus
      * vielen kleinen Stuecken besteht statt aus einer grossen Flaeche.

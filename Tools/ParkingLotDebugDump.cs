@@ -223,16 +223,16 @@ namespace ParkingLotTool.Tools
                 Directory.CreateDirectory(logsFolder);
                 var timestamp = now.ToString("yyyyMMdd-HHmmss-fff");
                 var outputPath = Path.Combine(logsFolder,
-                    $"ParkingLotTool-vorbau-{timestamp}.json");
+                    $"ParkingLotTool-prebuild-{timestamp}.json");
                 var suffix = 1;
                 while (File.Exists(outputPath))
                 {
                     outputPath = Path.Combine(logsFolder,
-                        $"ParkingLotTool-vorbau-{timestamp}-{suffix}.json");
+                        $"ParkingLotTool-prebuild-{timestamp}-{suffix}.json");
                     suffix++;
                 }
                 var latestPath = Path.Combine(logsFolder,
-                    "ParkingLotTool-vorbau-latest.json");
+                    "ParkingLotTool-prebuild-latest.json");
 
                 var welt = new DebugWorld
                 {
@@ -321,7 +321,7 @@ namespace ParkingLotTool.Tools
                  * Regelverletzungen und passt in eine Nachricht.
                  */
                 var reportPath = Path.Combine(logsFolder,
-                    $"ParkingLotTool-bericht-{timestamp}.txt");
+                    $"ParkingLotTool-summary-{timestamp}.txt");
                 File.WriteAllText(reportPath, BuildMarkerReport(),
                     new System.Text.UTF8Encoding(false));
                 Mod.log.Info("PLT-Fehlerbericht geschrieben: "

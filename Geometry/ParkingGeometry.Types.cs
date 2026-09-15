@@ -578,6 +578,29 @@ namespace ParkingLotTool.Geometry
         internal float2[][] GrassSurfaceByRole { get; set; }
         internal float2[][] AsphaltSurfaceByRole { get; set; }
 
+        /**
+         * DIE FLAECHEN, AUF DIE BEPFLANZUNG GEHOERT.
+         *
+         * Nicht zu verwechseln mit dem, was `SurfacesForPlacement` liefert.
+         * Die beantwortet "was soll BELEGT werden" und gibt bei
+         * abgeschalteter Dekoration mit Recht nichts zurueck.
+         *
+         * Genau daran hing die Bepflanzung bis zum 2026-09-15 mit. Der
+         * Nutzer: *"Wenn ich die Dekoration-Flaeche ausschalte geht die
+         * Vegetation nicht mehr, das ist natuerlich Mist weil trotzdem
+         * Sachen gesetzt werden sollen."*
+         *
+         * Er hat recht: die Gruenflaechen sind weiterhin da, sie bekommen nur
+         * keinen Belag. Ein Baum braucht keinen Belag unter sich.
+         *
+         * `GrassSurfaceByRole` ist nur gefuellt, wenn beide Belaege dasselbe
+         * Prefab sind und CS2 deshalb EINE Flaeche bekommt - dann trennt erst
+         * diese Liste wieder nach Rolle. Sonst ist `GrassSurface` schon rein
+         * nach Rolle. Deshalb der Rueckfall.
+         */
+        public float2[][] GrassForVegetation
+            => GrassSurfaceByRole ?? GrassSurface;
+
         internal void SurfacesForPlacement(
             bool road,
             bool decoration,

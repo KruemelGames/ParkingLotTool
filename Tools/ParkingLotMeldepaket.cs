@@ -106,8 +106,8 @@ namespace ParkingLotTool.Tools
 
                 var teile = new List<FileInfo>();
                 if (!nurVorschau) Juengste(ordner, "debug", teile);
-                Juengste(ordner, "vorbau", teile);
-                Juengste(ordner, "bericht", teile);
+                Juengste(ordner, "prebuild", teile);
+                Juengste(ordner, "summary", teile);
 
                 if (teile.Count == 0 && anlass != Anlass.Absturz)
                 {

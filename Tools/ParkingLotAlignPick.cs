@@ -34,6 +34,30 @@ namespace ParkingLotTool.Tools
 
         private Ausrichtschritt _ausrichtwahl = Ausrichtschritt.Aus;
 
+        /** Wie lange der letzte fertige Vorschaulauf gedauert hat. */
+        private double _letzteVorschaudauerMs;
+
+        /**
+         * KURZES AUFBLITZEN DER GEKLICKTEN LINIE.
+         *
+         * Zwischen Klick und sichtbarem Ergebnis liegen bei zwei
+         * verschiedenen Teilwinkeln rund zehn Sekunden Rechenzeit. Ohne ein
+         * Zeichen im Moment des Klicks weiss man nicht einmal, ob er
+         * angekommen ist. Der Nutzer am 2026-09-15: *"Die Linie sollte dick
+         * angezeigt werden wenn ich drueber hover und kurz andersfarbig sein
+         * wenn ich klicke."*
+         *
+         * Eine Viertelsekunde: lang genug, um es zu sehen, kurz genug, um
+         * nicht als Zustand missverstanden zu werden.
+         */
+        private const float BlinkDauer = 0.25f;
+        private int _blinkKante = -1;
+        private float _blinkBis;
+
+        internal int AusrichtBlinkKante()
+            => _blinkKante >= 0 && UnityEngine.Time.time < _blinkBis
+                ? _blinkKante : -1;
+
         /**
          * In welchem Schritt das Ausrichten steht - UND WAS DIE OBERFLAECHE
          * DAVON ZEIGT. Beides in einem, absichtlich.
@@ -253,6 +277,11 @@ namespace ParkingLotTool.Tools
             AusrichtFlaeche = _teilflaechen.Count > 1 ? -1 : 0;
             Ausrichtwahl = _teilflaechen.Count > 1
                 ? Ausrichtschritt.Flaeche : Ausrichtschritt.Linie;
+            _uiSystem?.SetStatus(_teilflaechen.Count > 1
+                ? T("Welche Teilfläche? Rechtsklick beendet.",
+                    "Which sub-area? Right-click to finish.")
+                : T("Eine Linie anklicken. Rechtsklick beendet.",
+                    "Click a line. Right-click to finish."));
             Mod.log.Info("PLT-Ausrichten: Auswahl gestartet, "
                 + _teilflaechen.Count + " Teilflaeche(n); "
                 + (_teilflaechen.Count > 1
@@ -376,6 +405,23 @@ namespace ParkingLotTool.Tools
          * Klick nicht mehr zu sehen. Ohne das wuerde derselbe Linksklick auch
          * noch einen Punkt ziehen.
          */
+        /**
+         * Ein Zusatz zur Statuszeile, wenn die Vorschau spuerbar rechnet.
+         *
+         * Zwei verschiedene Teilwinkel zwingen den Bau auf den Rasterweg, und
+         * der brauchte auf der Form des Nutzers rund zehn Sekunden. Zehn
+         * Sekunden ohne ein Wort sehen aus, als passiere nichts - genau so
+         * kam es am 2026-09-15 an. Unter anderthalb Sekunden sagen wir
+         * nichts; da waere der Hinweis nur Laerm.
+         */
+        private string Rechenhinweis()
+            => _letzteVorschaudauerMs < 1500
+                ? string.Empty
+                : T(" - Vorschau rechnet, zuletzt ",
+                    " - preview recomputing, last took ")
+                  + (_letzteVorschaudauerMs / 1000.0).ToString("F0")
+                  + T(" s", " s");
+
         private bool HandleAusrichtWahl(bool secondaryPressed, bool escapePressed)
         {
             if (!AusrichtWahlAktiv) return false;
@@ -384,9 +430,36 @@ namespace ParkingLotTool.Tools
             // gemeinsamen Abbruchbehandlung stehen.
             if (Ausrichtwahl == Ausrichtschritt.Trennen)
                 return HandleTrennmodus(secondaryPressed, escapePressed);
-            if (secondaryPressed || escapePressed)
+            /*
+             * ESC RAUS, RECHTSKLICK EINE STUFE ZURUECK.
+             *
+             * Esc bleibt der Notausgang aus dem ganzen Modus - das ist im
+             * Spiel ueberall so. Der Rechtsklick dagegen nimmt nur den
+             * letzten Schritt zurueck: aus der Linienwahl zurueck zur
+             * Flaechenwahl, und erst von dort aus dem Modus heraus.
+             *
+             * Vorher beendete er in beiden Stufen alles. Wer sich bei der
+             * Flaeche verklickt hatte, musste den Modus neu starten.
+             */
+            if (escapePressed)
             {
-                AbortAusrichtWahl(escapePressed ? "Esc" : "Rechtsklick");
+                AbortAusrichtWahl("Esc");
+                return true;
+            }
+            if (secondaryPressed)
+            {
+                if (Ausrichtwahl == Ausrichtschritt.Linie)
+                {
+                    AusrichtFlaeche = -1;
+                    Ausrichtwahl = Ausrichtschritt.Flaeche;
+                    _uiSystem?.SetStatus(T(
+                        "Fläche wieder abgewählt. Welche Teilfläche?",
+                        "Sub-area deselected. Which sub-area?"));
+                    Mod.log.Info("PLT-Ausrichten: Flaechenwahl per Rechtsklick "
+                        + "zurueckgenommen.");
+                    return true;
+                }
+                AbortAusrichtWahl("Rechtsklick");
                 return true;
             }
             /*
@@ -406,9 +479,9 @@ namespace ParkingLotTool.Tools
             /*
              * ERSTE RUNDE: DIE TEILFLAECHE.
              *
-             * Getroffen wird ueber das grobe Rechteck, nicht ueber die echte
-             * Zerlegungsform - so hat der Nutzer es gewollt, und ein spitz
-             * zulaufendes Teil waere sonst kaum anklickbar.
+             * Getroffen wird seit dem 2026-09-15 die echte Zerlegungsform,
+             * nicht mehr ihr Huellrechteck - die Begruendung steht in
+             * `ParkingLotTeilflaechen.TeilflaecheUnter`.
              */
             if (Ausrichtwahl == Ausrichtschritt.Flaeche)
             {
@@ -423,8 +496,13 @@ namespace ParkingLotTool.Tools
                 }
                 AusrichtFlaeche = treffer;
                 Ausrichtwahl = Ausrichtschritt.Linie;
-                _uiSystem?.SetStatus(T("Jetzt die Linie wählen.",
-                    "Now pick the line."));
+                // Die Statuszeile nennt beide Wege - sonst sucht man den
+                // Rueckweg und findet nur Esc.
+                _uiSystem?.SetStatus(T(
+                    "Fläche " + (treffer + 1) + " gewählt. Jetzt eine Linie "
+                    + "anklicken - Rechtsklick wählt die Fläche wieder ab.",
+                    "Sub-area " + (treffer + 1) + " selected. Now click a "
+                    + "line - right-click deselects the sub-area."));
                 Mod.log.Info("PLT-Ausrichten: Teilflaeche " + treffer
                     + " gewaehlt, warte auf Linie.");
                 return true;
@@ -446,6 +524,9 @@ namespace ParkingLotTool.Tools
                     "That line has no length."));
                 return true;
             }
+
+            _blinkKante = _hoverEdge;
+            _blinkBis = UnityEngine.Time.time + BlinkDauer;
 
             var before = CaptureUndoState();
             var grad = math.degrees(math.atan2(richtung.y, richtung.x));
@@ -485,12 +566,28 @@ namespace ParkingLotTool.Tools
             };
             var vorhanden = _ausrichtungen.FindIndex(z =>
                 GleicherAnker(z.Anker, anker));
+            /*
+             * DIESELBE WAHL NOCH EINMAL KOSTET NICHTS MEHR.
+             *
+             * Im Log vom 2026-09-15, 21:39, waren vier von acht Linienklicks
+             * Wiederholungen: dieselbe Teilflaeche, dieselbe Linie, derselbe
+             * Winkel. Jede hat den Stand hochgezaehlt und damit eine laufende
+             * Vorschau von rund zehn Sekunden verworfen - der Nutzer sah
+             * deshalb NIE ein Ergebnis und meldete zu Recht *"die Teilflaeche
+             * wird nicht alligned"*. Am Bild aendert eine identische Zuweisung
+             * nichts, also darf sie auch keine Rechnung wegwerfen.
+             */
+            var unveraendert = vorhanden >= 0
+                && math.abs(_ausrichtungen[vorhanden].Winkel - grad) < 0.001;
             if (vorhanden >= 0) _ausrichtungen[vorhanden] = neuerEintrag;
             else _ausrichtungen.Add(neuerEintrag);
             _uiSystem?.SetAusrichtwinkel(Ausrichtwinkel);
-            _geometryRevision++;
-            _layoutDirty = _closed;
-            CommitUndoState(before, "Bezugslinie gewählt");
+            if (!unveraendert)
+            {
+                _geometryRevision++;
+                _layoutDirty = _closed;
+                CommitUndoState(before, "Bezugslinie gewählt");
+            }
 
             /*
              * ZURUECK AUF ANFANG - und zwar IMMER.
@@ -510,17 +607,27 @@ namespace ParkingLotTool.Tools
             {
                 AusrichtFlaeche = -1;
                 Ausrichtwahl = Ausrichtschritt.Flaeche;
-                _uiSystem?.SetStatus(T(
-                    "Übernommen. Nächste Fläche wählen, oder „Fertig“.",
-                    "Applied. Pick the next area, or press Done."));
+                _uiSystem?.SetStatus(unveraendert
+                    ? T("Dieselbe Linie - nichts geändert. Nächste Fläche "
+                        + "wählen, oder „Fertig“.",
+                        "Same line - nothing changed. Pick the next area, or "
+                        + "press Done.")
+                    : T("Übernommen" + Rechenhinweis()
+                        + ". Nächste Fläche wählen, oder „Fertig“.",
+                        "Applied" + Rechenhinweis()
+                        + ". Pick the next area, or press Done."));
             }
             else
             {
                 // Eine einzige Teilflaeche: die Flaechenwahl entfaellt, die
                 // Runde beginnt gleich wieder bei der Linie.
-                _uiSystem?.SetStatus(T(
-                    "Übernommen. Andere Linie wählen, oder „Fertig“.",
-                    "Applied. Pick a different line, or press Done."));
+                _uiSystem?.SetStatus(unveraendert
+                    ? T("Dieselbe Linie - nichts geändert.",
+                        "Same line - nothing changed.")
+                    : T("Übernommen" + Rechenhinweis()
+                        + ". Andere Linie wählen, oder „Fertig“.",
+                        "Applied" + Rechenhinweis()
+                        + ". Pick a different line, or press Done."));
             }
             ParkingLotLiveLog.Zeile("align linie | teil " + gewaehlteFlaeche
                 + " | winkel " + ParkingLotLiveLog.Zahl(grad)

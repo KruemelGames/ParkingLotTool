@@ -30,6 +30,8 @@ namespace ParkingLotTool.Tools
             bool teilflaechenWahl = false, int gewaehlteTeilflaeche = -1,
             IReadOnlyList<bool> teilflaecheZugewiesen = null,
             int hervorgehobeneTeilflaeche = -1,
+            int zeigerTeilflaeche = -1,
+            int blinkKante = -1,
             bool trennmodus = false,
             IReadOnlyList<(float3 A, float3 B)> trennlinien = null,
             int trennAnfang = -1,
@@ -93,6 +95,7 @@ namespace ParkingLotTool.Tools
              * Ansage des Nutzers: "wenn nur eine Teilflaeche vorhanden ist
              * brauchen wir keine Umrandung".
              */
+            Flaechennetz?.BeginneTeilflaechen();
             if ((teilflaechenWahl || ausrichtWahl || trennmodus)
                 && teilflaechen != null && teilflaechen.Count > 1)
                 for (var i = 0; i < teilflaechen.Count; i++)
@@ -105,34 +108,67 @@ namespace ParkingLotTool.Tools
                         && teilflaecheZugewiesen[i];
                     // Umschalt ueber einer abgehakten Flaeche holt sie
                     // kurz auf den offenen Wert zurueck - nur zum Ansehen.
+                    /*
+                     * IN DER LINIENWAHL ZAEHLT NUR DIE GEWAEHLTE FLAECHE.
+                     *
+                     * Sobald eine Flaeche steht, kann man keine andere mehr
+                     * anklicken - also darf auch keine andere so aussehen,
+                     * als koennte man. Die uebrigen fallen auf den blassen
+                     * Wert zurueck, die gewaehlte steht deutlich da. Der
+                     * Nutzer am 2026-09-15: *"Ich sehe gerade nicht wirklich
+                     * ob ich markiert habe oder nicht."*
+                     */
+                    var linienwahl = gewaehlteTeilflaeche >= 0;
                     var fuellung = farbe;
-                    fuellung.a = i == gewaehlteTeilflaeche ? FillSelected
+                    fuellung.a = i == gewaehlteTeilflaeche
+                        ? TeilflaecheFuellungGewaehlt
+                        : linienwahl ? TeilflaecheFuellungBenutzt
+                        : i == zeigerTeilflaeche ? TeilflaecheFuellungZeiger
                         : benutzt && i != hervorgehobeneTeilflaeche
                             ? TeilflaecheFuellungBenutzt : TeilflaecheFuellung;
-                    var mitte = (teil.Min.y + teil.Max.y) * 0.5f;
-                    var breite = teil.Max.y - teil.Min.y;
-                    if (breite > 0.01f && teil.Max.x - teil.Min.x > 0.01f)
-                        buffer.DrawLine(fuellung, fuellung, 0f,
-                            OverlayRenderSystem.StyleFlags.Projected,
-                            new Line3.Segment(
-                                new float3(teil.Min.x, hoehe, mitte),
-                                new float3(teil.Max.x, hoehe, mitte)),
-                            breite, default);
-
-                    var ecken = new[]
+                    /*
+                     * DIE ECHTE FORM EINFAERBEN, NICHT DAS KLICKRECHTECK.
+                     *
+                     * Hier lag ein Strich in voller Rechteckbreite von
+                     * `teil.Min` bis `teil.Max` - also ein Rechteck um die
+                     * Form herum. Bei einem schraegen oder L-foermigen
+                     * Teilstueck faerbt das die Nachbarn mit ein. Genau das
+                     * hat der Nutzer am 2026-09-15 als Erstes gemeldet:
+                     * *"koennen wir die Auswahl der Teilflaechen besser
+                     * angezeigt bekommen als nur ein Rechteck."*
+                     *
+                     * Das Klickziel BLEIBT das Rechteck - es wird weiter
+                     * unten gestrichelt gezeigt. Gefuellt wird der Umriss.
+                     */
+                    if (Flaechennetz != null && teil.Umriss != null
+                        && teil.Umriss.Length >= 3)
                     {
-                        new float3(teil.Min.x, hoehe, teil.Min.y),
-                        new float3(teil.Max.x, hoehe, teil.Min.y),
-                        new float3(teil.Max.x, hoehe, teil.Max.y),
-                        new float3(teil.Min.x, hoehe, teil.Max.y),
-                    };
+                        Flaechennetz.ZeichneTeilflaeche(teil.Umriss, fuellung);
+                    }
+                    else
+                    {
+                        var mitte = (teil.Min.y + teil.Max.y) * 0.5f;
+                        var breite = teil.Max.y - teil.Min.y;
+                        if (breite > 0.01f && teil.Max.x - teil.Min.x > 0.01f)
+                            buffer.DrawLine(fuellung, fuellung, 0f,
+                                OverlayRenderSystem.StyleFlags.Projected,
+                                new Line3.Segment(
+                                    new float3(teil.Min.x, hoehe, mitte),
+                                    new float3(teil.Max.x, hoehe, mitte)),
+                                breite, default);
+                    }
+
+                    /*
+                     * HIER LAG DAS GESTRICHELTE HUELLRECHTECK.
+                     *
+                     * Es zeigte das Klickziel an, solange die Trefferpruefung
+                     * gegen Rechtecke lief. Seit sie gegen die echte Form
+                     * laeuft, zeigt es nichts mehr an, was es gibt - und der
+                     * Nutzer hat es prompt als stoerend gemeldet: *"die
+                     * Rechtecke sind immer noch da aber jetzt gestrichelt."*
+                     */
                     var dick = i == gewaehlteTeilflaeche
                         ? SelectedLineWidth : PolygonLineWidth;
-                    for (var k = 0; k < 4; k++)
-                        buffer.DrawDashedLine(Alpha(farbe, 0.35f),
-                            new Line3.Segment(ecken[k], ecken[(k + 1) % 4]),
-                            PreviewLineWidth, DashLength, DashGap);
-                    // Durchgezogen = echte Form; gestrichelt = bestehendes Klickziel.
                     if (teil.Umriss != null)
                         for (var k = 0; k < teil.Umriss.Length; k++)
                         {
@@ -146,6 +182,8 @@ namespace ParkingLotTool.Tools
                         new float3(teil.Anker.x, hoehe, teil.Anker.y),
                         SnapDiameter);
                 }
+
+            Flaechennetz?.SchliesseTeilflaechen();
 
             ZeichneZoning(buffer, cursor.y, zoningflaechen, zoningVorschau,
                 zoningHover, zoningAuswahl, zoningSeite, zoningstrassen,
@@ -355,6 +393,21 @@ namespace ParkingLotTool.Tools
                 buffer.DrawCircle(TrennschnittColor, polygon[trennAnfang],
                     SnapDiameter);
 
+            /*
+             * DER KLICK-BLITZ.
+             *
+             * Steht bewusst NICHT im Hover-Zweig: er soll auch dann noch zu
+             * sehen sein, wenn der Zeiger die Kante im selben Moment
+             * verlaesst. Weiss, weil jede andere Farbe im Bild schon eine
+             * Bedeutung hat - dieser Blitz bedeutet nur "angekommen".
+             */
+            if (blinkKante >= 0 && blinkKante < polygon.Count
+                && polygon.Count >= 2)
+                buffer.DrawLine(Color.white, new Line3.Segment(
+                        polygon[blinkKante],
+                        polygon[(blinkKante + 1) % polygon.Count]),
+                    SelectedLineWidth * 1.6f);
+
             /**
              * Die Hilfslinie des Achsenfangs. Bei den anderen drei Fangarten
              * sieht man das Ziel ohnehin - Bordstein, Hauswand, Nachbarflaeche
@@ -419,11 +472,26 @@ namespace ParkingLotTool.Tools
                      */
                     if (ausrichtWahl)
                     {
-                        buffer.DrawLine(ClosePointColor,
+                        /*
+                         * IN DER FARBE DER GEWAEHLTEN FLAECHE.
+                         *
+                         * Die Kante beantwortet eine Frage, die zu genau
+                         * einer Flaeche gehoert. Vorher leuchtete sie im
+                         * allgemeinen Gruen und stand damit beziehungslos im
+                         * Bild - der Nutzer: *"die Linie die ich hovere bzw
+                         * klicke ist auch naja."* Gleiche Farbe wie die
+                         * Fuellung heisst: die beiden gehoeren zusammen.
+                         */
+                        var kantenfarbe = gewaehlteTeilflaeche >= 0
+                            && teilflaechen != null
+                            && gewaehlteTeilflaeche < teilflaechen.Count
+                            ? TeilflaechenFarbe(gewaehlteTeilflaeche)
+                            : ClosePointColor;
+                        buffer.DrawLine(kantenfarbe,
                             new Line3.Segment(a, b), SelectedLineWidth);
-                        buffer.DrawCircle(ClosePointColor, a,
+                        buffer.DrawCircle(kantenfarbe, a,
                             ActivePointDiameter);
-                        buffer.DrawCircle(ClosePointColor, b,
+                        buffer.DrawCircle(kantenfarbe, b,
                             ActivePointDiameter);
                     }
                     else if (insertReady)

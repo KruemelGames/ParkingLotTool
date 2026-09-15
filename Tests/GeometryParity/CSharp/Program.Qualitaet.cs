@@ -260,7 +260,7 @@ internal static partial class Program
         return 1;
     }
 
-    /** Jedes je gezogene Polygon aus `ParkingLotTool-bauten.jsonl`. */
+    /** Jedes je gezogene Polygon aus `ParkingLotTool-builds.jsonl`. */
     private static System.Collections.Generic.List<(string Name, float2[] Site)>
         FormenAusBauprotokoll()
     {
@@ -274,9 +274,9 @@ internal static partial class Program
             ? System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "AppData", "LocalLow", "Colossal Order", "Cities Skylines II",
-                "Logs", "ParkingLotTool-bauten.jsonl")
+                "Logs", "ParkingLotTool-builds.jsonl")
             : System.IO.Path.Combine(
-                spielprofil, "Logs", "ParkingLotTool-bauten.jsonl");
+                spielprofil, "Logs", "ParkingLotTool-builds.jsonl");
         if (!System.IO.File.Exists(pfad)) return raus;
 
         var nummer = 0;

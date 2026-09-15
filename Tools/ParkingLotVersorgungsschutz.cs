@@ -46,7 +46,7 @@ namespace ParkingLotTool.Tools
                     var dir = Path.Combine(Application.persistentDataPath, "Logs");
                     Directory.CreateDirectory(dir);
                     _versorgungSchutzDatei = Path.Combine(dir,
-                        "ParkingLotTool-Versorgungsschutz-"
+                        "ParkingLotTool-utilityguard-"
                         + DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")
                         + "-" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".log");
                 }

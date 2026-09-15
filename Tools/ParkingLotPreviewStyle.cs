@@ -38,6 +38,20 @@ namespace ParkingLotTool.Tools
         internal const float TeilflaecheFuellung = 0.15f;
         internal const float TeilflaecheFuellungBenutzt = 0.05f;
 
+        /**
+         * GEWAEHLT UND UNTER DEM ZEIGER MUESSEN SICH ABHEBEN.
+         *
+         * Gewaehlt lag vorher bei 0,18 gegen 0,15 fuer offen - drei
+         * Hundertstel Unterschied, im Spiel nicht zu sehen. Der Nutzer am
+         * 2026-09-15: *"wenn ich zwischen den beiden anklicke habe ich kein
+         * richtiges Feedback dass ich eins angeklickt habe."*
+         *
+         * Eigene Werte statt `FillSelected`, weil der auch die Zoningflaechen
+         * faerbt - die sollen sich davon nicht mitaendern.
+         */
+        internal const float TeilflaecheFuellungGewaehlt = 0.45f;
+        internal const float TeilflaecheFuellungZeiger = 0.28f;
+
         internal static Color Alpha(Color color, float alpha)
         {
             color.a = alpha;
@@ -66,6 +80,27 @@ namespace ParkingLotTool.Tools
         internal static readonly Color ElectricBayColor = Alpha(Positive, 0.34f);
         internal static readonly Color ChargerColor = Positive;
         internal static readonly Color GreenColor = new Color(0.55f, 0.72f, 0.47f, 0.20f);
+
+        /**
+         * GRUEN FUER DAS GEFUELLTE FLAECHENNETZ.
+         *
+         * Eigener Wert, kein abgeleiteter: `GreenColor` faerbt die
+         * Streifenfuellung, die nur noch als Ausweiche laeuft. Der Ton kommt
+         * vom Nutzer am 2026-09-15 - *"bekommen wir das auf #4ca64c hin?"*.
+         * Die Deckung steht auf 20 % wie bei der alten Streifenfuellung: die
+         * Flaeche soll den Boden einfaerben, nicht verdecken. Sie geht als
+         * Alpha in denselben Datenpuffer wie die Farbe - genau der Weg, ueber
+         * den auch CS2s eigene Overlay-Streifen durchscheinend sind.
+         *
+         * WARUM DIESER WERT ERST JETZT STIMMT. Bis zum 2026-09-15 zeichnete
+         * das Netz mit einem eigenen HDRP-Material, und dort kam jede
+         * gesaettigte Farbe entstellt an - gemessen wurde `#00c400` statt
+         * `#4ca64c`, Rot und Blau exakt null, bei jeder Deckung. Erst ueber
+         * CS2s eigenes Overlay-Material sitzt der Ton, und damit wird auch
+         * das Alpha wieder zu einer Zahl, die man einfach einstellen kann.
+         */
+        internal static readonly Color FlaechennetzGruen =
+            new Color(0x4c / 255f, 0xa6 / 255f, 0x4c / 255f, 0.20f);
         internal static readonly Color PerimeterRoadColor = new Color(0.46f, 0.57f, 0.66f, 0.16f);
         internal static readonly Color CrossRoadColor = PerimeterRoadColor;
         internal static readonly Color AisleRoadColor = PerimeterRoadColor;

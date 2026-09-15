@@ -90,6 +90,9 @@ internal static partial class Program
                 foreach (var n in layout.NetLine.Where(n => n.Art == Zufahrtsart.Fussweg))
                     Console.WriteLine($"    Fussnetz ({n.A.x:F3},{n.A.y:F3}) ({n.B.x:F3},{n.B.y:F3})");
             }
+            if (Environment.GetEnvironmentVariable("PLT_STREIFEN") == "1")
+                MissStreifenGegenDreiecke(fall.Name, layout);
+            PruefeNetzFlaeche(fall.Name, layout, Pruefe);
             PruefeSplitFussweg(fall, layout, Pruefe);
             Pruefe(layout.Stalls > 0, fall.Name + ": leeres Layout");
             Pruefe(abgelehnt == 0, fall.Name + ": " + abgelehnt
@@ -97,11 +100,221 @@ internal static partial class Program
                 + "der Bau bricht dann bei der Materialisierung ab");
         }
 
+        PruefeNetzZerlegung(Pruefe);
         PruefeHinweisfilter(Pruefe);
         PruefeFusswegsuche(Pruefe);
 
         Console.WriteLine($"Flaechenannahme: {fehler} Fehler");
         return fehler == 0 ? 0 : 1;
+    }
+
+    /**
+     * DIE DREIECKE MUESSEN DIE FLAECHE SEIN, NICHT IRGENDWAS DARUEBER.
+     *
+     * `Cs2Triangulierung.Netz` zerlegt einen Ring in Dreiecke, damit die
+     * Vorschau ihn gefuellt zeichnen kann. Am 2026-09-15 lag dort im
+     * Vorversuch noch ein FAECHER vom ersten Eckpunkt aus - der stimmt nur
+     * bei Formen ohne Einbuchtung, und im Spiel standen deshalb grosse weisse
+     * Keile quer ueber den Parkplatz.
+     *
+     * Der Test dagegen ist die FLAECHE: die Summe der Dreiecksflaechen muss
+     * die Polygonflaeche treffen. Ein Faecher ueber eine Einbuchtung deckt
+     * mehr ab als das Polygon und faellt hier sofort auf - Dreieckszaehlen
+     * allein wuerde ihn durchlassen, denn n-2 Dreiecke liefert er auch.
+     *
+     * Gegengeprueft am 2026-09-15 durch Mutation: `Netz` wieder auf den
+     * Faecher umgestellt -> der L-Fall unten meldet 76 statt 64 m2, und die
+     * echten Grasringe der Nutzerfaelle melden ebenfalls rot.
+     */
+    private static double Polygonflaeche(float2[] ring)
+    {
+        var n = ring.Length;
+        while (n > 1 && ring[n - 1].Equals(ring[0])) n--;
+        if (n < 3) return 0.0;
+        var summe = 0.0;
+        for (var i = 0; i < n; i++)
+        {
+            var a = ring[i];
+            var b = ring[(i + 1) % n];
+            summe += (double)a.x * b.y - (double)b.x * a.y;
+        }
+        return Math.Abs(summe) * 0.5;
+    }
+
+    private static double Dreiecksflaeche(float2[] ring, int[] netz)
+    {
+        var summe = 0.0;
+        for (var i = 0; i + 2 < netz.Length; i += 3)
+        {
+            var a = ring[netz[i]];
+            var b = ring[netz[i + 1]];
+            var c = ring[netz[i + 2]];
+            summe += Math.Abs((double)(b.x - a.x) * (c.y - a.y)
+                            - (double)(c.x - a.x) * (b.y - a.y)) * 0.5;
+        }
+        return summe;
+    }
+
+    private static void PruefeNetzRing(string wo, float2[] ring,
+                                       Action<bool, string> Pruefe)
+    {
+        if (ring == null || ring.Length < 3) return;
+        var zahl = Cs2Triangulierung.Dreiecke(ring);
+        var netz = Cs2Triangulierung.Netz(ring);
+
+        // Beide Wege muessen dieselbe Rechnung sein - sie SIND es, aber genau
+        // das ist die Zusage, auf die sich die Vorschau stuetzt.
+        if (zahl == 0)
+        {
+            Pruefe(netz == null, wo + ": CS2 verwirft den Ring, Netz liefert "
+                + "trotzdem Dreiecke");
+            return;
+        }
+        if (netz == null)
+        {
+            Pruefe(false, wo + ": CS2 nimmt den Ring an (" + zahl
+                + " Dreiecke), Netz liefert nichts");
+            return;
+        }
+        Pruefe(netz.Length == zahl * 3, wo + ": " + zahl + " Dreiecke gezaehlt, "
+            + "aber " + netz.Length + " Indizes statt " + (zahl * 3));
+        foreach (var i in netz)
+            if (i < 0 || i >= ring.Length)
+            {
+                Pruefe(false, wo + ": Index " + i + " zeigt aus dem Ring mit "
+                    + ring.Length + " Punkten heraus");
+                return;
+            }
+
+        var soll = Polygonflaeche(ring);
+        var ist = Dreiecksflaeche(ring, netz);
+        Pruefe(soll <= 0.0 || Math.Abs(ist - soll) <= Math.Max(0.01, soll * 0.001),
+            wo + ": Dreiecke decken " + ist.ToString("F2") + " m2 ab, das "
+            + "Polygon hat " + soll.ToString("F2") + " m2");
+    }
+
+    /**
+     * WIE GUT BILDET DIE VORSCHAU DIE FLAECHEN UEBERHAUPT AB?
+     *
+     * Die Vorschau kann kein Vieleck fuellen - CS2s Overlay kennt nur Kurve,
+     * Kreis und Strich. `ParkingSurfaceStrips` behilft sich deshalb mit
+     * ABTASTSTREIFEN von 4 m Breite. Bei echten Rechtecken ist das exakt,
+     * bei allem anderen eine Treppe: an schraegen und runden Kanten schiesst
+     * jeder Streifen ueber oder bleibt zurueck.
+     *
+     * Der Nutzer am 2026-09-15: *"Derzeit ist es so dass Unfoermige Flaechen
+     * einfach durch Rechtecke gefuellt werden was enorm haesslich aussieht."*
+     * Diese Messung sagt, um wieviel es geht - Streifen gegen Dreiecke, Zahl
+     * und Flaechenfehler. Kein Pruefpunkt, ein Messpunkt: `PLT_STREIFEN=1`.
+     */
+    private static void MissStreifenGegenDreiecke(string name,
+                                                  ParkingLayout layout)
+    {
+        foreach (var material in new[]
+                 {
+                     // GENAU DIE LISTEN, DIE DIE VORSCHAU FUELLT.
+                     // `_green` in ParkingLotOverlay.SetLayout wird aus diesen
+                     // fuenf gespeist - nicht aus `GrassSurface`. Wer die
+                     // verschmolzenen Ringe misst, misst etwas anderes.
+                     ("Gruen-Entwurf", Zusammen(layout.Median, layout.Cap,
+                         layout.Green, layout.Fill, layout.CrossPavement)),
+                     ("Belag-Ringe", layout.AsphaltSurface),
+                     ("Gras-Ringe", layout.GrassSurface),
+                 })
+        {
+            var ringe = (material.Item2 ?? new float2[0][])
+                .Where(r => r != null && r.Length >= 3).ToArray();
+            if (ringe.Length == 0) continue;
+
+            var soll = ringe.Sum(Polygonflaeche);
+
+            var streifen = ParkingSurfaceStrips.Fill(
+                ringe, ParkingSurfaceStrips.PreferredWidth);
+            var streifenflaeche = streifen.Sum(
+                t => Math.Sqrt(Math.Pow(t.To.x - t.From.x, 2)
+                             + Math.Pow(t.To.y - t.From.y, 2)) * t.Width);
+
+            var dreiecke = 0;
+            var dreiecksflaeche = 0.0;
+            var verworfen = 0;
+            foreach (var ring in ringe)
+            {
+                var netz = Cs2Triangulierung.Netz(ring);
+                if (netz == null) { verworfen++; continue; }
+                dreiecke += netz.Length / 3;
+                dreiecksflaeche += Dreiecksflaeche(ring, netz);
+            }
+
+            Console.WriteLine($"    {name} {material.Item1}: {ringe.Length} Teile, "
+                + $"{soll:F0} m2 | Streifen {streifen.Length} Stueck, "
+                + $"{streifenflaeche:F0} m2 ({(streifenflaeche - soll) / soll * 100.0:F1} %) "
+                + $"| Dreiecke {dreiecke} Stueck, {dreiecksflaeche:F0} m2 "
+                + $"({(dreiecksflaeche - soll) / soll * 100.0:F1} %), "
+                + $"{verworfen} Teil(e) verwirft CS2");
+        }
+    }
+
+    private static float2[][] Zusammen(params float2[][][] listen)
+    {
+        var alle = new List<float2[]>();
+        foreach (var liste in listen)
+            if (liste != null)
+                alle.AddRange(liste);
+        return alle.ToArray();
+    }
+
+    private static void PruefeNetzFlaeche(string name, ParkingLayout layout,
+                                          Action<bool, string> Pruefe)
+    {
+        foreach (var material in new[] { ("Belag", layout.AsphaltSurface),
+                                         ("Gras", layout.GrassSurface) })
+        {
+            var ringe = material.Item2;
+            if (ringe == null) continue;
+            for (var i = 0; i < ringe.Length; i++)
+                PruefeNetzRing(name + " " + material.Item1 + " " + i,
+                    ringe[i], Pruefe);
+        }
+    }
+
+    private static void PruefeNetzZerlegung(Action<bool, string> Pruefe)
+    {
+        // Ein L. Die Einbuchtung ist der ganze Punkt: ein Faecher vom ersten
+        // Eckpunkt aus schiesst hier quer ueber die Kerbe hinweg.
+        var l = new[]
+        {
+            new float2(0f, 0f), new float2(10f, 0f), new float2(10f, 4f),
+            new float2(4f, 4f), new float2(4f, 10f), new float2(0f, 10f),
+        };
+        PruefeNetzRing("L-Form", l, Pruefe);
+        Pruefe(Math.Abs(Polygonflaeche(l) - 64.0) < 1e-6,
+            "L-Form: Testfigur selbst falsch, " + Polygonflaeche(l) + " m2");
+        var netzL = Cs2Triangulierung.Netz(l);
+        Pruefe(netzL != null && netzL.Length == 4 * 3,
+            "L-Form: " + (netzL == null ? "verworfen" : netzL.Length / 3
+                + " Dreiecke") + ", erwartet 4");
+
+        // Ein schlichtes Rechteck als Gegenprobe - hier waere der Faecher
+        // richtig, und das Ergebnis muss dasselbe sein.
+        var rechteck = new[]
+        {
+            new float2(0f, 0f), new float2(20f, 0f),
+            new float2(20f, 5f), new float2(0f, 5f),
+        };
+        PruefeNetzRing("Rechteck", rechteck, Pruefe);
+
+        // Und ein Ring, den CS2 nachweislich verwirft: eine Haarnadel, die
+        // den 0,1-m-Innenversatz nicht ueberlebt. `Netz` muss das genauso
+        // sehen wie `Dreiecke` - sonst zeigt die Vorschau eine Flaeche, die
+        // es nach dem Bauen nicht gibt.
+        var haarnadel = new[]
+        {
+            new float2(0f, 0f), new float2(20f, 0f),
+            new float2(20f, 0.02f), new float2(0f, 0.02f),
+        };
+        Pruefe(Cs2Triangulierung.Dreiecke(haarnadel) == 0,
+            "Haarnadel: CS2 nimmt sie wider Erwarten an - Testfigur taugt nicht");
+        PruefeNetzRing("Haarnadel", haarnadel, Pruefe);
     }
 
     private static int ZaehleAbgelehnt(float2[][] ringe)
@@ -137,7 +350,7 @@ internal static partial class Program
     {
         /*
          * Der gemeldete Fall, Koordinaten aus dem Problembericht des Nutzers
-         * (`ParkingLotTool-bericht-20260908-182847-091.txt`). Randstrassen
+         * (`ParkingLotTool-summary-20260908-182847-091.txt`). Randstrassen
          * aus, Kappen an, eine Zufahrt - genau die Lage, in der 138 Flaechen
          * geplant und nur 137 angenommen wurden.
          */
@@ -235,6 +448,24 @@ internal static partial class Program
             + "CS2 would have refused them.");
         Bleibt("Halbebenenschnitt x=-6,675 (ID 182): entartete Scherbe "
             + "verworfen, Flaeche 12,5 m2, Rundungsgrenze 1E-10 m2.");
+
+        // ZWEITE SORTE: Befunde ueber unsere eigene Konstruktion. Wichtig,
+        // aber nicht fuer den Nutzer - sie stehen weiter im Bauzettel.
+        void WegBefund(string text) => Pruefe(
+            Hinweisfilter.Sichtbare(new[] { text }).Length == 0,
+            "muesste aus der Statusleiste verschwinden: " + text);
+        WegBefund("Cell engine: hole separation had to cut 1 seam(s) - "
+            + "1 hole(s) in 1 surface(s). A surface merged into a ring; that "
+            + "is a construction fault upstream, not a repair job.");
+        // Sie ist KEINE Nullflaechenmeldung - die beiden Sorten duerfen sich
+        // nicht vermischen.
+        Bleibt("Cell engine: hole separation had to cut 1 seam(s) - "
+            + "1 hole(s) in 1 surface(s). A surface merged into a ring; that "
+            + "is a construction fault upstream, not a repair job.");
+        Pruefe(!Hinweisfilter.IstEntwicklerbefund(
+                "Cell engine: 3 surface ring(s) with 1009,16 m2 left out - "
+                + "CS2 would have refused them."),
+            "eine gewoehnliche Warnung ist kein Entwicklerbefund");
 
         // Alles Unbekannte bleibt stehen, auch wenn es Nullflaechen nennt.
         Bleibt("Cell engine: automatic entrances are not implemented; "

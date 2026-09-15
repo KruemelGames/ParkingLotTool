@@ -30,7 +30,7 @@ namespace ParkingLotTool.Tools
      */
     internal static class ParkingLotAbsturzwache
     {
-        private const string MarkenName = "ParkingLotTool-sitzung.marke";
+        private const string MarkenName = "ParkingLotTool-session.marker";
 
         /** Steht nach `Pruefe` fest und wird von der UI abgefragt. */
         internal static bool LetzteSitzungAbgestuerzt { get; private set; }
@@ -136,7 +136,7 @@ namespace ParkingLotTool.Tools
         }
 
         /** Vorsilbe der geretteten Dateien. Eigene Sorte fuer die Logpflege. */
-        private const string Rettung = "ParkingLotTool-absturzstand-";
+        private const string Rettung = "ParkingLotTool-crashstate-";
 
         /**
          * RETTET DIE SPUREN DES ABGESTUERZTEN LAUFS, BEVOR SIE UEBERSCHRIEBEN
@@ -145,7 +145,7 @@ namespace ParkingLotTool.Tools
          * Ohne diesen Schritt waere der Absturzbericht fast wertlos, und das
          * faellt erst auf, wenn man ihn braucht:
          *
-         *   - `ParkingLotTool-schritt.log` wird beim ERSTEN Schritt dieser
+         *   - `ParkingLotTool-step.log` wird beim ERSTEN Schritt dieser
          *     Sitzung ueberschrieben - also genau dann, wenn der Nutzer das
          *     Spiel neu startet, um den Bericht zu erzeugen.
          *   - `ParkingLotTool.Mod.log` rotiert NICHT. Es gibt nur eine Datei,
@@ -175,7 +175,7 @@ namespace ParkingLotTool.Tools
             var stempel = DateTime.Now.ToString("yyyyMMdd-HHmmss");
             try
             {
-                var spur = Path.Combine(Ordner, "ParkingLotTool-schritt.log");
+                var spur = Path.Combine(Ordner, "ParkingLotTool-step.log");
                 if (File.Exists(spur))
                 {
                     File.Copy(spur, Path.Combine(Ordner,
@@ -183,7 +183,7 @@ namespace ParkingLotTool.Tools
                     gerettet++;
                 }
 
-                foreach (var sorte in new[] { "vorbau", "debug", "bericht" })
+                foreach (var sorte in new[] { "prebuild", "debug", "summary" })
                 {
                     var juengste = Directory
                         .GetFiles(Ordner, "ParkingLotTool-" + sorte + "-*")

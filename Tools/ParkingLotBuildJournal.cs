@@ -47,7 +47,7 @@ namespace ParkingLotTool.Tools
      */
     public sealed partial class ParkingLotToolSystem
     {
-        private const string JournalFileName = "ParkingLotTool-bauten.jsonl";
+        private const string JournalFileName = "ParkingLotTool-builds.jsonl";
 
         /** Wie nah ein Protokolleintrag am Parkplatz liegen muss. */
         private const float JournalMatchRadius = 60f;

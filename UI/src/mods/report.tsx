@@ -2,39 +2,36 @@ import styles from "./panel.module.scss";
 import { MitTooltip, Spalte } from "./controls";
 import {
   absturzBefund$, absturzErkannt$, baubefund$, baukurzinfo$,
-  clearMarkers, icon, markerCount$,
+  clearMarkers, icon, markerCount$, meldeLotWahl$,
   markerMode$, meldungAbsturz, meldungBau, meldungOrdner, meldungPfad$,
-  meldungVorschau, removeLastMarker, reportPath$, setMarkerMode, writeReport,
+  meldungVorschau, removeLastMarker, reportPath$, schalteMeldeLotWahl,
+  setMarkerMode, writeReport,
 } from "./bindings";
 import { useValue } from "cs2/api";
 import { useTexte } from "./texte";
 
 /**
- * Der Reiter "Fehler melden".
+ * Die drei Schritte des ausfuehrlichen Meldewegs: markieren, zaehlen,
+ * Bericht schreiben.
  *
- * WOFUER: Wer den Mod benutzt und nach dem Bauen etwas Krummes sieht, soll
- * das melden koennen. Vorher lag dieser Weg auf Alt+M und Alt+P - Tasten,
- * die niemand kennt, der den Mod aus dem Workshop laedt. Ein Meldeweg, den
- * man nicht findet, wird nicht benutzt.
+ * STEHEN SEIT DEM 2026-09-15 IM DEBUG-REITER. Ansage des Nutzers: *"1., 2.,
+ * 3. und der Content dazu muessen auch noch in die Dev-Debug-Reiter. Das
+ * heisst 'Send a Report' ist alleine drin."*
  *
- * Der Ablauf steht als drei Spalten NEBENEINANDER, in der Reihenfolge, in
- * der man sie geht - dieselbe Leiste, dieselbe Hoehe wie der Entwurf. Als
- * die Ansicht noch ein hohes Fenster war, standen sie untereinander.
+ * Der Grund leuchtet ein: wer einen Fehler meldet, will einen Knopf
+ * druecken. Ein dreistufiger Ablauf mit Markierungen davor sieht nach Arbeit
+ * aus und schreckt genau die Leute ab, deren Meldung man braucht. Fuer die
+ * Entwicklung bleibt er wertvoll - dort steht er jetzt.
  */
-export const ReportTab = () => {
+export const MarkierSpalten = () => {
   const t = useTexte();
   const markerMode = useValue(markerMode$);
   const markerCount = useValue(markerCount$);
   const reportPath = useValue(reportPath$);
-  const absturzErkannt = useValue(absturzErkannt$);
-  const absturzBefund = useValue(absturzBefund$);
-  const meldungPfad = useValue(meldungPfad$);
-  const baubefund = useValue(baubefund$);
-  const baukurzinfo = useValue(baukurzinfo$);
   const hasMarkers = markerCount > 0;
 
   return (
-    <div className={styles.spaltenGruppe}>
+    <>
       <Spalte title={t.schritt1} ton="Melden" breit>
         {/* Der Schalter traegt seinen Zustand im Text, nicht nur in der
             Farbe. */}
@@ -105,15 +102,33 @@ export const ReportTab = () => {
           <div className={styles.explain}>{t.berichtOrt}</div>
         )}
       </Spalte>
+    </>
+  );
+};
 
-      {/*
-        DER WEG FUER EINEN TESTER.
-        Die drei Spalten darueber sind der ausfuehrliche Weg: markieren,
-        beschreiben, Bericht schreiben. Der hier ist der kurze - ein Klick,
-        eine Datei. Beides nebeneinander, weil beides seinen Fall hat: wer
-        eine STELLE zeigen will, markiert; wer einen Absturz oder eine krumme
-        Vorschau meldet, drueckt einen Knopf.
-      */}
+/**
+ * Der Reiter "Fehler melden".
+ *
+ * WOFUER: Wer den Mod benutzt und nach dem Bauen etwas Krummes sieht, soll
+ * das melden koennen. Vorher lag dieser Weg auf Alt+M und Alt+P - Tasten,
+ * die niemand kennt, der den Mod aus dem Workshop laedt. Ein Meldeweg, den
+ * man nicht findet, wird nicht benutzt.
+ *
+ * EIN KNOPF, EINE DATEI. Der ausfuehrliche Weg mit Markierungen steht seit
+ * dem 2026-09-15 im Debug-Reiter; hier bleibt, was ein Tester wirklich
+ * braucht.
+ */
+export const ReportTab = () => {
+  const t = useTexte();
+  const absturzErkannt = useValue(absturzErkannt$);
+  const absturzBefund = useValue(absturzBefund$);
+  const meldungPfad = useValue(meldungPfad$);
+  const baubefund = useValue(baubefund$);
+  const baukurzinfo = useValue(baukurzinfo$);
+  const lotWahl = useValue(meldeLotWahl$);
+
+  return (
+    <div className={styles.spaltenGruppe}>
       <Spalte title={t.meldungTitel} ton="Melden" breit>
         {absturzErkannt ? (
           <>
@@ -131,17 +146,45 @@ export const ReportTab = () => {
           </>
         ) : null}
 
-        <div className={styles.rowButtons}>
-          <button className={styles.smallButton} onClick={meldungVorschau}>
-            {t.meldungVorschauKnopf}
-          </button>
-          <button className={styles.smallButton} onClick={meldungBau}>
-            {t.meldungBauKnopf}
-          </button>
-          <button className={styles.smallButton} onClick={meldungOrdner}>
-            {t.meldungOrdnerKnopf}
-          </button>
+        {/*
+          VIER KNOEPFE, EINE GRUPPE.
+
+          Reihenfolge nach dem, was man meldet: erst die beiden, die den
+          aktuellen Zustand nehmen (Vorschau, letzter Bau), dann der, der
+          einen gebauten Parkplatz im Gelaende anklickt. "Ordner oeffnen"
+          steht unten rechts - es meldet nichts, es zeigt nur, wo die Dateien
+          liegen. Ausdruecklich so gewuenscht.
+
+          Der Parkplatz-Knopf ist der einzige mit einem Zustand; er zeigt ihn
+          in derselben Form wie die uebrigen Schalter des Reiters, damit er
+          nicht aus der Gruppe faellt.
+        */}
+        <div className={styles.meldeGitter}>
+          <div className={styles.meldeGitterKnopf}>
+            <button className={styles.smallButton} onClick={meldungVorschau}>
+              {t.meldungVorschauKnopf}
+            </button>
+          </div>
+          <div className={styles.meldeGitterKnopf}>
+            <button className={styles.smallButton} onClick={meldungBau}>
+              {t.meldungBauKnopf}
+            </button>
+          </div>
+          <div className={styles.meldeGitterKnopf}>
+            <button
+              className={`${styles.smallButton} ${lotWahl ? styles.smallButtonSelected : ""}`}
+              onClick={() => schalteMeldeLotWahl(!lotWahl)}
+            >
+              {lotWahl ? t.meldeLotWahlLaeuft : t.meldeLotKnopf}
+            </button>
+          </div>
+          <div className={styles.meldeGitterKnopf}>
+            <button className={styles.smallButton} onClick={meldungOrdner}>
+              {t.meldungOrdnerKnopf}
+            </button>
+          </div>
         </div>
+        <div className={styles.explain}>{t.meldeLotErklaerung}</div>
 
         <div className={styles.explain}>{t.meldungVorschauErklaerung}</div>
 

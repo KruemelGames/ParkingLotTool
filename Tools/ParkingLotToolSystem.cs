@@ -92,6 +92,7 @@ namespace ParkingLotTool.Tools
             InitialisiereZoningSeitenSpeicher();
             _overlay = new ParkingLotOverlay();
             InitializeAreaPreview();
+            InitialisiereMeldewahl();
             InitializeNetBuilder();
             InitializeBayObjects();
             InitializeEntranceArrows();
@@ -131,7 +132,7 @@ namespace ParkingLotTool.Tools
                 + "ein echtes Rechteck ergibt.");
             Mod.log.Info("  Fehler melden: Alt+M schaltet den Markiermodus ein, "
                 + "Linksklick markiert die Stelle (magenta), Rechtsklick nimmt "
-                + "zurück, Alt+P schreibt 'ParkingLotTool-bericht-*.txt' in den "
+                + "zurück, Alt+P schreibt 'ParkingLotTool-summary-*.txt' in den "
                 + "Logs-Ordner.");
             // Ohne diese Zeile war nach einem Testlauf nicht zu sehen, ob der
             // Versuch ueberhaupt lief - im Log stand dazu gar nichts, und der
@@ -276,6 +277,18 @@ namespace ParkingLotTool.Tools
              * Hover wird vorher gebraucht (er sagt, WELCHE Kante), alles
              * danach nicht.
              */
+            /*
+             * DIE PARKPLATZWAHL ZUM MELDEN STEHT GANZ VORN.
+             *
+             * Sie laeuft nur, wenn der Nutzer sie ausdruecklich
+             * eingeschaltet hat, und dann will er in diesem Moment
+             * nichts anderes. Weiter unten haette derselbe Klick
+             * schon einen Punkt gesetzt - derselbe Fallstrick, an dem
+             * die Linienauswahl einmal gehangen hat.
+             */
+            PflegeMeldeLotWahl();
+            if (HandleMeldeLotWahl(secondaryPressed, escapePressed))
+                return RenderOverlay(deps);
             if (HandleAusrichtWahl(secondaryPressed, escapePressed))
             {
                 /*
@@ -1107,7 +1120,8 @@ namespace ParkingLotTool.Tools
                 RememberCompletedPreview(site, worldSite, settings, layout,
                     revision, startedUtc, DateTime.UtcNow, elapsedMilliseconds);
                 _overlay.SetLayout(layout, settings, _terrainSystem,
-                    _vorflaechenSicht, _vorflaechenArt);
+                    _vorflaechenSicht, _vorflaechenArt, FuellungAlsNetz);
+                FuettereFlaechennetz(layout);
                 SetVegetationPreview(layout);
                 SetAreaPreviewLayout(layout, settings);
                 CaptureEditBaselineIfNeeded(layout);
@@ -1131,6 +1145,9 @@ namespace ParkingLotTool.Tools
                 // dort, wo es zaehlt.
                 var rufe = ParkingGeometry.OverlapCalls;
                 var raus = ParkingGeometry.OverlapRejectedByBounds;
+                // Fuer die Statuszeile beim Ausrichten: dort wartet man
+                // darauf, und ohne Zahl sieht Warten wie Stillstand aus.
+                _letzteVorschaudauerMs = elapsedMilliseconds;
                 Mod.log.Info($"PLT-Vorschau berechnet: {layout.Stalls} Buchten in "
                     + $"{elapsedMilliseconds:F0} ms. Ueberschneidungstests: "
                     + $"{rufe:N0}, davon {raus:N0} per Rechteckvergleich verworfen"
@@ -1207,9 +1224,23 @@ namespace ParkingLotTool.Tools
 
         private JobHandle RenderOverlay(JobHandle inputDeps)
         {
-            // Die Verwaltung zeigt fertige Parkplaetze, keinen aktiven Entwurf.
-            // Zustand behalten: beim Rueckweg nach Draft ist der Umriss noch da.
-            if (!Werkzeugzustand.ZeigtWerkzeugvorschau(_reiter)) return inputDeps;
+            /*
+             * DIE VERWALTUNG ZEIGT FERTIGE PARKPLAETZE, KEINEN ENTWURF.
+             *
+             * Zustand behalten: beim Rueckweg nach Draft ist der Umriss noch
+             * da. Nur das ZEICHNEN faellt hier aus.
+             *
+             * DAS FLAECHENNETZ MUSS MIT. Es haengt nicht am Overlay, sondern
+             * zeichnet in der Rendering-Phase selbst - und hat dieses Tor
+             * deshalb nicht mitbekommen. Im Reiter "Parking lots" verschwand
+             * die ganze Vorschau und das Gras blieb allein stehen. Der Nutzer
+             * am 2026-09-15: *"derzeit sehe ich nur gruen."*
+             */
+            if (!Werkzeugzustand.ZeigtWerkzeugvorschau(_reiter))
+            {
+                _flaechennetz?.Leere();
+                return inputDeps;
+            }
             var buffer = _overlayRenderSystem.GetBuffer(out var overlayDeps);
             var deps = JobHandle.CombineDependencies(inputDeps, overlayDeps);
             // GetBuffer liefert die noch laufenden Schreiber derselben NativeLists.
@@ -1236,12 +1267,18 @@ namespace ParkingLotTool.Tools
              * einloest, ist schlimmer als gar keine.
              */
             var entwurfshilfen = Werkzeugzustand.ZeigtUmrisshilfe(_reiter, AktuellerModus);
+
             _overlay.Draw(buffer, _worldPoints, _closed, (entwurfshilfen || MarkerMode) && _hasHover,
                 _hoverPosition, CanCloseAtCursor(),
                 entwurfshilfen ? _hoverPoint : -1, entwurfshilfen ? _dragPoint : -1,
                 LastSnap, entwurfshilfen && HasSnapGuide, SnapGuide, _markers, MarkerMode,
                 _entranceOverlay,
-                entwurfshilfen ? _hoverEdge : -1, entwurfshilfen ? _dragEdge : -1,
+                // Die Kante wird auch beim Ausrichten gezeigt - dort ist sie
+                // das Auswahlziel. Das ZIEHEN bleibt gesperrt, deshalb haengt
+                // nur die Anzeige um, nicht `_dragEdge`.
+                entwurfshilfen || Ausrichtwahl == Ausrichtschritt.Linie
+                    ? _hoverEdge : -1,
+                entwurfshilfen ? _dragEdge : -1,
                 entwurfshilfen && _insertReady, _insertPosition,
                 entwurfshilfen && _edgeSnapped, _edgeSnapPoint,
                 _edgeGuide,
@@ -1256,6 +1293,8 @@ namespace ParkingLotTool.Tools
                 AusrichtFlaeche,
                 AusrichtWahlAktiv ? ZugewieseneTeilflaechen() : null,
                 HervorgehobeneTeilflaeche(),
+                ZeigerTeilflaeche(),
+                AusrichtBlinkKante(),
                 TrennmodusAktiv,
                 TrennmodusAktiv ? Trennlinien() : null,
                 _trennAnfang,
@@ -1727,6 +1766,9 @@ namespace ParkingLotTool.Tools
         protected override void OnUpdate()
         {
             _parkingLotTool?.PflegeAutoVersorgungsmessung();
+            // Muss VOR dem Ausstieg bei Eingabefokus stehen: die Nachschau
+            // haengt an keiner Taste, sie haengt an verstrichenen Bildern.
+            _parkingLotTool?.PflegeVegetationsnachschau();
             var keyboard = Keyboard.current;
             var input = InputManager.instance;
             if (keyboard == null || input == null || input.hasInputFieldFocus) return;
@@ -1760,6 +1802,14 @@ namespace ParkingLotTool.Tools
                 _parkingLotTool.ToggleMarkerMode();
                 return;
             }
+            /*
+             * HIER STAND ALT+F.
+             *
+             * Der Vorversuch fuer das gefuellte Flaechennetz hing an dieser
+             * Taste. Seit dem 2026-09-15 laeuft das Netz immer mit, sobald
+             * eine Vorschau steht - ein Schalter fuer etwas, das man immer
+             * will, ist nur eine Falle fuer den, der ihn nicht kennt.
+             */
             if (!keyboard.pKey.wasPressedThisFrame) return;
 
             var control = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;

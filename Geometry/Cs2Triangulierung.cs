@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Mathematics;
 
 namespace ParkingLotTool.Geometry
@@ -56,6 +57,33 @@ public static class Cs2Triangulierung
      * dasselbe Ergebnis und hat keine Baumtiefe zu raten.
      */
     public static int Dreiecke(float2[] ring, bool gegenUhrzeiger = true)
+        => Schneide(ring, gegenUhrzeiger, null);
+
+    /**
+     * DIESELBE RECHNUNG, ABER SIE RUECKT DIE DREIECKE HERAUS.
+     *
+     * `Dreiecke` beantwortet die Frage "nimmt CS2 diese Flaeche an?". Fuer
+     * eine gefuellte Vorschau brauchen wir dieselbe Antwort UND die Dreiecke
+     * selbst, um sie zu zeichnen. Beides kommt aus EINER Rechnung; ein
+     * zweites Zerlegungsverfahren waere eine zweite Fehlerquelle, und
+     * ausgerechnet hier haengt das Ergebnis am letzten Bit einer
+     * float-Multiplikation.
+     *
+     * Zurueck kommen Indizes in den uebergebenen Ring, immer drei je Dreieck.
+     * `null` heisst: CS2 wuerde diese Flaeche verwerfen - im Spiel waere dort
+     * nackter Boden. Das ist keine Panne des Aufrufers, sondern die Auskunft,
+     * auf die es ankommt.
+     */
+    public static int[] Netz(float2[] ring, bool gegenUhrzeiger = true)
+    {
+        var sammler = new List<int>();
+        return Schneide(ring, gegenUhrzeiger, sammler) == 0
+            ? null
+            : sammler.ToArray();
+    }
+
+    private static int Schneide(float2[] ring, bool gegenUhrzeiger,
+                                List<int> sammler)
     {
         if (ring == null || ring.Length < 3) return 0;
 
@@ -135,6 +163,15 @@ public static class Cs2Triangulierung
             {
                 if (gebaut == soll) return 0; // mehr Dreiecke als moeglich
                 gebaut++;
+                // Die Indizes zeigen in den ORIGINALRING. Trianguliert wird
+                // auf dem um 0,1 m nach innen versetzten Ring, gezeichnet
+                // wird der echte - sonst saesse die Flaeche 10 cm zu klein.
+                if (sammler != null)
+                {
+                    sammler.Add(e0.Knoten);
+                    sammler.Add(e1.Knoten);
+                    sammler.Add(e2.Knoten);
+                }
                 e0.Ueberspringen = e0.Ueberspringen == e0.Nachher
                     ? e1.Ueberspringen : e0.Ueberspringen;
                 e0.Nachher = e1.Nachher;

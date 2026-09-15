@@ -164,6 +164,19 @@
 			<HintPath>$(ManagedPath)\Unity.Mathematics.dll</HintPath>
 			<Private>false</Private>
 		</Reference>
+		<!--
+			HDRP. Gebraucht fuer genau einen Aufruf:
+			`HDMaterial.ValidateMaterial`. Ein HDRP-Material, dem man die
+			Oberflaechenart zur Laufzeit umstellt, behaelt sonst seinen
+			undurchsichtigen Zeichenzustand - die Flaeche kam am 2026-09-15
+			deshalb vollkommen deckend heraus, obwohl Alpha 0,20 gesetzt war.
+		-->
+		<Reference Include="Unity.RenderPipelines.HighDefinition.Runtime">
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Unity.RenderPipelines.Core.Runtime">
+			<Private>false</Private>
+		</Reference>
 	</ItemGroup>
 
 	<ItemGroup>

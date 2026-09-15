@@ -54,7 +54,7 @@ namespace ParkingLotTool.Tools
 
         private static string TraegerAkte => System.IO.Path.Combine(
             UnityEngine.Application.persistentDataPath, "Logs",
-            "ParkingLotTool-traegertest.txt");
+            "ParkingLotTool-carriertest.txt");
 
         /**
          * EIN KNOPF, ZWEI SCHRITTE.

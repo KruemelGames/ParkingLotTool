@@ -451,7 +451,12 @@ namespace ParkingLotTool.Tools
             }
             if (_vegetationCount > 0)
             {
-                Mod.log.Info("PLT-Vorbauzettel Vegetation: native Pflanzen=" + vegetation + "/" + _vegetationCount + "; Baumalter-Ziele=" + _vegetationTreeStates.Count);
+                Mod.log.Info("PLT-Vorbauzettel Vegetation: native Pflanzen="
+                    + vegetation + "/" + _vegetationCount
+                    + "; Baumalter-Ziele=" + _vegetationTreeStates.Count
+                    + "; Zustand GESETZT=" + _vegZustandGesetzt
+                    + "; ohne Tree-Komponente=" + _vegOhneTreeKomponente
+                    + "; ohne Ziel=" + _vegOhneZiel);
                 if (vegetation != _vegetationCount) Mod.log.Warn("PLT-Vegetation: Abweichung zwischen Definitionen und erzeugten Pflanzen; siehe Vorbauzettel.");
             }
             return geheftet;

@@ -300,6 +300,10 @@ namespace ParkingLotTool
              */
             updateSystem.UpdateAt<ParkingLotStrassennameSystem>(
                 SystemUpdatePhase.UIUpdate);
+            // Vorversuch mit eigenem Flaechennetz, Alt+F. `Rendering` ist die
+            // Phase, in der CS2 selbst zeichnet.
+            updateSystem.UpdateAt<ParkingLotFlaechennetzSystem>(
+                SystemUpdatePhase.Rendering);
             // Direkt HINTER `ParkingLaneDataSystem`, das in derselben Phase
             // laeuft (Game.Common.SystemOrder Zeile 251) und den Komfortwert
             // unserer Parkspuren bei jedem Nachrechnen auf 0 setzt, weil unser

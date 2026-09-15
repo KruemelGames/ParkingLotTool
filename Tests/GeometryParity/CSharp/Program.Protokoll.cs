@@ -17,7 +17,7 @@ internal static partial class Program
      * jeder gebaute Parkplatz steht mit seinem Umriss im Bauprotokoll
      *
      *     %LOCALLOW%/Colossal Order/Cities Skylines II/Logs/
-     *         ParkingLotTool-bauten.jsonl
+     *         ParkingLotTool-builds.jsonl
      *
      * Von dort holt sich dieser Lauf die Form. Ab jetzt gilt: wer eine
      * gemeldete Form nachrechnen will, nimmt sie hier heraus und fragt
@@ -53,7 +53,7 @@ internal static partial class Program
             ? Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "AppData", "LocalLow", "Colossal Order", "Cities Skylines II",
-                "Logs", "ParkingLotTool-bauten.jsonl")
+                "Logs", "ParkingLotTool-builds.jsonl")
             : vorgegeben;
     }
 

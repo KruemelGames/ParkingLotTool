@@ -9,6 +9,7 @@ import {
   buildZoningProbe, measureZoningProbe, cleanupZoningProbe,
 } from "./bindings";
 import { Spalte } from "./controls";
+import { MarkierSpalten } from "./report";
 import { useTexte } from "./texte";
 
 /**
@@ -44,6 +45,11 @@ export const DebugTab = () => {
 
   return (
     <div className={styles.spaltenGruppe}>
+      {/* Der ausfuehrliche Meldeweg - markieren, zaehlen, Bericht schreiben.
+          Stand bis zum 2026-09-15 im Melden-Reiter; dort braucht ein Tester
+          einen Knopf, keinen dreistufigen Ablauf. */}
+      <MarkierSpalten />
+
       <Spalte
         title={t.debugSonde}
         ton="Melden"

@@ -61,7 +61,7 @@ namespace ParkingLotTool.Tools
                 _pfad = Path.Combine(
                     Path.Combine(UnityEngine.Application.persistentDataPath,
                         "Logs"),
-                    "ParkingLotTool-schritt.log");
+                    "ParkingLotTool-step.log");
                 return _pfad;
             }
         }

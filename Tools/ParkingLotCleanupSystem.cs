@@ -134,7 +134,8 @@ namespace ParkingLotTool.Tools
                 return;
             }
             var buffer = _barrier.CreateCommandBuffer();
-            var (marked, remaining) = MarkRelatedParts(buffer, work.Lot);
+            var (marked, remaining, pflanzen, pflanzenUebrig) =
+                MarkRelatedParts(buffer, work.Lot);
             /*
              * DIE LEITUNGEN WERDEN HIER NICHT MEHR ANGEFASST.
              *
@@ -157,9 +158,20 @@ namespace ParkingLotTool.Tools
                 // Auch wenn dies die letzte Portion war, bleibt der Traeger
                 // bis zum naechsten Durchgang stehen. So laufen letzte
                 // Teil-Loeschung und Traeger-Loeschung nie in derselben Kaskade.
+                /*
+                 * PFLANZEN GETRENNT GEZAEHLT.
+                 *
+                 * Der Nutzer am 2026-09-15: *"ich habe Baeume auf Sapling
+                 * gesetzt und es blieben noch die alten stehen."* Die alten
+                 * Pflanzen muessen ueber genau diesen Weg verschwinden - sie
+                 * tragen `ParkingLotPartRelation` auf das alte Lot. Ob sie
+                 * hier ueberhaupt ankommen, stand nirgends. Eine Zahl, die
+                 * stumm 0 ist, sieht aus wie "nichts zu tun".
+                 */
                 Mod.log.Info($"PLT-Aufraeumer: {marked} relationierte Teile "
-                    + $"vorgemerkt, {remaining} bleiben uebrig; Grenze "
-                    + $"{PartsPerPass} je Durchgang.");
+                    + $"vorgemerkt ({pflanzen} davon Pflanzen), {remaining} "
+                    + $"bleiben uebrig ({pflanzenUebrig} davon Pflanzen); "
+                    + $"Grenze {PartsPerPass} je Durchgang.");
                 ParkingLotSchrittmarke.Setze(
                     $"Abriss: {marked} Teile vorgemerkt, {remaining} uebrig");
 /*
@@ -207,12 +219,22 @@ namespace ParkingLotTool.Tools
                 + (carrierRemoved ? "entfernt" : "war schon fort"));
         }
 
-        private (int Marked, int Remaining) MarkRelatedParts(
-            EntityCommandBuffer buffer, Entity lot)
+        /** Traegt dieses Teil eine Pflanze? Ueber das Prefab, nicht ueber
+         *  eine gepflegte Liste - eine Liste vergisst man. */
+        private bool IstPflanze(Entity part)
+            => EntityManager.HasComponent<Game.Prefabs.PrefabRef>(part)
+               && EntityManager.HasComponent<Game.Prefabs.PlantData>(
+                   EntityManager.GetComponentData<Game.Prefabs.PrefabRef>(part)
+                       .m_Prefab);
+
+        private (int Marked, int Remaining, int Pflanzen, int PflanzenUebrig)
+            MarkRelatedParts(EntityCommandBuffer buffer, Entity lot)
         {
             using var parts = _partQuery.ToEntityArray(Allocator.TempJob);
             var marked = 0;
             var remaining = 0;
+            var pflanzen = 0;
+            var pflanzenUebrig = 0;
 
             for (var i = 0; i < parts.Length; i++)
             {
@@ -225,8 +247,10 @@ namespace ParkingLotTool.Tools
                     || marked >= PartsPerPass)
                 {
                     remaining++;
+                    if (IstPflanze(part)) pflanzenUebrig++;
                     continue;
                 }
+                if (IstPflanze(part)) pflanzen++;
 
                 // Ein Decal bringt eigene Parkspuren mit. Sie werden zusammen
                 // mit dem Teil in Modification3 markiert, damit LaneSystem in
@@ -284,7 +308,7 @@ namespace ParkingLotTool.Tools
                 marked++;
             }
 
-            return (marked, remaining);
+            return (marked, remaining, pflanzen, pflanzenUebrig);
         }
     }
 }

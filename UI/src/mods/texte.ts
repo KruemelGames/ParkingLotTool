@@ -192,6 +192,11 @@ const en = {
   befundNichts: "Nothing was flagged during the last run.",
   kurzinfoTitel: "Last run",
   lotBericht: "Report this lot",
+  meldeLotKnopf: "Report a parking lot",
+  meldeLotWahlLaeuft: "Click a parking lot …",
+  meldeLotErklaerung:
+    "Pick one of your parking lots in the world and it goes into the report, "
+    + "the same as \"Report this lot\" in its info window. Right-click cancels.",
   tooltipLotBericht:
     "Writes one file about THIS parking lot - what it was built from and "
     + "what the mod did. Send it along if something here looks wrong.",
@@ -670,6 +675,12 @@ const de: Texte = {
   befundNichts: "Beim letzten Lauf wurde nichts bemängelt.",
   kurzinfoTitel: "Letzter Lauf",
   lotBericht: "Bericht schreiben",
+  meldeLotKnopf: "Einen Parkplatz melden",
+  meldeLotWahlLaeuft: "Parkplatz anklicken …",
+  meldeLotErklaerung:
+    "Einen deiner Parkplätze im Gelände anklicken; er kommt in den Bericht, "
+    + "genau wie über „Bericht schreiben“ in seinem Fenster. Rechtsklick "
+    + "bricht ab.",
   tooltipLotBericht:
     "Schreibt EINE Datei zu DIESEM Parkplatz - woraus er gebaut wurde und "
     + "was die Mod zuletzt getan hat. Schick sie mit, wenn hier etwas krumm "

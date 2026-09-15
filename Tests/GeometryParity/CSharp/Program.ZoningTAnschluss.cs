@@ -6,7 +6,7 @@ using Unity.Mathematics;
 
 internal static partial class Program
 {
-    // Eingaben aus ParkingLotTool-bauten.jsonl, 2026-09-05.
+    // Eingaben aus ParkingLotTool-builds.jsonl, 2026-09-05.
     // Beide Abnahmewerte werden am SELBEN Build-Ergebnis gemessen.
     private static int ZoningTAnschlussProtokolle()
     {

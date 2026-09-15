@@ -1,0 +1,41 @@
+Einblend-Karten für die Videobearbeitung
+=======================================
+
+34 PNG-Dateien mit Transparenz, eine je Tastenkürzel, auf Deutsch und
+Englisch. Sie liegen in `de\` und `en\`.
+
+Größe 2000 x 680 Pixel. Das ist doppelte Auflösung, damit die Kanten auch in
+einem 4K-Projekt sauber bleiben - in einem 1080p-Projekt einfach auf 50 %
+skalieren.
+
+
+IN DAVINCI RESOLVE
+------------------
+
+Die Bilder in den Media Pool ziehen, dann auf eine Spur ÜBER dem Clip legen.
+Mehr ist nicht nötig: Der Alphakanal ist im PNG drin, Resolve schneidet
+automatisch frei. Kein Key, keine Maske.
+
+Position und Größe stellst du im Inspector unter Transform ein. Für ein
+weiches Auftauchen reicht ein kurzer Opacity-Keyframe am Anfang und Ende.
+
+Falls die Karte auf hellem Bild zu blass wirkt: Der Grund ist mit Absicht nur
+zu 82 Prozent deckend, damit man das Spiel dahinter noch ahnt. Wenn dir das zu
+viel ist, sag Bescheid - eine Zahl im Skript, dann sind sie deckender.
+
+
+ÄNDERN
+------
+
+Alle Texte stehen unten in `karten.py` in der Liste KUERZEL. Ändern, dann:
+
+    python Overlays/karten.py
+
+Das Skript schreibt alle Karten neu. Gerendert wird mit dem Edge, der auf dem
+Rechner ohnehin liegt; es wird nichts installiert.
+
+Wer Farben, Schriftgrößen oder die Form ändern will, findet das weiter oben im
+selben Skript in einem einzigen Stilblock.
+
+Die PNG- und HTML-Dateien werden NICHT ins Repo eingecheckt - sie entstehen
+aus dem Skript in Sekunden neu. Eingecheckt ist nur `karten.py`.

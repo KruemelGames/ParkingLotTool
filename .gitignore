@@ -57,3 +57,18 @@ design/randzoning-an-fahrgassen.html
 # Anweisungen fuer die KI-Werkzeuge - Projektinterna, kein Nutzen fuer andere.
 AGENTS.md
 CLAUDE.md
+
+# ---------------------------------------------------------------------------
+# DIE EINBLEND-KARTEN ENTSTEHEN AUS DEM SKRIPT.
+#
+# 34 PNG mit je rund 80 KB, dazu ihr HTML - alles in Sekunden neu erzeugt aus
+# `Overlays/karten.py`. Eingecheckt wird das Skript, nicht sein Ergebnis;
+# dieselbe Regel wie bei den Messbildern weiter oben.
+# ---------------------------------------------------------------------------
+Overlays/de/
+Overlays/en/
+
+# Das Videoskript samt gedruckter Fassung ist eine Werkstattnotiz wie die
+# Markdown-Dateien daneben - nur eben nicht in Markdown. Bleibt lokal.
+/VIDEO-SKRIPT.html
+/VIDEO-SKRIPT.pdf
