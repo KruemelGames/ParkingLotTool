@@ -12,11 +12,6 @@ body:
 
         Please don't paste logs. Everything technical is already in the file.
 
-        **About your data:** the report is anonymised before it is written.
-        Your Windows user name and your Steam ID are replaced with
-        placeholders, in every file it contains. It is all plain text, so you
-        can open the `.zip` and check.
-
   - type: textarea
     id: steps
     attributes:

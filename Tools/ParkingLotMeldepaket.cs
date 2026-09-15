@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using Game.SceneFlow;
 using UnityEngine;
 
 namespace ParkingLotTool.Tools
@@ -181,7 +182,18 @@ namespace ParkingLotTool.Tools
                     if (anlass == Anlass.Absturz)
                         foreach (var pfad in
                                  ParkingLotAbsturzwache.Absturzdateien())
-                            Lege(archiv, pfad, Path.GetFileName(pfad));
+                        {
+                            var name = Path.GetFileName(pfad);
+                            // `Player.log` gehoert dem Spiel und steht voller
+                            // Dinge, die niemanden etwas angehen. Statt sie
+                            // einzupacken und hinterher zu wischen, holen wir
+                            // uns heraus, was gebraucht wird. Siehe Auszug.
+                            if (name.StartsWith("Player",
+                                    StringComparison.OrdinalIgnoreCase))
+                                LegeText(archiv, name, Auszug(pfad));
+                            else
+                                Lege(archiv, pfad, name);
+                        }
                 }
 
                 Mod.log.Info($"PLT-Meldepaket: {ziel} geschnuert, "
@@ -258,6 +270,92 @@ namespace ParkingLotTool.Tools
             }
             using var leser = new StreamReader(quelle);
             return leser.ReadToEnd();
+        }
+
+        /**
+         * HOLT AUS `Player.log`, WAS GEBRAUCHT WIRD - UND SONST NICHTS.
+         *
+         * Der Nutzer am 2026-09-15, nachdem der erste Anlauf die ganze Datei
+         * eingepackt und hinterher gewischt hatte: *"Ehm ernsthaft warum wird
+         * das ueberhaupt abgegriffen? Du behebst wieder Symptome anstatt die
+         * Wurzel."*
+         *
+         * Er hat recht. Die Datei gehoert dem Spiel, sie ist voller Pfade,
+         * Kennungen und Ladegeraeusch - und gebraucht wird daraus dreierlei:
+         *
+         *   - der Kopf: Spielversion, Betriebssystem, CPU, Grafikkarte,
+         *     Speicher. Fuer "laeuft das nur bei ihm so?"
+         *   - der Absturzblock samt Stacktrace. Bei dieser Absturzsorte gibt
+         *     CS2 KEINEN managed Stacktrace aus, deshalb ist die native
+         *     Meldung das Einzige, was es gibt.
+         *   - die Zeilen unmittelbar DAVOR. Genau die haben am 2026-09-14 den
+         *     Absturz erklaert ("UpdateFrame added to unsupported type").
+         *
+         * Eine Modliste steht hier uebrigens NICHT drin - nachgesehen. Die
+         * holen wir beim Spiel selbst, siehe Umgebung.
+         *
+         * Was nicht auf die Liste passt, kommt gar nicht erst ins Paket. Das
+         * ist der Unterschied zum Wischen: was nie eingesammelt wird, kann
+         * auch nicht durchrutschen.
+         */
+        private const int ZeilenVorDemAbsturz = 200;
+
+        private static string Auszug(string pfad)
+        {
+            string[] zeilen;
+            try { zeilen = File.ReadAllLines(pfad); }
+            catch (Exception ausnahme)
+            {
+                return "Diese Datei war nicht lesbar: " + ausnahme.Message;
+            }
+
+            var kopfmerkmale = new[]
+            {
+                "Initialize engine version", "Game version:", "Type:", "OS:",
+                "System memory:", "Graphics device:", "Graphics memory:",
+                "CPU:", "Core count:", "Screen resolution:",
+                "Rendering Threading Mode:", "Modding runtime:",
+                "Scripting runtime:", "Shader level:",
+            };
+
+            var text = new StringBuilder();
+            text.AppendLine("Auszug aus " + Path.GetFileName(pfad)
+                + " - nur Systemangaben und der Absturz.");
+            text.AppendLine("Pfade, Kennungen und Ladeprotokoll sind nicht "
+                + "enthalten; sie werden fuer die Fehlersuche nicht "
+                + "gebraucht.");
+            text.AppendLine(new string('-', 70));
+
+            foreach (var zeile in zeilen)
+                foreach (var merkmal in kopfmerkmale)
+                    if (zeile.StartsWith(merkmal, StringComparison.Ordinal))
+                    { text.AppendLine(zeile); break; }
+
+            var absturz = -1;
+            for (var i = 0; i < zeilen.Length; i++)
+                if (zeilen[i].Contains("Native Crash Reporting")
+                    || zeilen[i].Contains("Crash!!!"))
+                { absturz = i; break; }
+
+            text.AppendLine();
+            if (absturz < 0)
+            {
+                text.AppendLine("KEIN Absturzblock in dieser Datei. Es folgen "
+                    + "die letzten Zeilen:");
+                text.AppendLine(new string('-', 70));
+                for (var i = Math.Max(0, zeilen.Length - ZeilenVorDemAbsturz);
+                     i < zeilen.Length; i++)
+                    text.AppendLine(zeilen[i]);
+                return text.ToString();
+            }
+
+            text.AppendLine("Absturz ab Zeile " + (absturz + 1) + "; davor "
+                + ZeilenVorDemAbsturz + " Zeilen Vorlauf:");
+            text.AppendLine(new string('-', 70));
+            for (var i = Math.Max(0, absturz - ZeilenVorDemAbsturz);
+                 i < zeilen.Length; i++)
+                text.AppendLine(zeilen[i]);
+            return text.ToString();
         }
 
         /**
@@ -376,12 +474,23 @@ namespace ParkingLotTool.Tools
                 + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             try
             {
+                /*
+                 * NUR DER DATEINAME, NICHT DER PFAD.
+                 *
+                 * Der volle Pfad faengt mit C:\Users\<Name> an - und
+                 * gebraucht wird davon nichts. Was zaehlt, ist WELCHE
+                 * Fassung laeuft, und das sagen Bauzeit und Versionsnummer
+                 * darunter.
+                 */
                 var dll = typeof(ParkingLotMeldepaket).Assembly.Location;
-                text.AppendLine("Mod-DLL:        " + dll);
-                if (File.Exists(dll))
-                    text.AppendLine("DLL gebaut:     "
-                        + File.GetLastWriteTime(dll)
-                            .ToString("yyyy-MM-dd HH:mm:ss"));
+                if (!string.IsNullOrEmpty(dll))
+                {
+                    text.AppendLine("Mod-DLL:        " + Path.GetFileName(dll));
+                    if (File.Exists(dll))
+                        text.AppendLine("DLL gebaut:     "
+                            + File.GetLastWriteTime(dll)
+                                .ToString("yyyy-MM-dd HH:mm:ss"));
+                }
                 text.AppendLine("Mod-Fassung:    "
                     + typeof(ParkingLotMeldepaket).Assembly
                         .GetName().Version);
@@ -394,6 +503,34 @@ namespace ParkingLotTool.Tools
             text.AppendLine("Spielversion:   " + Application.version);
             text.AppendLine("Unity:          " + Application.unityVersion);
             text.AppendLine("Betriebssystem: " + SystemInfo.operatingSystem);
+
+            /*
+             * DIE MODLISTE GEHOERT HIERHER, NICHT IN EINEN LOGAUSZUG.
+             *
+             * In `Player.log` steht sie gar nicht - nachgesehen am
+             * 2026-09-15. Und sie ist bei fremden Meldungen die zweitwichtigste
+             * Angabe nach dem Absturz selbst: das meiste seltsame Verhalten in
+             * CS2 kommt daher, dass zwei Mods dasselbe anfassen.
+             *
+             * Nur Namen, keine Pfade.
+             */
+            try
+            {
+                var namen = new List<string>();
+                foreach (var eintrag in GameManager.instance.modManager)
+                    if (eintrag?.asset != null && eintrag.isLoaded)
+                        namen.Add(eintrag.asset.name);
+                namen.Sort(StringComparer.OrdinalIgnoreCase);
+                text.AppendLine();
+                text.AppendLine("Geladene Mods (" + namen.Count + "):");
+                foreach (var name in namen)
+                    text.AppendLine("  " + name);
+            }
+            catch (Exception ausnahme)
+            {
+                text.AppendLine("Geladene Mods: nicht lesbar ("
+                    + ausnahme.Message + ")");
+            }
             return text.ToString();
         }
     }

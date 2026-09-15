@@ -29,12 +29,6 @@ Then say, briefly:
 
 Everything technical is already in the report file. Please do not paste logs.
 
-**About your data.** The report is anonymised before it is written: your
-Windows user name and your Steam ID are replaced with placeholders, in every
-file it contains. What stays is what is actually needed to find the bug — the
-crash itself, the mod's own log, the game version, your mod list and the shape
-you drew. You can open the `.zip` and check; it is all plain text.
-
 ## What it does
 
 Draw a polygon. The mod computes a layout inside it and builds it as real

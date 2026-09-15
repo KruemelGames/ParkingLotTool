@@ -44,12 +44,6 @@ Then say, briefly: what you did step by step, what you expected, what happened
 instead, whether the game crashed, and which other mods were running. Please do
 not paste logs - everything technical is already in the file.
 
-About your data: the report is anonymised before it is written. Your Windows
-user name and your Steam ID are replaced with placeholders, in every file it
-contains. What stays is what is needed to find the bug - the crash itself, the
-mod's log, the game version, your mod list and the shape you drew. It is all
-plain text, so you can open the .zip and check.
-
 
 LICENCE AND SOURCE
 
