@@ -217,13 +217,22 @@ namespace ParkingLotTool.Tools
             if (treffer != null) ziel.Add(treffer);
         }
 
+        /**
+         * OBERGRENZE FUERS EINLESEN.
+         *
+         * Zum Anonymisieren muss die Datei durch den Speicher. `Player.log`
+         * ist gewoehnlich ein paar Kilobyte, kann bei einer langen Sitzung
+         * mit gespraechigen Mods aber deutlich wachsen. Bei mehr als dieser
+         * Grenze wird nur das ENDE genommen - dort steht der Absturz.
+         */
+        private const long LesegrenzeBytes = 16L * 1024 * 1024;
+        private const int SchwanzBytes = 2 * 1024 * 1024;
+
         private static void Lege(ZipArchive archiv, string pfad, string name)
         {
-            var eintrag = archiv.CreateEntry(name, System.IO.Compression.CompressionLevel.Optimal);
-            using var quelle = new FileStream(pfad, FileMode.Open,
-                FileAccess.Read, FileShare.ReadWrite);
-            using var hinein = eintrag.Open();
-            quelle.CopyTo(hinein);
+            // Text statt Bytes, weil zwischen Lesen und Schreiben die
+            // persoenlichen Angaben herausfallen. Siehe Anonymisiere.
+            LegeText(archiv, name, Anonymisiere(LiesBegrenzt(pfad)));
         }
 
         private static void LegeText(ZipArchive archiv, string name,
@@ -232,7 +241,83 @@ namespace ParkingLotTool.Tools
             var eintrag = archiv.CreateEntry(name, System.IO.Compression.CompressionLevel.Optimal);
             using var hinein = new StreamWriter(eintrag.Open(),
                 new UTF8Encoding(false));
-            hinein.Write(inhalt);
+            hinein.Write(Anonymisiere(inhalt));
+        }
+
+        /** Liest eine Datei, bei Ueberlaenge nur deren Ende. */
+        private static string LiesBegrenzt(string pfad)
+        {
+            using var quelle = new FileStream(pfad, FileMode.Open,
+                FileAccess.Read, FileShare.ReadWrite);
+            if (quelle.Length > LesegrenzeBytes)
+            {
+                quelle.Seek(-SchwanzBytes, SeekOrigin.End);
+                using var kurz = new StreamReader(quelle);
+                return "[... gekuerzt, nur das Ende dieser Datei ...]\n"
+                    + kurz.ReadToEnd();
+            }
+            using var leser = new StreamReader(quelle);
+            return leser.ReadToEnd();
+        }
+
+        /**
+         * NIMMT DIE PERSOENLICHEN ANGABEN AUS DEM PAKET.
+         *
+         * Ansage des Nutzers am 2026-09-15, nachdem der Hinweistext im Issue
+         * sie noch aufgezaehlt hatte: *"Windows User name geht gar nicht
+         * finde ich. Sehr persoenlich. Besonders weil meiner Meinung nach
+         * brauchen wir die Infos nicht!"*
+         *
+         * Er hat recht, und das ist nachgemessen und nicht geschaetzt: an
+         * der Absturzsuche vom 2026-09-14 waren das Modlog, die Schrittspur,
+         * der Absturzblock aus `Player.log`, die Modliste und die
+         * Spielversion beteiligt. Benutzername und Steam-ID kein einziges
+         * Mal. Sie tragen nichts bei und gehoeren damit nicht in ein Paket,
+         * das oeffentlich in einem GitHub-Issue landet.
+         *
+         * GESCHRIEBEN HAT SIE NICHT DIESE MOD, sondern CS2 beziehungsweise
+         * Unity:
+         *
+         *     Logs at C:/Users/<nutzer>/AppData/LocalLow/...
+         *     SteamInternal_SetMinidumpSteamID: Caching Steam ID: 7656119...
+         *
+         * ES REICHT NICHT, NUR `Player.log` ANZUFASSEN. Der Benutzername
+         * steckt auch in UNSEREN Dateien: das Startlog schreibt DLL- und
+         * Asset-Pfad, und der Bauzettel fuehrt einen ganzen Abschnitt
+         * `Framework` mit `OutputPath`, `LatestPath`, `DllPath`. Deshalb
+         * laeuft JEDE Datei des Archivs hier durch - auch die, die wir
+         * selbst erzeugen.
+         *
+         * WAS BLEIBT: die Namen der Spielstaende. Ein Stadtname ist keine
+         * persoenliche Angabe, und er sagt gelegentlich etwas aus - etwa,
+         * dass jemand auf einer Mod-Karte gebaut hat.
+         *
+         * Die Ersetzung ist bewusst stumpf und damit verlaesslich: der
+         * Benutzername ist eine bekannte Zeichenkette, keine Vermutung.
+         */
+        internal static string Anonymisiere(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+
+            /*
+             * Steam64-Kennungen beginnen alle mit 7656119 und sind 17
+             * Stellen lang. Eng genug, dass keine Messzahl aus unseren
+             * eigenen Logs versehentlich getroffen wird.
+             */
+            text = System.Text.RegularExpressions.Regex.Replace(
+                text, @"\b7656119\d{10}\b", "<steamid>");
+
+            /*
+             * Ein sehr kurzer Benutzername koennte als Silbe mitten in
+             * fremden Woertern stehen. Ab drei Zeichen ist das Risiko klein
+             * und der Gewinn gross; darunter wird lieber nichts ersetzt als
+             * das halbe Log zerschossen.
+             */
+            var nutzer = Environment.UserName;
+            if (!string.IsNullOrEmpty(nutzer) && nutzer.Length >= 3)
+                text = text.Replace(nutzer, "<nutzer>");
+
+            return text;
         }
 
         /**

@@ -29,12 +29,11 @@ Then say, briefly:
 
 Everything technical is already in the report file. Please do not paste logs.
 
-**One thing to know before you upload.** A crash report includes the game's own
-`Player.log`, and that file contains your Windows user name, your Steam ID, the
-names of your save games and the list of your installed mods. Issues are
-public. If that bothers you, open the `.zip` and remove `Player.log` and
-`Player-prev.log` — the report is still useful without them, just less so for
-crashes.
+**About your data.** The report is anonymised before it is written: your
+Windows user name and your Steam ID are replaced with placeholders, in every
+file it contains. What stays is what is actually needed to find the bug — the
+crash itself, the mod's own log, the game version, your mod list and the shape
+you drew. You can open the `.zip` and check; it is all plain text.
 
 ## What it does
 
