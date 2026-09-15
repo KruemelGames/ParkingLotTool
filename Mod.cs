@@ -85,7 +85,7 @@ namespace ParkingLotTool
             // Wartezeit, wenn sie nicht im Log steht.
             log.Info($"  Version:    "
                 + $"{typeof(Mod).Assembly.GetName().Version}");
-            log.Info($"  DLL:        {dll}");
+            log.Info($"  DLL:        {System.IO.Path.GetFileName(dll)}");
             // Im Abzug 01:52 war Assembly.Location leer; Dateizeiten allein
             // unterschieden den geladenen Stand nicht vom neueren Quelltext.
             log.Info($"  Modul-ID:   {typeof(Mod).Module.ModuleVersionId}");
@@ -100,7 +100,10 @@ namespace ParkingLotTool
                 // und die Vorsichtsmassnahme gegen eine veraltete DLL war
                 // wertlos.
                 AssetPath = asset.path;
-                log.Info($"  Mod-Asset:  {asset.path}");
+                // Nur der Dateiname: diese Zeile landet ueber `modlog-ende.txt`
+                // in jedem Meldepaket, und der volle Pfad faengt mit
+                // C:\Users\<Name> an.
+                log.Info($"  Mod-Asset:  {System.IO.Path.GetFileName(asset.path)}");
             }
 
             /*

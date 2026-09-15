@@ -106,6 +106,14 @@ namespace ParkingLotTool.Tools
     {
         public string CapturedAtUtc { get; set; }
         public string CapturedAtLocal { get; set; }
+        /*
+         * DIE DREI HEISSEN "Path", ENTHALTEN ABER NUR DEN DATEINAMEN.
+         *
+         * Seit dem 2026-09-15 mit Absicht: der volle Pfad faengt mit
+         * C:\Users\<Name> an, und dieser Abzug geht mit jeder Meldung nach
+         * aussen. Die Namen bleiben, damit aeltere Abzuege weiter lesbar
+         * sind und die Schemaversion nicht steigen muss.
+         */
         public string OutputPath { get; set; }
         public string LatestPath { get; set; }
         public string DllPath { get; set; }

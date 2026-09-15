@@ -248,8 +248,10 @@ namespace ParkingLotTool.Tools
                 var json = SerializeDebugDocument(document);
                 File.WriteAllText(outputPath, json, new System.Text.UTF8Encoding(false));
                 File.Copy(outputPath, latestPath, overwrite: true);
-                Mod.log.Info($"PLT-Vorab-Bauzettel geschrieben: {outputPath} "
-                    + $"(feste Kopie: {latestPath}).");
+                Mod.log.Info("PLT-Vorab-Bauzettel geschrieben: "
+                    + Path.GetFileName(outputPath)
+                    + " (feste Kopie: " + Path.GetFileName(latestPath)
+                    + "), im Logs-Ordner des Spiels.");
             }
             catch (Exception exception)
             {
@@ -322,10 +324,14 @@ namespace ParkingLotTool.Tools
                     $"ParkingLotTool-bericht-{timestamp}.txt");
                 File.WriteAllText(reportPath, BuildMarkerReport(),
                     new System.Text.UTF8Encoding(false));
-                Mod.log.Info($"PLT-Fehlerbericht geschrieben: {reportPath} "
-                    + $"({Markers.Count} Markierung(en)).");
-                Mod.log.Info($"PLT-Debug-Abzug geschrieben: {outputPath} "
-                    + $"(feste Kopie: {latestPath}).");
+                Mod.log.Info("PLT-Fehlerbericht geschrieben: "
+                    + Path.GetFileName(reportPath) + " ("
+                    + Markers.Count + " Markierung(en)), im Logs-Ordner "
+                    + "des Spiels.");
+                Mod.log.Info("PLT-Debug-Abzug geschrieben: "
+                    + Path.GetFileName(outputPath)
+                    + " (feste Kopie: " + Path.GetFileName(latestPath)
+                    + "), im Logs-Ordner des Spiels.");
                 ShowDebugDumpConfirmation(document);
                 MeldeAbzugFertig();
             }
@@ -431,9 +437,25 @@ namespace ParkingLotTool.Tools
                 {
                     CapturedAtUtc = now.UtcDateTime.ToString("O"),
                     CapturedAtLocal = now.ToString("O"),
-                    OutputPath = outputPath,
-                    LatestPath = latestPath,
-                    DllPath = dllPath,
+                    /*
+                     * NUR DIE DATEINAMEN, NICHT DIE PFADE.
+                     *
+                     * Jeder dieser Pfade faengt mit C:\Users\<Name> an, und
+                     * dieser Abzug geht mit jeder Fehlermeldung nach aussen -
+                     * seit dem 2026-09-15 in oeffentliche GitHub-Issues.
+                     *
+                     * Gebraucht wird davon nichts. Wer den Abzug liest, hat
+                     * die Datei schon in der Hand; wissen will er, WELCHE
+                     * Fassung sie erzeugt hat, und das sagen `DllBuiltAt*`
+                     * und die Versionsnummer.
+                     *
+                     * Dieselbe Regel wie im Meldepaket: was nicht gebraucht
+                     * wird, wird gar nicht erst aufgeschrieben. Nachwischen
+                     * ist die schlechtere Loesung.
+                     */
+                    OutputPath = Path.GetFileName(outputPath),
+                    LatestPath = Path.GetFileName(latestPath),
+                    DllPath = Path.GetFileName(dllPath),
                     DllBuiltAtUtc = dllBuiltUtc?.ToString("O"),
                     DllBuiltAtLocal = dllBuiltUtc?.ToLocalTime().ToString("O"),
                     DllTimestampSource = "Letzte Schreibzeit der geladenen DLL-Datei "
