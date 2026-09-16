@@ -4,6 +4,11 @@ A Cities: Skylines II mod that generates a complete, working parking lot inside
 any polygon you draw — bays, aisles, connecting roads, a perimeter road,
 markings and surfaces, with cars that actually park.
 
+
+## Video
+
+https://youtu.be/BGzduZI8sJ8
+
 ## Status
 
 Work in progress, and honest about it: it builds working parking lots, but it
