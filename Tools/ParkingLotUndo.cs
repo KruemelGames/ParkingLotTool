@@ -144,7 +144,8 @@ namespace ParkingLotTool.Tools
             eintraege[index] = new UndoEntry
             {
                 Snapshot = snapshot,
-                Action = string.IsNullOrEmpty(action) ? "Schritt" : action,
+                Action = string.IsNullOrEmpty(action)
+                    ? T("Schritt", "step") : action,
             };
             anzahl++;
         }
@@ -236,7 +237,7 @@ namespace ParkingLotTool.Tools
             RestoreUndoState(eintrag.Snapshot);
             _uiSystem?.SetRedoAvailable(_redoCount > 0);
             _uiSystem?.SetStatus(T("Wiederhergestellt: " + eintrag.Action + ".",
-                "Step restored."));
+                "Restored: " + eintrag.Action + "."));
             Mod.log.Info("PLT-Wiederherstellen: " + eintrag.Action
                 + "; verbleibende Tiefe " + _redoCount + ".");
         }
@@ -267,7 +268,7 @@ namespace ParkingLotTool.Tools
             RestoreUndoState(entry.Snapshot);
             _uiSystem?.SetUndoAvailable(_undoCount > 0);
             _uiSystem?.SetStatus(T("Rückgängig: " + entry.Action + ".",
-                "Last completed step undone."));
+                "Undone: " + entry.Action + "."));
             Mod.log.Info("PLT-Rueckgaengig: " + entry.Action
                 + "; verbleibende Tiefe " + _undoCount + ".");
         }

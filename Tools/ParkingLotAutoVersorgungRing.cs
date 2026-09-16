@@ -14,8 +14,45 @@ namespace ParkingLotTool.Tools
     public sealed partial class ParkingLotToolSystem
     {
         private readonly List<Entity> _avAlleEigenen = new List<Entity>();
-        private readonly HashSet<Entity> _avVersucht = new HashSet<Entity>();
+
+        /**
+         * EINE GEBAUTE LEITUNG - ALS ZWEI PUNKTE, NICHT ALS ZWEI ENTITIES.
+         *
+         * Ein Apply kann eine Kante teilen: liegt der Startpunkt mitten auf
+         * einer unserer Kanten, werden aus einer Entity zwei neue, und jede
+         * Merkliste aus Entities zeigt ins Leere. Die Geometrie bleibt, wo sie
+         * war - deshalb merken wir uns Orte.
+         *
+         * `ZielIstStadt` haelt fest, dass das andere Ende an einer fremden
+         * Strasse hing. Diese Leitung bringt echten Strom herein; alle anderen
+         * reichen ihn nur weiter.
+         */
+        private struct AvVerbindung
+        {
+            internal float3 Start, Ziel;
+            internal bool ZielIstStadt;
+        }
+
+        private readonly List<AvVerbindung> _avVerbindungen = new List<AvVerbindung>();
+
+        /**
+         * Was mit EINEM Netz in diesem Lauf schon passiert ist.
+         *
+         * Alle Kanten eines Netzes zeigen auf dasselbe Objekt - damit ist es
+         * gleich, ueber welche Kante gefragt wird.
+         */
+        private sealed class AvNetzstand
+        {
+            internal int Versuche;
+            internal readonly HashSet<Entity> GesperrteZiele = new HashSet<Entity>();
+        }
+
+        private readonly Dictionary<Entity, AvNetzstand> _avNetzstand =
+            new Dictionary<Entity, AvNetzstand>();
         private HashSet<int> _avStadtStrom, _avStadtWasser;
+
+        /** Die Leitungen und Rohre im Umkreis, die uns nicht gehoeren. */
+        private readonly List<Entity> _avFremdleitungen = new List<Entity>();
 
         private void AvErfasseStadtpfade()
         {
@@ -91,15 +128,205 @@ namespace ParkingLotTool.Tools
                 && _avStadtWasser.Contains(w.Index);
         }
 
+        /**
+         * Wieviele unserer Netze fuehrt CS2 gerade am Stadtnetz?
+         *
+         * Setzt einen frischen `AvErfasseStadtpfade` voraus - die Antwort ist
+         * nur so aktuell wie der Graph, aus dem sie kommt.
+         */
+        private int AvGedeckteNetze(out int gesamt)
+        {
+            var gruppen = SammleVersorgungsgruppen(
+                SammleUnsereKanten(_avTraeger).FindAll(KanteNimmtVersorgung));
+            var erreicht = 0;
+            foreach (var gruppe in gruppen)
+                if (gruppe.TrueForAll(AvZielHatStadtpfad)) erreicht++;
+            gesamt = gruppen.Count;
+            return erreicht;
+        }
+
         private bool AvMesseNetzabdeckung()
         {
-            var gruppen = SammleVersorgungsgruppen(SammleUnsereKanten(_avTraeger).FindAll(KanteNimmtVersorgung));
-            var erreicht = 0;
-            foreach (var gruppe in gruppen) if (gruppe.TrueForAll(AvZielHatStadtpfad)) erreicht++;
-            var text = $"PLT-Autoversorgung NETZABDECKUNG: {erreicht}/{gruppen.Count} versorgungsfaehige Netze "
+            var erreicht = AvGedeckteNetze(out var gesamt);
+            var text = $"PLT-Autoversorgung NETZABDECKUNG: {erreicht}/{gesamt} versorgungsfaehige Netze "
                 + "mit Stadtpfad fuer Strom UND Wasser/Abwasser; Flussabnahme separat.";
-            if (erreicht == gruppen.Count) Mod.log.Info(text); else Mod.log.Warn(text + " Anschlussnachweis unvollstaendig.");
-            return erreicht == gruppen.Count;
+            if (erreicht == gesamt) Mod.log.Info(text); else Mod.log.Warn(text + " Anschlussnachweis unvollstaendig.");
+            return erreicht == gesamt;
+        }
+
+        /**
+         * WER MIT WEM ZUSAMMENHAENGT - UND WER DIE STADT ERREICHT.
+         *
+         * Jedes unserer versorgungsfaehigen Netze ist ein Teil, die Stadt ist
+         * ein weiteres. Zusammengelegt wird nach zwei Quellen:
+         *
+         *   - was CS2 selbst schon am Stadtnetz fuehrt (`AvZielHatStadtpfad`),
+         *   - was wir in diesem Lauf gebaut haben (`_avVerbindungen`).
+         *
+         * Die zweite Quelle ist der Grund, warum nicht mehr gewartet werden
+         * muss: eine Leitung, die wir eben angewandt haben, verbindet, auch
+         * wenn CS2s Flussgraph noch Sekunden braucht, um es zu bestaetigen.
+         * Bestaetigt wird es trotzdem - in der Netzabdeckung am Ende.
+         */
+        private sealed class AvTeile
+        {
+            internal readonly List<List<Entity>> Gruppen;
+            internal readonly int Stadt;
+            private readonly int[] _wurzel;
+            private readonly Dictionary<Entity, int> _kanteZuGruppe =
+                new Dictionary<Entity, int>();
+
+            internal AvTeile(List<List<Entity>> gruppen)
+            {
+                Gruppen = gruppen;
+                Stadt = gruppen.Count;
+                _wurzel = new int[gruppen.Count + 1];
+                for (var i = 0; i < _wurzel.Length; i++) _wurzel[i] = i;
+                for (var i = 0; i < gruppen.Count; i++)
+                    foreach (var e in gruppen[i]) _kanteZuGruppe[e] = i;
+            }
+
+            internal int Finde(int i)
+            {
+                while (_wurzel[i] != i) { _wurzel[i] = _wurzel[_wurzel[i]]; i = _wurzel[i]; }
+                return i;
+            }
+
+            internal void Verbinde(int a, int b)
+            {
+                a = Finde(a); b = Finde(b);
+                if (a == b) return;
+                // Die Stadt bleibt immer die Wurzel - dann heisst "haengt an
+                // der Stadt" genau `Finde(i) == Finde(Stadt)`.
+                if (b == Finde(Stadt)) _wurzel[a] = b; else _wurzel[b] = a;
+            }
+
+            internal bool AnDerStadt(int gruppe) => Finde(gruppe) == Finde(Stadt);
+
+            internal int GruppeVon(Entity kante)
+                => _kanteZuGruppe.TryGetValue(kante, out var i) ? i : -1;
+
+            internal int OffeneTeile()
+            {
+                var teile = new HashSet<int>();
+                for (var i = 0; i < Gruppen.Count; i++)
+                    if (!AnDerStadt(i)) teile.Add(Finde(i));
+                return teile.Count;
+            }
+        }
+
+        private AvTeile AvErmittleTeile(List<List<Entity>> gruppen)
+        {
+            var teile = new AvTeile(gruppen);
+            for (var i = 0; i < gruppen.Count; i++)
+                if (gruppen[i].TrueForAll(AvZielHatStadtpfad))
+                    teile.Verbinde(i, teile.Stadt);
+            foreach (var v in _avVerbindungen)
+            {
+                var a = AvGruppeAmPunkt(gruppen, v.Start);
+                if (a < 0) continue;
+                var b = v.ZielIstStadt ? teile.Stadt : AvGruppeAmPunkt(gruppen, v.Ziel);
+                if (b < 0) continue;
+                teile.Verbinde(a, b);
+            }
+            return teile;
+        }
+
+        /** Welches Netz laeuft durch diesen Punkt? -1, wenn keins. */
+        private int AvGruppeAmPunkt(List<List<Entity>> gruppen, float3 punkt)
+        {
+            for (var i = 0; i < gruppen.Count; i++)
+                foreach (var e in gruppen[i])
+                {
+                    if (!EntityManager.HasComponent<Curve>(e)) continue;
+                    var bogen = EntityManager.GetComponentData<Curve>(e).m_Bezier;
+                    if (MathUtils.Distance(bogen.xz, punkt.xz, out _) <= 0.1f) return i;
+                }
+            return -1;
+        }
+
+        /**
+         * DARF DIESE KANTE ZIEL SEIN?
+         *
+         * Eine fremde Strasse immer - sie bringt den Strom herein. Eine eigene
+         * nur, wenn sie zu einem ANDEREN Teil gehoert: sonst entstuende ein
+         * Ring, der an keiner Stadt haengt. Genau daran haengt die Forderung,
+         * dass am Ende eine Zone nach draussen verbunden sein muss.
+         */
+        private bool AvZielErlaubt(Entity ziel, int meinTeil, AvTeile teile)
+        {
+            if (!EntityManager.Exists(ziel) || EntityManager.HasComponent<Deleted>(ziel)
+                || EntityManager.HasComponent<Temp>(ziel)) return false;
+            if (!KanteNimmtVersorgung(ziel)) return false;
+            if (!EntityManager.HasComponent<Owner>(ziel)) return true;
+            var g = teile.GruppeVon(ziel);
+            if (g < 0) return false;
+            return teile.Finde(g) != meinTeil;
+        }
+
+        /** Der Stand dieses Netzes, auf Wunsch neu angelegt. */
+        private AvNetzstand AvStandFuer(List<Entity> gruppe, bool anlegen)
+        {
+            foreach (var e in gruppe)
+                if (_avNetzstand.TryGetValue(e, out var vorhanden)) return vorhanden;
+            if (!anlegen) return null;
+            var stand = new AvNetzstand();
+            foreach (var e in gruppe) _avNetzstand[e] = stand;
+            return stand;
+        }
+
+        private void AvMerkeAngewandt(Versorgungstrasse trasse)
+        {
+            if (trasse.Startnetz != null)
+                foreach (var e in trasse.Startnetz) _avNetzstand.Remove(e);
+            var zurStadt = trasse.Zielkante != Entity.Null
+                && EntityManager.Exists(trasse.Zielkante)
+                && !EntityManager.HasComponent<Owner>(trasse.Zielkante);
+            _avVerbindungen.Add(new AvVerbindung {
+                Start = trasse.Start, Ziel = trasse.Ziel, ZielIstStadt = zurStadt });
+            Mod.log.Info("PLT-Autoversorgung VERBUNDEN: "
+                + $"({trasse.Start.x:F1}/{trasse.Start.z:F1}) nach "
+                + $"({trasse.Ziel.x:F1}/{trasse.Ziel.z:F1}), "
+                + (zurStadt ? "Ziel ist eine Stadtstrasse - ab hier kommt der Strom herein."
+                    : "Ziel ist ein eigenes Netz - dieses Teil braucht noch einen Weg nach draussen."));
+        }
+
+        /**
+         * EIN FEHLSCHLAG SPERRT DAS ZIEL, NICHT DAS NETZ.
+         *
+         * Am 2026-09-16 standen 14 Ziele zur Wahl und genau eines wurde
+         * versucht. Scheitert es, ist das eine Auskunft ueber DIESEN Weg -
+         * nicht darueber, ob das Netz ueberhaupt anschliessbar ist. Also
+         * faellt dieses Ziel weg und der naechstbeste kommt dran.
+         *
+         * Warum eine Obergrenze: der Weg zur Zielliste kostet jedes Mal einen
+         * vollen Bauzyklus. Drei Anlaeufe decken den Fall "zufaellig lag da
+         * etwas" ab; wer danach immer noch nicht durchkommt, hat ein anderes
+         * Problem, und das soll im Log stehen statt in einer Schleife.
+         */
+        private void AvMerkeFehlschlag(Versorgungstrasse trasse)
+        {
+            if (trasse.Startnetz == null) return;
+            var stand = AvStandFuer(trasse.Startnetz, true);
+            stand.Versuche++;
+            if (trasse.Zielkante != Entity.Null)
+                stand.GesperrteZiele.Add(trasse.Zielkante);
+            /*
+             * ZURUECK IN DEN OFFENEN TOPF.
+             *
+             * Beim Planen wurde dieses Netz als erledigt abgezogen. Es hat
+             * aber keine Leitung bekommen, also ist es weiter offen - und nur
+             * solange die Zahl ueber null steht, plant `AvNaechsteTrasse`
+             * ueberhaupt noch eine Runde. Ohne diese Zeile endet der Lauf nach
+             * dem ersten Fehlschlag und der zweite Weg kaeme nie dran.
+             */
+            var weitere = stand.Versuche < AutoVersorgungHoechstversuche;
+            if (weitere) _avNochOffeneNetze++;
+            Mod.log.Info($"PLT-Autoversorgung: Ziel {trasse.Zielkante} fuer dieses Netz "
+                + $"gesperrt, {stand.Versuche}/{AutoVersorgungHoechstversuche} Anlaeufe "
+                + "verbraucht. " + (weitere
+                    ? "Der naechste nimmt den naechstbesten Weg."
+                    : "Damit ist dieses Netz fuer diesen Lauf durch."));
         }
 
         private HashSet<int> AvZielstrassen(Entity ziel)

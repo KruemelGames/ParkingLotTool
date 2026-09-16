@@ -14,6 +14,23 @@ namespace ParkingLotTool.Tools
         internal const float PreviewLineWidth = 0.25f;
         internal const float HoverLineWidth = 0.55f;
         internal const float SelectedLineWidth = 0.8f;
+
+        /**
+         * DIE LINIE, DIE MAN ANKLICKEN SOLL.
+         *
+         * 0,8 m sind fuer einen Griff richtig und fuer eine AUFFORDERUNG zu
+         * wenig. Der Nutzer am 2026-09-16: *"Ich erkenne kaum dass ich ueber
+         * eine Linie hovere und ich WEISS dass ich das tun muss. Wie soll der
+         * User das wissen wenn er es gar nicht wahrnimmt?"*
+         *
+         * 2,4 m ist etwa eine Buchtbreite - auf dem Parkplatz ein Mass, das
+         * man ohne Vergleich erkennt. Dazu ein Rand in Gegenfarbe, damit sie
+         * auch auf hellem Belag steht.
+         */
+        internal const float Auswahllinienbreite = 2.4f;
+
+        /** Die Ringe an den Enden der Auswahllinie. */
+        internal const float AuswahlpunktDurchmesser = ActivePointDiameter * 1.6f;
         internal const float PointDiameter = 2.4f;
         internal const float ActivePointDiameter = 3.6f;
         internal const float SnapDiameter = 4.8f;

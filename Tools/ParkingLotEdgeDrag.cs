@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using static ParkingLotTool.Tools.ParkingLotTexte;
 using ParkingLotTool.Geometry;
 using Unity.Mathematics;
 using UnityEngine.InputSystem;
@@ -226,7 +227,8 @@ namespace ParkingLotTool.Tools
             _geometryRevision++;
             _layoutDirty = true;
             _polygonTouched = true;
-            CommitUndoState(before, "Punkt auf Kante eingefügt");
+            CommitUndoState(before, T("Punkt auf Kante eingefügt",
+                "point inserted on edge"));
             Mod.log.Info($"PLT-Polygon: Punkt {stelle} auf einer Kante eingefuegt "
                 + $"({_insertPosition.x:F3} / {_insertPosition.z:F3}); "
                 + $"jetzt {_points.Count} Punkte.");

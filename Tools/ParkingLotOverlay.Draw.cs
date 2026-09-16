@@ -506,12 +506,24 @@ namespace ParkingLotTool.Tools
                             && gewaehlteTeilflaeche < teilflaechen.Count
                             ? TeilflaechenFarbe(gewaehlteTeilflaeche)
                             : ClosePointColor;
-                        buffer.DrawLine(kantenfarbe,
-                            new Line3.Segment(a, b), SelectedLineWidth);
-                        buffer.DrawCircle(kantenfarbe, a,
-                            ActivePointDiameter);
-                        buffer.DrawCircle(kantenfarbe, b,
-                            ActivePointDiameter);
+                        /*
+                         * BREIT, PROJIZIERT, MIT RAND.
+                         *
+                         * Ein duenner Strich ist ein Griff; hier soll die
+                         * Linie zum Klicken AUFFORDERN. Projiziert, damit sie
+                         * dem Gelaende folgt und nicht in einer Boeschung
+                         * verschwindet, und mit einem hellen Rand, damit sie
+                         * auch auf Belag steht.
+                         */
+                        buffer.DrawLine(Alpha(Color.white, 0.9f),
+                            Alpha(kantenfarbe, 0.85f), GridLineWidth,
+                            OverlayRenderSystem.StyleFlags.Projected,
+                            new Line3.Segment(a, b), Auswahllinienbreite,
+                            default);
+                        buffer.DrawCircle(Alpha(kantenfarbe, 0.95f), a,
+                            AuswahlpunktDurchmesser);
+                        buffer.DrawCircle(Alpha(kantenfarbe, 0.95f), b,
+                            AuswahlpunktDurchmesser);
                     }
                     else if (insertReady)
                     {

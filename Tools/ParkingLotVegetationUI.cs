@@ -52,7 +52,8 @@ namespace ParkingLotTool.Tools
                     var next = JsonConvert.SerializeObject(v);
                     var tool=Tool(); var before=tool?.CaptureUndoState();
                     if(UpdateValue(_vegetation,next)) {
-                        tool?.CommitUndoState(before,"Vegetation geändert");
+                        tool?.CommitUndoState(before, ParkingLotTexte.T("Vegetation geändert",
+                            "vegetation changed"));
                         tool?.RefreshVegetationPreview();
                     }
                 } catch (Exception e) { Mod.log.Warn("Vegetationseinstellung ungueltig: " + e.Message); }
@@ -100,7 +101,10 @@ namespace ParkingLotTool.Tools
                     var size = geometry.m_Bounds.max - geometry.m_Bounds.min;
                     _vegetationAssets.Add(new VegetationAsset { Id = prefab.GetPrefabID().ToString(), Name = VegetationName(prefab),
                         Icon = prefab.TryGet<UIObject>(out var ui) && !string.IsNullOrEmpty(ui.m_Icon) ? ui.m_Icon : prefab.thumbnailUrl,
-                        Tree = tree, Spacing = math.clamp(math.max(size.x, size.z) * .8f, tree ? 6f : 2f, tree ? 14f : 4f), Prefab = entity });
+                        // Die ECHTE Groesse, ohne eigene Schranken: `ParkingVegetation.Spacing`
+                        // vergleicht damit gegen dieselbe Zahl, die CS2 fuer seine
+                        // Kollisionskreise benutzt (`ObjectGeometryData.m_Size`).
+                        Tree = tree, Spacing = math.max(0.5f, math.max(size.x, size.z)), Prefab = entity });
                 }
             _vegetationAssets.Sort((a,b) => string.Compare(a.Name,b.Name,StringComparison.CurrentCulture));
             AddVegetationSet("wild-deciduous", "Wilde Laubbäume", "Wild deciduous trees", "TreesDeciduous",

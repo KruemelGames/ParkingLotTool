@@ -1395,7 +1395,8 @@ namespace ParkingLotTool.Tools
             var before = tool?.CaptureUndoState();
             if (ApplyDefaults(_defaults))
             {
-                tool?.CommitUndoState(before, "Einstellungen zurückgesetzt");
+                tool?.CommitUndoState(before, T("Einstellungen zurückgesetzt",
+                    "settings reset"));
                 Revision++;
             }
             SetStatus(T("Benutzerstandards geladen.", "Your defaults loaded."));
@@ -1485,7 +1486,8 @@ namespace ParkingLotTool.Tools
                     + "den Standard nicht einig.");
                 return;
             }
-            tool?.CommitUndoState(before, "Einstellung " + key + " zurückgesetzt");
+            tool?.CommitUndoState(before, T("Einstellung " + key + " zurückgesetzt",
+                "setting " + key + " reset"));
             Revision++;
         }
 
@@ -1527,6 +1529,15 @@ namespace ParkingLotTool.Tools
             SetStatus(T("Benutzerstandard gespeichert.", "Default saved."));
         }
 
+        /**
+         * Einstieg von der Optionsseite: dasselbe wie der Knopf im Panel.
+         *
+         * Getrennt benannt, damit an der Aufrufstelle steht, WER hier
+         * aufraeumt - der Knopf im Panel heisst fuer den Nutzer anders als
+         * der in den Einstellungen, tut aber dasselbe.
+         */
+        internal void VerwirfBenutzerstandards() => DiscardDefaults();
+
         private void DiscardDefaults()
         {
             var tool = Tool();
@@ -1553,7 +1564,8 @@ namespace ParkingLotTool.Tools
             PublishDefaults();
             if (ApplyDefaults(_defaults))
             {
-                tool?.CommitUndoState(before, "Werkswerte geladen");
+                tool?.CommitUndoState(before, T("Werkswerte geladen",
+                    "factory values loaded"));
                 Revision++;
             }
             SetStatus(T("Werkswerte geladen; gespeicherte Standards verworfen.",

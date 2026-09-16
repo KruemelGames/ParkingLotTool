@@ -7,7 +7,7 @@ markings and surfaces, with cars that actually park.
 ## Status
 
 Work in progress, and honest about it: it builds working parking lots, but it
-is not on the Workshop yet and things still break.
+is not on the Workshop yet and things still break. Please Backup your save before using this mod. I will not be responsible if your save breaks.
 
 ## Reporting a problem
 

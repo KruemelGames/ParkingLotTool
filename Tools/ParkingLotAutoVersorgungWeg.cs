@@ -32,8 +32,31 @@ namespace ParkingLotTool.Tools
                 Versorgungsweg.Bogen(r, e.Index, b.a.xz, b.b.xz, b.c.xz, b.d.xz,
                     radius + AutoVersorgungSicherheitszugabe + zugabe, querbar: fahrgasse);
             }
+            /*
+             * UND DIE FREMDEN ERDLEITUNGEN - IMMER GESPERRT.
+             *
+             * Unsere Fahrgassen darf eine Leitung queren, weil unter ihnen
+             * nichts liegt. Unter einem Kabel liegt ein Kabel: CS2 prueft Netz
+             * gegen Netz rein geometrisch und kennt keine Querungsausnahme.
+             * Deshalb `querbar: false`, ohne Winkelregel.
+             */
+            var leitungen = 0;
+            foreach (var e in _avFremdleitungen)
+            {
+                if (!EntityManager.HasComponent<Curve>(e)
+                    || !EntityManager.HasComponent<PrefabRef>(e)) continue;
+                var prefab = EntityManager.GetComponentData<PrefabRef>(e).m_Prefab;
+                if (!EntityManager.HasComponent<NetGeometryData>(prefab)) continue;
+                var b = EntityManager.GetComponentData<Curve>(e).m_Bezier;
+                var radius = EntityManager
+                    .GetComponentData<NetGeometryData>(prefab).m_DefaultWidth / 2;
+                leitungen++;
+                Versorgungsweg.Bogen(r, e.Index, b.a.xz, b.b.xz, b.c.xz, b.d.xz,
+                    radius + AutoVersorgungSicherheitszugabe + zugabe, querbar: false);
+            }
             Mod.log.Info($"PLT-Autoversorgung QUERUNGSREGEL: {querbar} eigene Fahrgassen-/Pfadkanten querbar, "
-                + $"{r.FindAll(h => !h.Querbar).Count} gesperrte Strassenhuellen; "
+                + $"{r.FindAll(h => !h.Querbar).Count} gesperrte Huellen davon "
+                + $"{leitungen} fremde Erdleitung(en); "
                 + "Querwinkel mindestens 45 Grad, Laengsfahrt bleibt gesperrt.");
             return r;
         }
@@ -95,6 +118,20 @@ namespace ParkingLotTool.Tools
             // bereits in _avHindernisse enthalten. So passt auch der Knick.
             var hindernisse = AvHindernisse(unsere,
                 math.max(_avStrombreite, _avWasserbreite) / 2 + _avAchsabstand);
+            /*
+             * EINE WARNUNG VOR DER RECHNUNG, NICHT DANACH.
+             *
+             * Der Sichtbarkeitsgraph waechst mit den Huellenecken, und die
+             * Suche darauf ist quadratisch. Am 2026-09-16 waren es 219
+             * Huellen, 1671 Knoten und 22 Sekunden. Diese Zahl gehoert vor
+             * den Lauf, damit man beim naechsten Mal weiss, was kommt.
+             */
+            var ecken = 0;
+            foreach (var h in hindernisse) ecken += h.Ring.Length;
+            if (ecken > 800)
+                Mod.log.Warn($"PLT-Autoversorgung {name}: {hindernisse.Count} Huellen mit "
+                    + $"{ecken} Ecken - die Wegesuche darauf ist quadratisch und kann "
+                    + "mehrere Sekunden dauern.");
             var r = Versorgungsweg.Suche(punkte, hindernisse, i => startstrassen[i], p => AvZielpunkte(p, fremde),
                 (weg, zielIndex) => {
                     var index = punkte.IndexOf(weg[0]);

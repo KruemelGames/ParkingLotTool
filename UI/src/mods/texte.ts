@@ -45,7 +45,7 @@ const en = {
   geschriebenNach: (pfad: string) => `Written to: ${pfad}`,
   berichtOrt:
     "The file goes to the game's Logs folder and is called "
-    + "«ParkingLotTool-report-…txt». It is short enough to send.",
+    + "'ParkingLotTool-report-…txt'. It is short enough to send.",
   spalteFlaechen: "Surfaces",
   flaecheStrasse: "Road surface",
   flaecheDeko: "Decoration surface",
@@ -120,7 +120,6 @@ const en = {
   altbestandLoeschen: "Delete them",
   altbestandBehalten: "Keep them",
   winkelFest: "Fixed",
-  winkelMeiste: "Most",
   winkelQuer: "Across",
   winkelNormal: "Normal",
   ausrichten: "Align to polygon line",
@@ -140,23 +139,6 @@ const en = {
   debugUeberlappungStart: "Scan selected parking lot",
   debugUeberlappungHinweis:
     "Select a PLT parking lot or a building grown on its zoning road, then scan. The result always goes to ParkingLotTool.Mod.log; an enabled live log receives the detailed trace as well.",
-  winkelMeisteZellenHinweis:
-    "The new cell engine does not have the automatic angle search yet.",
-  rechenweg: "Engine",
-  wegAlt: "Old",
-  wegZellen: "New",
-  altwegTitel: "Use the old engine?",
-  altwegText1:
-    "The old engine is the predecessor and is only kept as a fallback.",
-  altwegText2:
-    "It is much slower, gives up on larger shapes, and then leaves gaps in "
-    + "the pavement. The new engine fits more spaces in a fraction of the time.",
-  altwegText3:
-    "Only use it if the new engine doesn’t do what you want on a "
-    + "particular shape.",
-  altwegNichtMehr: "Don’t show this again",
-  altwegJa: "Switch anyway",
-  altwegNein: "Cancel",
   fahrgassenbreite: "Aisle width",
   querstrassenbreite: "Cross road width",
   verbindungAlle: "Cross road every",
@@ -168,6 +150,29 @@ const en = {
   tooltipRandstrassen: "Off uses the full site for rows. Roads serving edge zoning remain.",
   kappen: "Caps at cross roads",
   reiterEntwurf: "Draft",
+  tooltipEntwurf:
+    "Outline, rows, roads and surfaces of the lot you are drawing.",
+  tooltipStellenMarkieren:
+    "Turns the left mouse button into a marker pen. Click every spot that "
+    + "looks wrong.",
+  tooltipBerichtSchreiben:
+    "Writes your marks and what the mod last did into one file you can send.",
+  tooltipMeldungAbsturz:
+    "Collects the log of the run that crashed, before this one overwrites it.",
+  tooltipMeldungVorschau:
+    "Reports what the preview shows right now - nothing has to be built yet.",
+  tooltipMeldungBau:
+    "Reports the lot you built last, with the receipt of how it was made.",
+  tooltipMeldeLot:
+    "Then click a lot out in the world; right-click cancels.",
+  tooltipMeldungOrdner:
+    "Opens the folder holding the files, ready to attach.",
+  tooltipGebuehrHaken:
+    "Turns the fee off and back on. The amount you set is kept.",
+  tooltipGebuehrRegler:
+    "Drag to set what drivers pay here. It steers them between lots rather "
+    + "than earning you money.",
+  tooltipOrtSpringen: "Select this place and move the camera to it.",
   reiterMelden: "Report a problem",
   reiterDebug: "Dev-Debug",
 
@@ -247,15 +252,15 @@ const en = {
   debugTraegerHinweis:
     "An experiment, not a build step. It re-parents five markings of an "
     + "existing lot to a bare carrier entity and watches whether they stay "
-    + "put. USE A THROWAWAY SAVE. Press „create“, then hover the lot, "
-    + "build a road next to it, save, reload - and press „check“.",
+    + "put. USE A THROWAWAY SAVE. Press 'create', then hover the lot, "
+    + "build a road next to it, save, reload - and press 'check'.",
   debugTraegerStart: "Start carrier test",
   debugTraegerAbschliessen: "Finish carrier test",
   debugNochNichts: "Nothing measured yet.",
   debugFertig: "Finished.",
   bauen: "Build",
   rueckgaengig: "Undo",
-  stellplaetze: "stalls",
+  stellplaetze: "spaces",
   titelZurueckPolygon: "Back to editing the polygon",
   titelErstZufahrt: "Place an entrance first",
   titelPolygonSchliessen: "Close the polygon first",
@@ -276,7 +281,7 @@ const en = {
   berichtSchreiben: "Write report",
   amRandGassen: (rand: number, gassen: number) =>
     `${rand} perimeter · ${gassen} aisles`,
-  jeBucht: (wert: string) => `${wert} per stall`,
+  jeBucht: (wert: string) => `${wert} per space`,
   winkelAreal: (winkel: string, flaeche: string) => `${winkel} · ${flaeche} site`,
   hinweis: (zeile: string) => `Note: ${zeile}`,
   berichtMitAnzahl: (anzahl: number) => `Write report (${anzahl})`,
@@ -294,8 +299,6 @@ const en = {
     "Increases the setback from the outline. Tidier, costs spaces.",
   tooltipReihenwinkel: "Sets the row angle for the whole lot.",
   tooltipWinkelKante: "Follows the edge you drew.",
-  tooltipWinkelMeiste:
-    "Tries every angle and keeps the one that fits most cars.",
   tooltipWinkelQuer: "Rows at a right angle to the reference line.",
   tooltipWinkelNormal: "Rows along the line you picked.",
   tooltipAusrichten:
@@ -312,9 +315,6 @@ const en = {
     "Finds Overridden objects and exact collision pairs only around the selected lot.",
   tooltipWinkelFest: "Takes the angle from the slider below, measured from the edge.",
   tooltipWinkel: "Turns the rows away from the edge. Only listened to with Fixed.",
-  tooltipWegZellen: "The current calculation. Quick and well tested.",
-  tooltipWegAlt:
-    "The old calculation, kept for comparison. Can take minutes.",
   tooltipFahrgassenbreite:
     "Widens the aisles — more room to manoeuvre.",
   tooltipQuerstrassenbreite: "Widens the cross roads between the rows.",
@@ -607,7 +607,6 @@ const de: Texte = {
   altbestandLoeschen: "Löschen",
   altbestandBehalten: "Behalten",
   winkelFest: "Fest",
-  winkelMeiste: "Meiste",
   winkelQuer: "Quer",
   winkelNormal: "Normal",
   ausrichten: "An Polygonlinie ausrichten",
@@ -627,24 +626,6 @@ const de: Texte = {
   debugUeberlappungStart: "Gewählten Parkplatz absuchen",
   debugUeberlappungHinweis:
     "Einen PLT-Parkplatz oder ein an seiner Zoning-Straße gewachsenes Gebäude auswählen, dann suchen. Der Befund landet immer in ParkingLotTool.Mod.log; ein eingeschaltetes Live-Log erhält zusätzlich die ausführliche Spur.",
-  winkelMeisteZellenHinweis:
-    "Der neue Zellenweg hat die automatische Winkelsuche noch nicht.",
-  rechenweg: "Rechenweg",
-  wegAlt: "Alt",
-  wegZellen: "Neu",
-  altwegTitel: "Alten Rechenweg verwenden?",
-  altwegText1:
-    "Der alte Rechenweg ist der Vorgänger und nur noch als Rückfall da.",
-  altwegText2:
-    "Er ist deutlich langsamer, gibt bei größeren Flächen auf und lässt dann "
-    + "Lücken im Belag. Der neue Weg baut mehr Parkplätze in einem Bruchteil "
-    + "der Zeit.",
-  altwegText3:
-    "Nimm ihn nur, wenn der neue Weg bei einer bestimmten Form nicht das tut, "
-    + "was du willst.",
-  altwegNichtMehr: "Nicht mehr anzeigen",
-  altwegJa: "Trotzdem umstellen",
-  altwegNein: "Abbrechen",
   fahrgassenbreite: "Fahrgassenbreite",
   querstrassenbreite: "Querstraßenbreite",
   verbindungAlle: "Verbindung alle",
@@ -656,6 +637,31 @@ const de: Texte = {
   tooltipRandstrassen: "Aus nutzt die Fläche für durchgehende Reihen. Straßen am Randzoning bleiben erhalten.",
   kappen: "Kappen an Querstraßen",
   reiterEntwurf: "Entwurf",
+  tooltipEntwurf:
+    "Umriss, Reihen, Fahrwege und Flächen des Parkplatzes, den du gerade "
+    + "zeichnest.",
+  tooltipStellenMarkieren:
+    "Macht aus der linken Maustaste einen Stift. Jede Stelle anklicken, die "
+    + "falsch aussieht.",
+  tooltipBerichtSchreiben:
+    "Schreibt deine Markierungen und was die Mod zuletzt tat in EINE Datei "
+    + "zum Verschicken.",
+  tooltipMeldungAbsturz:
+    "Sichert das Log des abgestürzten Laufs, bevor dieser es überschreibt.",
+  tooltipMeldungVorschau:
+    "Meldet, was die Vorschau gerade zeigt - es muss noch nichts gebaut sein.",
+  tooltipMeldungBau:
+    "Meldet den zuletzt gebauten Parkplatz samt Bauzettel.",
+  tooltipMeldeLot:
+    "Danach einen Parkplatz im Gelände anklicken; Rechtsklick bricht ab.",
+  tooltipMeldungOrdner:
+    "Öffnet den Ordner mit den Dateien, fertig zum Anhängen.",
+  tooltipGebuehrHaken:
+    "Schaltet die Gebühr aus und wieder an. Der eingestellte Betrag bleibt.",
+  tooltipGebuehrRegler:
+    "Ziehen stellt ein, was Fahrer hier zahlen. Das lenkt sie zwischen "
+    + "Parkplätzen, statt dir Geld zu bringen.",
+  tooltipOrtSpringen: "Diesen Ort auswählen und die Kamera hinschicken.",
   reiterMelden: "Fehler melden",
   reiterDebug: "Dev-Debug",
   meldungTitel: "Bericht schicken",
@@ -783,8 +789,6 @@ const de: Texte = {
   tooltipReihenwinkel:
     "Legt den Reihenwinkel für den ganzen Parkplatz fest.",
   tooltipWinkelKante: "Folgt der Kante, die du gezogen hast.",
-  tooltipWinkelMeiste:
-    "Probiert jeden Winkel durch und behält den mit den meisten Autos.",
   tooltipWinkelQuer: "Reihen im rechten Winkel zur Bezugslinie.",
   tooltipWinkelNormal: "Reihen entlang der gewählten Linie.",
   tooltipAusrichten:
@@ -801,9 +805,6 @@ const de: Texte = {
     "Findet Overridden-Objekte und exakte Kollisionspaare nur um den gewählten Parkplatz.",
   tooltipWinkelFest: "Nimmt den Winkel aus dem Regler darunter, gemessen ab der Kante.",
   tooltipWinkel: "Dreht die Reihen weg von der Kante. Zählt nur bei Fest.",
-  tooltipWegZellen: "Die aktuelle Rechnung. Flott und gut erprobt.",
-  tooltipWegAlt:
-    "Die alte Rechnung, nur zum Vergleich. Kann Minuten dauern.",
   tooltipFahrgassenbreite:
     "Verbreitert die Fahrgassen — mehr Raum zum Rangieren.",
   tooltipQuerstrassenbreite:
@@ -886,7 +887,7 @@ const de: Texte = {
   listeSeite: (n: number, gesamt: number) => `Seite ${n} von ${gesamt}`,
   listeTreffer: (n: number, gesamt: number) => `${n} von ${gesamt} Parkplätzen`,
   listeVorigeSeite: "Vorige Parkplätze",
-  listeNaechsteSeite: "Weitere Parkplätze",
+  listeNaechsteSeite: "Nächste Parkplätze",
   reiterListe: "Parkplätze",
   tooltipListe:
     "Alle gebauten Parkplätze: Zahlen, Gebühr und ein Sprung hin.",
@@ -981,8 +982,8 @@ const de: Texte = {
       : `Nummer ${rang} deiner ${gesamt} Parkplätze nach Größe.`],
   infoKosten: (teuerster: boolean): Satzteil[] =>
     [teuerster
-      ? "Dein teuerster Platz je Bucht."
-      : "Dein günstigster Platz je Bucht."],
+      ? "Dein teuerster Parkplatz je Stellplatz."
+      : "Dein günstigster Parkplatz je Stellplatz."],
   infoBilanz: (tage: number, autos: number): Satzteil[] =>
     [`${tage} Tage alt, ${autos} Autos seit der Eröffnung.`],
 

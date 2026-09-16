@@ -89,14 +89,40 @@ namespace ParkingLotTool.Tools
             Mod.log.Info($"PLT-Autoversorgung: {unsere.Count} eigene Kante(n) "
                 + $"bilden {gruppen.Count} getrennte(s) Netz(e); Anschlussbedarf wird je Netz geprueft.");
 
+            /*
+             * WARUM EIN NETZ UEBERSPRUNGEN WIRD, GEHOERT IN DEN BAUZETTEL.
+             *
+             * Bisher sprangen hier stille `continue` - und wenn am Ende ein
+             * Netz ohne Leitung dastand, war nicht zu sehen, ob es fertig war,
+             * ob es gescheitert war oder ob es nie drankam.
+             */
+            var teile = AvErmittleTeile(gruppen);
+            Mod.log.Info($"PLT-Autoversorgung TEILE: {gruppen.Count} eigene(s) Netz(e), "
+                + $"{teile.OffeneTeile()} davon noch nicht an der Stadt. Verbunden wird "
+                + "immer nur zwischen zwei Teilen, die nicht zusammenhaengen - "
+                + "ein Teil ohne Stadtanschluss hat am Ende nur noch Stadtstrassen als Ziel.");
             _avNochOffeneNetze = 0;
             for (var g = 0; g < gruppen.Count; g++)
             {
-                if (gruppen[g].Exists(e => _avVersucht.Contains(e))) continue;
-                if (gruppen[g].TrueForAll(AvZielHatStadtpfad)) continue;
+                var netzname = $"Netz {g + 1}/{gruppen.Count}";
+                if (teile.AnDerStadt(g))
+                {
+                    Mod.log.Info($"PLT-Autoversorgung {netzname}: haengt am "
+                        + "Stadtnetz - nichts zu tun.");
+                    continue;
+                }
+                var stand = AvStandFuer(gruppen[g], false);
+                if (stand != null && stand.Versuche >= AutoVersorgungHoechstversuche)
+                {
+                    Mod.log.Warn($"PLT-Autoversorgung {netzname}: {stand.Versuche} Anlaeufe "
+                        + $"ueber {stand.GesperrteZiele.Count} verschiedene Ziele, alle "
+                        + "abgewiesen. Dieses Netz bleibt ohne Leitung - beim naechsten "
+                        + "Oeffnen des Werkzeugs wird es erneut versucht.");
+                    continue;
+                }
                 _avNochOffeneNetze++;
                 var trasse = WaehleTrasseFuerGruppe(gruppen[g], _avAlleEigenen, fremde,
-                    $"Netz {g + 1}/{gruppen.Count}");
+                    netzname, stand?.GesperrteZiele, teile.Finde(g), teile);
                 if (trasse.Gefunden)
                 {
                     trasse.Startnetz = gruppen[g];
@@ -107,8 +133,17 @@ namespace ParkingLotTool.Tools
             if (trassen.Count > 1) trassen.RemoveRange(1, trassen.Count - 1);
             if (trassen.Count == 1)
             {
+                /*
+                 * HIER STAND `foreach (var e in trassen[0].Startnetz)
+                 * _avVersucht.Add(e);`
+                 *
+                 * Das Netz galt damit schon als abgehakt, bevor auch nur eine
+                 * Definition stand. Scheiterte der Apply, war es fuer den
+                 * ganzen Lauf verloren. Gemerkt wird jetzt erst, wenn wirklich
+                 * etwas passiert ist - `AvMerkeAngewandt` nach dem Apply,
+                 * `AvMerkeFehlschlag` bei einem Fehler.
+                 */
                 _avNochOffeneNetze--;
-                foreach (var e in trassen[0].Startnetz) _avVersucht.Add(e);
                 var t = trassen[0];
                 Mod.log.Info($"PLT-Autoversorgung AUSWAHL: {t.Herkunft}, {t.Laenge:F3} m, "
                     + $"Start ({t.Start.x:F2}/{t.Start.z:F2}), Ziel {t.Zielkante} ({t.Ziel.x:F2}/{t.Ziel.z:F2}), "
@@ -129,7 +164,10 @@ namespace ParkingLotTool.Tools
             List<Entity> gruppe,
             List<Entity> unsere,
             List<(Entity Kante, Bezier4x3 Bogen)> fremde,
-            string name)
+            string name,
+            System.Collections.Generic.ICollection<Entity> gesperrteZiele,
+            int meinTeil,
+            AvTeile teile)
         {
             var ergebnis = new Versorgungstrasse { Zielkante = Entity.Null };
             var versorgbar = 0;
@@ -147,12 +185,54 @@ namespace ParkingLotTool.Tools
                 return ergebnis;
             }
 
-            var ziele = fremde.FindAll(z => !gruppe.Contains(z.Kante) && AvZielHatStadtpfad(z.Kante));
+            /*
+             * JEDES ANDERE TEIL DARF ZIEL SEIN - AUCH EIN EIGENES.
+             *
+             * Bis zum 2026-09-16 stand hier `AvZielHatStadtpfad`: ein eigenes
+             * Netz war nur dann Ziel, wenn CS2 es schon selbst am Stadtnetz
+             * fuehrte. Diese Auskunft kostete vier Sekunden Wartezeit je Netz -
+             * 8,2 von 9,2 Sekunden eines Laufs.
+             *
+             * `AvZielErlaubt` fragt stattdessen nach der Zugehoerigkeit, und
+             * die kenne ich sofort: eine fremde Strasse immer, ein eigenes Netz
+             * nur aus einem anderen Teil. Damit sind zwei Zonen untereinander
+             * verbindbar, bevor irgendetwas an der Stadt haengt - und weil ein
+             * Teil ohne Stadt am Ende nur noch Stadtstrassen als Ziel hat, geht
+             * am Schluss immer eine Leitung nach draussen.
+             */
+            var ziele = fremde.FindAll(z => !gruppe.Contains(z.Kante)
+                && (gesperrteZiele == null || !gesperrteZiele.Contains(z.Kante))
+                && AvZielErlaubt(z.Kante, meinTeil, teile));
+            var gesperrt = gesperrteZiele == null ? 0 : gesperrteZiele.Count;
+            if (gesperrt > 0)
+                Mod.log.Info($"PLT-Autoversorgung {name}: {ziele.Count} Ziele uebrig, "
+                    + $"{gesperrt} aus frueheren Anlaeufen gesperrt.");
+            /*
+             * OHNE ZIEL WIRD NICHT GESUCHT.
+             *
+             * `AvUmweg` baut einen Sichtbarkeitsgraphen ueber alle Huellen -
+             * beim Parkplatz des Nutzers 219 Huellen, 1671 Knoten, 22
+             * Sekunden. Das lohnt sich nur, wenn es etwas zu erreichen gibt.
+             * Ist die Zielliste leer, steht die Antwort schon fest, und die
+             * Suche wuerde sie nur teuer bestaetigen.
+             */
+            if (ziele.Count == 0)
+            {
+                Mod.log.Warn($"PLT-Autoversorgung {name}: {fremde.Count} Kante(n) im "
+                    + "Suchfeld, aber keine davon ist ein erlaubtes Ziel - entweder "
+                    + "liegt keine fremde Strasse in Reichweite, oder alle gefundenen "
+                    + "gehoeren schon zu diesem Teil. Dieses Netz bleibt ohne Leitung; "
+                    + "es wird nicht nach einem Weg gesucht.");
+                return ergebnis;
+            }
             var starts = SammleGruppenpunkte(gruppe, ziele);
             VersucheKandidaten(starts, ziele, gruppe, name + ": Kante/Knoten", ref ergebnis);
             AvUmweg(starts, gruppe, unsere, ziele, name, ref ergebnis);
             if (!ergebnis.Gefunden)
-                Mod.log.Warn($"PLT-Autoversorgung {name}: {starts.Count} Starts, {ziele.Count} Ziele mit Stadtpfad, 0 zulaessige Trassen.");
+                Mod.log.Warn($"PLT-Autoversorgung {name}: {starts.Count} Starts, "
+                    + $"{ziele.Count} erlaubte Ziele, 0 zulaessige Trassen. Dieses Netz "
+                    + "bleibt ohne Leitung - es gibt Ziele, aber keinen Weg, der an "
+                    + "allen Hindernissen vorbeifuehrt.");
             return ergebnis;
         }
 
@@ -362,10 +442,11 @@ namespace ParkingLotTool.Tools
         /**
          * Fremde Strassen im Umkreis - die moeglichen Gegenstellen.
          *
-         * Eigene Kanten bleiben Kandidaten. Gruppenidentitaet und Stadtpfad
-         * werden anschliessend je Startgruppe geprueft. Vorschau und geloeschte
-         * Kanten bleiben ausgeschlossen. Eine Leitung
-         * an einen Fussweg zu haengen bringt keinen Strom.
+         * Eigene Kanten bleiben Kandidaten. Welche davon erlaubt sind,
+         * entscheidet `AvZielErlaubt` je Startgruppe: eine fremde Strasse
+         * immer, eine eigene nur aus einem anderen Teil. Vorschau und
+         * geloeschte Kanten bleiben ausgeschlossen. Eine Leitung an einen
+         * Fussweg zu haengen bringt keinen Strom.
          */
         private List<(Entity Kante, Bezier4x3 Bogen)> SammleZielstrassen(
             List<Entity> unsere)
@@ -382,25 +463,8 @@ namespace ParkingLotTool.Tools
              * in der Naehe unserer STRASSEN. Die stehen hier ohnehin fertig
              * da und sind die verlaesslichere Quelle.
              */
-            var min = new float2(float.MaxValue, float.MaxValue);
-            var max = new float2(float.MinValue, float.MinValue);
-            for (var i = 0; i < unsere.Count; i++)
-            {
-                if (!EntityManager.HasComponent<Game.Net.Curve>(unsere[i]))
-                    continue;
-                var bogen = EntityManager
-                    .GetComponentData<Game.Net.Curve>(unsere[i]).m_Bezier;
-                for (var s = 0; s <= 4; s++)
-                {
-                    var punkt = MathUtils.Position(bogen, s / 4f).xz;
-                    min = math.min(min, punkt);
-                    max = math.max(max, punkt);
-                }
-            }
-            if (min.x > max.x) return treffer;
-            var suchfeld = new Bounds2(
-                min - AutoVersorgungSuchradius,
-                max + AutoVersorgungSuchradius);
+            if (!AvSuchfeld(unsere, out var suchfeld, out var min, out var max))
+                return treffer;
 
             var baum = _netSearchSystem.GetNetSearchTree(
                 readOnly: true, out var deps);
@@ -458,7 +522,114 @@ namespace ParkingLotTool.Tools
             return treffer;
         }
 
+        /**
+         * Das Rechteck um unsere Strassen, in dem ueberhaupt gesucht wird.
+         *
+         * Gebraucht von der Zielsuche UND von der Hindernissuche. Zweimal
+         * dasselbe Feld aufzubauen hiesse, zwei Antworten auf dieselbe Frage
+         * zu pflegen.
+         */
+        private bool AvSuchfeld(List<Entity> unsere, out Bounds2 feld,
+            out float2 min, out float2 max)
+        {
+            min = new float2(float.MaxValue, float.MaxValue);
+            max = new float2(float.MinValue, float.MinValue);
+            for (var i = 0; i < unsere.Count; i++)
+            {
+                if (!EntityManager.HasComponent<Game.Net.Curve>(unsere[i]))
+                    continue;
+                var bogen = EntityManager
+                    .GetComponentData<Game.Net.Curve>(unsere[i]).m_Bezier;
+                for (var s = 0; s <= 4; s++)
+                {
+                    var punkt = MathUtils.Position(bogen, s / 4f).xz;
+                    min = math.min(min, punkt);
+                    max = math.max(max, punkt);
+                }
+            }
+            feld = default;
+            if (min.x > max.x) return false;
+            feld = new Bounds2(min - AutoVersorgungSuchradius,
+                max + AutoVersorgungSuchradius);
+            return true;
+        }
+
+        /**
+         * FREMDE ERDLEITUNGEN IM UMKREIS - SIE SIND HINDERNISSE.
+         *
+         * Am 2026-09-16 hat ein 'High-voltage Ground Cable' des Nutzers die
+         * Leitung zwischen zwei eigenen Zonen verhindert. Der Wegesucher kannte
+         * nur unsere eigenen Strassen und ist deshalb schnurgerade hinein - er
+         * hat nicht "trotzdem" entschieden, er hat das Kabel nicht gesehen.
+         *
+         * NICHT QUERBAR, anders als unsere Fahrgassen. Aus
+         * `Game.Net.ValidationHelpers.CheckOverlap` (Dekompilat): Netz gegen
+         * Netz ist ein reiner Geometrieschnitt der Huellen bei ueberlappender
+         * Kollisionsmaske, Schwere `Error`. Es gibt keine Ausnahme fuers
+         * Kreuzen - ohne echten Kreuzungsknoten, und den setzen wir nicht,
+         * stoesst eine Querung genauso an wie ein Nebeneinanderherlaufen.
+         *
+         * Was eine Strasse ist, gehoert NICHT hierher: an Strassen schliessen
+         * wir an, sie sind unsere Ziele. Gesucht sind die reinen Leitungen -
+         * kein `RoadData`, aber Strom- oder Wasseranschlussdaten. Das ist
+         * dieselbe Unterscheidung, die `AvErfasseStadtpfade` schon trifft.
+         *
+         * Unsere eigenen frueheren Leitungen stehen bewusst mit drin: fuer CS2
+         * sind sie genauso im Weg wie fremde.
+         */
+        private void SammleFremdleitungen(List<Entity> unsere)
+        {
+            _avFremdleitungen.Clear();
+            if (_netSearchSystem == null) return;
+            if (!AvSuchfeld(unsere, out var suchfeld, out _, out _)) return;
+
+            var baum = _netSearchSystem.GetNetSearchTree(
+                readOnly: true, out var deps);
+            deps.Complete();
+            using var gefunden = new NativeList<Entity>(64, Allocator.Temp);
+            var iterator = new EntityIterator { Bounds = suchfeld, Results = gefunden };
+            baum.Iterate(ref iterator);
+
+            var eigene = new HashSet<Entity>(unsere);
+            var gesehen = new HashSet<Entity>();
+            var strom = 0; var wasser = 0;
+            for (var i = 0; i < gefunden.Length; i++)
+            {
+                var kante = gefunden[i];
+                if (kante == Entity.Null || !gesehen.Add(kante)) continue;
+                if (!EntityManager.Exists(kante)) continue;
+                if (eigene.Contains(kante)) continue;
+                if (EntityManager.HasComponent<Deleted>(kante)) continue;
+                if (EntityManager.HasComponent<Game.Tools.Temp>(kante)) continue;
+                if (!EntityManager.HasComponent<Game.Net.Edge>(kante)
+                    || !EntityManager.HasComponent<Game.Net.Curve>(kante)
+                    || !EntityManager.HasComponent<PrefabRef>(kante)) continue;
+                var prefab = EntityManager
+                    .GetComponentData<PrefabRef>(kante).m_Prefab;
+                if (EntityManager.HasComponent<RoadData>(prefab)) continue;
+                var hatStrom = EntityManager
+                    .HasComponent<ElectricityConnectionData>(prefab);
+                var hatWasser = EntityManager
+                    .HasComponent<WaterPipeConnectionData>(prefab);
+                if (!hatStrom && !hatWasser) continue;
+                if (hatStrom) strom++; else wasser++;
+                _avFremdleitungen.Add(kante);
+            }
+            Mod.log.Info($"PLT-Autoversorgung FREMDLEITUNGEN: {_avFremdleitungen.Count} "
+                + $"Kante(n) im Suchfeld ({strom} Strom, {wasser} Wasser/Abwasser) "
+                + "werden umfahren; Kreuzen ist bei Leitungen nicht erlaubt.");
+        }
+
         private const float AutoVersorgungAnschlussbereich = 8f;
         private const float AutoVersorgungSicherheitszugabe = 0.5f;
+
+        /**
+         * Wieviele verschiedene Wege ein Netz bekommt, bevor aufgegeben wird.
+         *
+         * Jeder Anlauf kostet einen vollen Bauzyklus, deshalb keine offene
+         * Zahl. Drei decken "da lag zufaellig etwas" ab; wer danach nicht
+         * durchkommt, hat ein anderes Problem, und das soll im Log stehen.
+         */
+        private const int AutoVersorgungHoechstversuche = 3;
     }
 }

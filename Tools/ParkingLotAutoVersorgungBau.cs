@@ -67,6 +67,17 @@ namespace ParkingLotTool.Tools
         private const int AutoVersorgungMessenFrames = 120;
         private const int AutoVersorgungMessfrist = 3600;
 
+        /*
+         * HIER STAND DAS WARTEN AUF CS2S FLUSS-GRAPHEN.
+         *
+         * Es war noetig, solange ein eigenes Netz nur dann Ziel sein durfte,
+         * wenn CS2 es selbst schon am Stadtnetz fuehrte. Am 2026-09-16 kostete
+         * das 8,2 von 9,2 Sekunden eines Laufs. Seit die Planung nach
+         * Zugehoerigkeit fragt statt nach dem Graphen (siehe `AvTeile`), gibt
+         * es nichts mehr abzuwarten: was wir gebaut haben, wissen wir selbst.
+         * Bestaetigt wird es weiterhin - von der Netzabdeckung am Ende.
+         */
+
         internal void MerkeAutoVersorgung(Entity traeger,
             Entity altesLot = default, Entity alterTraeger = default)
         {
@@ -74,7 +85,9 @@ namespace ParkingLotTool.Tools
             AvEntferneDefinitionen();
             _avKurse.Clear();
             _avHatPlan = false;
-            _avVersucht.Clear();
+            _avNetzstand.Clear();
+            _avVerbindungen.Clear();
+            _avFremdleitungen.Clear();
             _avAusstehend.Clear();
             _avGebaut.Clear();
             _avLetzterGesamtApplyBefund = null;
@@ -107,6 +120,8 @@ namespace ParkingLotTool.Tools
             _avWasserbreite = EntityManager.GetComponentData<NetGeometryData>(wasser).m_DefaultWidth;
             _avAchsabstand = VersorgungskursPruefung.Achsabstand(_avStrombreite, _avWasserbreite);
             AvErfasseStadtpfade();
+            // Erst wissen, was im Weg liegt - dann die Huellen bauen.
+            SammleFremdleitungen(_avAlleEigenen);
             _avHindernisse = AvHindernisse(_avAlleEigenen, math.max(_avStrombreite, _avWasserbreite) / 2);
             _avAusstehend.Clear();
             _avAusstehend.AddRange(WaehleVersorgungstrassen(traeger));
@@ -245,6 +260,9 @@ namespace ParkingLotTool.Tools
                         Mod.log.Warn($"PLT-Autoversorgung: Apply nach {vergangen} Frames noch offen; "
                             + $"{_avNochOffeneNetze} weitere Netze koennen nicht starten. "
                             + "Werkzeug wird freigegeben; Abnahme der angewandten Kurse bleibt offen.");
+                        // Angewandt ist angewandt - kein zweiter Anschluss,
+                        // auch wenn der Zyklus hier abbricht.
+                        foreach (var trasse in _avTrassen) AvMerkeAngewandt(trasse);
                         _avAusstehend.Clear();
                         AvEntferneDefinitionen();
                         AvNaechsteTrasse();
@@ -252,6 +270,15 @@ namespace ParkingLotTool.Tools
                     }
                     return true;
                 }
+                /*
+                 * DER APPLY IST GELAUFEN - EGAL WIE ER AUSGING.
+                 *
+                 * Dieses Netz bekommt nie einen zweiten Anschluss. Auch dann
+                 * nicht, wenn die Dauerhaftigkeit unbestaetigt bleibt: eine
+                 * zweite Leitung auf Verdacht waere schlimmer als eine, deren
+                 * Abnahme offen ist.
+                 */
+                foreach (var trasse in _avTrassen) AvMerkeAngewandt(trasse);
                 if (zustand != VersorgungsapplyZustand.Dauerhaft)
                     Mod.log.Warn("PLT-Autoversorgung: Temp-Zyklus beendet, aber Dauerhaftigkeit "
                         + "NICHT bestaetigt; Einzelzustand siehe APPLY-NACHWEIS. Kein blinder Neubau.");
@@ -321,6 +348,7 @@ namespace ParkingLotTool.Tools
             var fehler = m_ErrorQuery.CalculateEntityCount();
             if (fehler > 0 || !GetAllowApply())
             {
+                AvMeldeBaufehler();
                 AvFehler($"Vanilla-Baupruefung: {fehler} Fehler-Entities, "
                     + "Apply nicht zugelassen (u.a. Kollisionen/Fremdleitungen); keine Fehlerumgehung");
                 return true;
@@ -335,10 +363,26 @@ namespace ParkingLotTool.Tools
                 AvFehler("fehlender Anschluss vor Apply; Details siehe Messung");
                 return true;
             }
+            /*
+             * DIESELBE FRAGE WIE IN DER PLANUNG, KURZ VOR DEM APPLY.
+             *
+             * Hier stand `AvZielHatStadtpfad`, und das haette genau die neuen
+             * Leitungen von Zone zu Zone abgewiesen - deren Ziel haengt ja noch
+             * nicht an der Stadt. Geprueft wird deshalb, was die Planung
+             * geprueft hat: lebt das Ziel noch, und gehoert es weiterhin zu
+             * einem anderen Teil.
+             */
             AvErfasseStadtpfade();
-            if (!_avTrassen.TrueForAll(t => AvZielHatStadtpfad(t.Zielkante)))
+            var teile = AvErmittleTeile(SammleVersorgungsgruppen(
+                SammleUnsereKanten(_avTraeger).FindAll(KanteNimmtVersorgung)));
+            foreach (var t in _avTrassen)
             {
-                AvFehler("Stadtpfad des Ziels vor Apply verloren; 0 Kurse angewandt");
+                var meins = t.Startnetz == null ? -1
+                    : AvGruppeAmPunkt(teile.Gruppen, t.Start);
+                if (AvZielErlaubt(t.Zielkante, meins < 0 ? -1 : teile.Finde(meins), teile))
+                    continue;
+                AvFehler("Ziel vor Apply nicht mehr zulaessig (geloescht oder "
+                    + "inzwischen selbst mit uns verbunden); 0 Kurse angewandt");
                 return true;
             }
             // Die Identitaeten bleiben beim Vanilla-Create erhalten: ApplyNetSystem
@@ -372,8 +416,180 @@ namespace ParkingLotTool.Tools
                     if (EntityManager.Exists(d)) EntityManager.DestroyEntity(d);
         }
 
+        /**
+         * Setzt einen abgebrochenen Versorgungslauf fort.
+         *
+         * Aufgerufen beim Oeffnen des Werkzeugs. Bedingungen: es lief
+         * ueberhaupt etwas (`_avTraeger` steht), der Traeger lebt noch, gerade
+         * laeuft kein Zyklus (`Idle`), und es ist noch etwas zu tun - ein nie
+         * begonnenes oder ein gescheitertes Netz.
+         *
+         * `_avVerbindungen` bleibt stehen - daraus leitet die naechste Planung
+         * ab, welche Teile schon zusammenhaengen. Ein Teil, das die Stadt
+         * erreicht, wird uebersprungen; innerhalb eines Teils wird nie noch
+         * einmal verbunden.
+         *
+         * `_avNetzstand` wird dagegen geleert - verbrauchte Anlaeufe und
+         * gesperrte Ziele gelten nur fuer einen Lauf. Zwischen zwei Oeffnungen
+         * des Werkzeugs baut der Nutzer: eine Strasse mehr, eine fremde
+         * Leitung weniger, und derselbe Weg ist frei.
+         */
+        private void NimmOffeneVersorgungWiederAuf()
+        {
+            if (Mod.Optionen != null && !Mod.Optionen.AutomatischVersorgung) return;
+            if (_avTraeger == Unity.Entities.Entity.Null) return;
+            if (!EntityManager.Exists(_avTraeger)) { _avTraeger = Unity.Entities.Entity.Null; return; }
+            if (_avPhase != AvPhase.Idle) return;
+            var gescheitert = _avNetzstand.Count;
+            if (_avNochOffeneNetze <= 0 && gescheitert == 0) return;
+
+            Mod.log.Info("PLT-Autoversorgung: Werkzeug wieder geoeffnet, "
+                + $"{_avNochOffeneNetze} offene(s) Netz(e) werden fortgesetzt"
+                + (gescheitert > 0
+                    ? $"; {gescheitert} Kante(n) aus gescheiterten Netzen bekommen "
+                        + "einen neuen Anlauf, weil sich die Lage seit dem Fehlschlag "
+                        + "geaendert haben kann."
+                    : "."));
+            _avNetzstand.Clear();
+            _avHatPlan = true;
+            _avPhase = AvPhase.LotWarten;
+            _avFrame = UnityEngine.Time.frameCount;
+            _avGesamtzeit = System.Diagnostics.Stopwatch.StartNew();
+        }
+
+        /**
+         * NENNT DIE VANILLA-FEHLER BEIM NAMEN.
+         *
+         * `m_ErrorQuery.CalculateEntityCount()` liefert eine Zahl. Im
+         * Bauzettel vom 2026-09-16 stand "3 Fehler-Entities" - und damit war
+         * nicht zu sagen, ob sich zwei Leitungen beruehren, ob ein Rohr in
+         * einem fremden liegt oder ob CS2 die Kurve zu eng fand. Jede Theorie
+         * darueber waere geraten gewesen.
+         *
+         * CS2 weiss es. `ValidationSystem` haengt dem schuldigen Objekt ein
+         * Hinweissymbol an; dessen Prefab traegt `ToolErrorData.m_Error`, also
+         * genau den `ErrorType`. Diese Zuordnung lesen wir hier zurueck.
+         *
+         * Kommt das Symbol erst einen Frame spaeter, bleiben Ort und
+         * Zugehoerigkeit - eine halbe Auskunft ist immer noch mehr als eine
+         * Zahl.
+         */
+        private void AvMeldeBaufehler()
+        {
+            var typen = new Dictionary<Entity, ErrorType>();
+            using (var fehlerprefabs = GetEntityQuery(
+                ComponentType.ReadOnly<ToolErrorData>(),
+                ComponentType.ReadOnly<PrefabData>()).ToEntityArray(Allocator.Temp))
+                foreach (var prefab in fehlerprefabs)
+                    typen[prefab] = EntityManager
+                        .GetComponentData<ToolErrorData>(prefab).m_Error;
+
+            var unsereKurse = new HashSet<Entity>();
+            foreach (var kurs in _avKurse)
+            {
+                foreach (var k in kurs.Kanten) unsereKurse.Add(k);
+                foreach (var k in kurs.Anschlussstuecke) unsereKurse.Add(k);
+                foreach (var d in kurs.Definitionen) unsereKurse.Add(d);
+            }
+            var unsereStrassen = new HashSet<Entity>(SammleUnsereKanten(_avTraeger));
+
+            using var betroffene = m_ErrorQuery.ToEntityArray(Allocator.Temp);
+            if (betroffene.Length == 0)
+            {
+                Mod.log.Warn("PLT-Autoversorgung BAUFEHLER: kein Fehler-Entity, aber "
+                    + "GetAllowApply() ist falsch - CS2 verweigert den Apply aus einem "
+                    + "anderen Grund (geloeschtes Original).");
+                return;
+            }
+            foreach (var e in betroffene)
+            {
+                var original = EntityManager.HasComponent<Temp>(e)
+                    ? EntityManager.GetComponentData<Temp>(e).m_Original : Entity.Null;
+                var wem = unsereKurse.Contains(e) || unsereKurse.Contains(original)
+                    ? "UNSERE Leitung"
+                    : unsereStrassen.Contains(e) || unsereStrassen.Contains(original)
+                        ? "UNSERE Strasse"
+                        : "FREMD";
+                var art = "kein Hinweissymbol (noch nicht erzeugt)";
+                var beruehrung = "";
+                if (EntityManager.HasBuffer<Game.Notifications.IconElement>(e))
+                {
+                    var namen = new List<string>();
+                    foreach (var symbol in EntityManager
+                        .GetBuffer<Game.Notifications.IconElement>(e, true))
+                    {
+                        if (!EntityManager.HasComponent<PrefabRef>(symbol.m_Icon)) continue;
+                        var prefab = EntityManager
+                            .GetComponentData<PrefabRef>(symbol.m_Icon).m_Prefab;
+                        namen.Add(typen.TryGetValue(prefab, out var typ)
+                            ? typ.ToString() : PrefabAssetName(prefab));
+                        /*
+                         * DER ORT DES SYMBOLS IST DER BERUEHRPUNKT.
+                         *
+                         * `ErrorData.m_Position` ist die Mitte der
+                         * Schnittmenge beider Huellen - genau die Stelle, an
+                         * der es klemmt. Sie ueberlebt nur im Symbol; die
+                         * `ErrorData` selbst liegt in einer Queue und ist
+                         * danach weg. Ohne sie steht in der Zeile nur die
+                         * Mitte der ganzen Kante, und die kann 20 m daneben
+                         * liegen.
+                         */
+                        if (beruehrung.Length == 0
+                            && EntityManager.HasComponent<Game.Notifications.Icon>(symbol.m_Icon))
+                        {
+                            var ort = EntityManager
+                                .GetComponentData<Game.Notifications.Icon>(symbol.m_Icon).m_Location;
+                            beruehrung = $", Beruehrung ({ort.x:F1}/{ort.z:F1}, Y {ort.y:F1})";
+                        }
+                    }
+                    if (namen.Count > 0) art = string.Join(", ", namen);
+                }
+                Mod.log.Warn($"PLT-Autoversorgung BAUFEHLER: {e} ({wem}), Original {original}, "
+                    + $"Prefab '{AvFehlerprefab(e)}', Ort {AvFehlerort(e)}"
+                    + AvFehlertiefe(e) + beruehrung + $", Art: {art}.");
+            }
+        }
+
+        /**
+         * Auf welcher Tiefe liegt dieses Netz?
+         *
+         * Unsere Leitungen liegen fest auf -10. Steht in der Zeile, dass das
+         * Hindernis woanders liegt und wir trotzdem kollidieren, ist Ausweichen
+         * in der Tiefe die billigere Antwort als jeder Umweg - und das soll man
+         * sehen koennen, statt es zu vermuten.
+         */
+        private string AvFehlertiefe(Entity e)
+        {
+            if (!EntityManager.HasComponent<Game.Net.Elevation>(e)) return "";
+            var h = EntityManager.GetComponentData<Game.Net.Elevation>(e).m_Elevation;
+            return $", Tiefe {h.x:F1}/{h.y:F1}";
+        }
+
+        private string AvFehlerprefab(Entity e)
+            => EntityManager.HasComponent<PrefabRef>(e)
+                ? PrefabAssetName(EntityManager.GetComponentData<PrefabRef>(e).m_Prefab)
+                : "-";
+
+        private string AvFehlerort(Entity e)
+        {
+            float3 p;
+            if (EntityManager.HasComponent<Curve>(e))
+                p = MathUtils.Position(
+                    EntityManager.GetComponentData<Curve>(e).m_Bezier, 0.5f);
+            else if (EntityManager.HasComponent<Game.Net.Node>(e))
+                p = EntityManager.GetComponentData<Game.Net.Node>(e).m_Position;
+            else if (EntityManager.HasComponent<Game.Objects.Transform>(e))
+                p = EntityManager.GetComponentData<Game.Objects.Transform>(e).m_Position;
+            else return "unbekannt";
+            return $"({p.x:F1}/{p.z:F1}, Y {p.y:F1})";
+        }
+
         private void AvNaechsteTrasse()
         {
+            // Dieser Zyklus ist vorbei. Was gemerkt werden musste, ist gemerkt
+            // (siehe `AvMerkeAngewandt` und `AvMerkeFehlschlag`); ab hier darf
+            // die Liste nicht mehr aussehen, als wuerde noch etwas gebaut.
+            _avTrassen.Clear();
             _avKurse.Clear();
             _avFrame = UnityEngine.Time.frameCount;
             _avTempStabil = -1;
@@ -387,8 +603,24 @@ namespace ParkingLotTool.Tools
             }
             if (_avHatPlan)
             {
+                /*
+                 * NICHT VERLOREN, NUR VERTAGT.
+                 *
+                 * Bis zum 2026-09-16 endete der Lauf hier endgueltig. Jetzt
+                 * bleibt `_avNochOffeneNetze` stehen, und
+                 * `NimmOffeneVersorgungWiederAuf` macht beim naechsten
+                 * Oeffnen des Werkzeugs weiter. Der Nutzer sieht es auch:
+                 * die Zeile sagt, was noch aussteht und was es braucht.
+                 */
                 Mod.log.Warn($"PLT-Autoversorgung: Werkzeug gewechselt; {_avNochOffeneNetze} "
-                    + "noch nicht begonnene Netze. Bereits angewandte Kurse werden weiter gemessen.");
+                    + "noch nicht begonnene Netze. Bereits angewandte Kurse werden weiter "
+                    + "gemessen; der Rest wird beim naechsten Oeffnen des Werkzeugs "
+                    + "fortgesetzt.");
+                _uiSystem?.SetStatus(ParkingLotTexte.T(
+                    _avNochOffeneNetze + " Versorgungsnetz(e) noch offen - beim "
+                    + "nächsten Öffnen des Werkzeugs wird weitergebaut.",
+                    _avNochOffeneNetze + " supply network(s) still open - they "
+                    + "will be finished the next time the tool is opened."));
                 _avAusstehend.Clear();
             }
             _avKurse.AddRange(_avGebaut);
@@ -402,6 +634,17 @@ namespace ParkingLotTool.Tools
 
         private void AvFehler(string grund)
         {
+            /*
+             * ZUERST MERKEN, DANN AUFRAEUMEN.
+             *
+             * `AvNaechsteTrasse` am Ende dieser Methode kann sofort neu
+             * planen. Stuende die Merkung danach, plante die naechste Runde
+             * dasselbe Netz mit demselben Ergebnis.
+             *
+             * Gemerkt wird nur, was noch KEINE Leitung hat: alle Wege hierher
+             * liegen vor dem Apply.
+             */
+            foreach (var trasse in _avTrassen) AvMerkeFehlschlag(trasse);
             AvEntferneDefinitionen();
             if (_avPhase == AvPhase.TempWarten && m_ToolSystem.activeTool == this)
                 applyMode = ApplyMode.Clear;

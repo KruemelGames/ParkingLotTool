@@ -354,7 +354,8 @@ namespace ParkingLotTool.Tools
             _uiSystem?.SetAusrichtwinkel(null);
             _geometryRevision++;
             _layoutDirty = _closed;
-            CommitUndoState(before, "Ausrichtung zurückgesetzt");
+            CommitUndoState(before, T("Ausrichtung zurückgesetzt",
+                "alignment reset"));
             _uiSystem?.SetStatus(T("Ausrichtung zurückgesetzt: wieder längste Kante.",
                 "Alignment reset: longest edge again."));
             Mod.log.Info("PLT-Ausrichten: zurueckgesetzt, vorher "
@@ -586,7 +587,8 @@ namespace ParkingLotTool.Tools
             {
                 _geometryRevision++;
                 _layoutDirty = _closed;
-                CommitUndoState(before, "Bezugslinie gewählt");
+                CommitUndoState(before, T("Bezugslinie gewählt",
+                    "reference line picked"));
             }
 
             /*

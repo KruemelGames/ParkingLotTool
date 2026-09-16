@@ -130,8 +130,8 @@ namespace ParkingLotTool.Tools
         internal string Traegerstand()
         {
             if (TraegertestLaeuft())
-                return T("Laeuft. Jetzt hovern, eine Strasse daneben bauen, "
-                         + "speichern, neu laden - dann abschliessen.",
+                return T("Läuft. Jetzt hovern, eine Straße daneben bauen, "
+                         + "speichern, neu laden - dann abschließen.",
                          "Running. Now hover, build a road next to it, save, "
                          + "reload - then finish.");
             if (!System.IO.File.Exists(TraegerAkte)) return string.Empty;
@@ -148,14 +148,14 @@ namespace ParkingLotTool.Tools
                 SchreibeTraegerdatei(bericht);
                 _uiSystem?.SetReportPath(TraegerAkte);
                 _debugTooltipSystem?.Show(T(
-                    "Traegertest angelegt - siehe Logs-Ordner.",
+                    "Trägertest angelegt - siehe Logs-Ordner.",
                     "Carrier test created - see the Logs folder."));
             }
             catch (Exception ausnahme)
             {
                 Mod.log.Warn("PLT-Traegertest fehlgeschlagen: " + ausnahme);
                 _debugTooltipSystem?.Show(T(
-                    "Traegertest fehlgeschlagen - siehe Log.",
+                    "Trägertest fehlgeschlagen - siehe Log.",
                     "Carrier test failed - see the log."));
             }
         }
@@ -173,14 +173,14 @@ namespace ParkingLotTool.Tools
                     + Environment.NewLine, anhaengen: true);
                 _uiSystem?.SetReportPath(TraegerAkte);
                 _debugTooltipSystem?.Show(T(
-                    "Traegertest geprueft - siehe Logs-Ordner.",
+                    "Trägertest geprüft - siehe Logs-Ordner.",
                     "Carrier test checked - see the Logs folder."));
             }
             catch (Exception ausnahme)
             {
                 Mod.log.Warn("PLT-Traegerpruefung fehlgeschlagen: " + ausnahme);
                 _debugTooltipSystem?.Show(T(
-                    "Pruefung fehlgeschlagen - siehe Log.",
+                    "Prüfung fehlgeschlagen - siehe Log.",
                     "Check failed - see the log."));
             }
         }

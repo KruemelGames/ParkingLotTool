@@ -21,7 +21,7 @@ class Program {
  for(int i=0;i<a.Plants.Count;i++) {
  var x=a.Plants[i];Check(math.distance(x.Position,b.Plants[i].Position)<.001,"Position stabil");
  Check(ParkingVegetation.Inside(x.Position,ring),"Nur Dekoflaeche");
- Check(ParkingVegetation.EdgeDistance(x.Position,ring)>=(species[x.Species].Tree?.65f:.35f)-.001,"Randabstand");
+ Check(ParkingVegetation.EdgeDistance(x.Position,ring)>=ParkingVegetation.Randabstand(species[x.Species].Tree)-.001,"Randabstand");
  for(int j=0;j<i;j++){var y=a.Plants[j];float gap=(ParkingVegetation.Spacing(species[x.Species],line)+ParkingVegetation.Spacing(species[y.Species],line))*.5f;Check(math.distance(x.Position,y.Position)>=gap-.001,"Pflanzabstand");}
  }
  if(density==0)Check(a.Plants.Count==0,"Null Prozent");else Check(a.Plants.Count>0,"Kein stilles Nichts-Tun");
@@ -32,6 +32,20 @@ class Program {
  o.Line=false;var translated=ParkingVegetation.Plan(new[]{rings[0].Select(p=>p+new float2(8000,-8000)).ToArray()},o,species);
  Check(translated.Plants.Count==all.Plants.Count,"Translation Anzahl");for(int i=0;i<all.Plants.Count;i++) Check(math.distance(translated.Plants[i].Position-new float2(8000,-8000),all.Plants[i].Position)<.01,"Translation Position");
  o.Density=50;var half=ParkingVegetation.Plan(rings,o,species);Check(half.Plants.Count>=all.Plants.Count*.3 && half.Plants.Count<=all.Plants.Count*.7,"50 Prozent reduziert tatsaechlich etwa auf die Haelfte");foreach(var plant in half.Plants)Check(all.Plants.Any(p=>p.Position.Equals(plant.Position)&&p.Species==plant.Species),"Dichte erhaelt Positionen");
+ // --- Dichte je Quadratmeter, unabhaengig von der Groesse ---------------
+ o.Enabled=true;o.Line=false;
+ foreach(int dichte in new[]{50,100}) {
+  o.Density=dichte;
+  var klein=ParkingVegetation.Plan(new[]{Rect(160,80)},o,species);
+  var gross=ParkingVegetation.Plan(new[]{Rect(640,320)},o,species);
+  double je_klein=klein.Plants.Count/(160.0*80.0), je_gross=gross.Plants.Count/(640.0*320.0);
+  Check(je_klein>0&&je_gross>0,"Beide Flaechen bepflanzt");
+  double verhaeltnis=je_gross/je_klein;
+  Check(verhaeltnis>.8&&verhaeltnis<1.25,
+   $"Dichte je m2 haengt an der Groesse: klein {je_klein:F4}/m2, gross {je_gross:F4}/m2, Verhaeltnis {verhaeltnis:F2}");
+  Check(!klein.Limited&&!gross.Limited,"Keine Schranke bei gewoehnlichen Groessen");
+ }
+ o.Density=100;
  o.Enabled=false;Check(ParkingVegetation.Plan(rings,o,species).Plants.Count==0,"Standard aus");
  Console.WriteLine($"Vegetation: {checks} Pruefungen, 0 Fehler; 50%={half.Plants.Count}, 100%={all.Plants.Count}; Median={median.Plants.Count}");
  }

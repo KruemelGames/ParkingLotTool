@@ -42,6 +42,7 @@ namespace ParkingLotTool.Tools
             var options=_uiSystem?.Vegetation ?? new VegetationOptions();
             var assets=(_uiSystem?.VegetationAssets ?? Array.Empty<VegetationAsset>()).Where(a=>options.Species.Contains(a.Id)).ToArray();
             var species=assets.Select(a=>new VegetationSpecies {Id=a.Id,Tree=a.Tree,Spacing=a.Spacing}).ToArray();
+            ParkingVegetation.Dichtefaktor = Mod.Optionen?.Vegetationsdichte ?? 1f;
             var plan=ParkingVegetation.Plan(grass,options,species);
             _overlay.SetVegetation(plan,species,_terrainSystem);
         }
@@ -379,8 +380,12 @@ namespace ParkingLotTool.Tools
                           : "verschieden") + ". Alt: " + old.Options));
             var assets=(_uiSystem?.VegetationAssets ?? Array.Empty<VegetationAsset>()).Where(a=>options.Species.Contains(a.Id)).ToArray();
             var species=assets.Select(a=>new VegetationSpecies {Id=a.Id,Tree=a.Tree,Spacing=a.Spacing}).ToArray();
+            ParkingVegetation.Dichtefaktor = Mod.Optionen?.Vegetationsdichte ?? 1f;
             var plan=ParkingVegetation.Plan(grass,options,species);
-            Mod.log.Info("PLT-Vorbauzettel Vegetation: " + json + "; Kandidaten="+plan.Candidates+"; Pflanzen="+plan.Plants.Count+"; Grenze="+plan.Limited);
+            Mod.log.Info("PLT-Vorbauzettel Vegetation: Dichtefaktor "
+                + ParkingVegetation.Dichtefaktor.ToString("F1") + "; " + json + "; Kandidaten="+plan.Candidates+"; Pflanzen="+plan.Plants.Count+"; Grenze="+plan.Limited
+                + "; verworfen: Rand="+plan.RandVerworfen+", Wuerfel="+plan.WuerfelVerworfen
+                + ", Abstand="+plan.AbstandVerworfen+", ausserhalb="+plan.AussenVerworfen);
             if(options.Enabled && assets.Length==0) _uiSystem?.SetStatus(ParkingLotTexte.T("Vegetation: keine verfügbaren Pflanzen ausgewählt.","Vegetation: no available plants selected."));
             if(plan.Limited) Mod.log.Warn("PLT-Vegetation: Kandidatengrenze erreicht; Teilbepflanzung im Vorbauzettel.");
             var gewaehlt=new int[6];

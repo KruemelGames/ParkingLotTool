@@ -390,13 +390,18 @@ export const ParkingLotPanel = () => {
             anderen. Deshalb steht er jetzt in der Schiene unter dem Namen
             des Mods, nicht zwischen Randabstand und Winkel.
           */}
-          <button
+          {/* Der einzige Reiter ohne Tooltip - bis zum 2026-09-16. Die
+              vier anderen hatten laengst einen; hier fehlte er, weil der
+              Reiter als erster entstand und der `TooltipKnopf` spaeter
+              dazukam. */}
+          <TooltipKnopf
+            text={t.tooltipEntwurf}
             className={`${styles.tab} ${melden || debug || zoning || liste ? "" : styles.tabAktiv}`}
             onMouseDown={haltAn}
             onClick={() => setTab("layout")}
           >
             {t.reiterEntwurf}
-          </button>
+          </TooltipKnopf>
           {/* ZONING steht VOR Debug: es ist eine Bau-Funktion und gehoert
               neben das Layout, nicht neben die Messwerkzeuge. */}
           {/* `haltAn` IST HIER PFLICHT, nicht Zierde: die Reiterschiene ist

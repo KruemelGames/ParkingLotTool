@@ -617,8 +617,14 @@ namespace ParkingLotTool.Tools
         private void NameLotOwner(int stalls)
         {
             if (_lotOwner == Entity.Null || !EntityManager.Exists(_lotOwner)) return;
-            var name = stalls == 1 ? "Parkplatz (1 Stellplatz)"
-                                   : $"Parkplatz ({stalls} Stellplätze)";
+            // Einmal beim Bauen gesetzt und im Spielstand gespeichert -
+            // vorhandene Parkplaetze behalten also ihren Namen, auch wenn
+            // spaeter die Sprache wechselt.
+            var name = stalls == 1
+                ? ParkingLotTexte.T("Parkplatz (1 Stellplatz)",
+                    "Parking Lot (1 space)")
+                : ParkingLotTexte.T($"Parkplatz ({stalls} Stellplätze)",
+                    $"Parking Lot ({stalls} spaces)");
             try
             {
                 /**

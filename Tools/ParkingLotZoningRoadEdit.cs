@@ -295,6 +295,9 @@ namespace ParkingLotTool.Tools
             var treffer = -1;
 
             var rzAchsen = RandzoningStrassenAchsen;
+            // Wie nah die naechste Randzoning-Linie liegt - nur fuer die
+            // Meldung, ausgewaehlt wird sie nie.
+            var rzAbstand = float.PositiveInfinity;
             for (var i = 0; i < plan.Count; i++)
             {
                 var a = plan[i].A;
@@ -316,7 +319,13 @@ namespace ParkingLotTool.Tools
                     if (ParkingGeometry.RandzoningSelbeLinie(
                             achse.A, achse.B, a, b))
                     { istRandzoning = true; break; }
-                if (istRandzoning) continue;
+                if (istRandzoning)
+                {
+                    var rzT = math.clamp(math.dot(zeiger - a, richtung) / laenge, 0f, 1f);
+                    rzAbstand = math.min(rzAbstand,
+                        math.distance(zeiger, a + richtung * rzT));
+                    continue;
+                }
 
                 var t = math.clamp(math.dot(zeiger - a, richtung) / laenge, 0f, 1f);
                 var naechster = a + richtung * t;
@@ -330,6 +339,24 @@ namespace ParkingLotTool.Tools
                     richtung.x * zumZeiger.y - richtung.y * zumZeiger.x > 0f;
             }
 
+            /*
+             * DIE RANDZONING-LINIE BEIM NAMEN NENNEN.
+             *
+             * Sie wird oben uebersprungen, weil sie keine waehlbare Seite hat.
+             * Ist sie das Naechste am Zeiger, waere "keine Strasse gefunden"
+             * schlicht falsch - der Nutzer steht ja davor.
+             */
+            var nurRandzoning = rzAbstand <= ZoningSeitenreichweite
+                && (treffer < 0 || rzAbstand < bester);
+            if (nurRandzoning)
+            {
+                _zoningSeitenBefund = T(
+                    "Randzoning-Straße — sie zont immer nach außen, hier gibt "
+                        + "es keine Seite zu wählen.",
+                    "Edge-zoning road — it always zones outwards, there is no "
+                        + "side to choose here.");
+                return float.PositiveInfinity;
+            }
             if (treffer < 0)
             {
                 _zoningSeitenBefund = T(

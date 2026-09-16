@@ -35,6 +35,7 @@ export const MarkierSpalten = () => {
       <Spalte title={t.schritt1} ton="Melden" breit>
         {/* Der Schalter traegt seinen Zustand im Text, nicht nur in der
             Farbe. */}
+        <MitTooltip text={t.tooltipStellenMarkieren}>
         <button
           className={`${styles.meldeKnopf} ${markerMode ? styles.meldeKnopfAn : ""}`}
           onClick={() => setMarkerMode(!markerMode)}
@@ -46,6 +47,7 @@ export const MarkierSpalten = () => {
               : t.stellenMarkieren}
           </span>
         </button>
+        </MitTooltip>
         <div className={styles.explain}>
           {markerMode ? t.meldeKlickhinweis : t.meldeEinleitung}
         </div>
@@ -85,6 +87,7 @@ export const MarkierSpalten = () => {
       <Spalte title={t.schritt3} ton="Melden" breit>
         {/* Ohne Markierung waere der Bericht leer, deshalb sagt der Knopf
             das, statt still eine nutzlose Datei zu schreiben. */}
+        <MitTooltip text={t.tooltipBerichtSchreiben}>
         <button
           className={`${styles.meldeKnopf} ${hasMarkers ? styles.meldeKnopfAn : ""}`}
           onClick={writeReport}
@@ -96,6 +99,7 @@ export const MarkierSpalten = () => {
               : t.berichtErstMarkieren}
           </span>
         </button>
+        </MitTooltip>
         {reportPath ? (
           <div className={styles.pathBox}>{t.geschriebenNach(reportPath)}</div>
         ) : (
@@ -136,6 +140,7 @@ export const ReportTab = () => {
               {t.meldungAbsturzTitel}
               {absturzBefund ? " " + absturzBefund : ""}
             </div>
+            <MitTooltip text={t.tooltipMeldungAbsturz}>
             <button
               className={`${styles.meldeKnopf} ${styles.meldeKnopfAn}`}
               onClick={meldungAbsturz}
@@ -143,6 +148,7 @@ export const ReportTab = () => {
               <img src={icon("DiskSave")} />
               <span>{t.meldungAbsturzKnopf}</span>
             </button>
+            </MitTooltip>
           </>
         ) : null}
 
@@ -161,27 +167,35 @@ export const ReportTab = () => {
         */}
         <div className={styles.meldeGitter}>
           <div className={styles.meldeGitterKnopf}>
+            <MitTooltip text={t.tooltipMeldungVorschau}>
             <button className={styles.smallButton} onClick={meldungVorschau}>
               {t.meldungVorschauKnopf}
             </button>
+            </MitTooltip>
           </div>
           <div className={styles.meldeGitterKnopf}>
+            <MitTooltip text={t.tooltipMeldungBau}>
             <button className={styles.smallButton} onClick={meldungBau}>
               {t.meldungBauKnopf}
             </button>
+            </MitTooltip>
           </div>
           <div className={styles.meldeGitterKnopf}>
+            <MitTooltip text={t.tooltipMeldeLot}>
             <button
               className={`${styles.smallButton} ${lotWahl ? styles.smallButtonSelected : ""}`}
               onClick={() => schalteMeldeLotWahl(!lotWahl)}
             >
               {lotWahl ? t.meldeLotWahlLaeuft : t.meldeLotKnopf}
             </button>
+            </MitTooltip>
           </div>
           <div className={styles.meldeGitterKnopf}>
+            <MitTooltip text={t.tooltipMeldungOrdner}>
             <button className={styles.smallButton} onClick={meldungOrdner}>
               {t.meldungOrdnerKnopf}
             </button>
+            </MitTooltip>
           </div>
         </div>
         <div className={styles.explain}>{t.meldeLotErklaerung}</div>

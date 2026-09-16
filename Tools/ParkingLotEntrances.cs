@@ -222,7 +222,7 @@ namespace ParkingLotTool.Tools
                 ? T("Zufahrt am Polygonrand platzieren.",
                     "Place an entrance on the polygon edge.")
                 : fehlt == "ausfahrt"
-                ? T("Eine Einfahrt ohne Ausfahrt - die Autos kaemen nicht heraus.",
+                ? T("Eine Einfahrt ohne Ausfahrt - die Autos kämen nicht heraus.",
                     "An entry without an exit - cars could not leave.")
                 : fehlt == "einfahrt"
                 ? T("Eine Ausfahrt ohne Einfahrt - bitte eine Einfahrt setzen.",
@@ -461,7 +461,7 @@ namespace ParkingLotTool.Tools
             _entrances.Add(CopyEntrance(_entranceCandidate.Entrance));
             _entranceMissingPrompt = false;
             MarkEntrancesChanged("gesetzt");
-            CommitUndoState(before, "Zugang gesetzt");
+            CommitUndoState(before, T("Zugang gesetzt", "access placed"));
         }
 
         /**
@@ -578,7 +578,7 @@ namespace ParkingLotTool.Tools
             // beendet den Modus also nicht, erst der Klick danach.
             MarkEntrancesChanged(wasLastPlaced ? "letzte geloescht"
                 : "unter dem Zeiger geloescht");
-            CommitUndoState(before, "Zugang entfernt");
+            CommitUndoState(before, T("Zugang entfernt", "access removed"));
             return true;
         }
 
@@ -1006,25 +1006,33 @@ namespace ParkingLotTool.Tools
 
             string text;
             if (_entranceMissingPrompt && _entrances.Count == 0)
-                text = "Bitte Zufahrt platzieren";
+                text = T("Bitte eine Zufahrt setzen",
+                    "Place an entrance");
             else if (_hasEntranceCandidate
                 && _entranceCandidate.BlockReason == EntranceBlockReason.Maximum)
-                text = $"Maximal {MaxEntranceCount} Zufahrten";
+                text = T($"Höchstens {MaxEntranceCount} Zufahrten",
+                    $"At most {MaxEntranceCount} entrances");
             else if (_hasEntranceCandidate
                 && _entranceCandidate.BlockReason == EntranceBlockReason.Spacing)
-                text = $"Mindestens {_entranceCandidate.MinimumSpacing:F1} m Abstand";
+                text = T($"Mindestens {_entranceCandidate.MinimumSpacing:F1} m Abstand",
+                    $"At least {_entranceCandidate.MinimumSpacing:F1} m apart");
             else if (_hasEntranceCandidate
                 && _entranceCandidate.BlockReason == EntranceBlockReason.NoRoom)
-                text = "Zu wenig Rand fuer eine Zufahrt";
+                text = T("Zu wenig Rand für eine Zufahrt",
+                    "Not enough edge for an entrance");
             else if (_hasEntranceCandidate
                 && _entranceCandidate.BlockReason == EntranceBlockReason.Bauland)
-                text = "Hier liegt Bauland - Zoningflaeche oder Randzoning";
+                text = T("Hier liegt Bauland - Zoningfläche oder Randzoning",
+                    "Building land here - a zoning patch or edge zoning");
             else if (_hoverEntrance >= 0)
-                text = "Zufahrt anklicken und am Rand verschieben";
+                text = T("Zufahrt anklicken und am Rand verschieben",
+                    "Click the entrance and drag it along the edge");
             else if (_entrances.Count >= MaxEntranceCount)
-                text = $"Maximal {MaxEntranceCount} Zufahrten";
+                text = T($"Höchstens {MaxEntranceCount} Zufahrten",
+                    $"At most {MaxEntranceCount} entrances");
             else
-                text = "Linksklick setzt Zufahrt am Polygonrand";
+                text = T("Linksklick setzt eine Zufahrt auf den Umriss",
+                    "Left click places an entrance on the outline");
             _debugTooltipSystem?.SetEntranceHint(text);
         }
 

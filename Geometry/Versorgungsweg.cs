@@ -14,6 +14,36 @@ namespace ParkingLotTool.Geometry
             internal float2[] Ring;
             internal bool Querbar;
             internal float2 Richtung;
+
+            /*
+             * ABGELEITET, NICHT ZUGEWIESEN.
+             *
+             * Beides haengt allein an `Ring` und `Richtung`. Wer ein
+             * Hindernis von Hand baut - der Paritaetstest tut das -, soll
+             * nicht daran denken muessen; sonst steht hier irgendwann eine
+             * Null und die Wegesuche verwirft stillschweigend das Falsche.
+             */
+            private bool _abgeleitet;
+            private float2 _achse, _min, _max;
+
+            private void Leite()
+            {
+                _achse = math.normalizesafe(Richtung);
+                _min = new float2(float.MaxValue);
+                _max = new float2(float.MinValue);
+                if (Ring != null)
+                    foreach (var p in Ring) { _min = math.min(_min, p); _max = math.max(_max, p); }
+                _abgeleitet = true;
+            }
+
+            /** Einmal normalisiert statt bei jeder Sichtpruefung erneut. */
+            internal float2 Achse { get { if (!_abgeleitet) Leite(); return _achse; } }
+
+            /** Umgebender Kasten - fuer die billige Abweisung in `Frei`.
+             *  Ohne Ring bleibt er leer, und `Frei` ueberspringt die Huelle;
+             *  eine Huelle ohne Ecken kann ohnehin nichts schneiden. */
+            internal float2 Min { get { if (!_abgeleitet) Leite(); return _min; } }
+            internal float2 Max { get { if (!_abgeleitet) Leite(); return _max; } }
         }
 
         internal struct Ziel
@@ -100,12 +130,18 @@ namespace ParkingLotTool.Geometry
             ISet<int> startstrassen = null, float ausgang = 0, ISet<int> zielstrassen = null)
         {
             var laenge = math.distance(a, b);
+            var kastenMin = math.min(a, b);
+            var kastenMax = math.max(a, b);
             foreach (var h in hindernisse)
             {
+                // Liegt die Strecke ganz neben der Huelle, kann sie sie nicht
+                // schneiden. Spart das Clipping, ohne die Antwort zu aendern.
+                if (kastenMax.x < h.Min.x || kastenMin.x > h.Max.x
+                    || kastenMax.y < h.Min.y || kastenMin.y > h.Max.y) continue;
                 // Nutzerentscheidung 06.09.: 38 von 43 Huellen waren Fahrgassen.
                 // Queranteil mindestens Laengsanteil (45 Grad, 1 mm Toleranz).
                 // Entartete Achsen bleiben konservativ gesperrt.
-                var achse = math.normalizesafe(h.Richtung);
+                var achse = h.Achse;
                 var kurs = b - a;
                 if (h.Querbar && math.lengthsq(achse) > 0.5f
                     && math.abs(Kreuz(achse, kurs)) + Epsilon >= math.abs(math.dot(achse, kurs))) continue;

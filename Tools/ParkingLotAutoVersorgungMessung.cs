@@ -185,9 +185,16 @@ namespace ParkingLotTool.Tools
             return anzahl;
         }
 
+        /**
+         * Der zuletzt geschriebene Messbefund - zum Vergleich, nicht zur
+         * Auswertung. Solange er gleich bleibt, gibt es nichts Neues zu sagen.
+         */
+        private string _avLetzterMessbefund;
+
         private bool MesseVersorgungsfluss(bool letzte)
         {
             AvErfasseStadtpfade();
+            var zeilen = new List<string>();
             var abgenommen = 0;
             foreach (var kurs in _avKurse)
             {
@@ -241,14 +248,39 @@ namespace ParkingLotTool.Tools
                     && graphkanten == dauerhaft * 2 && startAn && zielAn && fluss
                     && AvKursZusammenhaengend(kurs, start, ende);
                 if (ok) abgenommen++;
-                Mod.log.Info($"PLT-Autoversorgung FLUSS [{kurs.Name}]: dauerhaft "
+                zeilen.Add($"PLT-Autoversorgung FLUSS [{kurs.Name}]: dauerhaft "
                     + $"{dauerhaft}/{kurs.Kanten.Count}, Graphhaelften {graphkanten}/{kurs.Kanten.Count * 2}, "
                     + $"Stadtpfad {(stadtpfad ? 1 : 0)}, Graphanschluss Start/Ziel {(startAn ? 1 : 0)}/{(zielAn ? 1 : 0)}; "
                     + $"aktuell Minimum aller Haelften Strom/Frisch/Abwasser {strom}/{frisch}/{abwasser}, "
                     + $"Maximum seit Neubau (Delta zu 0) {kurs.StromMax}/{kurs.FrischMax}/{kurs.AbwasserMax}; "
                     + (ok ? "Fluss belegt." : "Abnahme OFFEN."));
             }
-            var netzeErreicht = AvMesseNetzabdeckung();
+            /*
+             * DIE ABDECKUNG OHNE EIGENE MELDUNG.
+             *
+             * `AvMesseNetzabdeckung` schreibt selbst ins Log - richtig, wenn
+             * es einmal je Planungsrunde gefragt wird, falsch hier, wo alle
+             * halbe Sekunde gemessen wird. Die Zahl kommt deshalb aus
+             * `AvGedeckteNetze`, und die Zeile geht durch dieselbe
+             * Wiederholungssperre wie die Flusszeilen.
+             */
+            var erreicht = AvGedeckteNetze(out var gesamt);
+            var netzeErreicht = erreicht == gesamt;
+            zeilen.Add($"PLT-Autoversorgung NETZABDECKUNG: {erreicht}/{gesamt} "
+                + "versorgungsfaehige Netze mit Stadtpfad fuer Strom UND "
+                + "Wasser/Abwasser; Flussabnahme separat."
+                + (netzeErreicht ? "" : " Anschlussnachweis unvollstaendig."));
+
+            var befund = string.Join("\n", zeilen);
+            if (letzte || befund != _avLetzterMessbefund)
+            {
+                _avLetzterMessbefund = befund;
+                for (var i = 0; i < zeilen.Count; i++)
+                {
+                    if (i == zeilen.Count - 1 && !netzeErreicht) Mod.log.Warn(zeilen[i]);
+                    else Mod.log.Info(zeilen[i]);
+                }
+            }
             var alle = _avKurse.Count > 0 && abgenommen == _avKurse.Count && netzeErreicht;
             if (alle || letzte)
             {

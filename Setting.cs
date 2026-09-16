@@ -25,12 +25,12 @@ namespace ParkingLotTool
      * ueber eine Pause im Spiel erreicht.
      */
     [FileLocation("ModsSettings/ParkingLotTool/optionen")]
-    [SettingsUIGroupOrder(GruppeWirtschaft, GruppeZoning, GruppeTasten,
-        GruppeSprache, GruppeZufahrt, GruppeHinweise, GruppeFenster,
-        GruppeEntwickler)]
-    [SettingsUIShowGroupName(GruppeWirtschaft, GruppeZoning, GruppeTasten,
-        GruppeSprache, GruppeZufahrt, GruppeHinweise, GruppeFenster,
-        GruppeEntwickler)]
+    [SettingsUIGroupOrder(GruppeSprache, GruppeTasten, GruppeZufahrt,
+        GruppeZoning, GruppeVegetation, GruppeWirtschaft, GruppeHinweise,
+        GruppeFenster, GruppeZuruecksetzen, GruppeEntwickler)]
+    [SettingsUIShowGroupName(GruppeSprache, GruppeTasten, GruppeZufahrt,
+        GruppeZoning, GruppeVegetation, GruppeWirtschaft, GruppeHinweise,
+        GruppeFenster, GruppeZuruecksetzen, GruppeEntwickler)]
     [SettingsUIKeyboardAction(AktionWerkzeug, ActionType.Button, usages: new[] { "PLT" })]
     public class Setting : ModSetting
     {
@@ -42,6 +42,8 @@ namespace ParkingLotTool
         public const string GruppeSprache = "Sprache";
         public const string GruppeTasten = "Tasten";
         public const string GruppeZoning = "Zoning";
+        public const string GruppeVegetation = "Vegetation";
+        public const string GruppeZuruecksetzen = "Zuruecksetzen";
         public const string GruppeEntwickler = "Entwickler";
 
         /**
@@ -180,7 +182,18 @@ namespace ParkingLotTool
          * anzeigen" umkehrbar bleibt. Wer ihn im Dialog setzt, findet ihn
          * sonst nie wieder.
          */
-        [SettingsUISection(ReiterAllgemein, GruppeHinweise)]
+        /*
+         * NICHT MEHR AUF DER SEITE.
+         *
+         * Die Nachfrage, die dieser Haken ausblendet, kann seit dem Ausbau
+         * des alten Rechenwegs gar nicht mehr erscheinen. Ein Schalter ohne
+         * Wirkung gehoert nicht in die Optionen.
+         *
+         * Die Eigenschaft bleibt, damit vorhandene Einstellungsdateien
+         * unveraendert weiterladen; `SettingsUIHidden` nimmt sie nur aus der
+         * Anzeige.
+         */
+        [SettingsUIHidden]
         public bool AltRechenwegOhneWarnung { get; set; } = false;
 
         [SettingsUISection(ReiterAllgemein, GruppeHinweise)]
@@ -300,6 +313,29 @@ namespace ParkingLotTool
         public int Parkgebuehr { get; set; } = 10;
 
         /**
+         * WIEVIELE PFLANZEN JE QUADRATMETER - RELATIV ZUR SICHTBARKEITSGRENZE.
+         *
+         * 1,0 ist der Abstand, ab dem CS2 selbst anfaengt, Pflanzen zu
+         * verstecken (`OverrideSystem.ObjectIterator`, Kreise mit Radius
+         * `m_Size.x * 0.5`). Dort steht jede gesetzte Pflanze auch sichtbar da.
+         *
+         * Darueber wird es luftiger, darunter dichter - und unter 1,0 blendet
+         * CS2 einen Teil wieder weg. Das ist kein Fehler, sondern der Preis;
+         * wer Dickicht will, nimmt ihn bewusst in Kauf.
+         *
+         * Gefuehrt als Ganzzahl in Zehnteln, weil `SettingsUISlider` mit
+         * Kommaschritten nicht zuverlaessig umgeht.
+         */
+        [SettingsUISlider(min = 0.5f, max = 3f, step = 0.1f)]
+        [SettingsUICustomFormat(fractionDigits = 1)]
+        [SettingsUISection(ReiterAllgemein, GruppeVegetation)]
+        public float VegetationsdichteFaktor { get; set; } = 1f;
+
+        /** Der Reglerwert, gegen Unfug aus einer alten Datei abgesichert. */
+        public float Vegetationsdichte
+            => System.Math.Min(3f, System.Math.Max(0.5f, VegetationsdichteFaktor));
+
+        /**
          * Sprache der Oberflaeche. Standard ENGLISCH - Wunsch des Nutzers am
          * 2026-08-21: der Mod geht in den Workshop, dort ist Englisch die
          * Sprache, die jeder lesen kann.
@@ -352,6 +388,44 @@ namespace ParkingLotTool
                 var welt = World.DefaultGameObjectInjectionWorld;
                 welt?.GetExistingSystemManaged<ParkingLotUISystem>()
                     ?.ResetPanelPosition();
+            }
+        }
+
+        /**
+         * ALLES AUF WERKSZUSTAND - BEIDE SEITEN.
+         *
+         * Die Einstellungen des Mods liegen an zwei Orten: diese Seite in
+         * `ModsSettings/ParkingLotTool/optionen`, und die Werte, die man im
+         * Panel als Standard merkt, in einer eigenen Datei daneben. Ein Knopf,
+         * der nur eine der beiden leert, laesst den Nutzer im Glauben, er
+         * haette aufgeraeumt.
+         *
+         * Anlass ist die Testveroeffentlichung: die Einstellungen des
+         * Entwicklers sollen nicht mit dem Mod bei allen anderen landen.
+         *
+         * Die Sprache wird ausdruecklich MIT zurueckgesetzt - Werkszustand
+         * heisst Englisch, und wer den Knopf drueckt, will genau das. Die
+         * gemerkten Flaechenklone bleiben dagegen stehen: sie sind keine
+         * Einstellung, sondern die Liste der Prefabs, die vorhandene
+         * Spielstaende zum Laden brauchen.
+         */
+        [SettingsUIButton]
+        [SettingsUIConfirmation]
+        [SettingsUISection(ReiterAllgemein, GruppeZuruecksetzen)]
+        public bool AllesZuruecksetzen
+        {
+            set
+            {
+                SetDefaults();
+                Sprache = Sprachwahl.English;
+                Fangauswahl = -1;
+                FangauswahlGesetzt = false;
+                ApplyAndSave();
+                var welt = World.DefaultGameObjectInjectionWorld;
+                welt?.GetExistingSystemManaged<ParkingLotUISystem>()
+                    ?.VerwirfBenutzerstandards();
+                Mod.log.Info("PLT-Einstellungen: alles auf Werkszustand "
+                    + "zurueckgesetzt - Optionsseite und Panelstandards.");
             }
         }
 
@@ -423,6 +497,7 @@ namespace ParkingLotTool
             ParkplatzLoeschenBestaetigen = true;
             AutomatischZufahrtModus = true;
             AutomatischVersorgung = true;
+            VegetationsdichteFaktor = 1f;
             AltRechenwegOhneWarnung = false;
             // Ausdruecklich, nicht nur per Feldvorgabe: "Auf Standard
             // zuruecksetzen" soll den Entwickler-Reiter sicher ausschalten.
@@ -491,10 +566,12 @@ namespace ParkingLotTool
                        + nameof(Setting.AutomatischVersorgung);
             var pfadLoeschen = seite + "." + nameof(Setting) + "."
                        + nameof(Setting.ParkplatzLoeschenBestaetigen);
-            var pfadAltweg = seite + "." + nameof(Setting) + "."
-                       + nameof(Setting.AltRechenwegOhneWarnung);
             var pfadWirtschaft = seite + "." + nameof(Setting) + "."
                        + nameof(Setting.Wirtschaft);
+            var pfadVegetation = seite + "." + nameof(Setting) + "."
+                       + nameof(Setting.VegetationsdichteFaktor);
+            var pfadZuruecksetzen = seite + "." + nameof(Setting) + "."
+                       + nameof(Setting.AllesZuruecksetzen);
             var pfadGebuehr = seite + "." + nameof(Setting) + "."
                        + nameof(Setting.Parkgebuehr);
             var pfadZonBreite = seite + "." + nameof(Setting) + "."
@@ -537,6 +614,72 @@ namespace ParkingLotTool
                     _deutsch ? "Zoning" : "Zoning"
                 },
                 {
+                    "Options.GROUP[" + seite + "." + Setting.GruppeVegetation + "]",
+                    _deutsch ? "Vegetation" : "Vegetation"
+                },
+                {
+                    "Options.GROUP[" + seite + "." + Setting.GruppeZuruecksetzen + "]",
+                    _deutsch ? "Zurücksetzen" : "Reset"
+                },
+                {
+                    "Options.OPTION[" + pfadZuruecksetzen + "]",
+                    _deutsch ? "Alle Einstellungen zurücksetzen"
+                        : "Reset all settings"
+                },
+                {
+                    "Options.OPTION_DESCRIPTION[" + pfadZuruecksetzen + "]",
+                    _deutsch
+                        ? "Setzt diese Seite UND die im Panel gemerkten Standards "
+                          + "auf den Auslieferungszustand zurück. Die Sprache geht "
+                          + "dabei auf Englisch." + "\n\n"
+                          + "Gebaute Parkplätze bleiben unberührt - zurückgesetzt "
+                          + "wird nur, womit der nächste gebaut wird."
+                        : "Resets this page AND the defaults remembered in the "
+                          + "panel back to how the mod ships. The language goes "
+                          + "back to English." + "\n\n"
+                          + "Parking lots you already built are untouched - only "
+                          + "the values the next one is built with are reset."
+                },
+                {
+                    "Options.WARNING[" + pfadZuruecksetzen + "]",
+                    _deutsch
+                        ? "Alle Einstellungen des Mods auf Werkszustand "
+                          + "zurücksetzen?"
+                        : "Reset every setting of this mod to factory values?"
+                },
+                {
+                    "Options.OPTION[" + pfadVegetation + "]",
+                    _deutsch ? "Pflanzdichte" : "Planting density"
+                },
+                {
+                    "Options.OPTION_DESCRIPTION[" + pfadVegetation + "]",
+                    _deutsch
+                        ? "Wieviele Pflanzen je Quadratmeter gesetzt werden, im "
+                          + "Verhältnis zu 1,0." + "\n\n"
+                          + "Bei 1,0 hält jede Pflanze genau den Abstand ein, ab "
+                          + "dem das Spiel selbst anfängt, sich überschneidende "
+                          + "Pflanzen unsichtbar zu machen - alles, was gesetzt "
+                          + "wird, steht also auch da. Darüber wird es luftiger. "
+                          + "Darunter wird es dichter, und das Spiel blendet "
+                          + "einen Teil wieder weg; für Dickicht ist das der "
+                          + "Preis." + "\n\n"
+                          + "Der Regler im Panel bleibt davon unberührt: er sagt, "
+                          + "wieviel vom Möglichen gepflanzt wird. Vorhandene "
+                          + "Parkplätze behalten ihre Pflanzen, bis sie neu "
+                          + "gebaut werden."
+                        : "How many plants per square metre are placed, relative "
+                          + "to 1.0." + "\n\n"
+                          + "At 1.0 every plant keeps exactly the distance at "
+                          + "which the game itself starts hiding overlapping "
+                          + "plants - so everything placed is also visible. "
+                          + "Above that it gets airier. Below it gets denser and "
+                          + "the game hides some again; that is the price of a "
+                          + "thicket." + "\n\n"
+                          + "The slider in the panel is unaffected: it says how "
+                          + "much of the possible is planted. Existing lots keep "
+                          + "their plants until they are rebuilt."
+                },
+                {
                     "Options.GROUP[" + seite + "." + Setting.GruppeEntwickler + "]",
                     _deutsch ? "Entwicklung" : "Development"
                 },
@@ -550,12 +693,12 @@ namespace ParkingLotTool
                     _deutsch
                         ? "Blendet im Panel den Reiter \"dev-Debug\" ein. "
                           + "Dort liegen Messwerkzeuge aus der Entwicklung: "
-                          + "Zoning-Sonde, Prefab-Zerlegung, Traegertest, "
-                          + "Ueberlappungsmessung, Prefab-Vergleich und das "
+                          + "Zoning-Sonde, Prefab-Zerlegung, Trägertest, "
+                          + "Überlappungsmessung, Prefab-Vergleich und das "
                           + "Live-Log." + "\n\n" + "Zum Melden eines Fehlers "
-                          + "brauchst du das nicht - dafuer ist der Reiter "
+                          + "brauchst du das nicht - dafür ist der Reiter "
                           + "\"Debug\" da, der immer sichtbar ist. Einige "
-                          + "dieser Werkzeuge bauen und loeschen etwas in "
+                          + "dieser Werkzeuge bauen und löschen etwas in "
                           + "deiner Stadt."
                         : "Shows the \"dev-Debug\" tab in the panel. It holds "
                           + "measuring tools from development: zoning probe, "
@@ -568,19 +711,19 @@ namespace ParkingLotTool
                 },
                 {
                     "Options.OPTION[" + pfadZonBreite + "]",
-                    _deutsch ? "Zoningflaeche: groesste Breite"
+                    _deutsch ? "Zoningfläche: größte Breite"
                         : "Zoning area: maximum width"
                 },
                 {
                     "Options.OPTION_DESCRIPTION[" + pfadZonBreite + "]",
                     _deutsch
-                        ? "Wieviele Parzellen eine gezogene Zoningflaeche "
-                          + "hoechstens breit sein darf. Eine Parzelle ist "
+                        ? "Wieviele Parzellen eine gezogene Zoningfläche "
+                          + "höchstens breit sein darf. Eine Parzelle ist "
                           + "8 m. Standard 25." + "\n\n" + "Beachte: gezont wird von "
-                          + "den Strassen rundherum, und CS2 bebaut je "
-                          + "Strasse hoechstens 6 Parzellen tief. Ab etwa 12 "
+                          + "den Straßen rundherum, und CS2 bebaut je "
+                          + "Straße höchstens 6 Parzellen tief. Ab etwa 12 "
                           + "Parzellen bleibt in der Mitte ein Streifen ohne "
-                          + "Haeuser - dorthin reicht keine Strasse mehr."
+                          + "Häuser - dorthin reicht keine Straße mehr."
                         : "How many parcels wide a zoning area may be at "
                           + "most. One parcel is 8 m. Default 25." + "\n\n" + "Note: "
                           + "zoning grows from the surrounding roads, and CS2 "
@@ -590,14 +733,14 @@ namespace ParkingLotTool
                 },
                 {
                     "Options.OPTION[" + pfadZonTiefe + "]",
-                    _deutsch ? "Zoningflaeche: groesste Tiefe"
+                    _deutsch ? "Zoningfläche: größte Tiefe"
                         : "Zoning area: maximum depth"
                 },
                 {
                     "Options.OPTION_DESCRIPTION[" + pfadZonTiefe + "]",
                     _deutsch
-                        ? "Wieviele Parzellen eine gezogene Zoningflaeche "
-                          + "hoechstens tief sein darf. Eine Parzelle ist "
+                        ? "Wieviele Parzellen eine gezogene Zoningfläche "
+                          + "höchstens tief sein darf. Eine Parzelle ist "
                           + "8 m. Standard 25. Derselbe Hinweis wie bei der "
                           + "Breite gilt auch hier."
                         : "How many parcels deep a zoning area may be at "
@@ -611,17 +754,17 @@ namespace ParkingLotTool
                 {
                     "Options.OPTION_DESCRIPTION[" + pfadWirtschaft + "]",
                     _deutsch
-                        ? "Hauptschalter. AN heisst: Unterhaltskosten nach "
-                          + "Groesse, Parkgebuehr, Laermbelastung, Angestellte "
+                        ? "Hauptschalter. AN heißt: Unterhaltskosten nach "
+                          + "Größe, Parkgebühr, Lärmbelastung, Angestellte "
                           + "und der Komfort, mit dem der Parkplatz um Autos "
-                          + "wirbt. AUS heisst: der Parkplatz steht rein "
+                          + "wirbt. AUS heißt: der Parkplatz steht rein "
                           + "baulich da und kostet nichts. "
-                          + "Umschalten geht jederzeit und gilt sofort fuer "
-                          + "alle vorhandenen Parkplaetze. Eingestellte "
-                          + "Gebuehren bleiben erhalten und kommen beim "
-                          + "Wiedereinschalten zurueck. Parkplaetze, die im "
+                          + "Umschalten geht jederzeit und gilt sofort für "
+                          + "alle vorhandenen Parkplätze. Eingestellte "
+                          + "Gebühren bleiben erhalten und kommen beim "
+                          + "Wiedereinschalten zurück. Parkplätze, die im "
                           + "ausgeschalteten Zustand gebaut wurden, bekommen "
-                          + "beim Einschalten die Standardgebuehr von unten. "
+                          + "beim Einschalten die Standardgebühr von unten. "
                           + "Strom braucht der Parkplatz in keinem Fall."
                         : "Master switch. ON means: upkeep scaled by size, "
                           + "parking fee, noise pollution, workers, and the "
@@ -637,41 +780,20 @@ namespace ParkingLotTool
                 },
                 {
                     "Options.OPTION[" + pfadGebuehr + "]",
-                    _deutsch ? "Standardgebuehr fuer neue Parkplaetze"
+                    _deutsch ? "Standardgebühr für neue Parkplätze"
                              : "Default fee for new parking lots"
                 },
                 {
                     "Options.OPTION_DESCRIPTION[" + pfadGebuehr + "]",
                     _deutsch
                         ? "Wird beim Bau in den neuen Parkplatz kopiert. "
-                          + "Bestehende Parkplaetze werden danach einzeln in "
+                          + "Bestehende Parkplätze werden danach einzeln in "
                           + "ihrem Auswahlfenster eingestellt. 0 heisst "
                           + "kostenlos; Einnahmen erscheinen unter 'Parken'."
                         : "Copied into each new parking lot when it is built. "
                           + "Existing lots are then adjusted individually in "
                           + "their selection panel. 0 means free; revenue "
                           + "appears under 'Parking'."
-                },
-                {
-                    "Options.OPTION[" + pfadAltweg + "]",
-                    _deutsch
-                        ? "Nachfrage beim alten Rechenweg ausblenden"
-                        : "Hide the prompt for the old engine"
-                },
-                {
-                    "Options.OPTION_DESCRIPTION[" + pfadAltweg + "]",
-                    _deutsch
-                        ? "Beim Umschalten auf den alten Rechenweg kommt sonst "
-                          + "eine Nachfrage. Der alte Weg ist nur noch ein "
-                          + "Rueckfall: langsamer, und bei groesseren Flaechen "
-                          + "gibt er auf und laesst Luecken im Belag. Setzt du "
-                          + "den Haken im Dialog selbst, landet er hier - so "
-                          + "findest du ihn wieder."
-                        : "Switching to the old engine asks for confirmation "
-                          + "first. The old engine is only a fallback: slower, "
-                          + "and on larger shapes it gives up and leaves gaps "
-                          + "in the pavement. Ticking the box in the dialog "
-                          + "sets this option, so you can find it again."
                 },
                 /**
                  * DEN SCHLUESSEL BAUT DAS SPIEL SELBST.
@@ -701,16 +823,16 @@ namespace ParkingLotTool
                 {
                     "Options.OPTION[" + seite + "." + nameof(Setting) + "."
                         + nameof(Setting.WerkzeugTaste) + "]",
-                    _deutsch ? "Werkzeug oeffnen und schliessen"
+                    _deutsch ? "Werkzeug öffnen und schließen"
                              : "Open and close the tool"
                 },
                 {
                     "Options.OPTION_DESCRIPTION[" + seite + "." + nameof(Setting)
                         + "." + nameof(Setting.WerkzeugTaste) + "]",
                     _deutsch
-                        ? "Vorgabe ist Strg+Umschalt+P. Frueher war es Strg+P - "
-                          + "die Kombination gehoert aber auch Find It, und dessen "
-                          + "Werkzeug behielt die Oberhand. Aendere die Taste hier, "
+                        ? "Vorgabe ist Strg+Umschalt+P. Früher war es Strg+P - "
+                          + "die Kombination gehört aber auch Find It, und dessen "
+                          + "Werkzeug behielt die Oberhand. Ändere die Taste hier, "
                           + "wenn sie mit einem anderen Mod kollidiert."
                         : "Default is Ctrl+Shift+P. It used to be Ctrl+P, but Find "
                           + "It uses that combination too and its tool won. Change "
@@ -737,27 +859,38 @@ namespace ParkingLotTool
                 {
                     "Options.OPTION[" + pfadVersorgung + "]",
                     _deutsch
-                        ? "Strom und Wasser automatisch anschliessen"
+                        ? "Strom und Wasser automatisch anschließen"
                         : "Connect power and water automatically"
                 },
                 {
                     "Options.OPTION_DESCRIPTION[" + pfadVersorgung + "]",
                     _deutsch
                         ? "Legt beim Bauen selbst eine Stromleitung und ein "
-                          + "Doppelrohr von der naechsten Strasse zum "
-                          + "Parkplatz. Die Leitung setzt an einer Sackgasse "
-                          + "an, sonst an einer Ecke, und laeuft nie unter "
-                          + "unseren eigenen Strassen entlang." + "\n\n"
+                          + "Doppelrohr bis zum Parkplatz. Gebaut wird immer "
+                          + "die kürzeste Verbindung zwischen zwei Teilen, "
+                          + "die noch nicht zusammenhängen - liegen mehrere "
+                          + "Zoningflächen weit auseinander, hängen sie sich "
+                          + "auch aneinander. Mindestens eine Leitung geht "
+                          + "dabei immer an eine Stadtstraße, sonst käme kein "
+                          + "Strom herein." + "\n\n"
+                          + "Umfahren werden unsere eigenen Straßen und "
+                          + "fremde Erdleitungen; weist CS2 einen Weg ab, "
+                          + "wird ein anderer versucht." + "\n\n"
                           + "Aus: es entstehen keine neuen Leitungen. Bereits "
-                          + "von dir gelegte Anschluesse bleiben beim "
+                          + "von dir gelegte Anschlüsse bleiben beim "
                           + "Bearbeiten trotzdem erhalten - das ist ein "
-                          + "eigener Vorgang und haengt nicht an diesem "
+                          + "eigener Vorgang und hängt nicht an diesem "
                           + "Schalter."
-                        : "Lays a power line and a combined pipe from the "
-                          + "nearest road to the parking lot while building. "
-                          + "The line starts at a dead end, otherwise at a "
-                          + "corner, and never runs underneath our own roads."
-                          + "\n\n"
+                        : "Lays a power line and a combined pipe to the "
+                          + "parking lot while building. It always builds the "
+                          + "shortest link between two parts that are not "
+                          + "connected yet - several zoning patches far apart "
+                          + "may hook up to each other. At least one line "
+                          + "always reaches a city road, otherwise no power "
+                          + "comes in." + "\n\n"
+                          + "It routes around our own roads and around "
+                          + "existing buried lines; if CS2 rejects one route, "
+                          + "another is tried." + "\n\n"
                           + "Off: no new lines are created. Connections you "
                           + "laid yourself are still preserved when editing - "
                           + "that is a separate mechanism and does not depend "
@@ -772,7 +905,7 @@ namespace ParkingLotTool
                 {
                     "Options.OPTION_DESCRIPTION[" + pfadAuto + "]",
                     _deutsch
-                        ? "Wechselt direkt nach dem Schliessen des Polygons in "
+                        ? "Wechselt direkt nach dem Schließen des Polygons in "
                           + "den Zufahrt-Modus. Aus: das Polygon bleibt zuerst "
                           + "bearbeitbar, und du wechselst selbst, wenn du so "
                           + "weit bist."

@@ -6,6 +6,7 @@ import {
   icon,
 } from "./bindings";
 import { brauchbar, Foldout, Zeile } from "./cs2-bausteine";
+import { MitTooltip } from "./controls";
 import styles from "./fee-section.module.scss";
 import { useTexte } from "./texte";
 
@@ -80,15 +81,23 @@ export const ParkingFeeSection = () => {
   const umschalten = () =>
     setSelectedParkingFee(an ? 0 : Math.max(MIN_FEE, letzterBetrag.current));
 
+  /*
+   * `title` allein zeigt in Cohtml NICHTS - hier stand es als einzige
+   * Quelle, und der Haken war damit unbeschriftet. Dieselbe Falle wie
+   * seinerzeit am Zoning-Reiter; die Regel steht in controls.tsx.
+   */
   const haken = (
-    <button
-      className={`${styles.haken} ${an ? styles.hakenAn : ""}`}
-      title={t.parkgebuehr}
-      onMouseDown={(event: any) => event.stopPropagation()}
-      onClick={umschalten}
-    >
-      {an ? <img src={icon("Checkmark")} /> : null}
-    </button>
+    <MitTooltip text={t.tooltipGebuehrHaken}>
+      <button
+        className={`${styles.haken} ${an ? styles.hakenAn : ""}`}
+        title={t.tooltipGebuehrHaken}
+        aria-label={t.tooltipGebuehrHaken}
+        onMouseDown={(event: any) => event.stopPropagation()}
+        onClick={umschalten}
+      >
+        {an ? <img src={icon("Checkmark")} /> : null}
+      </button>
+    </MitTooltip>
   );
 
   const regler = (
@@ -96,9 +105,11 @@ export const ParkingFeeSection = () => {
      * Aus heisst blass, nicht weg: der eingestellte Betrag bleibt sichtbar,
      * damit man weiss, was der Haken zurueckholt.
      */
+    <MitTooltip text={t.tooltipGebuehrRegler}>
     <div className={`${styles.sliderArea} ${an ? "" : styles.ausgegraut}`}>
       <div
         ref={track}
+        aria-label={t.tooltipGebuehrRegler}
         className={styles.track}
         onMouseDown={(event: any) => {
           if (!an) return;
@@ -112,6 +123,7 @@ export const ParkingFeeSection = () => {
       </div>
       <div className={styles.betrag}>{t.waehrung}{shownFee}</div>
     </div>
+    </MitTooltip>
   );
 
   const inhalt = brauchbar(Zeile)

@@ -117,6 +117,27 @@ namespace ParkingLotTool.Tools
             LadeFangauswahl();
             ResetSelection();
             InitializeRaycast();
+            /*
+             * OFFENE VERSORGUNGSNETZE WIEDER AUFNEHMEN.
+             *
+             * Die Autoversorgung baut EIN Netz je Zyklus - so gewollt: ein
+             * Vanilla-Apply je Netz, damit ein Fehler nur dessen zwei Kurse
+             * verwirft und nicht alle. Der naechste Zyklus laeuft aber nur,
+             * solange dieses Werkzeug das aktive ist, denn nur dann greift
+             * `applyMode`.
+             *
+             * Ein Parkplatz mit EINEM Strassennetz merkt davon nichts. Sobald
+             * eine freistehende Zoningflaeche dazukommt, ist sie ein eigenes
+             * Netz - und wer das Panel schliesst, bevor deren Zyklus dran war,
+             * liess sie ohne Leitung stehen. Genau das hat der Nutzer am
+             * 2026-09-15 um 16:52 gebaut und gemeldet.
+             *
+             * Deshalb wird beim Wiederoeffnen dort weitergemacht, wo es
+             * aufhoerte. Die Zwischenstaende leben laenger als das Werkzeug:
+             * `_avVerbindungen` weiss, welche Teile schon zusammenhaengen,
+             * `_avTraeger` kennt den Parkplatz.
+             */
+            NimmOffeneVersorgungWiederAuf();
             EnableToolActions();
             _uiSystem?.SetToolActive(true);
             Mod.log.Info("PLT aktiv: Linksklick setzt Punkte, Rechtsklick geht zurück, "
@@ -622,7 +643,8 @@ namespace ParkingLotTool.Tools
                 if (Mod.Optionen == null || Mod.Optionen.AutomatischZufahrtModus)
                     BeginEntrancePlacement(showMissingPrompt: false);
                 else _uiSystem?.SetStatus(T("Polygon bearbeiten.", "Editing polygon."));
-                CommitUndoState(before, "Polygon geschlossen");
+                CommitUndoState(before, T("Polygon geschlossen",
+                    "outline closed"));
                 Mod.log.Info($"PLT-Polygon geschlossen: {_points.Count} Punkte.");
                 return;
             }
@@ -639,7 +661,7 @@ namespace ParkingLotTool.Tools
             // rechtwinkliger Parkplatz an der Strasse.
             StoreSnapAxis(_points.Count - 1);
             _geometryRevision++;
-            CommitUndoState(pointBefore, "Punkt gesetzt");
+            CommitUndoState(pointBefore, T("Punkt gesetzt", "point placed"));
         }
 
         private void UpdateDrag()
@@ -667,7 +689,8 @@ namespace ParkingLotTool.Tools
                 _geometryRevision++;
                 _layoutDirty = true;
                 _polygonTouched = true;
-                CommitUndoState(_pointDragUndo, "Punkt verschoben");
+                CommitUndoState(_pointDragUndo, T("Punkt verschoben",
+                    "point moved"));
             }
             else
             {
@@ -1204,15 +1227,27 @@ namespace ParkingLotTool.Tools
                      * Nutzer las rohen Ausnahmetext und konnte damit nichts
                      * anfangen. Der Hinweis gehoert genau hierhin.
                      */
+                    /*
+                     * DER RAT MUSS BEFOLGBAR SEIN.
+                     *
+                     * Hier stand "Stell den Rechenweg auf 'Neu'". Diese
+                     * Umschaltung gibt es seit dem Ausbau des alten
+                     * Rechenwegs am 2026-09-01 nicht mehr - der Nutzer haette
+                     * gesucht und nichts gefunden. Bleibt die Zeitgrenze der
+                     * Materialreparatur, dann ist es ein Fall fuer den
+                     * Bericht, nicht fuer eine Einstellung.
+                     */
                     var altweg = InnersteMeldung(exception)
                         .Contains("Materialreparatur");
                     var hinweisDe = altweg
-                        ? "  ·  Das ist die Zeitgrenze des ALTEN Rechenwegs. "
-                            + "Stell den Rechenweg auf „Neu“."
+                        ? "  ·  Zeitgrenze der Materialreparatur. Bitte über "
+                            + "„Fehler melden“ schicken - diese Form braucht "
+                            + "eine Messung."
                         : "  ·  Strg+Enter schreibt einen Geometrie-Abzug.";
                     var hinweisEn = altweg
-                        ? "  ·  That is the OLD engine hitting its time limit. "
-                            + "Switch the engine to “New”."
+                        ? "  ·  Surface repair hit its time limit. Please send "
+                            + "it via \"Report a problem\" - this shape needs "
+                            + "a measurement."
                         : "  ·  Ctrl+Enter writes a geometry dump.";
                     _uiSystem?.SetStatus(T(
                         "Vorschau abgebrochen: " + InnersteMeldung(exception)
@@ -1757,6 +1792,7 @@ namespace ParkingLotTool.Tools
         private ToolSystem _toolSystem;
         private DefaultToolSystem _defaultToolSystem;
         private ParkingLotToolSystem _parkingLotTool;
+        private ParkingLotUISystem _uiSystem;
 
         [Preserve]
         protected override void OnCreate()
@@ -1765,6 +1801,7 @@ namespace ParkingLotTool.Tools
             _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
             _defaultToolSystem = World.GetOrCreateSystemManaged<DefaultToolSystem>();
             _parkingLotTool = World.GetOrCreateSystemManaged<ParkingLotToolSystem>();
+            _uiSystem = World.GetOrCreateSystemManaged<ParkingLotUISystem>();
         }
 
         [Preserve]
@@ -1784,6 +1821,9 @@ namespace ParkingLotTool.Tools
 
         protected override void OnUpdate()
         {
+            // Hier und nicht nur im Werkzeug: die Sprache wird im Optionsmenue
+            // umgestellt, und dabei ist das Werkzeug zu.
+            _uiSystem?.PflegeSprache();
             _parkingLotTool?.PflegeAutoVersorgungsmessung();
             // Muss VOR dem Ausstieg bei Eingabefokus stehen: die Nachschau
             // haengt an keiner Taste, sie haengt an verstrichenen Bildern.

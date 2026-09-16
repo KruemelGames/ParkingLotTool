@@ -204,19 +204,50 @@ namespace ParkingLotTool.Tools
          * Test beantwortet.
          */
         /**
-         * VERSUCHT UND VERWORFEN, ohne ihn ueberhaupt laufen zu lassen.
+         * AUS - SEIT DEM 2026-09-16, UND NICHT MEHR ALS VERSUCH.
          *
-         * Ich wollte mit diesem Schalter pruefen, ob das Hover-Flackern der
-         * Aufkleber daher kommt, dass sie `Overridden` tragen. Unser eigener
-         * Code widerlegt die Annahme aber schon: `OverrideSystem` setzt
-         * `Overridden` nur an Objekten mit `GeometryFlags.Overridable`, und in
-         * `ParkingLotBayObjects` steht seit der Ladesaeulen-Untersuchung
-         * ausdruecklich "Aufkleber tragen das Flag nicht".
+         * Der Schalter war fuer eine Flackerfrage gedacht, die sich anders
+         * erledigt hat. Jetzt entscheidet er etwas anderes, und zwar gemessen.
          *
-         * Der Test haette also nichts gezeigt und dafuer das Baeume-Verstecken
-         * gekostet. Bleibt auf true.
+         * Der Nutzer hat dreimal dasselbe gebaut:
+         *
+         *   frisch gebaut, dann Stadion ans Zoning   -> Requisiten weg
+         *   eine Minute gewartet, dann Stadion       -> Requisiten weg
+         *   Spielstand geladen, nicht gebaut         -> Requisiten bleiben
+         *
+         * Den Unterschied nennt das Log:
+         *
+         *   17:10:28  ===== Parking Lot Tool geladen =====
+         *   17:10:59  PLT-Parkplatzflaeche raeumt jetzt Objekte
+         *
+         * Das Flag kommt erst beim ersten Bauen (`LotOwnerPrefabReady`). Wer
+         * nur laedt, hat es nicht - und dann versteckt die Flaeche nichts.
+         *
+         * `OverrideSystem.AreaIterator` versteckt jedes `Overridable` Objekt
+         * im Polygon, dessen Besitzerkette nicht bei derselben Flaeche endet.
+         * Fuer Baeume und Felsen unter dem Asphalt ist das gewollt. Fuer ein
+         * Stadion auf der Zoningflaeche nicht - und fuer jedes Haus, das dort
+         * waechst, ebensowenig; die verlieren nach derselben Regel ihre
+         * Zaeune und Vorgartenbaeume.
+         *
+         * Das Zoning auszusparen geht nicht: eine CS2-Flaeche ist EIN Ring,
+         * und die Lot-Flaeche muss eine Entity bleiben - sie besitzt alle
+         * Teile ueber ihre SubObject- und SubNet-Puffer. Ein Loch gibt es
+         * dafuer nicht, und ein aufgeschnittener Ring, der sich selbst
+         * beruehrt, verwirft CS2 ganz.
+         *
+         * Der Tausch ist damit: vorher verschwanden Baeume unter dem Asphalt -
+         * und still auch die Requisiten jedes fremden Gebaeudes auf dem
+         * Parkplatz. Jetzt verschwindet nichts, und wer die Baeume nicht will,
+         * bulldozert sie vorher. Ein sichtbarer Mangel, den der Nutzer selbst
+         * beheben kann, statt eines unsichtbaren, den niemand findet.
+         *
+         * DER SAUBERE WEG BLEIBT OFFEN: den BELAG raeumen lassen statt der
+         * Lot-Flaeche. Der liegt genau dort, wo wir bauen, und nicht auf den
+         * Zoningparzellen. Dafuer muessten die gewaehlten Flaechen ueber Klone
+         * laufen wie schon die Vorflaeche - eine eigene Runde Arbeit.
          */
-        private static readonly bool FlaecheVerstecktObjekte = true;
+        private static readonly bool FlaecheVerstecktObjekte = false;
 
         private void EnsureLotClearsObjects(Entity prefab)
         {
@@ -225,8 +256,9 @@ namespace ParkingLotTool.Tools
                 if (_lotClearsObjects) return;
                 _lotClearsObjects = true;
                 Mod.log.Info("PLT-Parkplatzflaeche raeumt KEINE Objekte "
-                    + "(Testschalter FlaecheVerstecktObjekte = false). Baeume "
-                    + "bleiben stehen; dafuer sollte das Hover-Flackern weg sein.");
+                    + "(FlaecheVerstecktObjekte = false). Baeume und Felsen "
+                    + "unter dem Parkplatz bleiben stehen - dafuer behalten "
+                    + "fremde Gebaeude auf der Zoningflaeche ihre Requisiten.");
                 return;
             }
             if (_lotClearsObjects) return;

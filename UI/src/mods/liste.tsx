@@ -171,22 +171,29 @@ const satzVon = (t: Texte, b: Block): Satzteil[] | null => {
  * Ein Ortsteil wird zu einem Knopf, der das Gebaeude auswaehlt und die
  * Kamera hinschickt - dasselbe, als haette man es in der Stadt angeklickt.
  */
-const Satz = ({ teile, zielId }: { teile: Satzteil[]; zielId: string }) => (
+const Satz = ({ teile, zielId }: { teile: Satzteil[]; zielId: string }) => {
+  const t = useTexte();
+  return (
   <>
     {teile.map((teil, i) =>
       typeof teil === "string"
         ? <span key={i}>{teil}</span>
-        : (
-          <button
-            key={i}
-            className={zielId !== "" ? styles.listeOrt : undefined}
-            onClick={() => { if (zielId !== "") parkplatzWaehlen(zielId); }}
-          >
-            {teil.ort}
-          </button>
-        ))}
+        : zielId !== ""
+          ? (
+            <MitTooltip key={i} text={t.tooltipOrtSpringen}>
+              <button
+                className={styles.listeOrt}
+                aria-label={t.tooltipOrtSpringen}
+                onClick={() => parkplatzWaehlen(zielId)}
+              >
+                {teil.ort}
+              </button>
+            </MitTooltip>
+          )
+          : <span key={i}>{teil.ort}</span>)}
   </>
-);
+  );
+};
 
 /**
  * Der Name - ein Klick macht daraus ein Eingabefeld.
@@ -320,7 +327,9 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
         </div>
 
         <div className={styles.listeGeldzeile}>
-          <div className={styles.listeGeldName}>{t.spalteGebuehr}</div>
+          <MitTooltip text={t.tooltipGebuehr}>
+            <div className={styles.listeGeldName}>{t.spalteGebuehr}</div>
+          </MitTooltip>
           <Listengebuehr id={platz.id} wert={platz.gebuehr} />
           <div className={styles.listeLuecke} />
           <MitTooltip
