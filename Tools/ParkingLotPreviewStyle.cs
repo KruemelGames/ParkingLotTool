@@ -99,6 +99,40 @@ namespace ParkingLotTool.Tools
          * CS2s eigenes Overlay-Material sitzt der Ton, und damit wird auch
          * das Alpha wieder zu einer Zahl, die man einfach einstellen kann.
          */
+        /**
+         * DIE FUELLEBENEN DER VORSCHAU.
+         *
+         * Gefuellt werden seit dem 2026-09-15 die VERSCHMOLZENEN Ringe, also
+         * das, was gebaut wird - nicht mehr die Entwurfsteile, die sich im
+         * Plan ueberlappen. Je Materialsorte eine Farbe, alle mit derselben
+         * geringen Deckung: die Flaeche soll den Boden einfaerben, nicht
+         * verdecken, und keine Sorte soll lauter sein als die andere.
+         *
+         * Der Belag ist bewusst neutral und kuehl gehalten. Er deckt den
+         * groessten Teil der Flaeche ab; ein Farbton mit Charakter waere
+         * dort schnell anstrengend.
+         */
+        /**
+         * Die Deckung ALLER Fuellebenen.
+         *
+         * Eine Zahl fuer alle, damit keine Sorte lauter ist als die andere -
+         * und damit eine helle Flaeche nicht besser lesbar wird als eine
+         * dunkle, nur weil sie heller ist. Der Farbton kommt aus der Auswahl,
+         * die Deckung bleibt.
+         */
+        internal const float FlaechennetzDeckung = 0.22f;
+
+        internal static readonly Color FlaechennetzBelag =
+            new Color(0x9a / 255f, 0xa4 / 255f, 0xac / 255f, 0.22f);
+
+        /** Der Boden unter den Zoning-Parzellen - eigene Flaeche, eigener Ton. */
+        internal static readonly Color FlaechennetzZoning =
+            new Color(0xd9 / 255f, 0xa8 / 255f, 0x4c / 255f, 0.22f);
+
+        /** Die Zoningstrasse. Wie Belag, nur etwas waermer - sie ist eine Strasse. */
+        internal static readonly Color FlaechennetzZoningstrasse =
+            new Color(0xb0 / 255f, 0xa2 / 255f, 0x92 / 255f, 0.22f);
+
         internal static readonly Color FlaechennetzGruen =
             new Color(0x4c / 255f, 0xa6 / 255f, 0x4c / 255f, 0.20f);
         internal static readonly Color PerimeterRoadColor = new Color(0.46f, 0.57f, 0.66f, 0.16f);

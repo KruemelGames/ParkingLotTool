@@ -375,11 +375,23 @@ namespace ParkingLotTool.Tools
             foreach (var p in _points) lotmitte += p;
             if (_points.Count > 0) lotmitte /= _points.Count;
 
-            /** Die Richtung, in die diese Linie schiebt: nach innen. */
+            /**
+             * Die Richtung, in die diese Linie schiebt: nach innen.
+             *
+             * DIESELBE EINE REGEL WIE UEBERALL SONST. Hier stand der
+             * Vergleich mit dem Schwerpunkt des Polygons. Bei einer L-Form
+             * kann eine Kante den Schwerpunkt auf ihrer AUSSENseite haben -
+             * dann schiebt sie verkehrt herum, und die Abstandspruefung
+             * bewertet die falsche Seite. Der Schwerpunkt bleibt nur der
+             * Notnagel, falls der Umriss keine Antwort gibt.
+             */
             (float2 Richtung, float2 Normale) Achse((float2 A, float2 B) l)
             {
                 var d = l.B - l.A;
                 var richtung = d / math.length(d);
+                var innen = InnenAusUmriss((l.A + l.B) * 0.5f, richtung,
+                    _points);
+                if (math.lengthsq(innen) > 1e-6f) return (richtung, innen);
                 var normale = new float2(-richtung.y, richtung.x);
                 if (math.dot(normale, lotmitte - l.A) < 0) normale = -normale;
                 return (richtung, normale);
@@ -551,8 +563,15 @@ namespace ParkingLotTool.Tools
                 var laenge = math.length(d);
                 if (laenge < 1e-3f) continue;
                 var richtung = d / laenge;
-                var normale = new float2(-richtung.y, richtung.x);
-                if (math.dot(normale, lotmitte - linie.A) < 0) normale = -normale;
+                // Dieselbe eine Regel; der Schwerpunkt nur als Notnagel.
+                var normale = InnenAusUmriss((linie.A + linie.B) * 0.5f,
+                    richtung, _points);
+                if (math.lengthsq(normale) < 1e-6f)
+                {
+                    normale = new float2(-richtung.y, richtung.x);
+                    if (math.dot(normale, lotmitte - linie.A) < 0)
+                        normale = -normale;
+                }
                 if (RandzoningZuNah(f, linie.A, linie.B, richtung, normale))
                     return false;
             }

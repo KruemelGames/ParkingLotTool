@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using Game.Common;
 using Game.Net;
 using Game.Prefabs;
@@ -184,12 +186,43 @@ namespace ParkingLotTool.Tools
                      * Parkplaetze aus aelteren Spielstaenden ohne gemerkte
                      * Richtung.
                      */
-                    var innenrichtung = GeplanteInnenrichtung(a, d);
+                    /*
+                     * EINE REGEL: WAS IM UMRISS LIEGT, IST INNEN.
+                     *
+                     * Hier standen drei Regeln uebereinander - die geplante
+                     * Achse, der Umriss, der Schwerpunkt -, und bei jeder Form
+                     * griff eine andere. Genau darin hat sich der Fehler
+                     * versteckt: eine Form nahm den Plan und lag richtig, die
+                     * naechste fiel auf den Schwerpunkt zurueck und lag falsch,
+                     * und von aussen sah beides gleich aus.
+                     *
+                     * Der Nutzer am 2026-09-16: *"Ich glaube du gehst das
+                     * ganze zu schwierig an. Es ist doch offensichtlich was
+                     * aussen und was innen ist."* Er hat recht. Der Nutzer
+                     * zeichnet ein Polygon; das IST der Parkplatz. Was darin
+                     * liegt, ist innen. Mehr braucht die Frage nicht, und jede
+                     * zusaetzliche Regel ist nur eine weitere Stelle, an der
+                     * es schiefgehen kann.
+                     */
+                    var innenrichtung = InnenAusUmriss(mitte, richtung);
                     if (math.lengthsq(innenrichtung) < 1e-6f)
-                        innenrichtung = _zoningSeitenLotmitte - mitte;
+                    {
+                        /*
+                         * Beide Seiten im Umriss oder beide draussen - dann
+                         * ist es keine Randkante, sondern eine, die quer
+                         * hindurchlaeuft. Lieber melden als raten.
+                         */
+                        Mod.log.Warn("PLT-Zoningseiten: Randzoning-Kante bei "
+                            + Ort(mitte) + " - der Umriss gibt keine Innenseite "
+                            + "her (beide Seiten gleich). Sie bleibt, wie CS2 "
+                            + "sie angelegt hat.");
+                        continue;
+                    }
                     var innenLinks =
                         richtung.x * innenrichtung.y
                         - richtung.y * innenrichtung.x > 0f;
+                    MeldeKante("Randzoning", mitte, richtung, innenrichtung,
+                        innenLinks, innenLinks, !innenLinks);
                     if (SetzeSeitenflaggen(kante, innenLinks, !innenLinks))
                     {
                         geaendert++;
@@ -207,7 +240,25 @@ namespace ParkingLotTool.Tools
                  * Innenpunkt liegt LINKS der gerichteten Kante.
                  */
                 var kreuz = richtung.x * zurMitte.y - richtung.y * zurMitte.x;
-                if (math.abs(kreuz) < 1e-4f) continue;
+                if (math.abs(kreuz) < 1e-4f)
+                {
+                    /*
+                     * KEIN STILLER AUSSTIEG MEHR.
+                     *
+                     * Liegt der Bezugspunkt fast auf der Geraden der Kante,
+                     * sagt das Kreuzprodukt nichts - und bisher blieb die
+                     * Kante dann unangetastet. Sie behaelt damit CS2s
+                     * Vorgabe: Zoning auf BEIDEN Seiten. Von aussen sieht
+                     * das aus, als zone sie nach innen.
+                     */
+                    Mod.log.Warn("PLT-Zoningseiten: Kante bei "
+                        + Ort(mitte) + " UNENTSCHIEDEN - der Bezugspunkt "
+                        + Ort(innenpunkt) + " liegt auf ihrer Geraden "
+                        + "(Kreuzprodukt " + kreuz.ToString("F6")
+                        + "). Sie bleibt, wie CS2 sie angelegt hat, also auf "
+                        + "beiden Seiten zonend.");
+                    continue;
+                }
                 var innenIstLinks = kreuz > 0f;
 
                 var linksAus = seite == ParkingGeometry.Zoningseite.Innen
@@ -232,6 +283,8 @@ namespace ParkingLotTool.Tools
                  */
                 WendeHandschaltungAn(a, d, ref linksAus, ref rechtsAus);
 
+                MeldeKante("Panelwahl " + seite, mitte, richtung,
+                    zurMitte, innenIstLinks, linksAus, rechtsAus);
                 if (SetzeSeitenflaggen(kante, linksAus, rechtsAus)) geaendert++;
             }
 
@@ -468,6 +521,140 @@ namespace ParkingLotTool.Tools
             || GeplanteAchse(a, b) >= 0;
 
         /**
+         * EINE ZEILE JE ZONING-KANTE - Ort, Regel, Bezug, Ergebnis.
+         *
+         * Die Summenzeile am Ende sagt, wieviele Kanten gesetzt wurden. Sie
+         * sagt nicht, WELCHE falsch liegt. Genau das fehlte, als der Nutzer
+         * am 2026-09-16 meldete, manche Formen zonten weiter nach innen.
+         *
+         * Aufgeschrieben wird deshalb alles, was in die Entscheidung
+         * eingeht: wo die Kante liegt, wohin sie zeigt, welche Regel gegriffen
+         * hat, worauf sie sich bezogen hat, und was am Ende abgeschaltet
+         * wurde. Mit diesen Zeilen laesst sich eine falsche Kante im Bild
+         * wiederfinden, ohne raten zu muessen.
+         */
+        private static void MeldeKante(string regel, float2 mitte,
+            float2 richtung, float2 bezug, bool innenLinks,
+            bool linksAus, bool rechtsAus)
+        {
+            Mod.log.Info("PLT-Zoningseite " + Ort(mitte)
+                + " Richtung " + Ort(math.normalizesafe(richtung))
+                + " | Regel " + regel
+                + " | innen ist " + (innenLinks ? "LINKS" : "RECHTS")
+                + " (Bezug " + Ort(bezug) + ")"
+                + " | aus: " + (linksAus ? "links" : "-")
+                + "/" + (rechtsAus ? "rechts" : "-"));
+        }
+
+        private static string Ort(float2 p)
+            => "(" + p.x.ToString("F1") + "/" + p.y.ToString("F1") + ")";
+
+        /**
+         * Welche Seite dieser Kante liegt IM Umriss des Parkplatzes?
+         *
+         * Nullvektor, wenn kein Umriss gemerkt ist oder beide Seiten dieselbe
+         * Antwort geben - dann ist die Frage hier nicht zu beantworten und
+         * der Aufrufer nimmt seinen naechsten Weg.
+         */
+        /**
+         * WELCHE SEITE DIESER KANTE ZEIGT INS INNERE DES PARKPLATZES?
+         *
+         * ERSTER ANLAUF WAR ZU KURZ GEDACHT. Ich habe links und rechts der
+         * Kante je einen Punkt gesetzt und gefragt, welcher im Umriss liegt.
+         * Das beantwortet die Frage nur, wenn die Strasse AUF dem Rand
+         * liegt. Seit die naechstliegende Fahrgasse die RZ-Strasse ist, liegt
+         * sie aber tief im Parkplatz - dann liegen BEIDE Punkte drinnen, und
+         * im Log stand folgerichtig *"der Umriss gibt keine Innenseite her
+         * (beide Seiten gleich)"*.
+         *
+         * Die Frage muss also andersherum gestellt werden, und dann ist sie
+         * tatsaechlich einfach: Randzoning waechst zur KANTE hin, fuer die es
+         * gewaehlt wurde. Aussen ist die Richtung zum naechsten Punkt des
+         * Umrisses, innen die Gegenrichtung. Das gilt gleichermassen fuer eine
+         * Strasse auf dem Rand und fuer eine dreissig Meter weiter innen.
+         *
+         * Liegt die Kante praktisch auf dem Rand, ist diese Richtung nicht
+         * bestimmbar - dann entscheidet doch die Seitenprobe, und dort ist sie
+         * auch richtig.
+         */
+        private float2 InnenAusUmriss(float2 mitte, float2 richtung)
+            => InnenAusUmriss(mitte, richtung, _zoningSeitenUmriss);
+
+        /**
+         * Dieselbe Regel mit einem uebergebenen Umriss.
+         *
+         * Zwei Aufrufer: das Bauen nimmt den gemerkten Umriss, die Vorschau
+         * den aktuellen Punktzug. Die REGEL darf es deshalb nur einmal geben -
+         * zwei Fassungen derselben Frage waren genau der Fehler, der am
+         * 2026-09-16 dazu fuehrte, dass die berichtigte Regel beim Bauen
+         * griff und die Vorschau auf der alten stehenblieb.
+         */
+        internal static float2 InnenAusUmriss(float2 mitte, float2 richtung,
+            IReadOnlyList<float2> punkte)
+        {
+            var umriss = punkte as float2[] ?? punkte?.ToArray();
+            if (umriss == null || umriss.Length < 3) return float2.zero;
+            var laenge = math.length(richtung);
+            if (laenge < 1e-6f) return float2.zero;
+            var normale = new float2(-richtung.y, richtung.x) / laenge;
+
+            var rand = NaechsterRandpunkt(umriss, mitte);
+            var nachAussen = rand - mitte;
+            var abstand = math.length(nachAussen);
+            if (abstand > 0.5f)
+            {
+                // Nur der Anteil QUER zur Kante entscheidet ueber die Seite.
+                var quer = math.dot(nachAussen / abstand, normale);
+                if (math.abs(quer) > 0.2f)
+                    return quer > 0f ? -normale : normale;
+            }
+
+            // Rueckfall: die Kante liegt auf dem Rand oder laeuft auf ihn zu.
+            var schritt = (float)ParkingGeometry.ZoningStrassenbreite * 0.75f;
+            var links = ImUmriss(umriss, mitte + normale * schritt);
+            var rechts = ImUmriss(umriss, mitte - normale * schritt);
+            if (links == rechts) return float2.zero;
+            return links ? normale : -normale;
+        }
+
+        /** Der naechstgelegene Punkt auf dem Umriss - Ecken eingeschlossen. */
+        private static float2 NaechsterRandpunkt(float2[] ring, float2 punkt)
+        {
+            var beste = ring[0];
+            var bester = float.MaxValue;
+            for (int i = 0, j = ring.Length - 1; i < ring.Length; j = i++)
+            {
+                var a = ring[j];
+                var b = ring[i];
+                var d = b - a;
+                var quadrat = math.lengthsq(d);
+                var t = quadrat < 1e-9f ? 0f
+                    : math.saturate(math.dot(punkt - a, d) / quadrat);
+                var nah = a + d * t;
+                var abstand = math.distancesq(punkt, nah);
+                if (abstand >= bester) continue;
+                bester = abstand;
+                beste = nah;
+            }
+            return beste;
+        }
+
+        /** Strahlverfahren - ungerade Zahl von Kantenschnitten heisst innen. */
+        private static bool ImUmriss(float2[] ring, float2 punkt)
+        {
+            var innen = false;
+            for (int i = 0, j = ring.Length - 1; i < ring.Length; j = i++)
+            {
+                var a = ring[i];
+                var b = ring[j];
+                if (a.y > punkt.y != b.y > punkt.y
+                    && punkt.x < (b.x - a.x) * (punkt.y - a.y) / (b.y - a.y) + a.x)
+                    innen = !innen;
+            }
+            return innen;
+        }
+
+        /**
          * Die Innenrichtung der geplanten Achse, auf der dieser Kurs liegt -
          * oder der Nullvektor, wenn er auf keiner liegt.
          */
@@ -492,7 +679,20 @@ namespace ParkingLotTool.Tools
                 var w = mitte - achse.A;
                 var laengs = math.dot(w, richtung);
                 if (laengs < -0.5f || laengs > laenge + 0.5f) continue;
-                if (math.abs(richtung.x * w.y - richtung.y * w.x) <= 0.5f)
+                /*
+                 * TOLERANZ QUER ZUR ACHSE.
+                 *
+                 * 0,5 m stammten aus der Zeit, als die RZ-Strasse eigens
+                 * erzeugt wurde und exakt auf der geplanten Achse lag. Seit
+                 * die naechstliegende Fahrgasse die RZ-Strasse ist, liegt sie
+                 * daneben - die Achse wurde nicht mehr gefunden, und es griff
+                 * der Rueckfall. Die halbe Zoningstrassenbreite ist der
+                 * Abstand, in dem eine Kante noch zu derselben Achse gehoert.
+                 */
+                var quertoleranz =
+                    (float)ParkingGeometry.ZoningStrassenbreite * 0.5f;
+                if (math.abs(richtung.x * w.y - richtung.y * w.x)
+                    <= quertoleranz)
                     return i;
             }
             return -1;

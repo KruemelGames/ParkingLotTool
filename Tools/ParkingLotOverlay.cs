@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Colossal.Mathematics;
@@ -75,7 +76,8 @@ namespace ParkingLotTool.Tools
          */
         internal void SetLayout(ParkingLayout layout, LayoutSettings settings,
             TerrainSystem terrainSystem, float2[][] vorflaechen = null,
-            int[] vorflaechenArt = null, bool gruenAlsNetz = false)
+            int[] vorflaechenArt = null, bool gruenAlsNetz = false,
+            bool buchtmarkierung = true)
         {
             ClearLayout();
             if (layout == null || settings == null || terrainSystem == null) return;
@@ -253,12 +255,181 @@ namespace ParkingLotTool.Tools
                 }
             }
 
-            foreach (var run in ParkingBayRuns.Merge(layout, settings))
-                AddQuad(_bays, run.Quad, ColorFor(run.Role));
+            /*
+             * JEDE BUCHT EINZELN - sobald das Netz die Flaeche fuellt.
+             *
+             * `ParkingBayRuns.Merge` fasst nebeneinanderliegende Buchten zu
+             * Streifen zusammen. Das war noetig, solange jede Bucht als
+             * gefuellte Linie gezeichnet wurde: 218 gefuellte Kacheln sahen
+             * aus wie ein Kachelmuster statt nach Belag. Getrennt wird dabei
+             * unter anderem am ROLLENWECHSEL - und genau das sah man: in
+             * Reihen mit Behinderten- oder E-Plaetzen standen Trennlinien, in
+             * gleichfoermigen Reihen nicht. Der Nutzer am 2026-09-15: *"in den
+             * Buchten werden manchmal die Zwischenlinien angezeigt und
+             * manchmal nicht."*
+             *
+             * Der Grund fuer das Zusammenfassen ist weg. Der Belag ist eine
+             * gefuellte Flaeche aus dem Netz, die Buchten sind nur noch
+             * Umriss - und ein Umriss je Bucht ist genau das, was nach dem
+             * Bauen als Markierung auf dem Asphalt steht. Gleichmaessig,
+             * und es zeigt, was entsteht.
+             *
+             * Ohne Netz bleibt es beim Zusammenfassen: dort fuellen die
+             * Baender noch, und dann waere das Kachelmuster zurueck.
+             */
+            /*
+             * KEINE MARKIERUNG, WENN KEINE GEBAUT WIRD.
+             *
+             * `Bay markings` aus heisst: auf dem fertigen Parkplatz kleben
+             * keine Striche. Dann darf die Vorschau auch keine zeigen - sie
+             * soll das Ergebnis vorwegnehmen, und ein Schalter, an dem sich
+             * im Bild nichts aendert, sieht kaputt aus. Ansage des Nutzers am
+             * 2026-09-16: *"Wenn ich Bay markings ausmache, koennen wir die
+             * dann auch in der Preview ausschalten als Feedback fuer den
+             * User?"*
+             */
+            if (gruenAlsNetz && buchtmarkierung)
+            {
+                BaueBuchtmarkierung(layout, settings, p => World(p));
+            }
+            else if (gruenAlsNetz)
+            {
+                // Netz fuellt, Markierung aus: dann bleibt hier gar nichts.
+            }
+            else
+            {
+                foreach (var run in ParkingBayRuns.Merge(layout, settings))
+                    AddQuad(_bays, run.Quad, ColorFor(run.Role));
+            }
 
             foreach (var charger in ParkingBayDecals.Plan(layout, settings).Chargers)
                 _chargers.Add(World(new float2(
                     (float)charger.Center.x, (float)charger.Center.y)));
+        }
+
+        /**
+         * DIE BUCHTEN ALS MARKIERUNGSSTRICHE - so, wie sie gebaut werden.
+         *
+         * Vorher wurde je Bucht ein ganzes Rechteck gezeichnet. Bei 179
+         * Buchten sind das 716 Striche, von denen die Haelfte doppelt liegt:
+         * die Trennlinie zwischen zwei Nachbarn wird von beiden gezogen. Der
+         * Nutzer am 2026-09-15: *"Es koennte helfen wenn du die Parkzellen
+         * verbindest anstatt jedes mal fuer jede Parkzelle 4 Striche zu
+         * bauen."*
+         *
+         * Gezeichnet wird deshalb je REIHE: die Aussenkanten der Reihe und
+         * dazwischen je eine Trennlinie an jeder Buchtgrenze. Aus 716 Strichen
+         * einer Reihe von 18 Buchten werden 4 + 17.
+         *
+         * UND KEIN STRICH AN DER STRASSE. Wo eine Reihe an einer Fahrgasse,
+         * Randstrasse, Querstrasse oder Zufahrt endet, laege der Strich genau
+         * auf der Strassenkante - doppelt und falsch: auf einem echten
+         * Parkplatz ist die Seite zur Fahrgasse offen. Geprueft wird das
+         * nicht ueber die Ausrichtung, sondern ueber den Ort: liegt die Mitte
+         * eines Strichs auf oder dicht an einem Strassenviereck, faellt er
+         * weg. Das erledigt die offene Seite, die Enden an einer Querstrasse
+         * und den Rand am Randweg in einer Regel.
+         */
+        private void BaueBuchtmarkierung(ParkingLayout layout,
+            LayoutSettings settings, Func<float2, float3> welt)
+        {
+            if (layout?.Bay == null || layout.Bay.Length == 0) return;
+            _weltpunkt = welt;
+
+            // Die Flaechen, an denen kein Strich stehen soll.
+            var strassen = new List<float2[]>();
+            void Sammle(float2[][] quads)
+            {
+                if (quads == null) return;
+                foreach (var q in quads)
+                    if (q != null && q.Length == 4) strassen.Add(q);
+            }
+            Sammle(layout.PerimeterQuad);
+            Sammle(layout.AisleQuad);
+            Sammle(layout.CrossQuad);
+            Sammle(layout.EntranceQuad);
+
+            foreach (var run in ParkingBayRuns.Merge(layout, settings))
+            {
+                var q = run.Quad;
+                if (q == null || q.Length != 4) continue;
+                var farbe = ColorFor(run.Role);
+
+                /*
+                 * WELCHE SEITE IST DIE REIHE?
+                 *
+                 * Das laengere Kantenpaar laeuft entlang der Reihe, das
+                 * kuerzere ist die Buchttiefe. `ParkingBayRuns` legt die vier
+                 * Ecken im selben Umlaufsinn ab wie eine einzelne Bucht, also
+                 * genuegt der Laengenvergleich zweier benachbarter Kanten.
+                 */
+                var kante0 = math.distance(q[0], q[1]);
+                var kante1 = math.distance(q[1], q[2]);
+                var laengs = kante0 >= kante1;
+                var a0 = laengs ? q[0] : q[1];
+                var a1 = laengs ? q[1] : q[2];
+                var b0 = laengs ? q[3] : q[0];
+                var b1 = laengs ? q[2] : q[3];
+
+                // Die beiden Laengsseiten und die beiden Enden.
+                Strich(a0, a1, farbe, strassen);
+                Strich(b0, b1, farbe, strassen);
+                Strich(a0, b0, farbe, strassen);
+                Strich(a1, b1, farbe, strassen);
+
+                // Und die Trennlinien dazwischen, eine je Buchtgrenze.
+                for (var i = 1; i < run.Bays; i++)
+                {
+                    var t = (float)i / run.Bays;
+                    Strich(math.lerp(a0, a1, t), math.lerp(b0, b1, t),
+                        farbe, strassen);
+                }
+            }
+        }
+
+        /** Breite eines Markierungsstrichs in der Vorschau. */
+        private const float Strichbreite = 0.3f;
+
+        /** Weltpunkt samt Gelaendehoehe - wird je Lauf aus `SetLayout` gesetzt. */
+        private Func<float2, float3> _weltpunkt;
+
+        private void Strich(float2 a, float2 b, Color farbe,
+                            List<float2[]> strassen)
+        {
+            if (math.distancesq(a, b) < 0.0001f) return;
+            var mitte = (a + b) * 0.5f;
+            foreach (var strasse in strassen)
+                if (NahAnFlaeche(mitte, strasse)) return;
+            _bays.Add(new Band(new Line3.Segment(
+                    _weltpunkt(a), _weltpunkt(b)),
+                Strichbreite, Alpha(farbe, 0.9f)));
+        }
+
+        /**
+         * Liegt der Punkt auf oder dicht an diesem Viereck?
+         *
+         * 0,25 m Toleranz: die Buchtkante und die Strassenkante fallen
+         * geometrisch zusammen, und ein Punkt genau auf der Grenze faellt bei
+         * einem reinen Innen-Test mal so und mal so aus.
+         */
+        private static bool NahAnFlaeche(float2 punkt, float2[] viereck)
+        {
+            var innen = false;
+            var naechste = float.MaxValue;
+            for (int i = 0, j = viereck.Length - 1; i < viereck.Length; j = i++)
+            {
+                var a = viereck[i];
+                var b = viereck[j];
+                if (a.y > punkt.y != b.y > punkt.y
+                    && punkt.x < (b.x - a.x) * (punkt.y - a.y) / (b.y - a.y) + a.x)
+                    innen = !innen;
+                var d = b - a;
+                var laenge = math.lengthsq(d);
+                var t = laenge < 1e-6f ? 0f
+                    : math.saturate(math.dot(punkt - a, d) / laenge);
+                naechste = math.min(naechste, math.distance(punkt, a + d * t));
+            }
+            return innen || naechste <= 0.25f;
         }
 
         private static Color ColorFor(BayRole role)
@@ -271,11 +442,34 @@ namespace ParkingLotTool.Tools
             }
         }
 
-        private static void DrawBands(ParkingLotPreviewBuffer buffer, List<Band> bands, bool outline = false)
+        /**
+         * NUR NOCH UMRISS, SOBALD DAS NETZ FUELLT.
+         *
+         * Die Baender tragen Bedeutung - Randstrasse, Fahrgasse, Querstrasse,
+         * Zufahrt, Behinderten- und E-Platz haben je ihre Farbe. Als FUELLUNG
+         * lagen sie aber uebereinander und ueber dem Gras, weil es
+         * Entwurfsteile sind und die sich im Plan ueberschneiden. Seit das
+         * Flaechennetz die verschmolzenen Ringe fuellt, bleibt von ihnen der
+         * Umriss: dieselbe Auskunft, ohne dass sich etwas zudeckt.
+         *
+         * `nurUmriss` kommt von aussen, weil es davon abhaengt, ob das Netz
+         * ueberhaupt zeichnen kann. Kann es das nicht, fuellen die Baender
+         * weiter - mit Naehten, aber sichtbar.
+         */
+        private static void DrawBands(ParkingLotPreviewBuffer buffer,
+            List<Band> bands, bool outline = false, bool nurUmriss = false)
         {
             for (var i = 0; i < bands.Count; i++)
             {
                 var band = bands[i];
+                if (nurUmriss)
+                {
+                    buffer.DrawLine(Alpha(band.Color, 0.85f),
+                        Alpha(band.Color, 0f), GridLineWidth,
+                        OverlayRenderSystem.StyleFlags.Projected,
+                        band.Segment, band.Width, default);
+                    continue;
+                }
                 buffer.DrawLine(Alpha(band.Color, outline ? 0.45f : band.Color.a),
                     band.Color, outline ? GridLineWidth : 0f,
                     OverlayRenderSystem.StyleFlags.Projected,

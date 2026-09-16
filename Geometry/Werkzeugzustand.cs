@@ -93,9 +93,25 @@ namespace ParkingLotTool.Geometry
      */
     public static class Werkzeugzustand
     {
-        /** Verwaltung zeigt nur gebaute Lots, keinen noch offenen Bauentwurf. */
+        /**
+         * DIE VORSCHAU BLEIBT STEHEN - IN JEDEM REITER.
+         *
+         * Hier stand `reiter != Werkzeugreiter.Liste`, mit der Begruendung
+         * "Verwaltung zeigt nur gebaute Lots, keinen offenen Bauentwurf". Der
+         * Nutzer hat das am 2026-09-16 zweimal verworfen: *"Die Preview
+         * sollte erst gar nicht verschwinden bloss weil ich auf Parking Lots
+         * gehe."*
+         *
+         * Und er hat recht: der Entwurf verschwindet ja nicht, er wird beim
+         * Zurueckwechseln unveraendert weitergezeichnet. Ihn zwischendurch
+         * auszublenden nimmt einem nur die Moeglichkeit, in der Liste
+         * nachzusehen und dabei zu behalten, woran man gerade baut.
+         *
+         * Die Reiter sperren weiterhin, was man TUN darf - siehe
+         * `ReiterErlaubt`. Anschauen ist keine Handlung.
+         */
         public static bool ZeigtWerkzeugvorschau(Werkzeugreiter reiter)
-            => reiter != Werkzeugreiter.Liste;
+            => true;
 
         /** Die Zeichenhilfe darf keine Handlung anbieten, die gesperrt ist. */
         public static bool ZeigtUmrisshilfe(Werkzeugreiter reiter, Werkzeugmodus modus)

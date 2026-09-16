@@ -189,13 +189,27 @@ namespace ParkingLotTool.Tools
                     if (!ZoningZelleImUmriss(umriss, zellmitte)) continue;
                     if (ParkingLotToolSystem.ZoningZelleAufStrasse(
                             strassen, zellmitte)) continue;
-                    if (!ParkingLotToolSystem.ZoningZelleErreicht(
-                            strassen, zellmitte)) continue;
+                    /*
+                     * UNSICHERE KACHELN BLASSER.
+                     *
+                     * Bedienen ZWEI Strassen dieselbe Kachel, entscheidet
+                     * CS2 erst nach dem Bauen, welcher Block sie bekommt -
+                     * und zwar nach dem Alter der Strassen. Vorher steht das
+                     * nicht fest. Eine Zahl zu behaupten, die hinterher nicht
+                     * stimmt, waere das Schlechteste; also wird sie gezeigt,
+                     * aber erkennbar anders.
+                     */
+                    var stand = ParkingLotToolSystem.ZoningZellenstand(
+                        strassen, zellmitte);
+                    if (stand == ParkingLotToolSystem.Kachelstand.Keine) continue;
                     if (!ZuerstGesehen(zellmitte)) continue;
+                    var kachelfarbe = stand
+                        == ParkingLotToolSystem.Kachelstand.Unsicher
+                        ? Alpha(fuellung, fuellung.a * 0.35f) : fuellung;
 
                     var von = zellmitte - laengs * (fuellbreite * 0.5f);
                     var bis = zellmitte + laengs * (fuellbreite * 0.5f);
-                    buffer.DrawLine(fuellung, fuellung, 0f,
+                    buffer.DrawLine(kachelfarbe, kachelfarbe, 0f,
                         OverlayRenderSystem.StyleFlags.Projected,
                         new Line3.Segment(
                             new float3(von.x, hoehe, von.y),
@@ -336,12 +350,41 @@ namespace ParkingLotTool.Tools
                      * den Zoningflaechen, die er selbst zieht - dort zeichnet
                      * ihr eigener Durchgang.
                      */
+                    /*
+                     * DIESELBE EINE REGEL - DAS DRITTE VORKOMMEN.
+                     *
+                     * Hier stand `Kantenmitte - Schwerpunkt des Polygons`.
+                     * Dieselbe Frage wird an drei Stellen gestellt: beim
+                     * Bauen, beim Planen der Seiten, und hier beim ZEICHNEN
+                     * der Kacheln. Ich habe am 2026-09-16 die ersten beiden
+                     * berichtigt - diese blieb auf dem Schwerpunkt stehen,
+                     * und weil sie die sichtbaren Kacheln macht, sah der
+                     * Nutzer keinerlei Aenderung: *"Die Anzeige ist immer
+                     * noch komplett falsch. In der oberen Ecke gehen die
+                     * Tiles immer noch ins Polygon rein."*
+                     *
+                     * Der Schwerpunkt ist bei einer L-Form oder einer Treppe
+                     * die falsche Auskunft: eine weit innen liegende Kante
+                     * hat ihn auf ihrer anderen Seite. Aussen ist die
+                     * Richtung zum naechsten Punkt des Umrisses.
+                     */
                     var aussenVorzeichen = 0;
                     if (hatMitte)
                     {
-                        var nachAussen = (rz.A + rz.B) * 0.5f - lotmitte;
-                        aussenVorzeichen =
-                            math.dot(querRz, nachAussen) >= 0f ? 1 : -1;
+                        var punkte = new float2[umriss.Count];
+                        for (var u = 0; u < umriss.Count; u++)
+                            punkte[u] = new float2(umriss[u].x, umriss[u].z);
+                        var innen = ParkingLotToolSystem.InnenAusUmriss(
+                            (rz.A + rz.B) * 0.5f, laengsRz, punkte);
+                        if (math.lengthsq(innen) > 1e-6f)
+                            aussenVorzeichen =
+                                math.dot(querRz, innen) >= 0f ? -1 : 1;
+                        else
+                        {
+                            var nachAussen = (rz.A + rz.B) * 0.5f - lotmitte;
+                            aussenVorzeichen =
+                                math.dot(querRz, nachAussen) >= 0f ? 1 : -1;
+                        }
                     }
 
                     // Eine Kachel Ueberstand an jedem Ende - dieselbe
@@ -360,15 +403,21 @@ namespace ParkingLotTool.Tools
                                 + math.sign(j) * (strasse * 0.5f));
                         if (ParkingLotToolSystem.ZoningZelleAufStrasse(
                                 strassen, zellmitte)) continue;
-                        if (!ParkingLotToolSystem.ZoningZelleErreicht(
-                                strassen, zellmitte)) continue;
+                        var standRz = ParkingLotToolSystem.ZoningZellenstand(
+                            strassen, zellmitte);
+                        if (standRz == ParkingLotToolSystem.Kachelstand.Keine)
+                            continue;
                         if (!ZuerstGesehen(zellmitte)) continue;
+                        var farbeRz = standRz
+                            == ParkingLotToolSystem.Kachelstand.Unsicher
+                            ? Alpha(fuellungRz, fuellungRz.a * 0.35f)
+                            : fuellungRz;
 
                         var lh = laengsRz * (fuellbreiteRz * 0.5f);
                         var qh = querRz * (fuellbreiteRz * 0.5f);
                         var von2 = zellmitte - lh;
                         var bis2 = zellmitte + lh;
-                        buffer.DrawLine(fuellungRz, fuellungRz, 0f,
+                        buffer.DrawLine(farbeRz, farbeRz, 0f,
                             OverlayRenderSystem.StyleFlags.Projected,
                             new Line3.Segment(
                                 new float3(von2.x, hoehe, von2.y),

@@ -49,8 +49,12 @@ internal static partial class Program
         // deshalb das Polygonwerkzeug auch in Parking Lots und Debug.
         foreach (Werkzeugreiter reiter in Enum.GetValues(typeof(Werkzeugreiter)))
         {
-            Pruefe(Werkzeugzustand.ZeigtWerkzeugvorschau(reiter)
-                == (reiter != Werkzeugreiter.Liste), "Vorschau im Reiter " + reiter);
+            // Seit dem 2026-09-16 in JEDEM Reiter. Der Nutzer hat die alte
+            // Regel ("Verwaltung zeigt keinen Entwurf") ausdruecklich
+            // verworfen: der Entwurf bleibt ja erhalten, ihn zwischendurch
+            // auszublenden nimmt nur die Uebersicht.
+            Pruefe(Werkzeugzustand.ZeigtWerkzeugvorschau(reiter),
+                "Vorschau im Reiter " + reiter);
             foreach (Werkzeugmodus modus in Enum.GetValues(typeof(Werkzeugmodus)))
                 Pruefe(Werkzeugzustand.ZeigtUmrisshilfe(reiter, modus)
                     == (reiter == Werkzeugreiter.Entwurf && modus == Werkzeugmodus.Grund),

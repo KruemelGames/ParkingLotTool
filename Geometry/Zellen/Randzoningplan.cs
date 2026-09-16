@@ -101,8 +101,36 @@ namespace ParkingLotTool.Geometry.Zellen
                 var d = achse[j] - achse[i];
                 var len = Geometrie.Laenge(d);
                 if (len < 1e-6) continue;
+                /*
+                 * WO INNEN IST, WIRD GEPRUEFT - NICHT AUS DEM UMLAUFSINN
+                 * ABGELEITET.
+                 *
+                 * Hier stand allein `(-d.Y, d.X)`, die linke Normale der
+                 * Kantenrichtung. Die zeigt nach innen, SOLANGE der Ring
+                 * gegen den Uhrzeigersinn laeuft. Der Umriss wird dafuer
+                 * eigens gedreht (`Layout.cs`, Zeile 53) - aber gerechnet
+                 * wird hier nicht auf dem Umriss, sondern auf dem nach innen
+                 * VERSETZTEN Ring. Und der kann an einer engen oder konkaven
+                 * Ecke eine Kante umdrehen: ist die Kante kuerzer als der
+                 * Versatz, kreuzen sich ihre Nachbarn, und aus A->B wird
+                 * B->A. Die linke Normale zeigt dann nach aussen, und das
+                 * Randzoning kippt in den Parkplatz hinein.
+                 *
+                 * Das erklaert, warum es nur MANCHE Formen trifft - der
+                 * Nutzer am 2026-09-16: *"Outside-Zoning funktioniert immer
+                 * noch nicht richtig. Manche Formen gehen immer noch nach
+                 * innen."*
+                 *
+                 * Die Gegenprobe kostet einen Punkt-im-Vieleck-Test und ist
+                 * gegen beides immun: gegen den Umlaufsinn und gegen einen
+                 * umgedrehten Versatzring.
+                 */
+                var innen = new Punkt(-d.Y, d.X) * (1 / len);
+                var mitte = (achse[i] + achse[j]) * 0.5;
+                var probe = mitte + innen * Math.Max(1.0, tiefe * 0.25);
+                if (!Geometrie.Enthaelt(umriss, probe)) innen = innen * -1;
                 result.Add(new Randzoningabschnitt { A = achse[i], B = achse[j],
-                    Innen = new Punkt(-d.Y, d.X) * (1 / len), Tiefe = tiefe,
+                    Innen = innen, Tiefe = tiefe,
                     Halb = ParkingGeometry.ZoningStrassenbreite / 2 });
             }
             return result.ToArray();

@@ -89,6 +89,9 @@ namespace ParkingLotTool.Tools
         private ParkingGeometry.RandzoningLinie[] _zoningSeitenRandzoning;
         /** Die Mitte des Parkplatzes - `_points` ist spaeter schon leer. */
         private float2 _zoningSeitenLotmitte;
+
+        /** Der Umriss des Parkplatzes - fuer die Innen-Frage. */
+        private float2[] _zoningSeitenUmriss;
         /**
          * Die GEPLANTEN Achsen der Randzoning-Strassen.
          *
@@ -188,6 +191,16 @@ namespace ParkingLotTool.Tools
             _zoningSeitenLotmitte = float2.zero;
             foreach (var p in _points) _zoningSeitenLotmitte += p;
             if (_points.Count > 0) _zoningSeitenLotmitte /= _points.Count;
+            /*
+             * DER UMRISS, NICHT NUR SEIN SCHWERPUNKT.
+             *
+             * Der Schwerpunkt beantwortet "wo ist ungefaehr die Mitte" - und
+             * das ist bei einer Treppe die falsche Frage: eine weit innen
+             * liegende Stufe hat ihn auf ihrer anderen Seite. Mit dem ganzen
+             * Umriss laesst sich stattdessen fragen "liegt DIESER Punkt
+             * drinnen", und darauf gibt es nur eine Antwort.
+             */
+            _zoningSeitenUmriss = _points.ToArray();
             /*
              * DIE HANDSCHALTUNGEN GEHOEREN GENAUSO MITGEMERKT.
              *

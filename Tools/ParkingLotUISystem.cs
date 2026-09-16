@@ -292,6 +292,7 @@ namespace ParkingLotTool.Tools
         /** Wird die Zwischenflaeche ueberhaupt gesetzt? */
         internal bool FlaecheDekoAn => _flaecheDekoAn?.value ?? true;
 
+
         /** Worauf gefahren und geparkt wird. */
         internal string FlaecheStrasse => _flaecheStrasse?.value;
 

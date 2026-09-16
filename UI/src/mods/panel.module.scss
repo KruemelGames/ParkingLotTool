@@ -621,7 +621,18 @@ $linie: rgba(255, 255, 255, 0.08);
    Ansage des Nutzers am 2026-09-15: *"mach mal den button Done gruen damit
    der besser raussticht."* Der Bauen-Knopf ist in Wahrheit hellblau
    ($fahrwege); genommen ist deshalb das Gruen der Palette. */
-.ausrichtFertig {
+/*
+   ZWEI KLASSEN IM SELEKTOR - SONST GEWINNT DER GRAUE.
+
+   `.ausrichtKnopf` setzt `background-color: $flaeche` und steht weiter unten
+   in dieser Datei. Bei gleicher Spezifitaet gewinnt die spaetere Regel, also
+   blieb der Knopf grau, obwohl hier Gruen stand. Der Nutzer am 2026-09-16:
+   *"Bei mir ist er immer noch grau wie vorher."*
+
+   Genau der Fall, vor dem die Projektregel zur Kaskade warnt. `.ausrichtKnopf
+   .ausrichtFertig` ist spezifischer und gewinnt unabhaengig von der
+   Reihenfolge. */
+.ausrichtKnopf.ausrichtFertig {
   /* Nimmt nur, was das kurze Wort braucht - den Rest bekommt der linke
      Nachbar. Halbe-halbe wuerde "Ausrichtung zuruecksetzen" in zwei Zeilen
      brechen, waehrend daneben Platz leer stuende. */

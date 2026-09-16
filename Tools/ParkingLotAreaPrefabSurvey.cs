@@ -81,6 +81,20 @@ namespace ParkingLotTool.Tools
                         || prefab == null) continue;
                     var name = prefab.name;
                     if (string.IsNullOrEmpty(name)) continue;
+                    /*
+                     * UNSERE EIGENEN KLONE NICHT ANBIETEN.
+                     *
+                     * Sie heissen alle "PLT ..." und sind Arbeitsmaterial:
+                     * die Vorflaeche, der Zoningbelag, die Zoningstrasse.
+                     * Der Nutzer soll sie nicht auswaehlen koennen - sie
+                     * entstehen aus seiner Wahl, sie sind sie nicht.
+                     *
+                     * Der Ausschluss darunter greift nur bei eingebauten
+                     * Prefabs; unsere sind zur Laufzeit erzeugt und fielen
+                     * deshalb durch.
+                     */
+                    if (name.StartsWith("PLT ", StringComparison.Ordinal))
+                        continue;
                     if (prefab.isBuiltin)
                     {
                         if (name.EndsWith("Placeholder", StringComparison.Ordinal)) continue;
@@ -88,6 +102,7 @@ namespace ParkingLotTool.Tools
                     }
                     namen.Add(name);
                     symbole[name] = Vorschaubild(prefab);
+                    MissFarbe(prefab, entity, name);
                 }
                 namen.Sort(StringComparer.Ordinal);
                 for (var i = 0; i < namen.Count; i++)
@@ -98,6 +113,27 @@ namespace ParkingLotTool.Tools
             {
                 Mod.log.Warn("PLT: Flaechenliste nicht lesbar: " + ausnahme.Message);
             }
+        }
+
+        /** Welche Flaechen schon gemeldet wurden - eine Zeile je Flaeche. */
+        private readonly HashSet<string> _farbeGemeldet = new HashSet<string>();
+
+        /**
+         * Misst die Durchschnittsfarbe einer Flaeche und meldet sie einmal.
+         *
+         * NUR FUER UNBEKANNTE FLAECHEN. Die 17 des Grundspiels stehen als
+         * Tabelle in `ParkingLotFlaechenfarbe`, aus den Icons ausgemessen;
+         * fremde Flaechen meldet das Panel, sobald es ihr Icon lesen konnte.
+         * Hier landet nur, wofuer beides nichts hergibt.
+         */
+        private void MissFarbe(PrefabBase prefab, Entity entity, string name)
+        {
+            // Steht die Flaeche schon in der Tabelle oder kam sie aus einem
+            // Icon, waere die Texturmessung verschwendete Arbeit.
+            if (ParkingLotFlaechenfarbe.Bekannt(name)) return;
+            if (_farbeGemeldet.Contains(name)) return;
+            if (ParkingLotFlaechenfarbe.MissTextur(prefab, name))
+                _farbeGemeldet.Add(name);
         }
 
         /**

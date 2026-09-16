@@ -1120,7 +1120,8 @@ namespace ParkingLotTool.Tools
                 RememberCompletedPreview(site, worldSite, settings, layout,
                     revision, startedUtc, DateTime.UtcNow, elapsedMilliseconds);
                 _overlay.SetLayout(layout, settings, _terrainSystem,
-                    _vorflaechenSicht, _vorflaechenArt, FuellungAlsNetz);
+                    _vorflaechenSicht, _vorflaechenArt, FuellungAlsNetz,
+                    _uiSystem?.Buchtsymbole ?? true);
                 FuettereFlaechennetz(layout);
                 SetVegetationPreview(layout);
                 SetAreaPreviewLayout(layout, settings);
@@ -1241,6 +1242,24 @@ namespace ParkingLotTool.Tools
                 _flaechennetz?.Leere();
                 return inputDeps;
             }
+            /*
+             * UND BEIM ZURUECKWECHSELN WIEDER FUELLEN.
+             *
+             * Das Leeren oben war nur die halbe Sache. Gefuettert wird das
+             * Netz, wenn ein Vorschaulauf FERTIG wird - und der laeuft beim
+             * Wechsel zurueck nach "Draft" nicht neu, weil sich am Entwurf
+             * nichts geaendert hat. Uebrig blieben die Buchtlinien, die aus
+             * dem Overlay kommen. Der Nutzer am 2026-09-16: *"gehe ich
+             * zurueck zu Draft sehe ich nur noch die Parklinien und mehr
+             * nicht."*
+             *
+             * Gefragt wird das Netz selbst, nicht der Reiterwechsel: so ist
+             * es auch nach jedem anderen Weg richtig, der die Fuellung
+             * geleert hat.
+             */
+            if (_areaPreviewLayout != null && _flaechennetz != null
+                && _flaechennetz.Leer)
+                FuettereFlaechennetz(_areaPreviewLayout);
             var buffer = _overlayRenderSystem.GetBuffer(out var overlayDeps);
             var deps = JobHandle.CombineDependencies(inputDeps, overlayDeps);
             // GetBuffer liefert die noch laufenden Schreiber derselben NativeLists.

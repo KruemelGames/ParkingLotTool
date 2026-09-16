@@ -539,6 +539,29 @@ namespace ParkingLotTool.Tools
                         continue;
                     }
 
+                    /*
+                     * KEIN `UIObject` - SONST STEHT DER KLON IM MENUE.
+                     *
+                     * `UIObject` traegt Menuegruppe, Prioritaet und Symbol.
+                     * Uebernimmt man es, landet unsere Kopie in CS2s
+                     * Flaechenliste und der Spieler kann sie von Hand setzen.
+                     * Der Nutzer am 2026-09-15: *"koennen wir noch unsere
+                     * PLT-Flaechen aus der Surfaces-Liste rausnehmen? Die
+                     * sind einfach drin gelandet."*
+                     *
+                     * Wir brauchen es nicht: unsere Flaechen entstehen ueber
+                     * eine eigene `CreationDefinition`, nie ueber das Menue.
+                     * Dieselbe Abkuerzung nehmen `ParkingLotFusswegPrefab`
+                     * und `ParkingLotZoningRoadPrefab` schon laenger.
+                     */
+                    if (bauteil is UIObject)
+                    {
+                        Mod.log.Info($"PLT-Vorflaeche: '{eintrag.Name}' "
+                            + "bekommt KEIN UIObject - sonst stuende der Klon "
+                            + "in CS2s Flaechenliste zum Selbersetzen.");
+                        continue;
+                    }
+
                     klon.AddComponentFrom(bauteil);
                 }
 

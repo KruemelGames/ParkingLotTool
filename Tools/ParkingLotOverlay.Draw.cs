@@ -64,9 +64,28 @@ namespace ParkingLotTool.Tools
              */
             foreach(var plant in _vegetation)
                 buffer.DrawCircle(VegetationColor,plant.Position,plant.Tree ? VegetationTreeDiameter : VegetationShrubDiameter);
-            DrawBands(buffer, _green);
-            DrawBands(buffer, _roads, true);
-            DrawBands(buffer, _bays, true);
+            /*
+             * DIE STRASSENBAENDER WERDEN GAR NICHT MEHR GEZEICHNET.
+             *
+             * Erst waren sie gefuellt und lagen uebereinander, dann als
+             * Umriss - und lagen als Linien immer noch uebereinander. Der
+             * Nutzer am 2026-09-15, direkt nach der Umstellung: *"Die Umrisse
+             * der Rechtecke sind noch da."*
+             *
+             * Sie zeigen auch nichts mehr, was fehlen wuerde: der Belag
+             * steht als verschmolzene Flaeche da, und WELCHE Strasse wo
+             * liegt, sieht man an ihrer Form. Zufahrten haben ihre eigenen
+             * Marken, die bleiben.
+             *
+             * Die Buchten bleiben als Umriss. Sie ueberlappen sich nicht -
+             * `ParkingBayRuns.Merge` legt sie als saubere Reihen an -, und
+             * ihre Farbe ist die einzige Stelle, an der man Behinderten- und
+             * E-Plaetze ueberhaupt erkennt.
+             */
+            var netzFuellt = Flaechennetz != null;
+            DrawBands(buffer, _green, false, netzFuellt);
+            if (!netzFuellt) DrawBands(buffer, _roads, true);
+            DrawBands(buffer, _bays, true, netzFuellt);
             for (var i = 0; i < _chargers.Count; i++)
                 buffer.DrawCircle(ChargerColor, _chargers[i], ChargerDiameter);
 

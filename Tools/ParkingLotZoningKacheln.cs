@@ -151,19 +151,23 @@ namespace ParkingLotTool.Tools
                  * als Rueckfall fuer den Weg mit Randstrassen, wo es keine
                  * Abschnitte gibt.
                  */
-                float2 innenrichtung;
-                if (math.lengthsq(rz.Innen) > 1e-6f)
-                {
-                    innenrichtung = rz.Innen;
-                }
-                else
-                {
-                    var mitte = (rz.A + rz.B) * 0.5f;
-                    var lotmitte = float2.zero;
-                    foreach (var p in _points) lotmitte += p;
-                    if (_points.Count > 0) lotmitte /= _points.Count;
-                    innenrichtung = lotmitte - mitte;
-                }
+                /*
+                 * DIESELBE EINE REGEL WIE BEIM BAUEN.
+                 *
+                 * Hier stand dasselbe Geflecht noch einmal: erst der
+                 * Abschnittsplan, sonst der Schwerpunkt des Polygons. Die
+                 * Vorschau ist damit eine ZWEITE Wahrheit ueber dieselbe
+                 * Frage - und als ich am 2026-09-16 die Regel beim Bauen
+                 * berichtigte, blieb die Vorschau auf der alten stehen. Der
+                 * Nutzer sah weiter dasselbe Bild.
+                 *
+                 * Gefragt wird deshalb hier wie dort: Randzoning waechst zur
+                 * Kante hin, fuer die es gewaehlt wurde. Aussen ist die
+                 * Richtung zum naechsten Punkt des Umrisses.
+                 */
+                var innenrichtung = InnenAusUmriss(
+                    (rz.A + rz.B) * 0.5f, richtung, _points);
+                if (math.lengthsq(innenrichtung) < 1e-6f) continue;
                 var innenLinks =
                     richtung.x * innenrichtung.y
                     - richtung.y * innenrichtung.x > 0f;
@@ -455,11 +459,48 @@ namespace ParkingLotTool.Tools
          * Genau darin liegt die Bedingung des Nutzers: eine
          * gegenueberliegende Strasse haelt dieselbe Kachel am Leben.
          */
+        /**
+         * WIE SICHER IST DIESE KACHEL?
+         *
+         * `Keine` - da kommt nichts. `Sicher` - genau eine Strasse bedient
+         * sie. `Unsicher` - MEHRERE tun es, und dann entscheidet CS2 erst
+         * nach dem Bauen, welcher Block sie bekommt.
+         *
+         * Warum das ueberhaupt eine eigene Antwort braucht, steht im
+         * Dekompilat (`Game.Zones/CellOverlapJobs.cs`, Zeilen 245 und 258):
+         * ueberlappen sich zwei Bloecke, gewinnt der mit der KLEINEREN
+         * `BuildOrder`, also die aeltere Strasse. Beide entstehen bei uns im
+         * selben Bauvorgang; welche CS2 als aelter fuehrt, steht vorher nicht
+         * fest. Der Nutzer hat genau das gesehen: *"manchmal kommen die
+         * doppelt vor oder eine Tile kommt hinzu wenn ich eine ganz andere
+         * Linie umschalte."* Das ist kein Anzeigefehler, das ist CS2.
+         *
+         * Eine Zahl zu behaupten, die hinterher nicht stimmt, waere das
+         * Schlechteste. Also sagt die Vorschau, was sie weiss.
+         */
+        internal enum Kachelstand { Keine, Sicher, Unsicher }
+
+        /**
+         * EIN STUECK UNTER 16 m ERZEUGT GAR KEINEN BLOCK.
+         *
+         * `BlockSystem.CreateBlocks` rechnet
+         * `num10 = floor((Laenge + 0,1) / 8)` und steigt bei `num10 < 2`
+         * aus - ohne Block, ohne Zellen. Alles unter zwei Zellen bekommt
+         * also nichts. Das erklaert die leere Innenecke einer L-Form: das
+         * Stueck dort ist zu kurz.
+         */
+        private const float BlockMindestlaenge = 16f;
+
         internal static bool ZoningZelleErreicht(
             IReadOnlyList<(float2 A, float2 B, bool LinksAn, bool RechtsAn)> strassen,
             float2 mitte)
+            => ZoningZellenstand(strassen, mitte) != Kachelstand.Keine;
+
+        internal static Kachelstand ZoningZellenstand(
+            IReadOnlyList<(float2 A, float2 B, bool LinksAn, bool RechtsAn)> strassen,
+            float2 mitte)
         {
-            if (strassen == null) return false;
+            if (strassen == null) return Kachelstand.Keine;
 
             /*
              * DIE TIEFE WIRD AB DER STRASSENMITTE GEMESSEN.
@@ -484,12 +525,15 @@ namespace ParkingLotTool.Tools
             var ueberstand =
                 (float)ParkingGeometry.ZoningStrassenbreite * 0.5f - 0.01f;
 
+            var bediener = 0;
             for (var i = 0; i < strassen.Count; i++)
             {
                 var s = strassen[i];
                 var spanne = s.B - s.A;
                 var laenge = math.length(spanne);
                 if (laenge < 1e-6f) continue;
+                // Zu kurz fuer einen eigenen Block - siehe BlockMindestlaenge.
+                if (laenge + 0.1f < BlockMindestlaenge) continue;
                 var richtung = spanne / laenge;
 
                 var laengs = math.dot(mitte - s.A, richtung);
@@ -510,9 +554,18 @@ namespace ParkingLotTool.Tools
                 var start = lot + (mitte - lot) / abstand
                     * ((float)ParkingGeometry.ZoningStrassenbreite * 0.5f + 0.1f);
                 if (VerdecktEineAndereStrasse(strassen, i, start, mitte)) continue;
-                return true;
+                /*
+                 * NICHT BEIM ERSTEN TREFFER AUFHOEREN.
+                 *
+                 * Vorher stand hier `return true`. Damit war die Frage
+                 * beantwortet, aber die interessantere blieb offen: bedient
+                 * noch eine ZWEITE Strasse dieselbe Kachel? Genau die sind
+                 * die strittigen, und genau die springen beim Umschalten
+                 * einer anderen Linie hin und her.
+                 */
+                if (++bediener > 1) return Kachelstand.Unsicher;
             }
-            return false;
+            return bediener > 0 ? Kachelstand.Sicher : Kachelstand.Keine;
         }
 
         /**

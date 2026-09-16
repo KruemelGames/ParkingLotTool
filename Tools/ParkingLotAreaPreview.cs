@@ -150,6 +150,20 @@ namespace ParkingLotTool.Tools
          * wir derzeit schon haben."* Also genau `GreenColor` - dieselbe
          * Farbe, die die Streifen vorher hatten.
          */
+        /**
+         * Gibt dem Netz die VERSCHMOLZENEN Ringe - das, was gebaut wird.
+         *
+         * Nicht die Entwurfsteile. Die ueberlappen sich im Plan, und genau
+         * das sah man vorher: Strassenrechtecke uebereinander, Gras unter
+         * Buchten, Luecken an schraegen Ecken. Aufgeloest wird das erst beim
+         * Verschmelzen, und diese Listen sind das Ergebnis davon.
+         *
+         * Die Reihenfolge ist die Zeichenreihenfolge: Belag unten, Gras
+         * darueber, Zoning zuoberst. Die Vorflaechen laufen mit der Farbe des
+         * Belags - sie sind seine Fortsetzung bis zur Strasse und stehen nur
+         * deshalb in einer eigenen Liste, weil sie ein anderes Prefab
+         * brauchen.
+         */
         private void FuettereFlaechennetz(ParkingLayout layout)
         {
             if (!FuellungAlsNetz) return;
@@ -157,25 +171,51 @@ namespace ParkingLotTool.Tools
             // ein. Es holt sich das System nicht selbst - es ist kein System
             // und hat keine Welt.
             _overlay.Flaechennetz = Flaechennetz;
+
             /*
-             * MESSBAU 2026-09-15 - VORUEBERGEHEND NEUTRALGRAU.
+             * DIE FARBE KOMMT AUS DER AUSWAHL, NICHT AUS EINER KONSTANTEN.
              *
-             * Der Nutzer hat zweimal im Spiel nachgemessen: geschrieben
-             * (0,072 / 0,381 / 0,072) kam `#005a00` heraus, geschrieben
-             * (0,298 / 0,651 / 0,298) kam `#00c400` heraus. Beide Male ist
-             * Rot UND Blau exakt null - bei voellig verschiedenen
-             * Eingangswerten. Das ist keine Frage der Helligkeit mehr.
+             * Waehlt der Nutzer Sand als Dekoflaeche, soll die Vorschau
+             * sandfarben sein - vor dem Bauen, nicht erst danach. Die Deckung
+             * bleibt dabei fest: der Farbton sagt, WAS es wird, die Deckung
+             * sorgt dafuer, dass man den Boden darunter noch sieht. Sonst
+             * waere eine helle Flaeche gut lesbar und eine dunkle nicht.
              *
-             * Ein gesaettigtes Gruen kann das nicht beantworten, weil man
-             * Verstaerkung und Saettigung nicht auseinanderhalten kann. Ein
-             * neutrales Grau kann es: alle drei Kanaele gleich, volle
-             * Deckung, nichts zum Mischen. Was davon ankommt, sagt genau, was
-             * die Bildaufbereitung mit unserer Farbe macht.
-             *
-             * Danach fliegt das hier wieder raus.
+             * UND AUS HEISST AUS. Ist ein Schalter in "Surfaces" aus, wird
+             * dort nichts gebaut - also darf die Vorschau dort auch nichts
+             * fuellen. Der Nutzer am 2026-09-16: *"Die Flaechen ausblenden
+             * wir eigentlich schon eingebaut wenn die Surface disabled wird.
+             * Musst das glaube noch nachholen."*
              */
-            Flaechennetz.SetzeFlaechen(layout?.GrassSurface,
-                ParkingLotPreviewStyle.FlaechennetzGruen);
+            const float deckung = ParkingLotPreviewStyle.FlaechennetzDeckung;
+            var belagfarbe = ParkingLotFlaechenfarbe.Hole(PavementSurfaceName,
+                ParkingLotPreviewStyle.FlaechennetzBelag, deckung);
+            var dekofarbe = ParkingLotFlaechenfarbe.Hole(GrassSurfaceName,
+                ParkingLotPreviewStyle.FlaechennetzGruen, deckung);
+            var zoningfarbe = ParkingLotFlaechenfarbe.Hole(ZoningSurfaceName,
+                ParkingLotPreviewStyle.FlaechennetzZoning, deckung);
+
+            var belagAn = _uiSystem?.FlaecheStrasseAn ?? true;
+            var dekoAn = _uiSystem?.FlaecheDekoAn ?? true;
+            var vorflaecheAn = belagAn && (_uiSystem?.VorflaecheAn ?? true);
+
+            var netz = Flaechennetz;
+            netz.BeginneFlaechen();
+            if (layout != null)
+            {
+                if (belagAn)
+                    netz.FuegeFlaechen(layout.AsphaltSurface, belagfarbe, 0f);
+                if (vorflaecheAn)
+                    netz.FuegeFlaechen(_vorflaechenSicht, belagfarbe, 0f);
+                if (belagAn)
+                    netz.FuegeFlaechen(layout.ZoningRoadSurface,
+                        belagfarbe, 1f);
+                if (dekoAn)
+                    netz.FuegeFlaechen(layout.GrassSurface, dekofarbe, 2f);
+                if (!ZoningFlaecheAus)
+                    netz.FuegeFlaechen(layout.ZoningSurface, zoningfarbe, 3f);
+            }
+            netz.SchliesseFlaechen();
         }
         private LayoutSettings _areaPreviewSettings;
         private bool _ghostsActive;
