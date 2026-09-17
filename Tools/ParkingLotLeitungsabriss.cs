@@ -166,6 +166,8 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            using var uhr = ParkingLotMessung.Miss(
+                ParkingLotMessung.Sys.Leitungsabriss);
             RaeumeVerwaisteKnoten();
             PruefeLeitungsknoten();
             if (_leitungen.IsEmptyIgnoreFilter) return;

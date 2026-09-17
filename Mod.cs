@@ -339,7 +339,7 @@ namespace ParkingLotTool
             Optionen?.RegisterKeyBindings();
             log.Info("  Werkzeug registriert. Strg+Umschalt+P schaltet es um "
                 + "(aenderbar unter ESC -> Optionen -> Mods -> Parking Lot Tool); "
-                + "Alt+P schreibt den Debug-Abzug.");
+                + "Alt+P schreibt den Debug-Abzug; Alt+F misst am Bordstein (nur bei offenem Werkzeug).");
         }
 
         /**

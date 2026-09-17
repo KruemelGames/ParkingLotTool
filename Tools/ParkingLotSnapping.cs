@@ -224,12 +224,37 @@ namespace ParkingLotTool.Tools
         /** Beim Verlassen des Werkzeugs aufrufen. */
         private void SperreFangauswahl() => _fangAktiv = false;
 
-        public override void GetAvailableSnapMask(out Snap onMask, out Snap offMask)
-        {
-            onMask = Snap.ExistingGeometry | Snap.StraightDirection
+        /**
+         * Die Fangarten, die dieses Werkzeug wirklich kann.
+         *
+         * Steht getrennt von `GetAvailableSnapMask`, weil die Methode dem
+         * SPIEL antwortet und diese Eigenschaft UNS.
+         */
+        internal static Snap Fangarten
+            => Snap.ExistingGeometry | Snap.StraightDirection
                 | Snap.NetSide | Snap.ObjectSide
                 | Snap.GuideLines | Snap.ZoneGrid;
-            offMask = onMask;
+
+        /**
+         * MELDET DEM SPIEL ABSICHTLICH NICHTS.
+         *
+         * Bis zum 2026-09-17 stand hier die echte Maske, und dafuer schenkte
+         * uns CS2 sein Magnet-Panel unten links. Seit die Fangschalter in
+         * unserer eigenen Kopfleiste stehen, waeren es zwei Fenster fuer
+         * dieselbe Sache - und das zweite lag ausserdem hinter unserem.
+         *
+         * Eine leere Maske laesst `ToolUISystem` das Fenster gar nicht erst
+         * bauen. Der Fang selbst haengt nicht daran: `GetActualSnap()`
+         * rechnet mit den Feldern `m_SnapOnMask`/`m_SnapOffMask`, und die
+         * bekommen in `OnCreate` weiterhin `Fangarten`.
+         *
+         * Das ist kein Ausblenden fremder Oberflaeche: dieses Fenster gibt
+         * es nur, weil unser Werkzeug danach fragt.
+         */
+        public override void GetAvailableSnapMask(out Snap onMask, out Snap offMask)
+        {
+            onMask = Snap.None;
+            offMask = Snap.None;
         }
 
         /**

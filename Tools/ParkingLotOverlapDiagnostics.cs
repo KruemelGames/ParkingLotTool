@@ -219,15 +219,35 @@ namespace ParkingLotTool.Tools
                 flaechenTreffer += UeMeldeFlaechenpartner(objekt, lot);
             }
 
-            // Alle Paare bleiben im Befund und Vergleichsstand. Der automatische
-            // Lauf erklaert nur 24 Beispiele statt 2123 teurer Kontext-/Logzeilen.
-            // Vollstaendige Einzelheiten bleiben ueber den Debug-Knopf abrufbar.
-            var detailzahl = auftrag.Frueh ? math.min(paare.Count, 24) : paare.Count;
-            if (detailzahl < paare.Count)
-                Mod.log.Info($"{UePrefix} {detailzahl}/{paare.Count} Paare einzeln erklaert; "
-                    + "alle gezaehlt und gespeichert. Vollstaendige Details: Debug-Knopf.");
+            /*
+             * ALLE PAARE BLEIBEN IM BEFUND UND IM VERGLEICHSSTAND.
+             *
+             * Begrenzt ist nur, wieviele einzeln in Fliesstext erklaert
+             * werden. Der automatische Lauf nimmt 24, der Knopf im
+             * Dev-Reiter 200.
+             *
+             * Vorher nahm der Knopf ALLE. Gemessen am 2026-09-17 bei 1247
+             * Paaren: ein Bild von 206 Sekunden, weil je Paar eine
+             * Kontextsuche ueber 2000 Objekte laeuft und zwei Logzeilen
+             * geschrieben werden.
+             */
+            var detailzahl = auftrag.Frueh
+                ? math.min(paare.Count, 24)
+                : math.min(paare.Count, 200);
+            var budget = System.Diagnostics.Stopwatch.StartNew();
+            var erklaert = 0;
             for (var i = 0; i < detailzahl; i++)
             {
+                /*
+                 * DIE ZWEITE SCHRANKE IST ZEIT, NICHT ANZAHL.
+                 *
+                 * Eine feste Zahl passt zu genau einer Parkplatzgroesse. Das
+                 * Budget haelt die Sperre unter zwei Sekunden, egal wie
+                 * gross der Fall wird - und ein Werkzeug, das das Spiel
+                 * minutenlang anhaelt, benutzt niemand ein zweites Mal.
+                 */
+                if (budget.ElapsedMilliseconds > 2000) break;
+                erklaert++;
                 var paar = paare[i];
                 var punkt = (float2)paar.Messung.Center;
                 var kontext = UeKontext(lot, punkt, objekte);
@@ -252,6 +272,15 @@ namespace ParkingLotTool.Tools
                 if (paar.B.Gebaeude && gemeldeteGebaeude.Add(paar.B.Entity))
                     UeMeldeGebaeude(paar.B, lot);
             }
+
+            budget.Stop();
+            if (erklaert < paare.Count)
+                Mod.log.Info($"{UePrefix} {erklaert}/{paare.Count} Paare "
+                    + "einzeln erklaert; alle gezaehlt, gemessen und "
+                    + "gespeichert. Abgebrochen nach "
+                    + $"{budget.ElapsedMilliseconds} ms"
+                    + (erklaert < detailzahl
+                        ? " (Zeitbudget)" : " (Obergrenze)") + ".");
 
             var strassenpaare = UeMeldeStrasseAufStrasse(lot);
 

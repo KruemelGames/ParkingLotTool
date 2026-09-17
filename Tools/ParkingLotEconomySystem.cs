@@ -148,6 +148,8 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            using var uhr = ParkingLotMessung.Miss(
+                ParkingLotMessung.Sys.Wirtschaft);
             // Absturzsperre, keine Wirtschaftsarbeit - deshalb VOR dem
             // Hauptschalter. Siehe EntferneUpdateFrame.
             RaeumeUpdateFrames();

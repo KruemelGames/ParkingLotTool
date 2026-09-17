@@ -575,6 +575,7 @@ namespace ParkingLotTool.Tools
                 case Zufahrtsart.Einfahrt: return "Einfahrt";
                 case Zufahrtsart.Ausfahrt: return "Ausfahrt";
                 case Zufahrtsart.Fussweg: return "Fussweg";
+                case Zufahrtsart.Gasse: return "Gasse";
                 default: return "Zufahrt";
             }
         }

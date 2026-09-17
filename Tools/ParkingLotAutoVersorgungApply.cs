@@ -64,6 +64,11 @@ namespace ParkingLotTool.Tools
     {
         [Preserve]
         protected override void OnUpdate()
-            => World.GetExistingSystemManaged<ParkingLotToolSystem>()?.MesseAutoVersorgungNachToolOutput();
+        {
+            using var uhr = ParkingLotMessung.Miss(
+                ParkingLotMessung.Sys.Versorgung);
+            World.GetExistingSystemManaged<ParkingLotToolSystem>()
+                ?.MesseAutoVersorgungNachToolOutput();
+        }
     }
 }

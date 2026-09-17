@@ -7,6 +7,19 @@ namespace ParkingLotTool.Tools
     internal static class ParkingLotPreviewStyle
     {
         internal static readonly Color VegetationColor = new Color(.49f,.83f,.33f,.75f);
+        /**
+         * Baeume und Buesche unterscheiden sich seit dem 2026-09-17 in der
+         * Farbe - Wunsch des Nutzers, und seit die Pflanzen als Instanzen
+         * gezeichnet werden, kostet es nichts: die Farbe steht je Eintrag
+         * im Puffer, es braucht also weder eine zweite Gruppe noch einen
+         * zweiten Zeichenaufruf.
+         *
+         * Derselbe Farbton, nur heller und etwas blasser. Ein anderer Ton
+         * waere eine zweite Bedeutung; gemeint ist dasselbe, nur kleiner.
+         */
+        internal static readonly Color VegetationTreeColor = VegetationColor;
+        internal static readonly Color VegetationShrubColor
+            = new Color(.68f, .92f, .55f, .70f);
         internal const float VegetationTreeDiameter = 2f;
         internal const float VegetationShrubDiameter = .9f;
         internal const float GridLineWidth = 0.18f;
@@ -162,6 +175,13 @@ namespace ParkingLotTool.Tools
             new Color(0.310f, 0.765f, 0.969f, 0.32f),
             new Color(0.949f, 0.757f, 0.306f, 0.32f),
             new Color(0.494f, 0.851f, 0.341f, 0.32f),
+            /*
+             * Die Gasse ist eine Zufahrt, also bleibt sie im warmen Bereich -
+             * aber deutlich dunkler und roter als das Orange der normalen
+             * Zufahrt. Ein zweites Orange waere in der Vorschau nicht zu
+             * trennen, und die Farbe IST hier die Zuordnung.
+             */
+            new Color(0.733f, 0.208f, 0.322f, 0.32f),
         };
         internal static readonly Color EntranceRoadColor = EntranceArtColors[0];
         // Fangarten bleiben unterscheidbar; nur der aktive Fang wird gezeigt.

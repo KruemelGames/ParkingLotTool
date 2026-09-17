@@ -139,6 +139,8 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            using var uhr = ParkingLotMessung.Miss(
+                ParkingLotMessung.Sys.Liste);
             base.OnUpdate();
             /*
              * EIN NEUER PARKPLATZ WARTET NICHT AUF DEN TAKT.

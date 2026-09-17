@@ -22,6 +22,37 @@ const en = {
   parkgebuehrJeVorgang: "Parking fee per stay",
   bestimmungen: "Policies",
   artNameZufahrt: "Entrance",
+  fensterSchliessen: "Close window",
+  leistungTitel: "Slow game?",
+  leistungErklaerung:
+    "Measures for one minute where the frame time goes, then writes a "
+    + "report you can send. Just keep playing while it runs - the ordinary "
+    + "case is what we want to see.",
+  leistungStart: "Measure for one minute",
+  leistungLaeuft: (s: number) => `Measuring … ${s} s`,
+  tooltipLeistung:
+    "Records one line per second and one for every frame over 50 ms, "
+    + "broken down by what the mod was doing. Frames that are not ours "
+    + "show up as such.",
+  tooltipFensterHeim:
+    "Puts the window back where it started - the way out if you pushed it "
+    + "off the screen.",
+  fangAlleAn: "Turn on every snap",
+  fangAlleAus: "Turn off every snap",
+  fangNamen: {
+    ExistingGeometry: "Snap to existing lots",
+    StraightDirection: "Snap to straight angles",
+    NetSide: "Snap to road edges",
+    ObjectSide: "Snap to building edges",
+    GuideLines: "Snap to guide lines",
+    ZoneGrid: "Snap to the zone grid",
+  } as Record<string, string>,
+  stilHochkant: "Upright",
+  stilHorizontal: "Bar",
+  tooltipStil:
+    "Switches the window between a narrow upright column at the left and a "
+    + "wide bar above the toolbar. Same settings either way.",
+  artNameGasse: "Alley",
   artNameFussweg: "Footpath",
   artNameEinfahrt: "Entry",
   artNameAusfahrt: "Exit",
@@ -336,6 +367,10 @@ const en = {
   tooltipBuchtsymbole:
     "Paints the lines and the disabled and electric symbols.",
   tooltipZufahrt: "Cars come in and go out here.",
+  tooltipGasse:
+    "Same placement as an entrance, but built as an invisible alley. "
+    + "The street outside gets a real junction, so its kerb opens up. "
+    + "It costs a few zoning cells there.",
   tooltipFussweg:
     "The way in on foot. Disabled and electric bays move here.",
   tooltipEinfahrt: "One way in. Needs an exit somewhere else.",
@@ -508,6 +543,37 @@ const de: Texte = {
   parkgebuehrJeVorgang: "Parkgebuehr je Vorgang",
   bestimmungen: "Bestimmungen",
   artNameZufahrt: "Zufahrt",
+  fensterSchliessen: "Fenster schließen",
+  leistungTitel: "Spiel ruckelt?",
+  leistungErklaerung:
+    "Misst eine Minute lang, wohin die Bildzeit geht, und schreibt danach "
+    + "einen Bericht zum Verschicken. Spiel dabei einfach weiter - gerade "
+    + "das Gewöhnliche soll gemessen werden.",
+  leistungStart: "Eine Minute messen",
+  leistungLaeuft: (s: number) => `Messung läuft … noch ${s} s`,
+  tooltipLeistung:
+    "Schreibt eine Zeile je Sekunde und eine für jedes Bild über 50 ms, "
+    + "aufgeschlüsselt danach, was der Mod gerade getan hat. Bilder, die "
+    + "nicht von uns kommen, sind als solche erkennbar.",
+  tooltipFensterHeim:
+    "Setzt das Fenster auf seinen Platz zurück - der Ausweg, wenn man es "
+    + "aus dem Bild geschoben hat.",
+  fangAlleAn: "Einrasten für alle einschalten",
+  fangAlleAus: "Einrasten für alle ausschalten",
+  fangNamen: {
+    ExistingGeometry: "An bestehenden Grundstücken einrasten",
+    StraightDirection: "An geraden Winkeln einrasten",
+    NetSide: "An Fahrbahnkanten einrasten",
+    ObjectSide: "An Gebäudekanten einrasten",
+    GuideLines: "An Hilfslinien einrasten",
+    ZoneGrid: "Am Zonenraster einrasten",
+  } as Record<string, string>,
+  stilHochkant: "Hochkant",
+  stilHorizontal: "Horizontal",
+  tooltipStil:
+    "Wechselt zwischen schmaler Spalte links und breiter Leiste über der "
+    + "Werkzeugleiste. Die Einstellungen sind in beiden dieselben.",
+  artNameGasse: "Gasse",
   artNameFussweg: "Fußweg",
   artNameEinfahrt: "Einfahrt",
   artNameAusfahrt: "Ausfahrt",
@@ -828,6 +894,10 @@ const de: Texte = {
   tooltipBuchtsymbole:
     "Malt die Linien und die Zeichen für Behinderten- und E-Plätze.",
   tooltipZufahrt: "Hier fahren die Autos rein und wieder raus.",
+  tooltipGasse:
+    "Wird gesetzt wie eine Zufahrt, aber als unsichtbare Gasse gebaut. "
+    + "Die Straße draußen bekommt dadurch eine echte Einmündung, und ihr "
+    + "Bordstein geht auf. Ein paar Zonenkacheln kostet das dort.",
   tooltipFussweg:
     "Der Weg zu Fuß. Behinderten- und E-Plätze rücken hierher.",
   tooltipEinfahrt: "Nur rein. Braucht anderswo eine Ausfahrt.",

@@ -45,10 +45,27 @@ namespace ParkingLotTool.Tools
      * System wie die Vorflaeche in `PrefabUpdate` davor und nie aus
      * `ToolUpdate` heraus.
      */
+    /**
+     * Wozu ein Klon gebraucht wird - und damit, ob er einen Zonenblock
+     * bekommt.
+     */
+    public enum Strassenklonart
+    {
+        /** Die Zoningstrasse im Parkplatz. Braucht den Zonenblock. */
+        Zoning,
+        /**
+         * Die Zufahrtsgasse zwischen Stadtstrasse und Polygonrand. Sie ist
+         * nur da, um den Bordstein zu oeffnen, und darf kein Bauland
+         * erzeugen.
+         */
+        Zufahrtsgasse,
+    }
+
     public sealed partial class ParkingLotZoningRoadPrefabSystem : GameSystemBase
     {
         private sealed class Eintrag
         {
+            public Strassenklonart Art;
             public Entity Original;
             public Entity KlonEntity;
             public RoadPrefab Klon;
@@ -91,15 +108,25 @@ namespace ParkingLotTool.Tools
          * welches der Nutzer beim Bauen gewaehlt hatte, weiss der Spielstand,
          * das Hauptmenue aber nicht.
          */
-        private static readonly string[] StandardStrassen =
+        private static readonly (string Name, Strassenklonart Art)[] StandardStrassen =
         {
-            "Alley", "Gravel Road",
+            ("Alley", Strassenklonart.Zoning),
+            ("Gravel Road", Strassenklonart.Zoning),
+            // Die Zufahrtsgasse gibt es nur aus der Gasse; sie ist die
+            // schmalste Vanilla-Strasse mit Bordsteinrampe.
+            ("Alley", Strassenklonart.Zufahrtsgasse),
         };
 
-        private readonly Dictionary<Entity, Eintrag> _eintraege
-            = new Dictionary<Entity, Eintrag>();
-        private readonly HashSet<string> _gesaet
-            = new HashSet<string>(StringComparer.Ordinal);
+        /*
+         * Der Schluessel ist Vorbild UND Sorte: aus derselben Gasse entstehen
+         * zwei verschiedene Klone, und der eine darf den anderen nicht
+         * verdraengen.
+         */
+        private readonly Dictionary<(Entity Vorbild, Strassenklonart Art), Eintrag>
+            _eintraege
+            = new Dictionary<(Entity, Strassenklonart), Eintrag>();
+        private readonly HashSet<(string Name, Strassenklonart Art)> _gesaet
+            = new HashSet<(string, Strassenklonart)>();
         private EntityQuery _strassenprefabs;
         private PrefabSystem _prefabSystem;
 
@@ -148,12 +175,12 @@ namespace ParkingLotTool.Tools
                         out var vorbild) || vorbild == null) continue;
                 for (var n = 0; n < StandardStrassen.Length; n++)
                 {
-                    var name = StandardStrassen[n];
-                    if (_gesaet.Contains(name)) continue;
-                    if (!string.Equals(vorbild.name, name,
+                    var eintrag = StandardStrassen[n];
+                    if (_gesaet.Contains(eintrag)) continue;
+                    if (!string.Equals(vorbild.name, eintrag.Name,
                             StringComparison.Ordinal)) continue;
-                    _gesaet.Add(name);
-                    FordereAn(kandidaten[i], out _, out _);
+                    _gesaet.Add(eintrag);
+                    FordereAn(kandidaten[i], eintrag.Art, out _, out _);
                 }
             }
         }
@@ -163,15 +190,16 @@ namespace ParkingLotTool.Tools
          * OnUpdate und damit in der richtigen Phase. Rueckgabe ist
          * `Entity.Null`, solange der Klon nicht fertig ist.
          */
-        public Entity FordereAn(Entity original, out bool fehlgeschlagen,
-            out bool aufgegeben)
+        public Entity FordereAn(Entity original, Strassenklonart art,
+            out bool fehlgeschlagen, out bool aufgegeben)
         {
             fehlgeschlagen = false;
             aufgegeben = false;
             if (original == Entity.Null || !EntityManager.Exists(original))
                 return Entity.Null;
 
-            if (!_eintraege.TryGetValue(original, out var eintrag))
+            var schluessel = (original, art);
+            if (!_eintraege.TryGetValue(schluessel, out var eintrag))
             {
                 if (!_prefabSystem.TryGetPrefab<RoadPrefab>(original,
                         out var vorbild) || vorbild == null)
@@ -181,7 +209,10 @@ namespace ParkingLotTool.Tools
                     fehlgeschlagen = true;
                     return Entity.Null;
                 }
-                if (vorbild.m_ZoneBlock == null)
+                // Nur die Zoningstrasse braucht den Block. Die Zufahrtsgasse
+                // wirft ihn gleich wieder weg und kaeme mit dieser Schranke
+                // gar nicht erst durch.
+                if (art == Strassenklonart.Zoning && vorbild.m_ZoneBlock == null)
                 {
                     Mod.log.Warn("PLT-Zoningstrasse: '" + vorbild.name
                         + "' hat keinen ZoneBlock; daran wuerde nichts wachsen.");
@@ -191,11 +222,12 @@ namespace ParkingLotTool.Tools
 
                 eintrag = new Eintrag
                 {
+                    Art = art,
                     Original = original,
                     KlonEntity = Entity.Null,
-                    Name = "PLT Zoningstrasse (" + vorbild.name + ")",
+                    Name = Klonname(art) + " (" + vorbild.name + ")",
                 };
-                _eintraege.Add(original, eintrag);
+                _eintraege.Add(schluessel, eintrag);
                 Mod.log.Info("PLT-Zoningstrasse: '" + eintrag.Name
                     + "' fuer den naechsten PrefabUpdate-Zyklus angefordert.");
             }
@@ -289,6 +321,16 @@ namespace ParkingLotTool.Tools
                 }
 
                 LeereDirekteSubObjects(eintrag, klon);
+
+                /*
+                 * DER EINE UNTERSCHIED ZWISCHEN DEN BEIDEN SORTEN.
+                 *
+                 * Die Gasse liegt zwischen Stadtstrasse und Polygonrand.
+                 * Mit Zonenblock entstuende genau dort Bauland - in dem
+                 * Streifen, den der Nutzer als Zufahrt gezeichnet hat.
+                 */
+                if (eintrag.Art == Strassenklonart.Zufahrtsgasse)
+                    klon.m_ZoneBlock = null;
 
                 if (!BlendeQuerschnitteAus(eintrag, original, klon))
                 {
@@ -674,12 +716,17 @@ namespace ParkingLotTool.Tools
             var block = roadData
                 && EntityManager.GetComponentData<RoadData>(entity)
                     .m_ZoneBlockPrefab != Entity.Null;
+            // Bei der Zufahrtsgasse ist der FEHLENDE Block die Abnahme.
+            var blockStimmt = eintrag.Art == Strassenklonart.Zoning
+                ? block : !block;
 
             zustand = "NetData=" + JaNein(netData)
                 + ", RoadData=" + JaNein(roadData)
                 + ", NetGeometryData=" + JaNein(geometrie)
-                + ", ZoneBlockPrefab=" + JaNein(block) + ".";
-            return netData && roadData && geometrie && block;
+                + ", ZoneBlockPrefab=" + JaNein(block)
+                + " (erwartet " + JaNein(eintrag.Art == Strassenklonart.Zoning)
+                + ").";
+            return netData && roadData && geometrie && blockStimmt;
         }
 
         private void Fehlschlag(Eintrag eintrag, string grund)
@@ -690,6 +737,10 @@ namespace ParkingLotTool.Tools
         }
 
         private static string JaNein(bool wert) => wert ? "ja" : "nein";
+
+        private static string Klonname(Strassenklonart art)
+            => art == Strassenklonart.Zoning
+                ? "PLT Zoningstrasse" : "PLT Zufahrtsgasse";
     }
 
     /**

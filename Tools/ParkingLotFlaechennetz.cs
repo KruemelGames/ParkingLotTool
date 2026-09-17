@@ -108,6 +108,17 @@ namespace ParkingLotTool.Tools
         private sealed class Netzgruppe
         {
             internal Mesh Netz;
+            /**
+             * Die Huelle fuer die Sichtbarkeitspruefung, wenn sie NICHT aus
+             * dem Netz kommen kann.
+             *
+             * Bei den Flaechen liegt das Netz in Weltkoordinaten, da stimmt
+             * `Netz.bounds`. Bei Instanzen liegt das Netz im Ursprung und
+             * die Orte stehen im Puffer - den Unity nicht kennt. Wer die
+             * Huelle dann nicht selbst setzt, dessen Instanzen werden alle
+             * weggekappt.
+             */
+            internal Bounds? Huelle;
             internal Material Material;
             internal ComputeBuffer Puffer;
             internal ComputeBuffer Argumente;
@@ -186,6 +197,190 @@ namespace ParkingLotTool.Tools
         // BELAGSFLAECHEN - eine Gruppe je Materialsorte, je Vorschaulauf neu.
         // ------------------------------------------------------------------
 
+        // ------------------------------------------------------------------
+        // PFLANZEN - eine Scheibe, viele Instanzen.
+        // ------------------------------------------------------------------
+
+        /**
+         * Wieviele Ecken die Scheibe hat.
+         *
+         * Zehn reichen: bei 2 m Durchmesser auf Spielentfernung ist der
+         * Unterschied zu einem echten Kreis nicht zu sehen, und die Zahl
+         * geht in JEDE Instanz ein - acht Dreiecke mal zehntausend ist
+         * etwas anderes als zwanzig mal zehntausend.
+         */
+        private const int Scheibenecken = 10;
+
+        /**
+         * Obergrenze der Instanzen.
+         *
+         * Nicht wegen der Zeichenleistung - die ist bei Instanzen fast
+         * unabhaengig von der Zahl -, sondern wegen des Puffers: jeder
+         * Eintrag sind zwei Matrizen und eine Farbe, also 144 Byte. 60.000
+         * Pflanzen waeren 8,6 MB, die bei jeder Aenderung neu zur
+         * Grafikkarte gehen.
+         */
+        private const int MaxPflanzen = 60000;
+
+        private readonly Netzgruppe _pflanzen = new Netzgruppe();
+        private Mesh _scheibe;
+        private int _pflanzenAnzahl;
+
+        /**
+         * Legt die Pflanzen als Instanzen an.
+         *
+         * `hell` ist der Aufschlag fuer Buesche - der Nutzer wollte sie
+         * heller als die Baeume. Weil die Farbe je Instanz im Puffer steht,
+         * kostet das nichts: keine zweite Gruppe, kein zweiter Aufruf.
+         */
+        internal void FuegePflanzen(
+            System.Collections.Generic.IReadOnlyList<(float3 Position, bool Tree)> pflanzen,
+            Color farbeBaum, Color farbeBusch,
+            float durchmesserBaum, float durchmesserBusch)
+        {
+            var vorher = _pflanzenAnzahl;
+            _pflanzenAnzahl = 0;
+            if (!HoleVorlage())
+            {
+                MeldePflanzen(vorher, "kein Overlay-Material", 0);
+                return;
+            }
+            if (pflanzen == null || pflanzen.Count == 0)
+            {
+                MeldePflanzen(vorher, "keine Pflanzen im Plan", 0);
+                return;
+            }
+
+            BaueScheibe();
+            if (_scheibe == null)
+            {
+                MeldePflanzen(vorher, "Scheibe nicht gebaut", pflanzen.Count);
+                return;
+            }
+            _pflanzen.Netz = _scheibe;
+            _pflanzen.Material ??= new Material(_vorlage)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                name = "PLT Pflanzen",
+            };
+
+            var anzahl = math.min(pflanzen.Count, MaxPflanzen);
+            var daten = new Game.Rendering.OverlayRenderSystem
+                .CustomMeshdData[anzahl];
+            for (var i = 0; i < anzahl; i++)
+            {
+                var (ort, baum) = pflanzen[i];
+                var d = baum ? durchmesserBaum : durchmesserBusch;
+                /*
+                 * Genau so baut CS2 seine eigene Matrix in
+                 * `OverlayRenderSystem.DrawCustomMesh`:
+                 *     Matrix4x4.TRS(position, rot, new float3(w, h, w))
+                 * Die Hoehe bleibt flach - die Scheibe liegt auf dem Boden.
+                 */
+                var m = Matrix4x4.TRS(ort, Quaternion.identity,
+                    new Vector3(d, 1f, d));
+                daten[i] = new Game.Rendering.OverlayRenderSystem.CustomMeshdData
+                {
+                    m_Matrix = m,
+                    m_InverseMatrix = m.inverse,
+                    // Linear, wie bei den Flaechen - der Shader liest den
+                    // Wert unveraendert.
+                    m_FillColor = (baum ? farbeBaum : farbeBusch).linear,
+                    m_Size = new float2(1f, 1f),
+                    m_CustomMeshType = (int)Game.Rendering.OverlayRenderSystem
+                        .CustomMeshType.Plane,
+                };
+            }
+
+            if (_pflanzen.Puffer != null && _pflanzen.Puffer.count != anzahl)
+            {
+                _pflanzen.Puffer.Release();
+                _pflanzen.Puffer = null;
+            }
+            _pflanzen.Puffer ??= new ComputeBuffer(anzahl, System.Runtime
+                .InteropServices.Marshal.SizeOf(typeof(Game.Rendering
+                    .OverlayRenderSystem.CustomMeshdData)));
+            /*
+             * DIE HUELLE UEBER ALLE INSTANZEN, sonst kappt Unity sie weg.
+             * Grosszuegig nach oben: die Scheiben liegen flach, aber die
+             * Kamera schaut schraeg, und eine zu knappe Huelle laesst sie am
+             * Bildrand flackern.
+             */
+            var min = new float3(float.MaxValue);
+            var max = new float3(float.MinValue);
+            for (var i = 0; i < anzahl; i++)
+            {
+                var o = pflanzen[i].Position;
+                min = math.min(min, o);
+                max = math.max(max, o);
+            }
+            var rand = math.max(durchmesserBaum, durchmesserBusch) + 4f;
+            var mitte = (min + max) * 0.5f;
+            var groesse = math.max(max - min, new float3(1f)) + rand * 2f;
+            _pflanzen.Huelle = new Bounds(mitte, groesse);
+
+            _pflanzen.Puffer.SetData(daten);
+            _pflanzen.Material.SetBuffer(
+                Shader.PropertyToID("colossal_OverlayCustomMeshBuffer"),
+                _pflanzen.Puffer);
+            // Ueber dem Belag, unter dem Zoning - dieselbe Skala wie dort.
+            _pflanzen.Material.SetFloat("_TransparentSortPriority", -96f);
+            _pflanzenAnzahl = anzahl;
+
+            MeldePflanzen(vorher, "gezeichnet", pflanzen.Count);
+        }
+
+        private string _pflanzenStand;
+
+        /**
+         * Eine Zeile je AENDERUNG, nicht je Vorschaulauf.
+         *
+         * Der Nutzer hat zweimal gemeldet, dass keine Kreise erscheinen, und
+         * ich habe zweimal eine Erklaerung gehabt statt einer Zahl. Ab jetzt
+         * steht im Log, an welcher Stelle sie verlorengehen.
+         */
+        private void MeldePflanzen(int vorher, string was, int geplant)
+        {
+            var stand = was + " | geplant " + geplant + " | gezeichnet "
+                + _pflanzenAnzahl
+                + (_pflanzen.Huelle.HasValue
+                    ? " | Huelle " + _pflanzen.Huelle.Value.center
+                        + " groesse " + _pflanzen.Huelle.Value.size
+                    : " | keine Huelle")
+                + " | Netz " + (_pflanzen.Netz != null ? "ja" : "nein")
+                + " | Material " + (_pflanzen.Material != null ? "ja" : "nein");
+            if (stand == _pflanzenStand && vorher == _pflanzenAnzahl) return;
+            _pflanzenStand = stand;
+            Mod.log.Info("PLT-Pflanzen: " + stand);
+        }
+
+        /**
+         * Die Scheibe. Einmal gebaut, danach von jeder Instanz benutzt -
+         * das ist der ganze Trick.
+         */
+        private void BaueScheibe()
+        {
+            if (_scheibe != null) return;
+            var punkte = new Vector3[Scheibenecken + 1];
+            var dreiecke = new int[Scheibenecken * 3];
+            punkte[0] = Vector3.zero;
+            for (var i = 0; i < Scheibenecken; i++)
+            {
+                var w = i * 2f * math.PI / Scheibenecken;
+                // Radius 0,5 - damit ist die Skala der Matrix der
+                // DURCHMESSER, so wie ihn die Vorschau angibt.
+                punkte[i + 1] = new Vector3(
+                    0.5f * math.cos(w), 0f, 0.5f * math.sin(w));
+                dreiecke[i * 3] = 0;
+                dreiecke[i * 3 + 1] = i + 1;
+                dreiecke[i * 3 + 2] = (i + 1) % Scheibenecken + 1;
+            }
+            _scheibe = new Mesh { hideFlags = HideFlags.HideAndDontSave };
+            _scheibe.SetVertices(punkte);
+            _scheibe.SetTriangles(dreiecke, 0);
+            _scheibe.RecalculateBounds();
+        }
+
         /** Nichts gefuellt? Dann muss die Vorschau neu fuettern. */
         internal bool Leer => _flaechenAktiv == 0;
 
@@ -233,6 +428,7 @@ namespace ParkingLotTool.Tools
             foreach (var gruppe in _teilnetze) gruppe.Netz = null;
             _flaechenAktiv = 0;
             _teilAktiv = 0;
+            _pflanzenAnzahl = 0;
             _letzteDreiecke = -1;
         }
 
@@ -461,19 +657,46 @@ namespace ParkingLotTool.Tools
          * zeichnet ihn deshalb mit `DrawMeshInstancedIndirect` (Zeile 923) -
          * genau das hier, nur mit unserem Netz und einer einzigen Instanz.
          */
-        private static void ZeichneIndirekt(Netzgruppe gruppe)
+        private static void ZeichneIndirekt(Netzgruppe gruppe,
+                                            int instanzen = 1)
         {
             if (gruppe.Netz == null || gruppe.Material == null) return;
+            var neu = gruppe.Argumente == null;
             gruppe.Argumente ??= new ComputeBuffer(1, 5 * sizeof(uint),
                 ComputeBufferType.IndirectArguments);
-            gruppe.Args[0] = gruppe.Netz.GetIndexCount(0);
-            gruppe.Args[1] = 1;
-            gruppe.Args[2] = gruppe.Netz.GetIndexStart(0);
-            gruppe.Args[3] = gruppe.Netz.GetBaseVertex(0);
-            gruppe.Args[4] = 0;
-            gruppe.Argumente.SetData(gruppe.Args);
+
+            /*
+             * NUR HOCHLADEN, WENN SICH ETWAS GEAENDERT HAT.
+             *
+             * Die vier Werte beschreiben das Netz - Indexzahl, Startindex,
+             * Basisvertex - und aendern sich ausschliesslich beim Neubau.
+             * Bis zum 2026-09-17 gingen sie in JEDEM Bild an die
+             * Grafikkarte.
+             *
+             * Auf der CPU war das nicht messbar; auf der Grafikkarte haben
+             * wir keine Zahl. Eine Uebertragung, die nie etwas Neues
+             * enthaelt, ist trotzdem keine wert.
+             */
+            var index = gruppe.Netz.GetIndexCount(0);
+            var start = gruppe.Netz.GetIndexStart(0);
+            var basis = gruppe.Netz.GetBaseVertex(0);
+            if (neu || gruppe.Args[0] != index || gruppe.Args[2] != start
+                || gruppe.Args[3] != basis
+                || gruppe.Args[1] != (uint)instanzen)
+            {
+                gruppe.Args[0] = index;
+                gruppe.Args[1] = (uint)instanzen;
+                gruppe.Args[2] = start;
+                gruppe.Args[3] = basis;
+                gruppe.Args[4] = 0;
+                ParkingLotMessung.Zaehle(
+                    ParkingLotMessung.Zaehler.Uebertragungen);
+                gruppe.Argumente.SetData(gruppe.Args);
+            }
+            ParkingLotMessung.Zaehle(
+                ParkingLotMessung.Zaehler.Netzgruppen);
             Graphics.DrawMeshInstancedIndirect(gruppe.Netz, 0, gruppe.Material,
-                gruppe.Netz.bounds, gruppe.Argumente, 0, null,
+                gruppe.Huelle ?? gruppe.Netz.bounds, gruppe.Argumente, 0, null,
                 UnityEngine.Rendering.ShadowCastingMode.Off,
                 receiveShadows: false, 0, null);
         }
@@ -481,10 +704,16 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            var uhr = ParkingLotMessung.Start();
             for (var i = 0; i < _flaechen.Count; i++)
                 ZeichneIndirekt(_flaechen[i]);
             for (var i = 0; i < _teilnetze.Count; i++)
                 ZeichneIndirekt(_teilnetze[i]);
+            // EIN Aufruf fuer alle Pflanzen.
+            if (_pflanzenAnzahl > 0)
+                ZeichneIndirekt(_pflanzen, _pflanzenAnzahl);
+            ParkingLotMessung.Ende(
+                ParkingLotMessung.Punkt.Flaechennetz, uhr);
         }
 
         /**
@@ -520,6 +749,11 @@ namespace ParkingLotTool.Tools
                 gruppe.Puffer?.Release();
                 gruppe.Argumente?.Release();
             }
+            // Die Pflanzengruppe gehoert genauso dazu; ein nicht
+            // freigegebener ComputeBuffer meldet sich beim Beenden als
+            // Leck in Unitys Konsole.
+            _pflanzen.Puffer?.Release();
+            _pflanzen.Argumente?.Release();
             _flaechen.Clear();
             _teilnetze.Clear();
             base.OnDestroy();

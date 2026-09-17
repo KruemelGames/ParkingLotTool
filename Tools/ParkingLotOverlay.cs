@@ -28,6 +28,17 @@ namespace ParkingLotTool.Tools
         private readonly List<Band> _roads = new List<Band>();
         private readonly List<Band> _bays = new List<Band>();
         private readonly List<(float3 Position, bool Tree)> _vegetation = new List<(float3, bool)>();
+
+        /**
+         * Die Pflanzen fuer das Flaechennetz.
+         *
+         * Gesammelt werden sie hier, gezeichnet werden sie dort - als
+         * Instanzen einer einzigen Scheibe. Das Overlay zeichnet sie seit
+         * dem 2026-09-17 nicht mehr selbst; 10.467 Einzelkreise je Bild
+         * waren der groesste Posten der gemessenen Zeichenzeit.
+         */
+        internal IReadOnlyList<(float3 Position, bool Tree)> Pflanzen
+            => _vegetation;
         internal void SetVegetation(VegetationPlan plan, VegetationSpecies[] species, TerrainSystem terrain)
         {
             _vegetation.Clear();

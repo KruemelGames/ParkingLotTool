@@ -116,20 +116,82 @@ $zufahrt: #ff5fb0;
 $melden: #f2725c;
 
 /**
- * GRUND UND TEXT. Anders als vorher stehen hier feste Farben statt der
- * Themenvariablen des Spiels. Das ist der Preis fuer die eigene Handschrift:
- * die Leiste bleibt dunkel, auch wenn das Spiel auf ein helles Thema steht.
+ * GRUND UND TEXT - AUS DEN VARIABLEN DES SPIELS.
+ *
+ * Bis zum 2026-09-17 standen hier feste Farben, begruendet mit der eigenen
+ * Handschrift. Das war der Fehler, den der Nutzer und ein Kommentator
+ * gleichzeitig benannt haben: das Panel sah aus wie ein fremdes Programm.
+ *
+ * Der schwerwiegendere Teil ist aber gar nicht die Farbe. `kR()` im
+ * Spielbundle schreibt `--panelOpacityNormal` und `--uiOpacity` bei jeder
+ * Aenderung des Transparenzreglers an `documentElement` und setzt bei 0
+ * zusaetzlich `no-panel-blur` auf den Body. Wer diese Variablen benutzt,
+ * folgt der Einstellung des Nutzers ohne eine Zeile Code. Wer eigene Werte
+ * einsetzt, laesst ihn alles zweimal einstellen.
+ *
+ * Gemessen in `Content/Game/UI/index.css`:
+ *   --panelColorNormal   rgba(42,55,83, var(--panelOpacityNormal))
+ *   --menuText1Normal    rgba(255,255,255,0.8)
+ *   --menuText2Normal    rgba(255,255,255,0.6)
+ *   --menuBorderColor1   rgba(255,255,255,0.1)
+ *   --menuHoverColor     rgba(255,255,255,0.1)
+ *   --menuActiveColor    rgba(255,255,255,0.2)
+ *
+ * KEIN VERLAUF: den traegt in CS2 ausschliesslich
+ * `.overwrite-legacy .tool-options-panel_Se6`. Jedes normale Fenster - auch
+ * die Zonenansicht - ist flach.
+ *
+ * Die drei Werte ohne Vanilla-Pendant bleiben fest; fuer sie gibt es im
+ * Spiel keine Variable, und eine falsch geratene waere schlechter als eine
+ * ehrliche Konstante.
  */
-$grund: rgba(16, 23, 36, 0.88);
-$rand: rgba(126, 172, 214, 0.16);
-$text-1: rgba(255, 255, 255, 0.82);
-$text-2: rgba(255, 255, 255, 0.78);
-$text-3: rgba(255, 255, 255, 0.5);
+/*
+ * DER GRUND DES ALTEN THEMAS.
+ *
+ * Er bleibt die Grundlage, weil CS2 es genauso macht: die flache Farbe
+ * steht in der Basisregel, der Verlauf des aktuellen Themas ueberschreibt
+ * sie weiter unten. Wer die alte Oberflaeche einschaltet, bekommt damit
+ * auch bei uns das Passende.
+ */
+$grund: var(--panelColorNormal);
+$rand: var(--menuBorderColor1);
+$text-1: var(--menuText1Normal);
+$text-2: var(--menuText1Normal);
+$text-3: var(--menuText2Normal);
 $text-4: rgba(255, 255, 255, 0.3);
-$flaeche: rgba(255, 255, 255, 0.06);
-$flaeche-hell: rgba(255, 255, 255, 0.12);
+$flaeche: var(--menuHoverColor);
+$flaeche-hell: var(--menuActiveColor);
 $schiene: rgba(255, 255, 255, 0.09);
-$linie: rgba(255, 255, 255, 0.08);
+$linie: var(--menuBorderColor1);
+
+/**
+ * ECKRUNDUNGEN, gezaehlt in index.css: `--panelRadius` steht 142-mal,
+ * `4rem` 82-mal, `3rem` 38-mal, `10rem` 33-mal. Aufgeloest sind das
+ *
+ *   --panelRadius        4rem    aussen am Fenster, kleine Knoepfe
+ *   --panelRadiusInner   3rem    Flaechen INNERHALB eines Fensters
+ *   --panelContentRadius 10rem   groessere Inhaltsbloecke
+ *
+ * und 9rem an den beiden oberen Ecken eines Reiters (`.tab_Hrb`).
+ */
+/*
+ * ZEHN REM ALS ZAHL, NICHT ALS VARIABLE - und das ist kein Schlendrian.
+ *
+ * `--panelRadius` (4 rem) ist bei 1080p vier Pixel und auf einem Fenster
+ * dieser Groesse nicht als Rundung zu erkennen. CS2 haelt fuer Inhaltsecken
+ * `--panelContentRadius` mit genau 10 rem bereit - aber die Variable steht
+ * in `index.css` auf `.content_qbT` und nicht auf `:root`. Unser Panel
+ * haengt nicht unter diesem Element, `var()` loest ins Leere auf, und ein
+ * ungueltiges `border-radius` ist 0.
+ *
+ * Genau das hat der Nutzer am 2026-09-17 gesehen: nicht weniger rund,
+ * sondern ganz eckig. Nachgezaehlt sitzen die uebrigen 21 benutzten
+ * Variablen alle auf `:root`; diese eine ist die Ausnahme.
+ */
+$eck-panel: 10rem;
+$eck-innen: var(--panelRadiusInner);
+$eck-block: 10rem;
+$eck-reiter: 9rem;
 
 /**
  * Die Leiste haengt am oberen Bildrand: oben eckig, unten rund, und der
@@ -155,13 +217,25 @@ $linie: rgba(255, 255, 255, 0.08);
    * je nach Textgroesse eine andere Summe ergaben.
    */
   box-sizing: border-box;
-  width: 88%;
-  max-width: 1680rem;
-  padding: $s5;
-  border-left: 1rem solid $rand;
-  border-right: 1rem solid $rand;
-  border-bottom: 1rem solid $rand;
-  border-radius: 0 0 12rem 12rem;
+  /* Breite kommt aus dem Stil, siehe .stilHorizontal/.stilHochkant. */
+  /*
+   * KEIN INNENRAND AM PANEL: die Kopfleiste muss bis an die Kanten reichen,
+   * sonst schwebt das dunkle Band in einem hellen Rahmen. Die Polsterung
+   * sitzt deshalb im Inhalt darunter.
+   *
+   * UND KEINE RAENDER: in `index.css` traegt kein einziges Fenster einen.
+   * Die drei hier (links/rechts/unten, oben keiner) stammten aus der Zeit,
+   * als die Leiste am oberen Bildrand klebte.
+   */
+  border-radius: $eck-panel;
+  /*
+   * KEIN `overflow: hidden`, obwohl es fuer die Ecken der Kopfleiste
+   * bequem waere: es wuerde die nach oben aufklappende Flaechenliste und
+   * das Pflanzenfenster abschneiden - beide ragen absichtlich hinaus.
+   *
+   * CS2 loest es genauso: `.header:first-child` bekommt die oberen Radien,
+   * `.footer:last-child` die unteren. Jeder Teil rundet sich selbst.
+   */
   background-color: $grund;
   /**
    * Auch bei 0.88 Deckung traegt die Unschaerfe: sie nimmt der Karte
@@ -169,15 +243,364 @@ $linie: rgba(255, 255, 255, 0.08);
    * macht es jedes Fenster von CS2.
    */
   backdrop-filter: var(--panelBlur);
-  box-shadow: 0 8rem 26rem rgba(0, 0, 0, 0.5);
+  /* Kein Schlagschatten: in index.css steht an keinem Fenster einer.
+     Die Unschaerfe darunter leistet dieselbe Trennung. */
   color: $text-1;
   font-family: var(--fontFamily);
   pointer-events: auto;
 }
 
+/**
+ * Kopfleiste oben, Inhalt darunter - in beiden Stilen.
+ *
+ * Bis zum 2026-09-17 war das eine ZEILE mit der Schiene links. Der Nutzer
+ * hat an CS2s eigenen Menues gezeigt, dass dort ein dunkles Band oben
+ * liegt; das geht nur, wenn die Schiene oben steht.
+ */
 .reihe {
   display: flex;
+  flex-direction: column;
   align-items: stretch;
+}
+
+/* ========================================================= STIL HORIZONTAL */
+/**
+ * Die waagerechte Leiste - der Standard.
+ *
+ * 1680 rem, und die Zahl ist gerechnet, nicht gewaehlt: der Inhalt summiert
+ * sich auf 1568 rem (Schiene 140 + vier Spalten a 230 + Meldespalte 312 +
+ * Handlungsspalte 196), und alle Spalten tragen `flex-shrink: 0`.
+ *
+ * ICH HATTE HIER 1400 STEHEN, und das war der Fehler, den der Nutzer als
+ * "zu hoch" gemeldet hat: 168 rem zu wenig, die Spalten brechen um, und
+ * jede umbrochene Zeile macht das Fenster hoeher statt schmaler.
+ */
+.stilHorizontal {
+  width: 88%;
+  max-width: 1680rem;
+}
+
+/* =========================================================== STIL HOCHKANT */
+/**
+ * Die schmale Spalte unten links - derselbe Ort und dieselbe Breite, an der
+ * CS2 seine eigenen Werkzeugeinstellungen zeigt:
+ *
+ *     .tool-options_Cqd { position:absolute; width:364rem;
+ *                         bottom:12rem; left:12rem }
+ *
+ * Alles hier ist Umlenkung, kein Ausblenden: die Schiene wird vom linken
+ * Rand zur Kopfzeile, die Spalten stapeln sich statt nebeneinander zu
+ * stehen, und der Trenner zwischen Schiene und Inhalt entfaellt, weil es in
+ * dieser Richtung nichts mehr zu trennen gibt - die Kopfzeile bringt ihre
+ * eigene Linie mit.
+ */
+.stilHochkant {
+  width: 364rem;
+  max-width: 364rem;
+  box-sizing: border-box;
+  /*
+   * UND AUSDRUECKLICH KEIN `display: flex` HIER.
+   *
+   * Das stand einen Anlauf lang drin, zusammen mit der Hoechsthoehe am
+   * Panel - und war die Ursache fuer den verstreuten Inhalt. Als Flex-Kasten
+   * macht das Panel `.reihe` zum Flex-Kind, und ein Flex-Kind rechnet nicht
+   * mehr nach Max-Content. `.inhalt` mit Grundmass 0 fiel damit auf 28 px
+   * (die blosse Polsterung) zusammen, alles darunter lief aus dem Kasten
+   * heraus und der Abschluss legte sich ueber die Spalten.
+   *
+   * Die Hoechsthoehe sitzt jetzt an `.reihe`. Dort begrenzt sie, wenn der
+   * Inhalt lang ist, und laesst das Panel schrumpfen, wenn er kurz ist.
+   */
+
+  /* In der schmalen Spalte nimmt der Name die erste Zeile allein, die
+     Reiter die zweite - nebeneinander waere beides zu eng. */
+  .marke {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: $s3;
+  }
+
+  /*
+   * ENGERE REITER UND KLEINERE PFEILE, damit beides in eine Zeile passt.
+   *
+   * Gemessen am Bild des Nutzers: die vier Reiter enden 43 rem vor dem
+   * Rand, zwei Knoepfe zu 22 plus Rand brauchen 52 - der zweite ist
+   * umgebrochen. Sechs rem weniger Polsterung und zwei weniger Abstand je
+   * Reiter machen 32 rem frei, die kleineren Knoepfe brauchen nur 44.
+   */
+  .tab {
+    padding: 4rem 5rem;
+    margin-right: 2rem;
+  }
+
+  .reiterZeile .iconButton {
+    width: 20rem;
+    height: 20rem;
+    margin-right: 2rem;
+  }
+
+  /*
+   * Kein Umbruch mehr: in einer Spalte gibt es nichts umzubrechen, und
+   * `wrap` versuchte weiter, eine zweite Spalte aufzumachen.
+   */
+  /*
+   * GRUNDMASS `auto`, NICHT 0 - das ist der ganze Unterschied.
+   *
+   * `auto` heisst: nimm deine Inhaltshoehe. Begrenzt nichts, steht das
+   * Fenster so hoch wie sein Inhalt; begrenzt die Hoechsthoehe an `.reihe`,
+   * schrumpft der Kasten und gibt seinem Kind eine echte Hoehe. Mit
+   * Grundmass 0 gab es beides nicht: ohne freien Platz war die Hoehe 0.
+   */
+  .inhalt {
+    flex: 1 1 auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /*
+   * NUR DIE EINSTELLUNGEN LAUFEN, DER ABSCHLUSS STEHT.
+   *
+   * Die Gruppe nimmt den Platz, der nach Kopfleiste und Abschluss uebrig
+   * ist. Was dann nicht hineinpasst, bekommt eine Bildlaufleiste - der
+   * Bauknopf bleibt unten stehen, statt weggescrollt zu werden.
+   */
+  .spaltenGruppe {
+    flex: 1 1 auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    min-height: 0;
+    box-sizing: border-box;
+  }
+
+  /*
+   * Die Reiterzeile: Reiter links, Rueckgaengig und Wiederherstellen rechts
+   * daneben. In der schmalen Spalte ist oben neben den Reitern der einzige
+   * Platz, an dem die beiden nicht in einer dritten Knopfreihe verschwinden.
+   */
+  .reiterZeile {
+    width: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Luft zwischen den Reitern und der Knopfreihe darunter. Waagerecht
+     stehen beide in einer Zeile, da gaebe es nichts zu trennen. */
+  .kopfRechts {
+    margin-top: $s4;
+  }
+
+
+
+  /*
+   * ALLE Bloecke: volle Breite, keine Untergrenze, kein seitlicher Rand.
+   * Einzeln nachgezogen hatte ich das schon zweimal und je einen
+   * vergessen - hier steht die Bedingung fuer alle auf einmal.
+   *
+   * `.abschluss` und `.ergebnis` standen bis zum 2026-09-17 NICHT in dieser
+   * Liste, obwohl sie dieselbe Frage beantworten. Waagerecht tragen sie
+   * `flex: 2 1 400rem` und `flex: 1 1 200rem`; in der Spalte ist diese Zahl
+   * keine Breite mehr, sondern eine Grundhoehe - 400 Pixel fuer die zwei
+   * Bloecke am Ende. So wurde die Spalte hoeher als der Bildschirm.
+   */
+  .spalte,
+  .meldeSpalte,
+  .aktionSpalte,
+  .abschluss,
+  .ergebnis {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding-right: 0;
+    box-sizing: border-box;
+  }
+
+  .spalte,
+  .meldeSpalte {
+    padding-bottom: $raum-5;
+  }
+
+  /*
+   * DIE HUELLE DARF HOCHKANT NICHT AUF VOLLE HOEHE.
+   *
+   * `height: 100%` ist die Regel fuer nebeneinanderstehende Spalten. In der
+   * gestapelten Fassung macht sie jede Spalte so hoch wie der sichtbare
+   * Bereich - und damit war ab der zweiten alles unter dem Rand. Sichtbar
+   * war nur LAYOUT und darunter Leere.
+   */
+  .spaltenInhalt {
+    height: auto;
+  }
+
+
+
+  .aktionSpalte {
+    justify-content: flex-start;
+    padding-top: $s4;
+    border-top: 1rem solid $linie;
+  }
+
+  /*
+   * Und der Abschluss stapelt selbst. Er ist waagerecht eine ZEILE aus
+   * Ergebniszahl und Handlungsspalte, mit Trennlinie links - hochkant
+   * stuenden die beiden in 364 rem nebeneinander. Die Linie wandert
+   * entsprechend von links nach oben.
+   */
+  .abschluss {
+    flex-direction: column;
+    padding-left: 0;
+    padding-top: $s4;
+    border-left: none;
+    border-top: 1rem solid $linie;
+  }
+
+  .ergebnis {
+    margin-right: 0;
+    margin-bottom: $s3;
+  }
+
+  /* ------------------------------------------------- Reiter Parkplaetze */
+  /*
+   * Kopf untereinander statt nebeneinander. Waagerecht ist der Block
+   * `flex: 1 1 620rem` breit und schiebt Suche, Filter und Sortierung an
+   * den rechten Rand; in 364 rem ist dafuer kein Platz, und geschrumpft
+   * wird in Gameface nicht - dort ist `flex-shrink` von Haus aus 0.
+   */
+  .listeKopf {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .listeUebersicht {
+    flex: 0 0 auto;
+  }
+
+  .listeKopfAktionen {
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    margin-top: $s3;
+    padding-left: 0;
+  }
+
+  /* Das Suchfeld nimmt die ganze Zeile, der Eingabeteil den Rest davon. */
+  .listeSuchfeld {
+    margin-right: 0;
+    margin-bottom: $s2;
+  }
+
+  .listeKopfAktionen .listeSuche {
+    flex: 1 1 0;
+    width: auto;
+  }
+
+  /* Filter und Sortierung beginnen links, nicht rechts: in einer Spalte
+     gibt es kein "rechts aussen" mehr, an dem sie sich ausrichten. */
+  .listeKopfAktionen .listeFilter {
+    justify-content: flex-start;
+  }
+
+  .listeSortierung {
+    margin-left: 0;
+  }
+
+  .listeSortiermenue {
+    right: auto;
+    left: 0;
+  }
+
+  /* Eine Kachel je Zeile. `min-width: 320rem` haette sonst eine Kachel
+     breiter gemacht als die Spalte. */
+  .listeZelle {
+    flex: 0 0 100%;
+    min-width: 0;
+  }
+}
+
+/* ============================================================ FENSTER */
+/**
+ * Dieselbe Huelle wie das Panel - flach, unscharf, Radius 4 - damit ein
+ * zweites Fenster nicht wie ein Fremdkoerper wirkt.
+ */
+.fenster {
+  position: absolute;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  border-radius: $eck-panel;
+  background-color: $grund;
+  backdrop-filter: var(--panelBlur);
+  color: $text-1;
+  font-family: var(--fontFamily);
+  pointer-events: auto;
+}
+
+.fensterKopf {
+  display: flex;
+  align-items: center;
+  min-height: 36rem;
+  padding: $s3 $s4;
+  border-bottom: 1rem solid $linie;
+  cursor: pointer;
+}
+
+.fensterTitel {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--menuTitleNormal);
+  font-size: $type-marke;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.fensterSchliessen {
+  flex-shrink: 0;
+  width: 22rem;
+  height: 22rem;
+  padding: 0;
+  border: none;
+  border-radius: $s2;
+  background-color: $flaeche;
+  color: $text-1;
+  font-size: $type-md;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+}
+
+.fensterInhalt {
+  padding: $s4;
+  min-width: 0;
+}
+
+/**
+ * Der Stilumschalter ist ein Textknopf, kein Symbolknopf - er traegt den
+ * Namen des Stils, in den er wechselt. Deshalb ueberschreibt er die feste
+ * Breite von `.iconButton`.
+ */
+.stilKnopf {
+  width: auto;
+  padding: 0 $s2;
+  color: $text-1;
+}
+
+/**
+ * Zwei Pfeile in der Richtung des ANDEREN Stils: hochkant uebereinander,
+ * waagerecht nebeneinander. Die Anordnung sagt dasselbe wie die Pfeile
+ * selbst - wer die Symbole nicht liest, sieht die Richtung trotzdem.
+ */
+.stilPfeile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 11rem;
+    height: 11rem;
+  }
 }
 
 /**
@@ -192,6 +615,12 @@ $linie: rgba(255, 255, 255, 0.08);
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
+  /* Uebernimmt die Polsterung, die vorher am Panel sass, und rundet die
+     unteren Ecken selbst - siehe den Hinweis an `.panel`. */
+  padding: $s5;
+  box-sizing: border-box;
+  border-bottom-left-radius: $eck-panel;
+  border-bottom-right-radius: $eck-panel;
 }
 
 .spaltenGruppe {
@@ -247,17 +676,43 @@ $linie: rgba(255, 255, 255, 0.08);
  * Die ganze Spalte ist zugleich der GRIFF zum Verschieben; Reiter und
  * Knoepfe halten das Mausereignis selbst auf.
  */
+/**
+ * DIE KOPFLEISTE, nach `.title-bar_I7O` aus `index.css`.
+ *
+ * Sie traegt Namen, Reiter und Fensterknoepfe und ist zugleich der Griff
+ * zum Verschieben - deshalb `cursor: pointer` und das `haltAn` an jedem
+ * Knopf darin.
+ */
 .rail {
   flex-shrink: 0;
-  width: 140rem;
-  margin-right: $s5 + $s1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: $s2 $s6;
+  background-color: var(--panelGradientDarkStart);
+  backdrop-filter: var(--panelBlur);
+  border-top-left-radius: $eck-panel;
+  border-top-right-radius: $eck-panel;
   cursor: pointer;
 }
 
 .marke {
   display: flex;
   align-items: center;
-  margin-bottom: $s5 - $s1;
+  margin-right: $s5;
+}
+
+/**
+ * Die Reiter als eine Einheit.
+ *
+ * Waagerecht aendert das nichts - die Reiter standen schon nebeneinander in
+ * einer Zeile, die breit genug ist. Hochkant ist es die Zeile, in der rechts
+ * Rueckgaengig und Wiederherstellen sitzen.
+ */
+.reiterZeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .markeStrich {
@@ -285,23 +740,34 @@ $linie: rgba(255, 255, 255, 0.08);
   padding: 5rem 8rem;
   margin-bottom: $s2;
   border: none;
-  border-radius: 5rem;
-  background-color: rgba(255, 255, 255, 0);
-  color: $text-3;
+  border-radius: $eck-reiter;
+  background-color: $flaeche;
+  color: $text-1;
   font-size: $type-sm;
   white-space: nowrap;
   text-align: left;
   cursor: pointer;
+  /* In der Kopfzeile stehen die Reiter nebeneinander, nicht untereinander. */
+  margin-right: $s2;
+  margin-bottom: 0;
 
-  &:hover { background-color: $flaeche; }
+  &:hover { background-color: $flaeche-hell; }
 }
 
+/**
+ * DER GEWAEHLTE REITER TRAEGT DIE FARBE DES PANELS.
+ *
+ * Ansage des Nutzers am 2026-09-17. Es ist zugleich das Vanilla-Verhalten:
+ * ein Reiter ist kein Knopf, sondern der nach oben gezogene Rand des
+ * Fensters. Die bisherige Fuellung in Cyan machte ihn zum lautesten Element
+ * im ganzen Panel, obwohl er nur sagt, wo man gerade ist.
+ */
 .tabAktiv {
-  background-color: $fahrwege;
-  color: #0d1520;
+  background-color: $grund;
+  color: var(--menuTitleNormal);
   font-weight: bold;
 
-  &:hover { background-color: $fahrwege; }
+  &:hover { background-color: $grund; }
 }
 
 /**
@@ -320,7 +786,10 @@ $linie: rgba(255, 255, 255, 0.08);
 
 /** Der Meldereiter traegt Korallrot - dieselbe Farbe wie der Bericht. */
 .tabMelden {
-  margin-bottom: $s4 + $s1;
+  /* KEIN Sonderabstand mehr. Der Melde-Reiter war frueher durch eine
+     Luecke abgesetzt; in einer Reihe sieht man davon nur, dass ein
+     Zwischenraum groesser ist als die anderen. Seine Farbe setzt ihn
+     deutlich genug ab. */
   color: rgba(242, 114, 92, 0.85);
 }
 
@@ -334,6 +803,105 @@ $linie: rgba(255, 255, 255, 0.08);
 
 .kopfKnoepfe {
   display: flex;
+  align-items: center;
+
+  /* Der letzte Knopf schliesst buendig mit dem Rand ab. */
+  > *:last-child { margin-right: 0; }
+}
+
+/**
+ * Die Fangschalter. Sie stehen rechts, direkt vor den Fensterknoepfen -
+ * dort, wo sie zum Werkzeug gehoeren und nicht zwischen die Reiter geraten.
+ */
+/**
+ * Die rechte Gruppe der Kopfzeile: Fangschalter, Trenner, Fensterknoepfe.
+ *
+ * EIN `margin-left: auto` fuer alles zusammen. Vorher hatte jeder Block
+ * seines, und das haelt nur, solange die Zeile nicht umbricht - danach
+ * begann die zweite Zeile wieder links.
+ */
+/**
+ * Schiebt alles rechts davon an den Rand. Ein wachsender Zwischenraum
+ * statt einer Auto-Marge: die hat in Cohtml nicht geschoben, und CS2
+ * benutzt sie selbst fast nirgends.
+ */
+.kopfFueller {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.kopfRechts {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Trennt die Fangschalter von den Fensterknoepfen: zwei Gruppen, zwei
+   Aufgaben. Ohne ihn stehen sieben Symbole in einer Reihe und sehen aus
+   wie eines. */
+.kopfTrenner {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 18rem;
+  margin: 0 $s4;
+  background-color: $rand;
+}
+
+.fangZeile {
+  display: flex;
+  align-items: center;
+  /* Kein Trenner zum Sammelschalter davor - der gehoert zur selben
+     Gruppe. Abstand zur Nachbargruppe traegt der Trenner dort. */
+  margin-left: $s4;
+}
+
+/*
+ * DER STRICH ZWISCHEN SAMMELSCHALTER UND EINZELARTEN IST WEG.
+ *
+ * Ansage des Nutzers: er trennte dort, wo nichts zu trennen ist - "alle
+ * ein/aus" und die einzelnen Arten sind dieselbe Gruppe. Der Abstand
+ * allein reicht.
+ */
+
+.fangKnopf {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24rem;
+  height: 24rem;
+  /*
+   * LUFT ZWISCHEN DEN FANGSCHALTERN.
+   *
+   * Ansage des Nutzers am 2026-09-17: sie sollen einzeln stehen. Bei 2 rem
+   * klebten sieben Symbole zu einem Balken zusammen; jedes ist aber ein
+   * eigener Schalter mit eigenem Zustand, und den soll man einzeln
+   * treffen und einzeln lesen koennen.
+   */
+  margin-right: $s3;
+  padding: 0;
+  border: none;
+  border-radius: $s2;
+  background-color: rgba(255, 255, 255, 0);
+  cursor: pointer;
+
+  img {
+    width: 18rem;
+    height: 18rem;
+    /* Aus heisst blass, nicht weg: man soll sehen, dass es den Fang gibt. */
+    opacity: 0.35;
+  }
+
+  /* Der letzte schliesst buendig mit dem Trenner ab. */
+  &:last-child { margin-right: 0; }
+
+  &:hover { background-color: $flaeche; }
+}
+
+.fangAn {
+  background-color: $flaeche-hell;
+
+  img { opacity: 1; }
 }
 
 .iconButton {
@@ -369,11 +937,11 @@ $linie: rgba(255, 255, 255, 0.08);
   color: $text-1;
 }
 
+/* Der senkrechte Trenner zwischen Schiene und Inhalt hat keine Aufgabe
+   mehr, seit die Schiene oben liegt - die Kopfleiste trennt durch ihre
+   eigene Farbe. */
 .trenner {
-  flex-shrink: 0;
-  width: 1rem;
-  margin-right: $s5 + $s1;
-  background-color: $linie;
+  display: none;
 }
 
 /* ------------------------------------------------------------------- Spalte */
@@ -415,6 +983,51 @@ $linie: rgba(255, 255, 255, 0.08);
   font-size: $type-md;
   font-weight: bold;
   letter-spacing: 0.05em;
+}
+
+/**
+ * Die anklickbare Fassung der Ueberschrift.
+ *
+ * Sie soll im Ruhezustand NICHT wie ein Knopf aussehen - dieselbe Ansage wie
+ * beim Vegetationsnamen: ein Panel voller Schaltflaechen, von denen die
+ * Haelfte nur Text ist, liest sich schlechter als eines mit einer
+ * Hoverflaeche.
+ */
+.spaltenTitelKlapp {
+  margin-left: -$s2;
+  margin-right: -$s2;
+  padding: 2rem $s2;
+  border-radius: $eck-innen;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche; }
+}
+
+/**
+ * Der Pfeil am Ende der Ueberschrift.
+ *
+ * Als MASKE, nicht als Bild: ein `Media/Glyphs`-SVG bringt seine eigene
+ * Farbe mit, und die passt selten. Das Spiel macht es an seinen Haken und
+ * Kreuzen genauso (`mask-image` steht 26-mal in `index.css`); gezeichnet
+ * wird die Hintergrundfarbe, die Datei gibt nur die Form.
+ */
+.klappPfeil {
+  flex-shrink: 0;
+  width: 12rem;
+  height: 12rem;
+  margin-left: 7rem;
+  mask-size: 100%;
+  background-color: $text-1;
+  opacity: 0.7;
+}
+
+/** Dasselbe fuer die Fensterknoepfe in der Kopfleiste, in Weiss. */
+.kopfGlyph {
+  flex-shrink: 0;
+  width: 13rem;
+  height: 13rem;
+  mask-size: 100%;
+  background-color: #ffffff;
 }
 
 .spaltenLinie {
@@ -764,7 +1377,7 @@ $linie: rgba(255, 255, 255, 0.08);
 
 .schalterGriffAn {
   left: 14rem;
-  background-color: #101724;
+  background-color: var(--commonDarkBlue);
 }
 
 /* ------------------------------------------------------------- Ergebnis */
@@ -901,7 +1514,10 @@ $linie: rgba(255, 255, 255, 0.08);
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 74rem;
+  /* 74 rem waren fuer Bild, Name und "Enter" untereinander gerechnet - die
+     stehen aber nebeneinander. 54 lassen dem Text dieselbe Luft und geben
+     hochkant zwanzig Pixel an die Einstellungen zurueck. */
+  height: 54rem;
   margin-bottom: $s2 + $s2;
   padding: $s3 $s4;
   border: none;
@@ -1230,11 +1846,48 @@ $linie: rgba(255, 255, 255, 0.08);
  * Der aufgeklappte Kasten. Feste Hoehe und Scrollen, damit ein Flaechen-Mod
  * mit fuenfzig Eintraegen das Panel nicht sprengt.
  */
+/**
+ * Bezugsrahmen fuer die aufklappende Liste. Ohne ihn suchte sich das
+ * absolute Gitter den naechsten positionierten Vorfahren - und das ist das
+ * ganze Panel.
+ */
+.auswahl {
+  position: relative;
+}
+
+/**
+ * NACH OBEN, NICHT NACH UNTEN.
+ *
+ * Ansage des Nutzers am 2026-09-17. Nach unten schob die Liste alles weg,
+ * was unter ihr lag; in der Hochkant-Spalte war das der gesamte Rest. Nach
+ * oben ist zugleich die einzige Richtung, die in BEIDEN Stilen aufgeht -
+ * die Flaechenspalte steht in beiden unten.
+ *
+ * Weil sie jetzt ueber dem Inhalt schwebt, braucht sie einen eigenen Grund.
+ * `--menuPanel1` mit `--menuBlur` ist der, den CS2 fuer seine eigenen
+ * ueberlagernden Listen benutzt.
+ *
+ * ZU `bottom: 100%`: der Wert selbst kommt in `index.css` nicht vor, seine
+ * Spiegelung `top: 100%` aber viermal - genau fuer nach UNTEN aufklappende
+ * Listen. Prozentwerte an top/left/right/bottom benutzt das Spiel an 48
+ * Stellen. Der Mechanismus ist damit belegt, nur diese Richtung braucht
+ * CS2 selbst nirgends.
+ */
 .flaechenGitter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  z-index: 20;
   display: flex;
   flex-wrap: wrap;
-  max-height: 200rem;
-  margin-top: $s1;
+  max-height: 260rem;
+  margin-bottom: $s2;
+  padding: $s2;
+  border: 1rem solid $rand;
+  border-radius: $eck-innen;
+  background-color: var(--menuPanel1);
+  backdrop-filter: var(--menuBlur);
   overflow-y: auto;
 }
 
@@ -1346,7 +1999,7 @@ $linie: rgba(255, 255, 255, 0.08);
   padding: $s6;
   border: 1rem solid $rand;
   border-radius: $s3;
-  background-color: rgb(16, 23, 36);
+  background-color: var(--panelColorDark);
   color: $text-1;
 }
 
@@ -1523,11 +2176,15 @@ $linie: rgba(255, 255, 255, 0.08);
 .artEinfahrt { border-left: 5rem solid #4fc3f7; }
 .artAusfahrt { border-left: 5rem solid #f2c14e; }
 .artFussweg  { border-left: 5rem solid #7ed957; }
+/* Dunkles Rot: die Gasse gehoert farblich zur Zufahrt, muss sich aber von
+   deren Orange auf einen Blick trennen lassen. */
+.artGasse    { border-left: 5rem solid #bb3552; }
 
 .artZufahrt.artAktiv  { background-color: rgba(224, 90, 43, 0.40); }
 .artEinfahrt.artAktiv { background-color: rgba(79, 195, 247, 0.40); }
 .artAusfahrt.artAktiv { background-color: rgba(242, 193, 78, 0.40); }
 .artFussweg.artAktiv  { background-color: rgba(126, 217, 87, 0.40); }
+.artGasse.artAktiv    { background-color: rgba(187, 53, 82, 0.40); }
 
 /*
  * DIE OBERGRENZE IST EINE BILDUNTERSCHRIFT, KEIN FUENFTER KNOPF.
@@ -1911,7 +2568,7 @@ $linie: rgba(255, 255, 255, 0.08);
   color: $fahrwege;
   cursor: pointer;
 
-  &:hover { color: #8fd8fb; }
+  &:hover { color: var(--accentColorLight); }
 }
 
 /* Parkplatzverwaltung: begrenzte Hoehe, scharfe Kontraste wie im Draft. */
@@ -1935,7 +2592,8 @@ $linie: rgba(255, 255, 255, 0.08);
 .listeAktiv { border-color: $fahrwege; background-color: rgba(79,195,247,0.18); color: #fff; }
 .listeSortierung { position: relative; margin-left: auto; }
 .listeSortiermenue { position: absolute; right: 0; top: 100%; z-index: 10; padding: $s2;
-  background-color: #182637; border: 1rem solid $rand; border-radius: $s2; min-width: 160rem;
+  background-color: var(--panelColorDark); backdrop-filter: var(--panelBlur);
+  border: 1rem solid $rand; border-radius: $eck-innen; min-width: 160rem;
   .listeTextknopf { display: block; width: 100%; text-align: left; }
 }
 .listeInfosteuerung { display: flex; align-items: center; flex-wrap: wrap; padding: $s2 0 $s3;
@@ -1947,7 +2605,7 @@ $linie: rgba(255, 255, 255, 0.08);
 .listeScroll { max-height: 420rem; overflow-y: auto; overflow-x: hidden; }
 .listeGitter { align-content: flex-start; }
 .listeZelle { flex-basis: 33.333%; min-width: 320rem; }
-.listeKachel { background-color: #1c2b3e; border-color: rgba(126,172,214,0.3); border-radius: $s2; }
+.listeKachel { background-color: $flaeche; border-color: $rand; border-radius: $eck-innen; }
 .listeKachelMangel { border-left: 3rem solid $melden; }
 .listeKopfzeile { margin-bottom: $s3; }
 .listeName { max-width: 100%; padding: 0; background-color: transparent; border: none;
@@ -1970,7 +2628,8 @@ $linie: rgba(255, 255, 255, 0.08);
   cursor: pointer; }
 .listeGebuehrBett { position: absolute; top: 10rem; left: 0; right: 0; height: 6rem;
   background-color: rgba(255,255,255,0.18); border-radius: 3rem; }
-.listeGebuehrFuellung { height: 100%; border-radius: 3rem; background-color: $fahrwege; }
+.listeGebuehrFuellung { height: 100%; border-radius: 3rem;
+  background-color: var(--accentColorNormal); }
 .listeGebuehrGriff { position: absolute; top: 7rem; width: 12rem; height: 12rem;
   margin-left: -6rem; border-radius: 6rem; background-color: #fff; }
 .listeGebuehrEingabe { width: 34rem; padding: $s2; color: #fff; text-align: center;
@@ -2015,3 +2674,84 @@ $linie: rgba(255, 255, 255, 0.08);
   &:hover { background-color: rgba(79,195,247,0.18); }
 }
 .listeNotiz .listeHinweis { margin-top: 0; background-color: transparent; }
+
+/* ========================================================= THEMA-FASSUNG */
+/**
+ * DER PANELGRUND DES AKTUELLEN THEMAS.
+ *
+ * `LegacyInterfaceProvider` in `index.js` haengt an `document.body` genau
+ * eine der beiden Klassen `legacy-interface` / `overwrite-legacy`. Ohne die
+ * alte Oberflaeche ist es `overwrite-legacy`, und dann zeichnet CS2 seine
+ * Panelkoerper nicht flach, sondern als Verlauf:
+ *
+ *     .overwrite-legacy .content_rep {
+ *       background-image: linear-gradient(var(--panelGradientStart),
+ *                                         var(--panelGradientEnd));
+ *       background-color: rgba(0,0,0,0);
+ *     }
+ *
+ * Aufgeloest sind das rgba(45,79,92,0.90) nach rgba(39,55,78,0.90) - gegen
+ * unsere flachen rgba(42,55,83,0.55). Der sichtbare Unterschied lag also
+ * weniger am Blauton als an den 35 Prozentpunkten Deckung.
+ *
+ * Die Grundfarbe muss dabei ausdruecklich durchsichtig werden, sonst
+ * schimmert sie unter dem Verlauf durch - auch das steht so in `index.css`.
+ */
+.panel,
+.fenster {
+  background-image: linear-gradient(var(--panelGradientStart),
+                                    var(--panelGradientEnd));
+  /*
+   * Die flache Farbe muss ausdruecklich weg, sonst schimmert sie unter dem
+   * Verlauf durch. Genau so steht es in `index.css`.
+   */
+  background-color: rgba(0, 0, 0, 0);
+}
+
+/*
+ * Der aktive Reiter traegt die Panelfarbe - so bestellt. Auf 20 rem Hoehe
+ * ist ein Verlauf sinnlos, also der Anfangston: der Reiter sitzt oben, dort
+ * faengt der Verlauf an.
+ */
+.tabAktiv,
+.tabAktiv:hover {
+  background-color: var(--panelGradientStart);
+}
+
+/**
+ * UND DIE ALTE OBERFLAECHE ALS AUSNAHME.
+ *
+ * `useLegacyInterface` ist eine Spieleinstellung; ist sie an, haengt
+ * `legacy-interface` am `body` und CS2 zeichnet seine Panelkoerper wieder
+ * flach. Dann tun wir es auch.
+ *
+ * Herum gebaut ist es so, weil die Gegenprobe nicht sicher ist: findet sich
+ * `overwrite-legacy` aus irgendeinem Grund nicht am `body`, faellt der
+ * Verlauf lautlos aus. So faellt hoechstens die Ausnahme aus, und das
+ * Normale stimmt immer.
+ */
+:global(body.legacy-interface) {
+  .panel,
+  .fenster {
+    background-image: none;
+    background-color: $grund;
+  }
+
+  .tabAktiv,
+  .tabAktiv:hover {
+    background-color: $grund;
+  }
+}
+
+/**
+ * Und die alte Oberflaeche, damit sie nicht auffaellt.
+ *
+ * `.title-bar_I7O` traegt im aktuellen Thema `--panelGradientDarkStart`
+ * (das haben wir), und nur unter `.legacy-interface` wird daraus
+ * `--panelColorDark`.
+ */
+:global(body.legacy-interface) {
+  .rail {
+    background-color: var(--panelColorDark);
+  }
+}

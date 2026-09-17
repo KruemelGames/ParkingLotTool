@@ -55,6 +55,8 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            using var uhr = ParkingLotMessung.Miss(
+                ParkingLotMessung.Sys.Strassenname);
             if (_offen.Count == 0) return;
 
             var nameSystem = World.GetOrCreateSystemManaged<Game.UI.NameSystem>();

@@ -74,6 +74,148 @@ namespace ParkingLotTool.Tools
         private const float OnewayPathWidth = 4f;
         private const float PedestrianPathWidth = 2f;
 
+        /**
+         * Wie weit die Gasse ueber den Fahrbahnrand hinausragen MUSS.
+         *
+         * Gemessen am 2026-09-17 mit der Bordsteinsonde an einer 16-m-Strasse:
+         * von der Mittellinie aus wurde ab 8,56 m angenommen, bei 8,53 m kam
+         * "InvalidShape". Der Ueberstand ueber den Fahrbahnrand betraegt dort
+         * also 0,56 m. Zwei Meter sind die aufgerundete Sicherheitsmarge -
+         * ob die Schwelle bei schmaleren Strassen absolut oder anteilig
+         * wirkt, ist NICHT gemessen.
+         */
+        private const float GassenUeberstand = 2f;
+
+        /**
+         * Suchweite fuer die Stadtstrasse am aeusseren Zufahrtsende.
+         *
+         * Groesser als die LocalConnect-Reichweite des Weges (Breite/2 + 4 m),
+         * denn eine Zufahrt, die weiter weg liegt, ist ohnehin schon heute
+         * nicht angeschlossen - dann soll die Meldung das sagen und nicht
+         * die Suche vorher aufgeben.
+         */
+        private const float GassenSuchweite = 40f;
+
+        private EntityQuery _gassenStrassen;
+
+        /**
+         * Die naechste STADTSTRASSE zu einem Punkt.
+         *
+         * `Owner` schliesst unsere eigenen Kanten aus - an einer Zoning- oder
+         * Randstrasse des Parkplatzes hat eine Zufahrtsgasse nichts zu
+         * suchen, und ein Knoten dort wuerde nur unser eigenes Netz teilen.
+         */
+        private bool SucheStadtstrasseFuerGasse(float2 punkt, out float2 mitte,
+                                                out float halbeBreite)
+        {
+            mitte = default;
+            halbeBreite = 0f;
+            if (_gassenStrassen == default)
+                _gassenStrassen = GetEntityQuery(
+                    ComponentType.ReadOnly<Game.Net.Edge>(),
+                    ComponentType.ReadOnly<Curve>(),
+                    ComponentType.ReadOnly<PrefabRef>(),
+                    ComponentType.Exclude<Owner>(),
+                    ComponentType.Exclude<Deleted>(),
+                    ComponentType.Exclude<Temp>());
+
+            var beste = GassenSuchweite;
+            var treffer = Entity.Null;
+            var trefferMitte = float2.zero;
+            using var kanten = _gassenStrassen.ToEntityArray(Allocator.TempJob);
+            for (var i = 0; i < kanten.Length; i++)
+            {
+                var prefab = EntityManager.GetComponentData<PrefabRef>(kanten[i]).m_Prefab;
+                if (!EntityManager.HasComponent<RoadData>(prefab)) continue;
+                var bogen = EntityManager.GetComponentData<Curve>(kanten[i]).m_Bezier;
+                var abstand = MathUtils.Distance(bogen.xz, punkt, out var t);
+                if (abstand >= beste) continue;
+                beste = abstand;
+                treffer = kanten[i];
+                trefferMitte = MathUtils.Position(bogen, t).xz;
+            }
+            if (treffer == Entity.Null) return false;
+
+            mitte = trefferMitte;
+            var strassenprefab = EntityManager
+                .GetComponentData<PrefabRef>(treffer).m_Prefab;
+            // Die Breite steht am Prefab, nicht an den Querschnitten -
+            // NetCompositionSystem Zeile 151 nimmt `m_DefaultWidth`.
+            halbeBreite = EntityManager.HasComponent<NetGeometryData>(strassenprefab)
+                ? EntityManager.GetComponentData<NetGeometryData>(strassenprefab)
+                    .m_DefaultWidth * 0.5f
+                : 4f;
+            return true;
+        }
+
+        /**
+         * Legt das aeussere Gassenstueck einer Gassen-Zufahrt an.
+         *
+         * Rueckgabe ist die Zahl erzeugter Kurse, also 0 oder 1. Faellt das
+         * Stueck aus, wird die Zufahrt trotzdem gebaut - sie verhaelt sich
+         * dann wie eine gewoehnliche Zufahrt, nur eben ohne geoeffneten
+         * Bordstein. Der Grund steht im Bauzettel.
+         */
+        private int CreateGassenstueck(
+            NetSegment piece,
+            int index,
+            ref TerrainHeightData heightData,
+            Dictionary<(long, long), float> heights,
+            ref Unity.Mathematics.Random random,
+            List<string> bericht)
+        {
+            if (!TryResolveZufahrtsgasse(out var gasse))
+            {
+                bericht.Add($"Zufahrt {index}: Gassenklon noch nicht bereit");
+                return 0;
+            }
+            if (!SucheStadtstrasseFuerGasse(piece.A, out var mitte,
+                    out var halbeBreite))
+            {
+                bericht.Add($"Zufahrt {index}: keine Stadtstrasse in "
+                    + $"{GassenSuchweite:F0} m");
+                return 0;
+            }
+
+            var richtung = piece.A - mitte;
+            var abstand = math.length(richtung);
+            if (!(abstand > 0.5f))
+            {
+                bericht.Add($"Zufahrt {index}: liegt auf der Strassenmitte");
+                return 0;
+            }
+            richtung /= abstand;
+
+            /*
+             * Normalfall ist der Polygonrand als Ende - dort faengt der
+             * unsichtbare Weg an, und beruehrende Enden geben dem
+             * LocalConnect den kuerzesten Weg.
+             *
+             * Liegt der Rand naeher an der Strasse als der noetige
+             * Ueberstand, wird die Gasse trotzdem so lang gemacht. Sie ragt
+             * dann ein Stueck in den Parkplatz - unsichtbar, unter unserem
+             * eigenen Belag, und immer noch besser als eine Gasse, die CS2
+             * als "Ungueltige Form" ablehnt.
+             */
+            var laenge = math.max(abstand, halbeBreite + GassenUeberstand);
+            var ende = mitte + richtung * laenge;
+
+            if (!CreateCourseDefinition("entrance-gasse", index, mitte, ende,
+                    gasse, ref heightData, heights, ref random))
+            {
+                bericht.Add($"Zufahrt {index}: Gassenkurs abgelehnt "
+                    + $"({laenge:F2} m)");
+                return 0;
+            }
+            bericht.Add($"Zufahrt {index}: Gasse {laenge:F2} m ab Strassenmitte, "
+                + $"Fahrbahnrand bei {halbeBreite:F2} m, Ueberstand "
+                + $"{laenge - halbeBreite:F2} m"
+                + (laenge > abstand + 1e-3f
+                    ? $", davon {laenge - abstand:F2} m im Parkplatz"
+                    : string.Empty));
+            return 1;
+        }
+
         private bool TryResolvePedestrianPath(out Entity prefab)
         {
             prefab = World.GetOrCreateSystemManaged<ParkingLotFusswegPrefabSystem>().Bereit;
@@ -221,6 +363,15 @@ namespace ParkingLotTool.Tools
          * keinen Zonenblock mit, und ohne Block waechst nichts.
          */
         private bool TryResolveZoningRoad(string name, out Entity prefab)
+            => TryResolveStrassenklon(name, Strassenklonart.Zoning, out prefab);
+
+        /** Die Zufahrtsgasse kommt immer aus der Vanilla-Gasse. */
+        private bool TryResolveZufahrtsgasse(out Entity prefab)
+            => TryResolveStrassenklon("Alley", Strassenklonart.Zufahrtsgasse,
+                out prefab);
+
+        private bool TryResolveStrassenklon(string name, Strassenklonart art,
+            out Entity prefab)
         {
             prefab = Entity.Null;
             if (string.IsNullOrEmpty(name)) return false;
@@ -263,7 +414,7 @@ namespace ParkingLotTool.Tools
 
             _zoningRoadPrefabSystem ??= World
                 .GetOrCreateSystemManaged<ParkingLotZoningRoadPrefabSystem>();
-            prefab = _zoningRoadPrefabSystem.FordereAn(original,
+            prefab = _zoningRoadPrefabSystem.FordereAn(original, art,
                 out var fehlgeschlagen, out var aufgegeben);
             if ((fehlgeschlagen || aufgegeben) && !_missingZoningRoadLogged)
             {
@@ -316,6 +467,9 @@ namespace ParkingLotTool.Tools
             var zoningGeplant = 0;
             var zoningOhneKlon = 0;
             var zoningAbgelehnt = new List<string>();
+            var gassenGeplant = 0;
+            var gassenGebaut = 0;
+            var gassenBericht = new List<string>();
             var zoningStuecke = new List<(float2 A, float2 B)>();
             // Nur anfordern, wenn das Layout ueberhaupt eine Zoning-Strasse
             // enthaelt - sonst bestellt jeder Parkplatz einen Prefabklon.
@@ -354,6 +508,20 @@ namespace ParkingLotTool.Tools
                         created += CreateOnewayEntranceDefinitions(
                             piece, i, ref heightData, heights, ref random);
                         continue;
+                    }
+                    /*
+                     * Die Gasse ist ein ZUSAETZLICHES Stueck vor der Zufahrt,
+                     * kein Ersatz. Deshalb kein `continue` - der gewohnte
+                     * Weg nach innen wird gleich darunter genauso gebaut wie
+                     * bei jeder anderen Zufahrt.
+                     */
+                    if (piece.Art == Zufahrtsart.Gasse)
+                    {
+                        gassenGeplant++;
+                        var gebaut = CreateGassenstueck(piece, i, ref heightData,
+                            heights, ref random, gassenBericht);
+                        created += gebaut;
+                        gassenGebaut += gebaut;
                     }
                 }
                 if (string.Equals(piece.Kind, "zoning", StringComparison.Ordinal))
@@ -426,6 +594,10 @@ namespace ParkingLotTool.Tools
                 Mod.log.Warn($"PLT-Zoning: {zoningAbgelehnt.Count} geplante(s) "
                     + "Stueck(e) NICHT gebaut: "
                     + string.Join("; ", zoningAbgelehnt));
+            if (gassenGeplant > 0)
+                Mod.log.Info($"PLT-Zufahrtsgasse: {gassenGebaut} von "
+                    + $"{gassenGeplant} Gassenstueck(en) erzeugt. "
+                    + string.Join("; ", gassenBericht));
             MeldeZoningZusammenhang(zoningStuecke);
             if (created > 0)
                 Mod.log.Info($"PLT-Wege: {created} Kurse, Fahrgasse {wideCore:F0} m "

@@ -80,6 +80,8 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            using var uhr = ParkingLotMessung.Miss(
+                ParkingLotMessung.Sys.Flaechenwache);
             if (_besitzer == Entity.Null) return;
 
             if (!_ausgangswertSteht)

@@ -157,6 +157,8 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            using var uhr = ParkingLotMessung.Miss(
+                ParkingLotMessung.Sys.Statistik);
             if (++_frames < ProbeAlleFrames) return;
             _frames = 0;
             if (_lotQuery.IsEmptyIgnoreFilter) return;

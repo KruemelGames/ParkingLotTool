@@ -22,6 +22,9 @@ export type SettingKey =
   | "SurfaceRoadOn"
   | "SurfaceDecorationOn"
   | "SurfaceApronOn"
+  | "PanelStil"
+  | "Fangarten"
+  | "LeistungRest"
   | "BayIcons"
   | "RowAngle"
   | "GreenMedian"
@@ -177,6 +180,58 @@ export const setSurfaceDecorationOn = (v: boolean) => trigger(MOD, "SetSurfaceDe
  * EIN Schalter fuer alle Zufahrten - so vom Nutzer entschieden.
  */
 export const surfaceApronOn$ = bindValue<boolean>(MOD, "SurfaceApronOn", true);
+
+/**
+ * Der Stil des Fensters: "horizontal" (Leiste) oder "hochkant" (Spalte).
+ *
+ * Er entscheidet AUSSCHLIESSLICH ueber die Anordnung. Beide Stile zeigen
+ * denselben Inhalt mit denselben Knoepfen; der Unterschied ist, ob die
+ * Spalten nebeneinander liegen oder untereinander.
+ */
+export const panelStil$ = bindValue<string>(MOD, "PanelStil", "horizontal");
+
+/**
+ * DIE FANGOPTIONEN GEHOEREN DEM SPIEL, NICHT UNS.
+ *
+ * `ToolUISystem` haelt sie in der Bindungsgruppe "tool": `selectedSnapMask`
+ * ist `activeTool.selectedSnap`, `availableSnapMask` kommt aus dem
+ * `GetAvailableSnapMask` unseres eigenen Werkzeugs, und
+ * `setSelectedSnapMask` schreibt zurueck.
+ *
+ * Wir lesen und schreiben damit denselben Zustand wie CS2s eigenes
+ * Werkzeugfenster. Es wird nichts kopiert und nichts ausgeblendet; wer
+ * einen Schalter hier umlegt, sieht ihn dort mitgehen.
+ */
+/*
+ * Aus UNSERER Gruppe, nicht aus "tool": `tool.availableSnapMask` meldet
+ * absichtlich 0, damit CS2 kein zweites Fangfenster baut.
+ */
+export const fangVerfuegbar$ = bindValue<number>(MOD, "Fangarten", 0);
+
+/**
+ * Sekunden bis zum Ende der Leistungsmessung; 0 heisst, es laeuft keine.
+ */
+export const leistungRest$ = bindValue<number>(MOD, "LeistungRest", 0);
+export const starteLeistungstest = () =>
+  trigger(MOD, "StarteLeistungstest");
+export const fangGewaehlt$ = bindValue<number>("tool", "selectedSnapMask", 0);
+export const setzeFang = (maske: number) =>
+  trigger("tool", "setSelectedSnapMask", maske);
+
+/**
+ * Die Werte des `Snap`-Aufzaehlungstyps, die unser Werkzeug anbietet -
+ * in der Reihenfolge des Typs, damit die Knoepfe nicht springen.
+ * Das Symbol traegt denselben Namen wie der Wert.
+ */
+export const FANGOPTIONEN: { bit: number; name: string }[] = [
+  { bit: 1, name: "ExistingGeometry" },
+  { bit: 4, name: "StraightDirection" },
+  { bit: 8, name: "NetSide" },
+  { bit: 0x40, name: "ObjectSide" },
+  { bit: 0x400, name: "GuideLines" },
+  { bit: 0x800, name: "ZoneGrid" },
+];
+export const setPanelStil = (v: string) => trigger(MOD, "SetPanelStil", v);
 export const surfaceApronOnDefault$ = bindValue<boolean>(
   MOD, "SurfaceApronOnDefault", true);
 export const setSurfaceApronOn = (v: boolean) => trigger(MOD, "SetSurfaceApronOn", v);
@@ -213,6 +268,8 @@ export const toggleTool = () => trigger(MOD, "ToggleTool");
 export const setPanelOpen = (open: boolean) => trigger(MOD, "SetPanelOpen", open);
 export const resetAll = () => trigger(MOD, "ResetAll");
 export const discardDefaults = () => trigger(MOD, "DiscardDefaults");
+/** Setzt das Fenster auf seinen Platz zurueck - wie der Knopf in den Optionen. */
+export const fensterHeim = () => trigger(MOD, "FensterHeim");
 export const resetOne = (key: SettingKey) => trigger(MOD, "ResetOne", key);
 export const setAsDefault = (key: SettingKey) => trigger(MOD, "SetAsDefault", key);
 export const placeEntrance = () => trigger(MOD, "PlaceEntrance");

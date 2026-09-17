@@ -188,7 +188,15 @@ namespace ParkingLotTool.Tools
             m_ToolRaycastSystem.typeMask = TypeMask.Terrain;
             m_ToolRaycastSystem.collisionMask = CollisionMask.OnGround;
             m_ToolRaycastSystem.raycastFlags = (RaycastFlags)0;
-            GetAvailableSnapMask(out m_SnapOnMask, out m_SnapOffMask);
+            /*
+             * DIREKT, NICHT UEBER DIE METHODE: die meldet dem Spiel
+             * absichtlich `None`, damit CS2 kein zweites Fangfenster baut.
+             * Die Felder brauchen die echte Maske, sonst rechnet
+             * `GetActualSnap()` alles weg. Begruendung steht ausfuehrlich
+             * an `GetAvailableSnapMask` in ParkingLotSnapping.cs.
+             */
+            m_SnapOnMask = Fangarten;
+            m_SnapOffMask = Fangarten;
         }
 
         private void EnableToolActions()
@@ -198,7 +206,19 @@ namespace ParkingLotTool.Tools
             if (cancelAction != null) cancelAction.shouldBeEnabled = true;
         }
 
+        /**
+         * Nur die Stoppuhr. Der Inhalt steht unveraendert in
+         * `OnUpdateGemessen` - so kostet die Messung keine Verzweigung im
+         * Ablauf und keine Zeile Aenderung an dem, was gemessen wird.
+         */
         protected override JobHandle OnUpdate(JobHandle inputDeps)
+        {
+            var uhr = ParkingLotMessung.Start();
+            try { return OnUpdateGemessen(inputDeps); }
+            finally { ParkingLotMessung.Ende(ParkingLotMessung.Punkt.Werkzeug, uhr); }
+        }
+
+        private JobHandle OnUpdateGemessen(JobHandle inputDeps)
         {
             var deps = base.OnUpdate(inputDeps);
             PollChargerAudit();
@@ -244,6 +264,9 @@ namespace ParkingLotTool.Tools
             // Reiner Debug-Pfad. Solange sein NetCourse materialisiert oder
             // gemessen wird, darf derselbe Frame keinen Parkplatzklick sehen.
             if (PflegeZoningsonde()) return RenderOverlay(deps);
+            // Dieselbe Reservierung wie oben: die Bordsteinsonde legt ihre
+            // Faelle als NetCourse an und liest sie im naechsten Frame ab.
+            if (PflegeBordsteinsonde()) return RenderOverlay(deps);
             if (TryBeginPendingEdit()) return RenderOverlay(deps);
             if (ProcessEditLifecycle()) return RenderOverlay(deps);
             PollCompletedBuild();
@@ -1145,8 +1168,17 @@ namespace ParkingLotTool.Tools
                 _overlay.SetLayout(layout, settings, _terrainSystem,
                     _vorflaechenSicht, _vorflaechenArt, FuellungAlsNetz,
                     _uiSystem?.Buchtsymbole ?? true);
-                FuettereFlaechennetz(layout);
+                /*
+                 * ERST DIE PFLANZEN SAMMELN, DANN FUETTERN.
+                 *
+                 * `FuettereFlaechennetz` holt sich die Pflanzenliste aus
+                 * dem Overlay - die fuellt aber erst `SetVegetationPreview`.
+                 * Andersherum bekam das Netz die Liste des vorigen Laufs und
+                 * beim ersten Mal gar keine. Der Nutzer am 2026-09-17:
+                 * *"hatte nirgends einen Kreis gesehen."*
+                 */
                 SetVegetationPreview(layout);
+                FuettereFlaechennetz(layout);
                 SetAreaPreviewLayout(layout, settings);
                 CaptureEditBaselineIfNeeded(layout);
                 _uiSystem?.ShowResult(layout, PolygonArea(site));
@@ -1159,8 +1191,10 @@ namespace ParkingLotTool.Tools
                  * filtert. Begruendung und Schwelle in `Hinweisfilter`.
                  */
                 _uiSystem?.SetHinweise(
-                    ParkingLotTool.Geometry.Hinweisfilter.Sichtbare(
-                        layout.Warnings));
+                    MitGroessenwarnung(
+                        ParkingLotTool.Geometry.Hinweisfilter.Sichtbare(
+                            layout.Warnings),
+                        layout));
                 // Derselbe Lauf, andere Leserschaft: die Statusleiste filtert,
                 // der Meldereiter nicht. Siehe `SetzeBaubefund`.
                 _uiSystem?.SetzeBaubefund(layout, PolygonArea(site));
@@ -1258,7 +1292,75 @@ namespace ParkingLotTool.Tools
             }
         }
 
+        /**
+         * Ab wann ein Parkplatz gross genug ist, dass der Bau spuerbar
+         * haengt.
+         *
+         * Die Zahlen sind aus der Messung vom 2026-09-17 hochgerechnet:
+         * 14.194 Buchten kosteten 24,8 Sekunden, also grob 1,7 ms je Bucht.
+         * Bei 3000 Buchten sind das fuenf Sekunden - lange genug, dass man
+         * sich fragt, ob das Spiel abgestuerzt ist.
+         */
+        private const int WarnschwelleBuchten = 3000;
+
+        /**
+         * Und dieselbe Frage von der anderen Seite.
+         *
+         * Jeder Ring wird eine eigene CS2-Flaeche; viele Ecken kosten also
+         * auch dann, wenn wenige Buchten herauskommen. Bei dem gemessenen
+         * Parkplatz waren es 3051 Ringe.
+         */
+        private const int WarnschwelleRinge = 800;
+
+        /**
+         * Haengt eine Ansage an, wenn der Bau lange dauern wird.
+         *
+         * Keine Sperre und keine Rueckfrage - der Nutzer hat den Parkplatz
+         * absichtlich so gross gezeichnet. Er soll nur nicht glauben, das
+         * Spiel sei abgestuerzt.
+         */
+        private string[] MitGroessenwarnung(string[] hinweise,
+                                            ParkingLayout layout)
+        {
+            if (layout == null) return hinweise;
+            var ringe = (layout.GrassSurface?.Length ?? 0)
+                + (layout.AsphaltSurface?.Length ?? 0);
+            if (layout.Stalls < WarnschwelleBuchten
+                && ringe < WarnschwelleRinge)
+                return hinweise;
+
+            // Aus der Messung hochgerechnet, bewusst grob gerundet: eine
+            // Sekundenangabe auf die Kommastelle waere eine Genauigkeit,
+            // die wir nicht haben.
+            var sekunden = System.Math.Max(2,
+                (int)System.Math.Round(layout.Stalls * 0.0017));
+            var text = T(
+                $"Großer Parkplatz: {layout.Stalls} Buchten, {ringe} Flächen. "
+                    + $"Das Bauen dauert etwa {sekunden} Sekunden, und das "
+                    + "Spiel steht so lange still.",
+                $"Large lot: {layout.Stalls} bays, {ringe} surfaces. "
+                    + $"Building will take about {sekunden} seconds, and the "
+                    + "game will stand still for that time.");
+            if (hinweise == null || hinweise.Length == 0)
+                return new[] { text };
+            var alle = new string[hinweise.Length + 1];
+            alle[0] = text;
+            System.Array.Copy(hinweise, 0, alle, 1, hinweise.Length);
+            return alle;
+        }
+
         private JobHandle RenderOverlay(JobHandle inputDeps)
+        {
+            var uhrOverlay = ParkingLotMessung.Start();
+            try { return RenderOverlayGemessen(inputDeps); }
+            finally
+            {
+                ParkingLotMessung.Ende(
+                    ParkingLotMessung.Punkt.Overlay, uhrOverlay);
+            }
+        }
+
+        private JobHandle RenderOverlayGemessen(JobHandle inputDeps)
         {
             /*
              * DIE VERWALTUNG ZEIGT FERTIGE PARKPLAETZE, KEINEN ENTWURF.
@@ -1295,13 +1397,37 @@ namespace ParkingLotTool.Tools
             if (_areaPreviewLayout != null && _flaechennetz != null
                 && _flaechennetz.Leer)
                 FuettereFlaechennetz(_areaPreviewLayout);
+            /*
+             * KEIN LAYOUT, KEINE FUELLUNG - und zwar als Regel, nicht als
+             * Aufraeumen an elf Stellen.
+             *
+             * Der Nutzer hat am 2026-09-17 gemeldet, dass die gefuellten
+             * Flaechen nach dem Bauen stehenbleiben. Die Ursache war eine
+             * vergessene Zeile im Bauabschluss, und die ist behoben - aber
+             * derselbe Fehler kann an jedem neuen Weg wieder entstehen, der
+             * `ClearAreaPreviewLayout` umgeht.
+             *
+             * Deshalb hier die Umkehrung der Zeile darueber: gibt es kein
+             * Layout, darf auch keine Fuellung stehen. Zusammen sind die
+             * beiden eine Aussage statt zweier Aufraeumpflichten.
+             */
+            else if (_areaPreviewLayout == null && _flaechennetz != null
+                && !_flaechennetz.Leer)
+                _flaechennetz.Leere();
             var buffer = _overlayRenderSystem.GetBuffer(out var overlayDeps);
             var deps = JobHandle.CombineDependencies(inputDeps, overlayDeps);
             // GetBuffer liefert die noch laufenden Schreiber derselben NativeLists.
             // PLT zeichnet auf dem Hauptthread, nicht in einem abhaengigen Job:
             // deshalb VOR dem ersten Draw warten, nicht erst das Handle zurueckgeben.
             // Sonst koennen List.Add/Reallokation mit CS2-Schreibern konkurrieren.
+            /*
+             * DER VERDAECHTIGE NUMMER EINS, deshalb eigens gemessen: hier
+             * steht der Hauptthread, bis alle Schreiber des Overlay-Puffers
+             * fertig sind - auch CS2s eigene.
+             */
+            var uhrWarten = ParkingLotMessung.Start();
             deps.Complete();
+            ParkingLotMessung.Ende(ParkingLotMessung.Punkt.Warten, uhrWarten);
 
             // Alle Buffer-Aufrufe bleiben synchron zwischen GetBuffer und Rückgabe;
             // weder Buffer noch temporäre Native-Daten werden über Frames gehalten.
@@ -1322,6 +1448,7 @@ namespace ParkingLotTool.Tools
              */
             var entwurfshilfen = Werkzeugzustand.ZeigtUmrisshilfe(_reiter, AktuellerModus);
 
+            var uhrZeichnen = ParkingLotMessung.Start();
             _overlay.Draw(buffer, _worldPoints, _closed, (entwurfshilfen || MarkerMode) && _hasHover,
                 _hoverPosition, CanCloseAtCursor(),
                 entwurfshilfen ? _hoverPoint : -1, entwurfshilfen ? _dragPoint : -1,
@@ -1369,6 +1496,8 @@ namespace ParkingLotTool.Tools
                         out var randZustand)
                     ? (randA, randB, randZustand)
                     : ((float2, float2, int)?)null);
+            ParkingLotMessung.Ende(
+                ParkingLotMessung.Punkt.Zeichnen, uhrZeichnen);
             return deps;
         }
 
@@ -1647,6 +1776,28 @@ namespace ParkingLotTool.Tools
             _layoutDirty = false;
             _geometryRevision++;
             _overlay?.ClearLayout();
+            /*
+             * DAS FLAECHENNETZ GEHOERT HIER MIT DAZU.
+             *
+             * Befund des Nutzers am 2026-09-17: *"nach dem Bauen verschwindet
+             * die Preview nicht bzw. die Flaechen, die wir mit der neuen
+             * Methode zeichnen."*
+             *
+             * Der Grund steht drei Zeilen darueber: dieser Abschnitt raeumt
+             * absichtlich OHNE `ClearAreaPreviewLayout` auf, weil dessen
+             * `ApplyMode.Clear` das eben Gebaute verwerfen wuerde. Das
+             * `Leere()` des Flaechennetzes liegt aber genau dort drin - und
+             * ist damit als einziges nicht mitgekommen.
+             *
+             * An `ClearAreaPreviewLayout` steht seit dem 2026-09-15 der Satz,
+             * `ClearLayout` und das Leeren liefen "immer zusammen, und eine
+             * von beiden vergisst man sonst". Hier ist die Stelle, an der
+             * genau das passiert ist.
+             *
+             * Sicher ist es an dieser Stelle, weil das Netz reine Anzeige
+             * ist: keine Entities, kein ApplyMode, nur Dreiecke.
+             */
+            _flaechennetz?.Leere();
             _areaPreviewLayout = null;
             _ghostsActive = false;
             _lastPreviewSig = long.MinValue;
@@ -1821,9 +1972,24 @@ namespace ParkingLotTool.Tools
 
         protected override void OnUpdate()
         {
+            /*
+             * DIE ABRECHNUNG DER MESSUNG GEHOERT IN EIN SYSTEM, DAS IMMER
+             * LAEUFT.
+             *
+             * Im Werkzeug selbst stuende sie nur, solange das Werkzeug aktiv
+             * ist - und dann faenden wir nie heraus, ob ein Haenger auch ohne
+             * es auftritt. Dieses System hoert auf die Taste und laeuft
+             * deshalb in jedem Bild.
+             */
+            ParkingLotMessung.Bild(_toolSystem?.activeTool == _parkingLotTool);
             // Hier und nicht nur im Werkzeug: die Sprache wird im Optionsmenue
             // umgestellt, und dabei ist das Werkzeug zu.
             _uiSystem?.PflegeSprache();
+            // Aus demselben Grund wie die Sprache: umgestellt wird im
+            // Optionsmenue, und dabei ist das Werkzeug zu.
+            _uiSystem?.PflegeFensterstil();
+            // Auch bei zugem Werkzeug: genau dieser Zustand wird gemessen.
+            _uiSystem?.PflegeLeistungstest();
             _parkingLotTool?.PflegeAutoVersorgungsmessung();
             // Muss VOR dem Ausstieg bei Eingabefokus stehen: die Nachschau
             // haengt an keiner Taste, sie haengt an verstrichenen Bildern.
@@ -1862,13 +2028,40 @@ namespace ParkingLotTool.Tools
                 return;
             }
             /*
-             * HIER STAND ALT+F.
+             * ALT+F IST DIE BORDSTEINSONDE.
              *
-             * Der Vorversuch fuer das gefuellte Flaechennetz hing an dieser
-             * Taste. Seit dem 2026-09-15 laeuft das Netz immer mit, sobald
-             * eine Vorschau steht - ein Schalter fuer etwas, das man immer
-             * will, ist nur eine Falle fuer den, der ihn nicht kennt.
+             * Bis zum 2026-09-15 hing hier der Vorversuch fuer das gefuellte
+             * Flaechennetz; das laeuft seither immer mit. Die Taste war
+             * seitdem frei.
+             *
+             * Alt+F misst nur - jeder Fall wird als Temp angelegt, abgelesen
+             * und verworfen. Alt+Shift+F baut zusaetzlich vier Stummel zum
+             * Hinsehen und veraendert damit den Spielstand; deshalb eine
+             * eigene Tastenkombination und nicht derselbe Griff.
+             *
+             * Beides braucht das aktive Werkzeug: der Bau haengt an dessen
+             * ApplyMode, und die Weltposition unter dem Zeiger wird nur
+             * gepflegt, solange das Werkzeug laeuft.
              */
+            if (keyboard.fKey.wasPressedThisFrame
+                && (keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed)
+                && !keyboard.leftCtrlKey.isPressed && !keyboard.rightCtrlKey.isPressed)
+            {
+                if (_toolSystem.activeTool != _parkingLotTool)
+                {
+                    // Welches Werkzeug vorher aktiv war, ist dieselbe Zeile,
+                    // die am 2026-08-25 FindIt.Picker entlarvt hat.
+                    Mod.log.Info("PLT-Bordsteinsonde: oeffnet das Werkzeug; "
+                        + "vorher aktiv: "
+                        + (_toolSystem.activeTool?.toolID ?? "<keins>"));
+                    _toolSystem.activeTool = _parkingLotTool;
+                }
+                _parkingLotTool.StarteBordsteinsonde(
+                    keyboard.leftShiftKey.isPressed
+                    || keyboard.rightShiftKey.isPressed);
+                return;
+            }
+
             if (!keyboard.pKey.wasPressedThisFrame) return;
 
             var control = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;

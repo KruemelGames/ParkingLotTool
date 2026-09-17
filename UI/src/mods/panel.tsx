@@ -1,10 +1,11 @@
-import { Vegetation } from "./vegetation";
+import { VegetationSchalter, VegetationFenster } from "./vegetation";
 import { randstrassen$, randstrassenDefault$, setRandstrassen } from "./bindings";
 import { useValue } from "cs2/api";
 import { useEffect, useRef, useState } from "react";
 import styles from "./panel.module.scss";
 import {
-  Auswahl, Flaeche, ModeChooser, Slider, Spalte, Toggle, TooltipKnopf,
+  Auswahl, Fangschalter, Flaeche, ModeChooser, Slider, Spalte, Toggle,
+  TooltipKnopf,
 } from "./controls";
 import { ReportTab } from "./report";
 import { DebugTab } from "./debug";
@@ -19,7 +20,7 @@ import {
   entranceKind$, entranceMax$, entranceMissing$, setEntranceKind,
   greenMedian$, greenMedianDefault$, icon, medianWidth$, medianWidthDefault$,
   panelOpen$, panelX$, panelY$, perimeterStalls$, placeEntrance, polygonClosed$,
-  resetAll, resetOne, rowAngle$, rowAngleDefault$, rowAngleResult$,
+  resetAll, resetOne, fensterHeim, rowAngle$, rowAngleDefault$, rowAngleResult$,
   setAisleWidth, setAngleMode, setAsDefault, setCrossBays, setCrossCaps,
   setCrossWidth, setEdgeSetback, setGreenMedian, setMedianWidth,
   setEntranceMode, setPanelPosition, setRowAngle, setTab, siteArea$,
@@ -36,6 +37,7 @@ import {
   ausrichtWahl$, ausrichtAktiv$, ausrichtWaehlen, ausrichtZuruecksetzen,
   ausrichtBestaetigen, trennmodus$, trennungFertig,
   altbestand$, altbestandLoeschen, altbestandBehalten,
+  panelStil$, setPanelStil,
 } from "./bindings";
 import { useTexte } from "./texte";
 
@@ -52,6 +54,15 @@ const numberDiffers = (value: number, standard: number) =>
  * Modeinstellungen ist trotzdem da, fuer eine von Hand verstellte Datei.
  */
 const MAX_ANTEIL = 0.95;
+
+/**
+ * Was vom hochkanten Fenster mindestens stehenbleiben muss - Kopfleiste,
+ * ein Stueck Einstellungen und der Abschluss mit dem Bauknopf.
+ */
+const MindesthoeheHochkant = 420;
+
+/** Abstand zwischen Panel und Vegetationsfenster, in rem. */
+const AbstandFenster = 12;
 
 const klemme = (wert: number, maximum = MAX_ANTEIL) =>
   wert < 0 ? 0 : wert > maximum ? maximum : wert;
@@ -81,13 +92,19 @@ const klemme = (wert: number, maximum = MAX_ANTEIL) =>
  * kuerzer aussieht.
  */
 /*
- * Die vier Zufahrtsarten. Reihenfolge und Nummern sind die des
+ * Die Zufahrtsarten. Reihenfolge und Nummern sind die des
  * C#-Aufzaehlungstyps `Zufahrtsart` - beide nur gemeinsam aendern.
  *
  * `ton` ist der Farbton, den auch der Ring in der Vorschau traegt.
+ *
+ * Die Gasse steht direkt neben der Zufahrt, weil sie dieselbe Sache ist -
+ * gesetzt wird sie genauso, nur gebaut wird sie anders. Sie teilt sich
+ * bewusst das Symbol mit ihr: die Standard-Symbole liegen in einem Bundle,
+ * ein geratener Name waere im Spiel ein kaputtes Bild.
  */
 const ARTEN = [
   { id: 0, ton: "artZufahrt",  icon: "Road",           tooltip: "tooltipZufahrt",  name: "artNameZufahrt"  },
+  { id: 4, ton: "artGasse",    icon: "Road",           tooltip: "tooltipGasse",    name: "artNameGasse"    },
   { id: 3, ton: "artFussweg",  icon: "PedestrianPath", tooltip: "tooltipFussweg",  name: "artNameFussweg"  },
   { id: 1, ton: "artEinfahrt", icon: "ArrowUp",        tooltip: "tooltipEinfahrt", name: "artNameEinfahrt" },
   { id: 2, ton: "artAusfahrt", icon: "ArrowDown",      tooltip: "tooltipAusfahrt", name: "artNameAusfahrt" },
@@ -127,6 +144,36 @@ export const ParkingLotPanel = () => {
   const surfaceRoadOnDefault = useValue(surfaceRoadOnDefault$);
   const surfaceDecorationOnDefault = useValue(surfaceDecorationOnDefault$);
   const panelHome = useValue(panelHome$);
+  /**
+   * "vertikal" (Leiste) oder "hochkant" (Spalte). GANZ OBEN wie jeder Hook -
+   * der Kommentar am Dateikopf erklaert, warum das hier keine Stilfrage ist,
+   * sondern React-Fehler 310 und eine tote Spieloberflaeche.
+   */
+  const panelStil = useValue(panelStil$);
+  const hochkant = panelStil === "hochkant";
+  /**
+   * DAS VEGETATIONSFENSTER LEBT NEBEN DEM PANEL, NICHT DARIN.
+   *
+   * Das ist keine Geschmacksfrage: ein Kind von `.panel` wuerde mit ihm
+   * wandern, sobald man das Panel verschiebt - und genau das soll es
+   * nicht. Der Nutzer will eine Startposition, keine Fessel.
+   *
+   * Die Position wird deshalb HIER gehalten und nur EINMAL ausgerechnet.
+   * Im Fenster selbst koennte sie nicht liegen: beim Schliessen wird die
+   * Komponente abgebaut, und beim naechsten Oeffnen faengt sie von vorn an.
+   */
+  const [vegOffen, setVegOffen] = useState(false);
+  /*
+   * ZWEI FAECHER, EINS JE STIL.
+   *
+   * Ueber der schmalen Spalte ist kein Platz - dort gehoert das Fenster
+   * rechts daneben. Eine einzige Stelle fuer beide waere in einem der
+   * beiden Stile immer falsch.
+   */
+  const [vegPos, setVegPos] = useState<{ x: number; y: number } | null>(null);
+  const [vegPosHochkant, setVegPosHochkant] =
+    useState<{ x: number; y: number } | null>(null);
+
   const leiste = useRef<HTMLDivElement>(null);
 
   /**
@@ -163,13 +210,81 @@ export const ParkingLotPanel = () => {
    * `offsetWidth` wird trotzdem zuerst versucht: sollte Cohtml es eines Tages
    * koennen, ist die echte Breite immer besser als die nachgerechnete.
    */
+  /**
+   * Die Skala der Werkzeugleiste, wie der Spieler sie eingestellt hat.
+   *
+   * Sie steckt in `--toolbarScale` und geht in `--toolbarHeight` ein
+   * (`calc(50rem * var(--toolbarScale))`). Cohtml ist nicht Chrome, also
+   * wird der Zugriff abgesichert: faellt er aus, bleibt es bei 1 - dem
+   * Wert, bei dem der Nutzer gemessen hat.
+   */
+  const toolbarSkala = () => {
+    try {
+      const wert = getComputedStyle(document.documentElement)
+        .getPropertyValue("--toolbarScale");
+      const zahl = parseFloat(wert);
+      return zahl > 0 && zahl < 10 ? zahl : 1;
+    } catch {
+      return 1;
+    }
+  };
+
+  /**
+   * Wie hoch ueber der Bildschirmunterkante das Fenster enden soll.
+   *
+   * GEMESSEN, NICHT GERECHNET: der Nutzer hat bei 1920x1080 nachgesehen -
+   * CS2s Hauptleiste beginnt oben bei 980 px, das Fenster darueber endet
+   * bei 974. Macht 106 px Abstand zur Unterkante, und bei 1080p ist 1 rem
+   * genau 1 px.
+   *
+   * Davon wachsen 50 rem mit `--toolbarScale` mit (das ist CS2s eigene
+   * `--toolbarHeight`), die uebrigen 56 rem sind fest. Bei Skala 1 kommen
+   * wieder die gemessenen 106 heraus.
+   */
+  const unterrandRem = () => 56 + 50 * toolbarSkala();
+
+  /** 1 rem in Pixeln, nach derselben Rechnung wie CS2s Stylesheet. */
+  const remGroesse = () => {
+    const b = window.innerWidth || 1920;
+    const h = window.innerHeight || 1080;
+    return h >= b * 0.5625 ? b / 1920 : h / 1080;
+  };
+
+  /**
+   * Die Breiten und Hoehen der beiden Stile in rem.
+   *
+   * GESCHAETZTE HOEHEN, und das steht hier, damit es niemand fuer gemessen
+   * haelt: Cohtml liefert weder `getBoundingClientRect` noch `offsetHeight`.
+   * Sie dienen nur der Heimposition - liegt das Fenster ein paar Pixel
+   * daneben, schiebt man es. Laege es dagegen unter der Werkzeugleiste,
+   * waere es unbedienbar, und genau davor schuetzt die Schaetzung.
+   */
+  /**
+   * Breite je Stil. EINE HOEHE STEHT HIER NICHT MEHR.
+   *
+   * Sie war geschaetzt, und die Schaetzung ging daneben - der Nutzer sah
+   * das Fenster "viel hoeher" als die gemessenen 6 px ueber der
+   * Hauptleiste. Cohtml liefert keine Hoehe, also wird sie nicht mehr
+   * gebraucht: die Leiste haengt am Unterrand, die Spalte am Oberrand.
+   */
+  const stilmass = () => (hochkant
+    ? { breite: 364, anteil: 1 }
+    : { breite: 1680, anteil: 0.88 });
+
+  /**
+   * DIESELBE RECHNUNG WIE IM STYLESHEET, sonst liegt die Mitte daneben.
+   *
+   * Der erste Anlauf deckelte hier auf 94 % und in der CSS auf 88 % - auf
+   * einem breiten Bildschirm rechnete die Mitte dadurch mit einer zu
+   * breiten Leiste, und die stand links versetzt. Der Anteil steht deshalb
+   * beim Mass und nicht als Zahl in dieser Zeile.
+   */
   const leistenbreite = () => {
     const gemessen = leiste.current?.offsetWidth ?? 0;
     if (gemessen > 0) return gemessen;
     const b = window.innerWidth || 1920;
-    const h = window.innerHeight || 1080;
-    const rem = h >= b * 0.5625 ? b / 1920 : h / 1080;
-    return Math.min(1680 * rem, b * 0.88);
+    const mass = stilmass();
+    return Math.min(mass.breite * remGroesse(), b * mass.anteil);
   };
 
   const rahmen = () => {
@@ -271,6 +386,26 @@ export const ParkingLotPanel = () => {
   const [zug, setZug] = useState<{ x: number; y: number } | null>(null);
   const anker = useRef({ mausX: 0, mausY: 0, x: 0, y: 0 });
 
+  /* ------------------------------------------------------- Abschnitte */
+  /**
+   * HOCHKANT IST IMMER NUR EIN ABSCHNITT OFFEN.
+   *
+   * Vier Abschnitte untereinander sind rund 700 rem hoch, der Platz reicht
+   * fuer gut 450. Eine Bildlaufleiste war der erste Versuch; sie hat den
+   * Platz aber nur verwaltet, statt ihn zu schaffen, und haette nebenbei die
+   * nach oben aufklappende Flaechenliste abgeschnitten - Gameface kappt in
+   * einem Scrollbereich auch absolut positionierte Kinder.
+   *
+   * Waagerecht bleibt alles offen: dort stehen sie nebeneinander.
+   */
+  const [offenerAbschnitt, setOffenerAbschnitt] = useState("Zuschnitt");
+  const abschnitt = (name: string) => ({
+    einklappbar: hochkant,
+    offen: !hochkant || offenerAbschnitt === name,
+    onKlick: () => setOffenerAbschnitt(
+      offenerAbschnitt === name ? "" : name),
+  });
+
   /* Der Spiel-Tooltip kennt Orange nur als Textfarbe. Die Klasse begrenzt
      den dunkelorangen Hintergrund auf die Zeit, in der unser dauerhafter
      Zufahrts-Hinweis existiert; Debug-Meldungen bleiben unverändert grün. */
@@ -285,17 +420,66 @@ export const ParkingLotPanel = () => {
    *
    * `panelHome === 0` ist der Startwert - dann ist nichts angefordert.
    */
+  /**
+   * DIE HEIMPOSITION HAENGT AM STIL.
+   *
+   * Beide Stile weichen dem aus, was CS2 selbst belegt - gemessen in
+   * `Content/Game/UI/index.css`: die Kopfleiste ist 55 rem hoch, die
+   * Werkzeugleiste `calc(50rem * var(--toolbarScale))`, und CS2s eigenes
+   * Werkzeugfenster sitzt auf `left: 12rem, bottom: 12rem`.
+   *
+   *   vertikal   mittig, knapp ueber der Werkzeugleiste - die obere
+   *              Bildschirmhaelfte bleibt frei, und dort wird gezeichnet
+   *   hochkant   links, im Slot von CS2s eigenen Werkzeugeinstellungen
+   *
+   * Laeuft auch beim STILWECHSEL, nicht nur auf Knopfdruck: eine Leiste von
+   * 1400 rem, die zur 364er Spalte wird, behielte sonst ihre Ecke - und die
+   * liegt fuer eine Spalte an der voellig falschen Stelle.
+   */
   useEffect(() => {
     if (panelHome === 0) return;
-    const { breite } = rahmen();
+    const { breite, hoehe } = rahmen();
+    const rem = remGroesse();
+    const mass = stilmass();
     const eigene = leistenbreite();
     panelDiagnose(
       `Fenster ${window.innerWidth}x${window.innerHeight}, Rahmen ${breite}, `
-      + `Leiste ${Math.round(eigene)}, gemessen `
+      + `Stil ${panelStil}, Leiste ${Math.round(eigene)}, gemessen `
       + `${leiste.current?.offsetWidth ?? "nicht moeglich"}`);
-    const links = eigene > 0 ? klemme((breite - eigene) / 2 / breite) : 0;
+    // Hochkant an den linken Rand, mit demselben Abstand, den CS2 fuer
+    // sein eigenes Werkzeugfenster haelt (`left: 12rem`).
+    const links = hochkant
+      ? klemme((12 * rem) / breite)
+      : (eigene > 0 ? klemme((breite - eigene) / 2 / breite) : 0);
+    /*
+     * HOCHKANT GEHT NACH OBEN, NICHT NACH UNTEN.
+     *
+     * Unten links liegt CS2s eigenes Werkzeugfenster - `.tool-options_Cqd`
+     * mit `left: 12rem, bottom: 12rem, width: 364rem`. Genau dort stand
+     * unsere Spalte auch, und der Nutzer sah sein Fangfenster nur noch
+     * hinter unserem. Dieselbe Breite an derselben Kante, nur von oben:
+     * so bleibt der Slot des Spiels frei.
+     *
+     * Die Leiste bleibt unten - sie ist flach und laesst darunter nur die
+     * 62 rem fuer Werkzeugleiste und Abstand.
+     */
+    /*
+     * ZWEI BEDEUTUNGEN VON `y`, je nach Stil:
+     *
+     *   hochkant   Abstand der OBERKANTE vom oberen Bildrand
+     *   waagerecht Abstand der UNTERKANTE vom unteren Bildrand
+     *
+     * Das klingt nach einer Falle, ist aber das Gegenteil: so braucht
+     * keiner der beiden eine Hoehe, die wir nicht messen koennen.
+     */
+    const oben = hochkant
+      ? klemme((55 + 12) * rem / hoehe)
+      : klemme(unterrandRem() * rem / hoehe);
     setZug(null);
-    setPanelPosition(links, 0);
+    setPanelPosition(links, Math.max(0, oben));
+    // NICHT auf `panelStil` hoeren: jeder Stil merkt sich seine eigene Ecke,
+    // und die kommt fertig aus dem Mod. Stuende der Stil hier mit drin,
+    // ueberschriebe jeder Wechsel die gemerkte Position mit der Heimecke.
   }, [panelHome]);
 
   useEffect(() => {
@@ -317,10 +501,35 @@ export const ParkingLotPanel = () => {
     if (!polygonClosed && tab === "zoning") setTab("layout");
   }, [polygonClosed, tab]);
 
-  const { breite: rahmenBreite } = rahmen();
+  /**
+   * Wieviel Hoehe unter der Oberkante des Fensters noch frei ist.
+   *
+   * `y` ist bei Hochkant der Abstand der Oberkante vom oberen Bildrand;
+   * darunter bleibt der Rest bis zu dem Streifen, den wir ueber CS2s
+   * Hauptleiste frei lassen.
+   */
+  const platzHochkant = (obenAnteil: number, hoehe: number) =>
+    Math.max(MindesthoeheHochkant,
+      (1 - obenAnteil) * hoehe - unterrandRem() * remGroesse());
+
+  /**
+   * Wie weit das hochkante Fenster nach unten darf.
+   *
+   * Ohne diese Schranke schrumpft es beim Ziehen mit - und ab einem gewissen
+   * Punkt bleibt nur noch die Kopfleiste stehen. Der Nutzer: *"Beim
+   * Verschieben des Fensters verschwindet alles unterhalb des Headers."*
+   * Das war kein Fehler in der Rechnung, sondern eine fehlende Untergrenze.
+   */
+  const maxYHochkant = (hoehe: number) => Math.max(0,
+    (hoehe - unterrandRem() * remGroesse() - MindesthoeheHochkant) / hoehe);
+
+  const { breite: rahmenBreite, hoehe: rahmenHoehe } = rahmen();
   const maxX = Math.max(0, (rahmenBreite - leistenbreite()) / rahmenBreite);
   const x = klemme(zug ? zug.x : panelX, maxX);
-  const y = zug ? zug.y : panelY;
+  // Auch ein aelterer gespeicherter Wert darf das Fenster nicht unter die
+  // Mindesthoehe druecken.
+  const y = klemme(zug ? zug.y : panelY,
+    hochkant ? maxYHochkant(rahmenHoehe) : MAX_ANTEIL);
 
   const zugBeginnen = (event: any) => {
     anker.current = {
@@ -341,7 +550,14 @@ export const ParkingLotPanel = () => {
         anker.current.x + (event.clientX - anker.current.mausX) / breite,
         maxLinks,
       ),
-      y: klemme(anker.current.y + (event.clientY - anker.current.mausY) / hoehe),
+      /*
+       * Bei der waagerechten Leiste ist `y` der Abstand von UNTEN. Die Maus
+       * nach unten zu ziehen muss den Wert also kleiner machen, nicht
+       * groesser - sonst laeuft das Fenster der Maus davon.
+       */
+      y: klemme(anker.current.y + (hochkant ? 1 : -1)
+        * (event.clientY - anker.current.mausY) / hoehe,
+        hochkant ? maxYHochkant(hoehe) : MAX_ANTEIL),
     });
   };
 
@@ -350,6 +566,88 @@ export const ParkingLotPanel = () => {
     setPanelPosition(zug.x, zug.y);
     setZug(null);
   };
+
+  /**
+   * Oeffnet oder schliesst das Vegetationsfenster.
+   *
+   * Beim ALLERERSTEN Oeffnen bekommt es seine Stelle: linksbuendig mit dem
+   * Panel, darueber. Danach nie wieder - auch nicht, wenn das Panel
+   * inzwischen woanders steht. Verschiebt der Nutzer das Fenster selbst,
+   * gilt ab da seine Stelle.
+   *
+   * Die Panelhoehe wird dafuer geschaetzt, wenn Cohtml sie nicht liefert.
+   * Das ist hier vertretbar - anders als beim Abstand zur Werkzeugleiste
+   * geht es um einen Startpunkt, den man mit einem Zug korrigiert.
+   */
+  const vegStelle = hochkant ? vegPosHochkant : vegPos;
+  const vegStelleSetzen = hochkant ? setVegPosHochkant : setVegPos;
+
+  /**
+   * Wo das Vegetationsfenster aufgeht.
+   *
+   *   waagerecht   ueber dem Panel, linksbuendig, 12 rem Abstand
+   *   hochkant     rechts neben dem Panel, 12 rem Abstand, unten buendig
+   *
+   * GERECHNET WIRD IN BILDSCHIRMKOORDINATEN, nicht ab der Panelecke: das
+   * Fenster ist ein Nachbar des Panels, kein Kind. `x: 0` heisst linker
+   * Bildrand. Mein erster Versuch rechnete noch ab der Ecke und landete
+   * halb ausserhalb des Bildes.
+   *
+   * `vonUnten` heisst: `y` ist der Abstand der UNTERKANTE vom unteren
+   * Bildrand. So braucht das Fenster seine eigene Hoehe nicht zu kennen -
+   * die liefert Cohtml ohnehin nicht.
+   */
+  const stelleVegetation = () => {
+    const { breite, hoehe } = rahmen();
+    const rem = remGroesse();
+    const el = leiste.current;
+    const gemessenH = el?.offsetHeight ?? 0;
+    const gemessenB = el?.offsetWidth ?? 0;
+    const panelhoehe = gemessenH > 0 ? gemessenH : (hochkant ? 700 : 420) * rem;
+    const panelbreite = gemessenB > 0 ? gemessenB : leistenbreite();
+    const panelLinks = x * breite;
+    const panelOben = hochkant ? y * hoehe : hoehe - y * hoehe - panelhoehe;
+
+    const links = hochkant
+      ? (panelLinks + panelbreite) / rem + AbstandFenster
+      : panelLinks / rem;
+    const unten = hochkant
+      ? (hoehe - panelOben - panelhoehe) / rem
+      : (hoehe - panelOben) / rem + AbstandFenster;
+
+    panelDiagnose(
+      `Vegetationsfenster (${hochkant ? "hochkant" : "waagerecht"}): `
+      + `Panel oben ${Math.round(panelOben)} px, `
+      + `${Math.round(panelbreite)} x ${Math.round(panelhoehe)} px `
+      + `(${gemessenH > 0 ? "gemessen" : "geschaetzt"}), `
+      + `Fenster links ${Math.round(links)} rem, `
+      + `unten ${Math.round(unten)} rem.`);
+
+    vegStelleSetzen({
+      // Nie ganz aus dem Bild: bleiben Unterkante und linke Kante drin,
+      // bleibt auch der Griff greifbar.
+      x: Math.min(Math.max(0, links), Math.max(0, breite / rem - 120)),
+      y: Math.min(Math.max(0, unten), hoehe / rem - 40),
+    });
+  };
+
+  useEffect(() => {
+    if (!vegOffen || vegStelle !== null) return;
+    /*
+     * ZWEI BILDER WARTEN, DANN MESSEN.
+     *
+     * Gameface legt das Layout einmal je Bild an; was JS liest, ist ein Bild
+     * alt. Direkt nach einem Stilwechsel steht in `offsetHeight` deshalb
+     * noch die Hoehe des vorigen Stils, und das Fenster stuende schief.
+     */
+    let weg = false;
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (!weg) stelleVegetation();
+    }));
+    return () => { weg = true; cancelAnimationFrame(id); };
+  }, [vegOffen, hochkant, vegStelle]);
+
+  const oeffneVegetation = (an: boolean) => { setVegOffen(an); };
 
   /** Verhindert, dass ein Knopf in der Schiene die Leiste mitzieht. */
   const haltAn = (event: any) => event.stopPropagation();
@@ -365,24 +663,80 @@ export const ParkingLotPanel = () => {
   const zoning = tab === "zoning" && polygonClosed;
   const liste = tab === "liste";
 
+  /** Der Name des Mods - hochkant in einer Zeile mit den beiden Pfeilen. */
+  const marke = (
+    <div className={styles.marke}>
+      <span className={styles.markeStrich} />
+      <span className={styles.markeText}>{t.titel}</span>
+    </div>
+  );
+
+  /**
+   * Rueckgaengig und Wiederherstellen.
+   *
+   * Sie stehen an zwei verschiedenen Stellen, je nach Stil - waagerecht bei
+   * den Fensterknoepfen, hochkant oben in der Reiterzeile -, aber es ist
+   * derselbe Knopf. Deshalb steht er einmal hier und nicht zweimal im
+   * Aufbau.
+   */
+  const undoRedo = (
+    <>
+      <TooltipKnopf text={t.tooltipRueckgaengig}
+        className={`${styles.iconButton}
+          ${undoAvailable ? "" : styles.iconButtonAus}`}
+        aria-disabled={!undoAvailable}
+        onMouseDown={haltAn}
+        onClick={undo}
+      >
+        <span className={styles.undoSymbol}>↶</span>
+      </TooltipKnopf>
+      <TooltipKnopf text={t.tooltipWiederherstellen}
+        className={`${styles.iconButton}
+          ${redoAvailable ? "" : styles.iconButtonAus}`}
+        aria-disabled={!redoAvailable}
+        onMouseDown={haltAn}
+        onClick={redo}
+      >
+        <span className={styles.undoSymbol}>↷</span>
+      </TooltipKnopf>
+    </>
+  );
+
   return (
     <>
     <div
       ref={leiste}
-      className={styles.panel}
-      style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
+      className={`${styles.panel} ${
+        hochkant ? styles.stilHochkant : styles.stilHorizontal}`}
+      style={hochkant
+        ? { left: `${x * 100}%`, top: `${y * 100}%` }
+        : { left: `${x * 100}%`, bottom: `${y * 100}%` }}
     >
-      <div className={styles.reihe}>
+      {/*
+        DIE HOECHSTHOEHE SITZT HIER, NICHT AM PANEL.
+        Am Panel hat sie den Inhalt zerlegt: das Panel waere dafuer ein
+        Flex-Kasten geworden, und als dessen Kind rechnet `.reihe` nicht mehr
+        nach Max-Content - `.inhalt` fiel auf seine Polsterung zusammen.
+
+        An `.reihe` gilt beides: kurzer Inhalt laesst das Fenster
+        schrumpfen, langer wird begrenzt, und erst dann geben `.inhalt` und
+        die Spaltengruppe ihre Hoehe an die Bildlaufleiste weiter.
+
+        AUSGERECHNET IN PIXELN, NICHT ALS `calc`: Cohtml mischt in `calc`
+        keine Einheiten zuverlaessig (vh mit rem ist derselbe Fall wie
+        Prozent mit rem, siehe cs2-ui-cohtml).
+      */}
+      <div className={styles.reihe}
+           style={hochkant
+             ? { maxHeight: `${platzHochkant(y, rahmenHoehe)}px` }
+             : undefined}>
 
         {/* Die Schiene ist zugleich der Griff zum Verschieben. Reiter und
             Knoepfe darin halten das Mausereignis selbst auf, sonst wandert
             die Leiste bei jedem Klick ein Stueck mit. */}
         <div className={styles.rail} onMouseDown={zugBeginnen}
              title={t.titelZiehen}>
-          <div className={styles.marke}>
-            <span className={styles.markeStrich} />
-            <span className={styles.markeText}>{t.titel}</span>
-          </div>
+          {marke}
           {/*
             DER RECHENWEG GEHOERT NICHT IN DIE LAYOUT-SPALTE.
             Er stellt nicht EINE Eigenschaft des Parkplatzes ein, sondern
@@ -394,6 +748,12 @@ export const ParkingLotPanel = () => {
               vier anderen hatten laengst einen; hier fehlte er, weil der
               Reiter als erster entstand und der `TooltipKnopf` spaeter
               dazukam. */}
+          {/*
+            EINE ZEILE FUER DIE REITER.
+            Hochkant sitzen Rueckgaengig und Wiederherstellen rechts darin;
+            waagerecht ist die Zeile nur eine Huelle, die nichts aendert.
+          */}
+          <div className={styles.reiterZeile}>
           <TooltipKnopf
             text={t.tooltipEntwurf}
             className={`${styles.tab} ${melden || debug || zoning || liste ? "" : styles.tabAktiv}`}
@@ -460,28 +820,91 @@ export const ParkingLotPanel = () => {
           >
             {t.reiterMelden}
           </TooltipKnopf>
+          {/*
+            HOCHKANT STEHEN DIE BEIDEN PFEILE HIER, rechts neben den
+            Reitern. Beim ersten Anlauf passten sie nicht - die Reiter
+            liessen 43 rem frei, zwei Knoepfe brauchten 52, und der zweite
+            ist umgebrochen. Statt sie woanders hinzuschieben, ist jetzt
+            Platz gemacht: engere Reiter und kleinere Knoepfe in dieser
+            Zeile, zusammen rund 30 rem Luft.
+          */}
+          {hochkant ? <>
+            <span className={styles.kopfFueller} />
+            {undoRedo}
+          </> : null}
+          </div>
+          {/* Die Fangschalter des Spiels, gleich links neben den
+              Fensterknoepfen. Sie zeigen und setzen denselben Zustand wie
+              CS2s eigenes Werkzeugfenster. */}
+          {/*
+            ALLES RECHTS IN EINER GRUPPE.
+            Vorher schob jeder der beiden Bloecke sich einzeln nach rechts.
+            Das haelt nur, solange die Kopfzeile nicht umbricht - danach
+            faengt die zweite Zeile wieder links an. Eine gemeinsame Gruppe
+            bleibt rechtsbuendig, egal wieviele Reiter davor stehen.
+          */}
+          {/*
+            EIN FUELLER STATT `margin-left: auto`.
+            Die Auto-Marge hat nicht geschoben - die Knoepfe klebten hinter
+            den Reitern statt am rechten Rand. Nachgezaehlt in `index.css`:
+            CS2 benutzt `margin-left:auto` 3-mal, `justify-content:flex-end`
+            dagegen 77-mal und `space-between` 48-mal. Was das Spiel selbst
+            meidet, kann Cohtml offenbar nicht verlaesslich - und ein
+            wachsender Zwischenraum ist die Form, die ueberall im Mod schon
+            traegt.
+          */}
+          <span className={styles.kopfFueller} />
+          <div className={styles.kopfRechts}>
           <div className={styles.kopfKnoepfe}>
-            <TooltipKnopf text={t.tooltipRueckgaengig}
-              className={`${styles.iconButton}
-                ${undoAvailable ? "" : styles.iconButtonAus}`}
-              aria-disabled={!undoAvailable}
+            {hochkant ? null : undoRedo}
+            {/*
+              DER STILUMSCHALTER STEHT BEI DEN FENSTERKNOEPFEN, nicht bei den
+              Einstellungen: er aendert nichts am Parkplatz, sondern nur, wie
+              dieses Fenster aussieht - dieselbe Ebene wie Schliessen.
+
+              Beschriftet ist er mit dem Stil, in den er wechselt. Ein
+              Symbol waere hier schlechter: fuer "schmale Spalte gegen breite
+              Leiste" gibt es unter CS2s Standardsymbolen keines, und ein
+              geratener Name waere im Spiel ein kaputtes Bild.
+            */}
+            {/* Der Stilknopf gehoert nicht zu Rueckgaengig/Wiederherstellen -
+                er aendert nichts am Parkplatz, sondern am Fenster. */}
+            {hochkant ? null : <span className={styles.kopfTrenner} />}
+            <TooltipKnopf text={t.tooltipStil}
+              className={`${styles.iconButton} ${styles.stilKnopf}`}
               onMouseDown={haltAn}
-              onClick={undo}
+              onClick={() => setPanelStil(hochkant ? "horizontal" : "hochkant")}
             >
-              <span className={styles.undoSymbol}>↶</span>
-            </TooltipKnopf>
-            <TooltipKnopf text={t.tooltipWiederherstellen}
-              className={`${styles.iconButton}
-                ${redoAvailable ? "" : styles.iconButtonAus}`}
-              aria-disabled={!redoAvailable}
-              onMouseDown={haltAn}
-              onClick={redo}
-            >
-              <span className={styles.undoSymbol}>↷</span>
+              {/* Das Symbol zeigt, WOHIN es geht: zwei Pfeile auseinander
+                  in der Richtung, in der der andere Stil laeuft. */}
+              <span className={styles.stilPfeile}>
+                <img alt="" src={hochkant
+                  ? "Media/Glyphs/ThickStrokeArrowLeft.svg"
+                  : "Media/Glyphs/ThickStrokeArrowUp.svg"} />
+                <img alt="" src={hochkant
+                  ? "Media/Glyphs/ThickStrokeArrowRight.svg"
+                  : "Media/Glyphs/ThickStrokeArrowDown.svg"} />
+              </span>
             </TooltipKnopf>
             {[
               { text: t.tooltipReset, icon: "Reset", action: resetAll },
-              { text: t.tooltipVerwerfen, icon: "Trash", action: discardDefaults },
+              /*
+               * HIER STAND DER PAPIERKORB.
+               *
+               * Er warf die gemerkten Standardwerte weg - eine Funktion,
+               * die der Nutzer nie bestellt hatte und die neben
+               * "Zuruecksetzen" ohnehin schwer zu unterscheiden war.
+               * Denselben Zweck erfuellt "Alle Einstellungen zuruecksetzen"
+               * auf der Optionsseite.
+               *
+               * An seiner Stelle das, was man im Panel wirklich braucht:
+               * das Fenster zurueck an seinen Platz. Bisher ging das nur
+               * ueber ESC und die Modoptionen - also ausgerechnet dann
+               * umstaendlich, wenn man das Fenster aus dem Bild geschoben
+               * hat.
+               */
+              { text: t.tooltipFensterHeim,
+                icon: "Media/Glyphs/ArrowCircular.svg", action: fensterHeim },
               { text: t.tooltipSchliessen, icon: "XClose", action: togglePanel },
             ].map((knopf) => (
               <TooltipKnopf key={knopf.icon} text={knopf.text}
@@ -489,9 +912,28 @@ export const ParkingLotPanel = () => {
                 onMouseDown={haltAn}
                 onClick={knopf.action}
               >
-                <img src={icon(knopf.icon)} />
+                {/*
+                  Glyphen des Spiels als MASKE, nicht als Bild - sonst
+                  kommt ihre eigene Farbe mit. Die Symbolbibliothek
+                  (`coui://uil/...`) ist bereits weiss und bleibt ein Bild.
+                */}
+                {knopf.icon.indexOf("/") >= 0 ? (
+                  <span className={styles.kopfGlyph}
+                        style={{ maskImage: `url(${knopf.icon})` }} />
+                ) : (
+                  <img src={icon(knopf.icon)} />
+                )}
               </TooltipKnopf>
             ))}
+          </div>
+          {/*
+            DIE FANGSCHALTER GANZ NACH RECHTS.
+            Zwischen Reitern und Fensterknoepfen sahen sie aus, als gehoerten
+            sie zu beidem - "mitten zwischen den anderen Knoepfen", wie der
+            Nutzer es genannt hat. Sie sind eine eigene Sache und stehen
+            deshalb fuer sich am Rand.
+          */}
+          <Fangschalter />
           </div>
         </div>
 
@@ -504,7 +946,7 @@ export const ParkingLotPanel = () => {
           : liste ? <ListeTab />
           : zoning ? <ZoningTab /> : <>
         <div className={styles.spaltenGruppe}>
-        <Spalte title={t.zuschnitt} ton="Zuschnitt" titleTooltip={t.tooltipZuschnitt}>
+        <Spalte title={t.zuschnitt} ton="Zuschnitt" {...abschnitt("Zuschnitt")} titleTooltip={t.tooltipZuschnitt}>
           <Slider
             label={t.randabstand}
             tooltip={t.tooltipRandabstand}
@@ -617,7 +1059,7 @@ export const ParkingLotPanel = () => {
           />
         </Spalte>
 
-        <Spalte title={t.fahrwege} ton="Fahrwege" titleTooltip={t.tooltipFahrwege}>
+        <Spalte title={t.fahrwege} ton="Fahrwege" {...abschnitt("Fahrwege")} titleTooltip={t.tooltipFahrwege}>
           <Slider
             label={t.fahrgassenbreite}
             tooltip={t.tooltipFahrgassenbreite}
@@ -664,7 +1106,7 @@ export const ParkingLotPanel = () => {
           />
         </Spalte>
 
-        <Spalte title={t.gruen} ton="Gruen" titleTooltip={t.tooltipGruen}>
+        <Spalte title={t.gruen} ton="Gruen" {...abschnitt("Gruen")} titleTooltip={t.tooltipGruen}>
           <Toggle
             label={t.mittelgruen}
             tooltip={t.tooltipMittelgruen}
@@ -704,10 +1146,10 @@ export const ParkingLotPanel = () => {
             onReset={() => resetOne("MedianWidth")}
             onSetDefault={() => setAsDefault("MedianWidth")}
           />
-          <Vegetation />
+          <VegetationSchalter onOeffnen={oeffneVegetation} />
         </Spalte>
 
-        <Spalte title={t.spalteFlaechen} ton="Zufahrt" titleTooltip={t.tooltipFlaechen}>
+        <Spalte title={t.spalteFlaechen} ton="Zufahrt" {...abschnitt("Flaechen")} titleTooltip={t.tooltipFlaechen}>
           <Auswahl
             label={t.flaecheStrasse}
             tooltip={t.tooltipFlaecheStrasse}
@@ -829,7 +1271,7 @@ export const ParkingLotPanel = () => {
 
         <div className={styles.aktionSpalte}>
         {/*
-          VIER ARTEN, VIER KNOEPFE - und die Farbe ist die Zuordnung.
+          EINE ART, EIN KNOPF - und die Farbe ist die Zuordnung.
           Jeder Knopf traegt denselben Farbton wie sein Ring in der Vorschau,
           damit man ohne Beschriftung sieht, was man gerade gesetzt hat.
           Ansage des Nutzers am 2026-08-27.
@@ -889,6 +1331,7 @@ export const ParkingLotPanel = () => {
         </div>
         </div>
         </>}
+
       </div>
     </div>
     </div>
@@ -926,6 +1369,17 @@ export const ParkingLotPanel = () => {
 
     {/* Nur waehrend des Ziehens: faengt die Maus im ganzen Bild ein, damit
         sie den Griff nicht abhaengen kann. */}
+    {/*
+      NACHBAR DES PANELS, NICHT KIND: so bleibt es liegen, wenn das Panel
+      verschoben wird. Beide haengen am selben positionierten Vorfahren.
+    */}
+    {vegOffen ? (
+      <VegetationFenster
+        pos={vegStelle ?? undefined}
+        onPos={vegStelleSetzen}
+        onClose={() => setVegOffen(false)}
+      />
+    ) : null}
     {zug ? (
       <div
         className={styles.dragLayer}

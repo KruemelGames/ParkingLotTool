@@ -379,6 +379,38 @@ namespace ParkingLotTool
          * noch nicht so weit, wuerde ein zweites, leeres System entstehen,
          * dessen Bindings niemand sieht. Fehlt es, passiert lieber nichts.
          */
+        /**
+         * Wie das Panel aufgebaut ist. Der INHALT ist in beiden derselbe -
+         * dieselben Reiter, dieselben Regler, dieselben Knoepfe.
+         *
+         *   Horizontal  breite Leiste, die Spalten nebeneinander. Laesst
+         *               die obere Bildschirmhaelfte frei.
+         *   Hochkant    schmale Spalte, die Spalten untereinander. Steht
+         *               dort, wo CS2 seine eigenen Werkzeugeinstellungen
+         *               zeigt, und verdeckt am wenigsten.
+         */
+        public enum Fensterstilwahl
+        {
+            Horizontal,
+            Hochkant,
+        }
+
+        /**
+         * DIE EINSTELLUNG IST DER EINZIGE SPEICHERORT.
+         *
+         * Der Umschalter in der Kopfzeile des Panels schreibt hierher. Ein
+         * zweiter Speicherort in der Panel-Datei waere irgendwann
+         * auseinandergelaufen - und dann zeigte diese Seite etwas anderes
+         * an, als das Fenster tut.
+         */
+        [SettingsUISection(ReiterAllgemein, GruppeFenster)]
+        public Fensterstilwahl Fensterstil { get; set; }
+            = Fensterstilwahl.Horizontal;
+
+        /** "hochkant" oder "horizontal" - das, woran die Oberflaeche haengt. */
+        internal string FensterstilKuerzel()
+            => Fensterstil == Fensterstilwahl.Hochkant ? "hochkant" : "horizontal";
+
         [SettingsUIButton]
         [SettingsUISection(ReiterAllgemein, GruppeFenster)]
         public bool FensterZuruecksetzen
@@ -596,6 +628,37 @@ namespace ParkingLotTool
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeFenster + "]",
                     _deutsch ? "Fenster" : "Window"
+                },
+                {
+                    "Options.OPTION[" + seite + "." + nameof(Setting) + "."
+                        + nameof(Setting.Fensterstil) + "]",
+                    _deutsch ? "Aufbau des Panels" : "Panel layout"
+                },
+                {
+                    "Options.OPTION_DESCRIPTION[" + seite + "." + nameof(Setting)
+                        + "." + nameof(Setting.Fensterstil) + "]",
+                    _deutsch
+                        ? "Horizontal ist die breite Leiste mit den Spalten "
+                          + "nebeneinander. Hochkant ist die schmale Spalte "
+                          + "links unten, dort wo auch das Spiel seine "
+                          + "Werkzeugeinstellungen zeigt - sie verdeckt am "
+                          + "wenigsten. Die Einstellungen sind in beiden "
+                          + "dieselben."
+                        : "Horizontal is the wide bar with its columns side "
+                          + "by side. Upright is the narrow column at the "
+                          + "bottom left, where the game shows its own tool "
+                          + "options - it covers the least. Both hold the "
+                          + "same settings."
+                },
+                {
+                    _setting.GetEnumValueLocaleID(
+                        Setting.Fensterstilwahl.Horizontal),
+                    _deutsch ? "Horizontal" : "Horizontal"
+                },
+                {
+                    _setting.GetEnumValueLocaleID(
+                        Setting.Fensterstilwahl.Hochkant),
+                    _deutsch ? "Hochkant" : "Upright"
                 },
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeZufahrt + "]",

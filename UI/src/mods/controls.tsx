@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./panel.module.scss";
-import { icon } from "./bindings";
+import {
+  icon, FANGOPTIONEN, fangGewaehlt$, fangVerfuegbar$, setzeFang,
+} from "./bindings";
+import { useValue } from "cs2/api";
 import { useTexte } from "./texte";
 import { brauchbar, Tooltip } from "./cs2-bausteine";
 
@@ -12,6 +15,155 @@ import { brauchbar, Tooltip } from "./cs2-bausteine";
  * bleiben und nur der Tooltip ausfallen - ein fehlender Hinweis ist ein
  * Mangel, eine tote Oberflaeche waere ein Ausfall.
  */
+/**
+ * Ein kleines Fenster, das man am Kopf verschieben kann.
+ *
+ * Bewusst OHNE Merken der Position: es ist ein Werkzeug fuer einen Moment -
+ * aufmachen, etwas waehlen, zumachen. Eine gemerkte Position waere eine
+ * weitere Einstellung, die der Nutzer pflegen muss, und beim naechsten
+ * Oeffnen an der falschen Stelle, sobald das Panel woanders steht.
+ *
+ * Die Maus wird am FENSTER selbst verfolgt, nicht am Dokument: Cohtml
+ * liefert `onMouseMove` an das Element unter dem Zeiger, und ein Zug, der
+ * das Fenster verlaesst, endet damit von selbst. Genau so macht es die
+ * Leiste seit dem 2026-08-22.
+ */
+export const Fenster = ({ titel, breite = 320, links = 0, oben = 0,
+                          pos: posAussen, onPos, vonUnten,
+                          onClose, children }: {
+  titel: string;
+  breite?: number;
+  links?: number;
+  oben?: number;
+  /**
+   * Von aussen gehaltene Position. Wird sie mitgegeben, ueberlebt sie das
+   * Schliessen des Fensters - `useState` hier drin taete das nicht, denn
+   * beim Schliessen wird die Komponente abgebaut und beim naechsten
+   * Oeffnen mit dem Startwert neu aufgebaut.
+   */
+  pos?: { x: number; y: number };
+  onPos?: (p: { x: number; y: number }) => void;
+  /**
+   * `y` als Abstand von UNTEN statt von oben.
+   *
+   * Dann muss niemand die Hoehe des Fensters kennen, um es ueber etwas
+   * anderes zu setzen - dieselbe Ueberlegung wie bei der waagerechten
+   * Leiste des Panels, und aus demselben Grund: Cohtml liefert keine
+   * Hoehen.
+   */
+  vonUnten?: boolean;
+  onClose: () => void;
+  children: any;
+}) => {
+  const t = useTexte();
+  const [posInnen, setPosInnen] = useState({ x: links, y: oben });
+  const pos = posAussen ?? posInnen;
+  const setPos = (p: { x: number; y: number }) => {
+    if (onPos) onPos(p); else setPosInnen(p);
+  };
+  const anker = useRef({ mausX: 0, mausY: 0, x: 0, y: 0 });
+  const [zug, setZug] = useState(false);
+
+  const beginnen = (event: any) => {
+    anker.current = {
+      mausX: event.clientX, mausY: event.clientY, x: pos.x, y: pos.y,
+    };
+    setZug(true);
+  };
+  const bewegen = (event: any) => {
+    if (!zug) return;
+    setPos({
+      x: anker.current.x + (event.clientX - anker.current.mausX),
+      // Bei unten verankertem Fenster laeuft y andersherum, sonst liefe es
+      // der Maus davon.
+      y: anker.current.y + (vonUnten ? -1 : 1)
+        * (event.clientY - anker.current.mausY),
+    });
+  };
+  const beenden = () => setZug(false);
+
+  return (
+    <div
+      className={styles.fenster}
+      style={vonUnten
+        ? { left: `${pos.x}rem`, bottom: `${pos.y}rem`, width: `${breite}rem` }
+        : { left: `${pos.x}rem`, top: `${pos.y}rem`, width: `${breite}rem` }}
+      onMouseMove={bewegen}
+      onMouseUp={beenden}
+      onMouseLeave={beenden}
+    >
+      <div className={styles.fensterKopf} onMouseDown={beginnen}>
+        <span className={styles.fensterTitel}>{titel}</span>
+        <button
+          className={styles.fensterSchliessen}
+          aria-label={t.fensterSchliessen}
+          onMouseDown={(event: any) => event.stopPropagation()}
+          onClick={onClose}
+        >
+          &times;
+        </button>
+      </div>
+      <div className={styles.fensterInhalt}>{children}</div>
+    </div>
+  );
+};
+
+/**
+ * Die Fangschalter, wie CS2 sie in seinem Werkzeugfenster zeigt - nur in
+ * unserer Kopfleiste.
+ *
+ * Gezeigt wird nur, was unser Werkzeug auch anbietet: `availableSnapMask`
+ * kommt aus unserem eigenen `GetAvailableSnapMask`. Faellt die Bindung aus
+ * (kein aktives Werkzeug), bleibt die Zeile leer statt sechs tote Knoepfe
+ * zu zeigen.
+ */
+export const Fangschalter = () => {
+  const t = useTexte();
+  const verfuegbar = useValue(fangVerfuegbar$);
+  const gewaehlt = useValue(fangGewaehlt$);
+  const offen = FANGOPTIONEN.filter((o) => (verfuegbar & o.bit) !== 0);
+  if (offen.length === 0) return null;
+  /*
+   * "Alle" ist an, sobald JEDE angebotene Art an ist. Der Klick macht
+   * daraus alles-aus, sonst alles-an - dieselbe Logik wie in CS2s
+   * eigenem Fenster, und das Symbol ist auch dasselbe.
+   */
+  const alleBits = offen.reduce((summe, o) => summe | o.bit, 0);
+  const alleAn = (gewaehlt & alleBits) === alleBits;
+  return (
+    <div className={styles.fangZeile}>
+      <TooltipKnopf
+        text={alleAn ? t.fangAlleAus : t.fangAlleAn}
+        className={`${styles.fangKnopf} ${alleAn ? styles.fangAn : ""}`}
+        aria-pressed={alleAn}
+        aria-label={alleAn ? t.fangAlleAus : t.fangAlleAn}
+        onMouseDown={(event: any) => event.stopPropagation()}
+        onClick={() => setzeFang(alleAn ? gewaehlt & ~alleBits
+                                        : gewaehlt | alleBits)}
+      >
+        <img alt="" src="Media/Tools/Snap Options/All.svg" />
+      </TooltipKnopf>
+      {offen.map((o) => {
+        const an = (gewaehlt & o.bit) !== 0;
+        const text = t.fangNamen[o.name] ?? o.name;
+        return (
+          <TooltipKnopf
+            key={o.name}
+            text={text}
+            className={`${styles.fangKnopf} ${an ? styles.fangAn : ""}`}
+            aria-pressed={an}
+            aria-label={text}
+            onMouseDown={(event: any) => event.stopPropagation()}
+            onClick={() => setzeFang(an ? gewaehlt & ~o.bit : gewaehlt | o.bit)}
+          >
+            <img alt="" src={`Media/Tools/Snap Options/${o.name}.svg`} />
+          </TooltipKnopf>
+        );
+      })}
+    </div>
+  );
+};
+
 export const MitTooltip = ({ text, children }: {
   text: string;
   children: JSX.Element;
@@ -376,6 +528,16 @@ interface SpalteProps {
   breit?: boolean;
   titleTooltip?: string;
   bereichTooltip?: string;
+  /**
+   * Nur im hochkanten Stil: die Ueberschrift wird zum Schalter, und
+   * zugeklappt bleibt von der Spalte nur diese eine Zeile stehen.
+   *
+   * Waagerecht stehen die Spalten nebeneinander und sind alle offen; dort
+   * kommen diese drei gar nicht erst mit.
+   */
+  einklappbar?: boolean;
+  offen?: boolean;
+  onKlick?: () => void;
   children: any;
 }
 
@@ -388,16 +550,28 @@ interface SpalteProps {
  * allen drei Gruppen derselbe Balken, und mit 14 rem kleiner als die
  * Beschriftungen darunter.
  */
-export const Spalte = ({ title, ton, breit, titleTooltip,
-                         bereichTooltip, children }: SpalteProps) => {
+export const Spalte = ({ title, ton, breit, titleTooltip, bereichTooltip,
+                         einklappbar, offen = true, onKlick,
+                         children }: SpalteProps) => {
   const titel = (
     <div
-      className={`${styles.spaltenTitel} ${styles[`titel${ton}`]}`}
+      className={`${styles.spaltenTitel} ${styles[`titel${ton}`]}
+        ${einklappbar ? styles.spaltenTitelKlapp : ""}`}
       title={titleTooltip}
       aria-label={titleTooltip}
+      role={einklappbar ? "button" : undefined}
+      aria-expanded={einklappbar ? offen : undefined}
+      onClick={einklappbar ? onKlick : undefined}
     >
       <span>{title.toUpperCase()}</span>
       <span className={`${styles.spaltenLinie} ${styles[`linie${ton}`]}`} />
+      {/* Der Pfeil zeigt, WOHIN es geht: nach unten aufklappen, nach
+          rechts steht fuer die zugeklappte Zeile. */}
+      {einklappbar ? (
+        <span className={styles.klappPfeil}
+              style={{ maskImage: `url(Media/Glyphs/ThickStrokeArrow${
+                offen ? "Down" : "Right"}.svg)` }} />
+      ) : null}
     </div>
   );
   const inhalt = (
@@ -407,7 +581,7 @@ export const Spalte = ({ title, ton, breit, titleTooltip,
       aria-label={bereichTooltip}
     >
       {titleTooltip ? <MitTooltip text={titleTooltip}>{titel}</MitTooltip> : titel}
-      {children}
+      {offen ? children : null}
     </div>
   );
   return (
@@ -482,7 +656,7 @@ export const Auswahl = ({ label, tooltip, value, options, ton, onChange, differs
   const [offen, setOffen] = useState(false);
   const gewaehlt = options.find((f) => f.name === value);
   return (
-    <div className={styles.control}>
+    <div className={`${styles.control} ${styles.auswahl}`}>
       <div className={styles.flaechenFunktionsZeile}>
         {kopfSchalter ? (
           <MitTooltip text={kopfSchalter.tooltip}>

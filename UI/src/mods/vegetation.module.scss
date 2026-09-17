@@ -11,7 +11,62 @@
 .set { display:flex; align-items:center; }
 
 .remove { background-color:transparent; color:white; font-size:18rem; }
-.picker { margin-top:6rem; padding:5rem; background-color:rgba(0,0,0,.15); }
-.root input { width:130rem; min-width:0; padding:5rem; color:white; background-color:rgba(0,0,0,.2); border:1rem solid rgba(255,255,255,.2); font-size:var(--fontSizeXS); }
-.assets { display:flex; flex-wrap:wrap; max-height:180rem; overflow-y:auto; margin:5rem 0; }
+/* Im eigenen Fenster braucht die Auswahl keinen abgesetzten Grund mehr -
+   das Fenster IST die Absetzung. */
+.picker { min-width:0; }
+.root input { width:100%; min-width:0; padding:5rem; color:white; background-color:rgba(0,0,0,.2); border:1rem solid rgba(255,255,255,.2); font-size:var(--fontSizeXS); }
+.assets { display:flex; flex-wrap:wrap; max-height:320rem; overflow-y:auto; margin:5rem 0; }
 
+
+/* ================================================ FENSTER MIT ZWEI TEILEN */
+/**
+ * Links die Einstellungen, rechts die Auswahl. Rechts entsteht erst beim
+ * Anlegen eines eigenen Sets; bis dahin ist das Fenster halb so breit.
+ */
+.zweiTeile { display:flex; align-items:flex-start; }
+.teilLinks { width:284rem; flex-shrink:0; min-width:0; }
+.teilRechts {
+  width:308rem; flex-shrink:0; min-width:0;
+  margin-left:16rem; padding-left:16rem;
+  border-left:1rem solid var(--menuBorderColor1);
+}
+.teilKopf { display:flex; align-items:center; margin-bottom:6rem; }
+.teilTitel { flex:1 1 0; min-width:0; color:#fff; font-size:var(--fontSizeS); }
+/* Der Knopf, der die rechte Haelfte wieder einklappt. Ein Zeichen, kein
+   Symbol - fuer "nach rechts zuklappen" gibt es unter CS2s Standardsymbolen
+   keines, und ein geratener Name waere ein kaputtes Bild. */
+.einklappen {
+  flex-shrink:0; width:20rem; height:20rem; padding:0; border:none;
+  border-radius:4rem; background-color:rgba(255,255,255,.1);
+  color:var(--menuText1Normal); font-size:var(--fontSizeL);
+}
+.einklappen:hover { background-color:rgba(255,255,255,.2); }
+
+/**
+ * DER NAME IST ANKLICKBAR, SIEHT ABER NICHT DANACH AUS.
+ *
+ * Im Ruhezustand ein Text wie jeder andere im Panel; erst beim Ueberfahren
+ * zeigt eine Flaeche, dass da etwas passiert. Ausdrueckliche Ansage des
+ * Nutzers - ein Panel, in dem jeder anklickbare Text wie eine Schaltflaeche
+ * aussieht, liest sich schlechter.
+ */
+.nameKnopf {
+  border:none; background-color:rgba(255,255,255,0); padding:2rem 6rem;
+  margin-left:-6rem; border-radius:4rem; text-align:left; cursor:pointer;
+}
+.nameKnopf:hover { background-color:rgba(255,255,255,.1); }
+
+/**
+ * FESTE HOEHE, DAMIT DAS FENSTER NICHT SPRINGT.
+ *
+ * Zwei Zeilen bei der kleinsten Schrift. Der Text darin wechselt je nach
+ * Zustand, der Platz bleibt - sonst aendert das Fenster seine Groesse,
+ * waehrend man darin klickt, und alles darunter wandert unter dem Zeiger
+ * weg.
+ */
+.hinweisBox {
+  min-height: 34rem;
+  margin: 6rem 0 0;
+  color: rgba(255,255,255,.65);
+  font-size: var(--fontSizeXS);
+}

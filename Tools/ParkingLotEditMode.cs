@@ -1104,8 +1104,7 @@ namespace ParkingLotTool.Tools
                     || entrance.Corner < 0 || entrance.Corner > 2
                     || double.IsNaN(entrance.Along)
                     || double.IsInfinity(entrance.Along)
-                    || (int)entrance.Art < (int)Zufahrtsart.Zufahrt
-                    || (int)entrance.Art > (int)Zufahrtsart.Fussweg)
+                    || !Enum.IsDefined(typeof(Zufahrtsart), entrance.Art))
                 {
                     reason = "ungültiger Zugang " + i;
                     return false;

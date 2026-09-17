@@ -121,6 +121,8 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            using var uhr = ParkingLotMessung.Miss(
+                ParkingLotMessung.Sys.Begleiter);
             DisableLegacyLots();
             var enabled = Mod.WirtschaftAn;
             if (_lastEnabled != enabled)

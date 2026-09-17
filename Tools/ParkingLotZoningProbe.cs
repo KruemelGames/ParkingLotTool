@@ -271,7 +271,8 @@ namespace ParkingLotTool.Tools
                  * angemeldet und PrefabInitializeSystem seinen Archetyp
                  * gebaut hat.
                  */
-                _zpRoadPrefabSystem.FordereAn(_zpOriginalPrefab, out _, out _);
+                _zpRoadPrefabSystem.FordereAn(_zpOriginalPrefab,
+                    Strassenklonart.Zoning, out _, out _);
                 _zpPhase = ZpPhase.PrefabWarten;
                 _zpPhaseFrame = 0;
                 ZpLog($"2 START (unsichtbar): Klon von "
@@ -352,7 +353,8 @@ namespace ParkingLotTool.Tools
         private bool ZpWartetAufPrefab()
         {
             var klon = _zpRoadPrefabSystem.FordereAn(_zpOriginalPrefab,
-                out var fehlgeschlagen, out var aufgegeben);
+                Strassenklonart.Zoning, out var fehlgeschlagen,
+                out var aufgegeben);
             if (fehlgeschlagen || aufgegeben)
             {
                 ZpLog("2 START abgebrochen: Der unsichtbare Klon konnte nicht "

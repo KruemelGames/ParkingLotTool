@@ -88,7 +88,7 @@ namespace ParkingLotTool.Tools
          * sind dort das Wichtigste. Deshalb darf dieser Anlass auch dann ein
          * Paket abliefern, wenn kein einziger Abzug herumliegt.
          */
-        internal enum Anlass { Bau, Vorschau, Absturz }
+        internal enum Anlass { Bau, Vorschau, Absturz, Leistung }
 
         internal static string Schnuere(Anlass anlass, out string grund)
         {
@@ -105,11 +105,24 @@ namespace ParkingLotTool.Tools
                 }
 
                 var teile = new List<FileInfo>();
-                if (!nurVorschau) Juengste(ordner, "debug", teile);
-                Juengste(ordner, "prebuild", teile);
-                Juengste(ordner, "summary", teile);
+                /*
+                 * DIE LEISTUNGSMESSUNG BRAUCHT KEINEN BAUABZUG.
+                 *
+                 * Sie misst den laufenden Betrieb, nicht einen Parkplatz.
+                 * Wer eine Minute lang misst, ohne je gebaut zu haben,
+                 * bekaeme sonst "Es gibt noch keinen Abzug" statt seiner
+                 * Messung - und das ist genau der Fall, den wir sehen
+                 * wollen.
+                 */
+                if (anlass != Anlass.Leistung)
+                {
+                    if (!nurVorschau) Juengste(ordner, "debug", teile);
+                    Juengste(ordner, "prebuild", teile);
+                    Juengste(ordner, "summary", teile);
+                }
 
-                if (teile.Count == 0 && anlass != Anlass.Absturz)
+                if (teile.Count == 0 && anlass != Anlass.Absturz
+                    && anlass != Anlass.Leistung)
                 {
                     grund = nurVorschau
                         ? "Es gibt noch keinen Vorschau-Abzug. Zeichne einen "
@@ -138,6 +151,7 @@ namespace ParkingLotTool.Tools
                  * selbst sortiert.
                  */
                 var sparte = anlass == Anlass.Absturz ? "Absturz"
+                    : anlass == Anlass.Leistung ? "Leistung"
                     : anlass == Anlass.Vorschau ? "Vorschau" : "Bau";
                 var unterordner = Path.Combine(
                     Path.Combine(ordner, "ParkingLotTool-Logs"), sparte);
@@ -155,6 +169,15 @@ namespace ParkingLotTool.Tools
                         Lege(archiv, datei.FullName, datei.Name);
 
                     LegeText(archiv, "umgebung.txt", Umgebung());
+
+                    /*
+                     * Die gesammelten Messzeilen. Sie stehen zwar auch im
+                     * Modlog, aber dort zwischen zehntausend anderen - hier
+                     * ist es genau die gemessene Minute.
+                     */
+                    if (anlass == Anlass.Leistung)
+                        LegeText(archiv, "leistung.txt",
+                            ParkingLotMessung.Ernte());
 
                     /*
                      * DIE SCHRITTSPUR IN JEDES PAKET.

@@ -62,8 +62,26 @@ namespace ParkingLotTool.Tools
              * DARUEBER - sie verdecken die Vorschau nicht mehr, sie faerben
              * sie ein.
              */
-            foreach(var plant in _vegetation)
-                buffer.DrawCircle(VegetationColor,plant.Position,plant.Tree ? VegetationTreeDiameter : VegetationShrubDiameter);
+            /*
+             * DIE PFLANZEN ZEICHNET DAS FLAECHENNETZ.
+             *
+             * Bis zum 2026-09-17 stand hier ein `DrawCircle` je Pflanze.
+             * Gemessen an einem grossen Parkplatz waren das 10.467 Aufrufe
+             * in JEDEM Bild und damit der groesste Einzelposten der
+             * Zeichenzeit.
+             *
+             * Jetzt sind es Instanzen einer einzigen Scheibe - ein
+             * Zeichenaufruf, und der Puffer wird nur neu gefuellt, wenn
+             * sich die Pflanzenliste aendert. Ohne Netz (etwa weil CS2s
+             * Overlay-Material nicht erreichbar war) bleibt der alte Weg.
+             */
+            if (Flaechennetz == null)
+            {
+                ParkingLotMessung.Zaehle(
+                    ParkingLotMessung.Zaehler.Pflanzen, _vegetation.Count);
+                foreach(var plant in _vegetation)
+                    buffer.DrawCircle(VegetationColor,plant.Position,plant.Tree ? VegetationTreeDiameter : VegetationShrubDiameter);
+            }
             /*
              * DIE STRASSENBAENDER WERDEN GAR NICHT MEHR GEZEICHNET.
              *
@@ -83,9 +101,13 @@ namespace ParkingLotTool.Tools
              * E-Plaetze ueberhaupt erkennt.
              */
             var netzFuellt = Flaechennetz != null;
+            ParkingLotMessung.Zaehle(ParkingLotMessung.Zaehler.Baender,
+                _green.Count + _bays.Count + (netzFuellt ? 0 : _roads.Count));
             DrawBands(buffer, _green, false, netzFuellt);
             if (!netzFuellt) DrawBands(buffer, _roads, true);
             DrawBands(buffer, _bays, true, netzFuellt);
+            ParkingLotMessung.Zaehle(ParkingLotMessung.Zaehler.Sonstige,
+                _chargers.Count);
             for (var i = 0; i < _chargers.Count; i++)
                 buffer.DrawCircle(ChargerColor, _chargers[i], ChargerDiameter);
 

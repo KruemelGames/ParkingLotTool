@@ -95,6 +95,9 @@ namespace ParkingLotTool.Tools
                 if (eintrag == null) continue;
                 switch (eintrag.Art)
                 {
+                    // Die Gasse ist eine vollwertige Zufahrt; sie hat beide
+                    // Richtungen und zaehlt deshalb genauso.
+                    case Zufahrtsart.Gasse:
                     case Zufahrtsart.Zufahrt: zufahrt++; break;
                     case Zufahrtsart.Einfahrt: einfahrt++; break;
                     case Zufahrtsart.Ausfahrt: ausfahrt++; break;
@@ -118,7 +121,9 @@ namespace ParkingLotTool.Tools
          */
         internal void SetZufahrtsartFromPanel(int art)
         {
-            var gewaehlt = art >= 0 && art <= (int)Zufahrtsart.Fussweg
+            // Kein Vergleich gegen den letzten Wert: der wandert, sobald
+            // eine Art dazukommt, und tut es stumm.
+            var gewaehlt = Enum.IsDefined(typeof(Zufahrtsart), art)
                 ? (Zufahrtsart)art
                 : Zufahrtsart.Zufahrt;
 

@@ -37,6 +37,8 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            using var uhr = ParkingLotMessung.Miss(
+                ParkingLotMessung.Sys.Angestellte);
             if (!Mod.WirtschaftAn
                 || _companions.IsEmptyIgnoreFilter) return;
             using var companions = _companions.ToEntityArray(Allocator.Temp);

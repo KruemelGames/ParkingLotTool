@@ -42,6 +42,20 @@ namespace ParkingLotTool.Geometry
         Ausfahrt,
         /** Nur Fussweg, kein Auto. Am schmalsten. */
         Fussweg,
+        /**
+         * Wie `Zufahrt`, aber als unsichtbare GASSE an die Stadtstrasse
+         * gebaut statt als unsichtbarer Weg danebengelegt.
+         *
+         * Der Unterschied ist einzig, dass CS2 eine Strasse an einer
+         * Strasse TEILT und dabei einen Knoten setzt - und nur ein Knoten
+         * oeffnet den Bordstein. Gemessen am 2026-09-17: unsichtbarer
+         * Gassenklon an einer 16-m-Strasse, Knoten mit drei Kanten, die
+         * urspruengliche Kante ersetzt.
+         *
+         * Geometrisch ist sie mit `Zufahrt` identisch. Nur `ParkingLotNetBuilder`
+         * unterscheidet sie, und nur beim aeusseren Stueck.
+         */
+        Gasse,
     }
 
     public sealed class Entrance

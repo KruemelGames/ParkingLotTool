@@ -148,6 +148,19 @@ namespace ParkingLotTool.Tools
             [JsonProperty("PanelY", Required = Required.Default)]
             public float? PanelY { get; set; }
 
+            /**
+             * Die Ecke der HOCHKANT-Spalte, getrennt von der Leiste.
+             *
+             * Ein gemeinsames Paar waere beim ersten Stilwechsel verloren:
+             * 1680 rem breit und 364 rem breit gehoeren nicht an dieselbe
+             * Stelle, und wer zurueckschaltet, faende sein Fenster woanders.
+             */
+            [JsonProperty("PanelXHochkant", Required = Required.Default)]
+            public float? PanelXHochkant { get; set; }
+
+            [JsonProperty("PanelYHochkant", Required = Required.Default)]
+            public float? PanelYHochkant { get; set; }
+
             internal UserDefaults Clone() => new UserDefaults
             {
                 Version = Version,
@@ -170,6 +183,8 @@ namespace ParkingLotTool.Tools
                 AngleMode = AngleMode,
                 PanelX = PanelX,
                 PanelY = PanelY,
+                PanelXHochkant = PanelXHochkant,
+                PanelYHochkant = PanelYHochkant,
             };
         }
 
@@ -245,6 +260,14 @@ namespace ParkingLotTool.Tools
         /** Anteil des Bildschirms, 0 bis 1; siehe UserDefaults.PanelX. */
         private ValueBinding<float> _panelX;
         private ValueBinding<float> _panelY;
+        private ValueBinding<string> _panelStil;
+        private ValueBinding<int> _leistungRest;
+
+        /** Wie lange der Knopf im Melde-Reiter misst. */
+        private const int LeistungSekunden = 60;
+
+        internal const string PanelStilHorizontal = "horizontal";
+        internal const string PanelStilHochkant = "hochkant";
 
         private ValueBinding<int> _stalls;
         private ValueBinding<int> _perimeterStalls;
@@ -601,9 +624,34 @@ namespace ParkingLotTool.Tools
             AddBinding(_entranceCount =
                 new ValueBinding<int>(Group, "EntranceCount", 0));
             AddBinding(_panelX = new ValueBinding<float>(Group, "PanelX",
-                _defaults.PanelX ?? 0f));
+                StilX() ?? 0f));
             AddBinding(_panelY = new ValueBinding<float>(Group, "PanelY",
-                _defaults.PanelY ?? 0f));
+                StilY() ?? 0f));
+            /*
+             * Die Fangarten als EIGENE Bindung. `tool.availableSnapMask`
+             * geht nicht mehr: die meldet seit dem 2026-09-17 absichtlich
+             * 0, damit CS2 kein zweites Fangfenster baut.
+             */
+            /*
+             * Sekunden bis zum Ende der Leistungsmessung; 0 heisst: laeuft
+             * keine. Der Knopf im Melde-Reiter zeigt daran, dass es lauft
+             * und wie lange noch - ohne Rueckmeldung druecken Leute ein
+             * zweites Mal.
+             */
+            AddBinding(_leistungRest = new ValueBinding<int>(
+                Group, "LeistungRest", 0));
+            AddBinding(new TriggerBinding(Group, "StarteLeistungstest",
+                StarteLeistungstest));
+            AddBinding(new ValueBinding<uint>(Group, "Fangarten",
+                (uint)ParkingLotToolSystem.Fangarten));
+            AddBinding(_panelStil = new ValueBinding<string>(Group, "PanelStil",
+                Mod.Optionen?.FensterstilKuerzel() ?? PanelStilHorizontal));
+            AddBinding(new TriggerBinding<string>(Group, "SetPanelStil",
+                SetPanelStil));
+            // Derselbe Weg wie der Knopf in den Modeinstellungen - nur
+            // erreichbar, ohne das Spiel zu pausieren.
+            AddBinding(new TriggerBinding(Group, "FensterHeim",
+                ResetPanelPosition));
 
             AddBinding(_stalls = new ValueBinding<int>(Group, "Stalls", 0));
             AddBinding(_perimeterStalls =
@@ -934,8 +982,21 @@ namespace ParkingLotTool.Tools
                 AngleMode = "edge",
                 // Genau da, wo das Fenster bisher fest sass: left 10rem,
                 // top 60rem - bei 1080p sind rem und Pixel dasselbe.
-                PanelX = 10f / 1920f,
-                PanelY = 60f / 1080f,
+                /*
+                 * Werksplaetze, beide knapp ueber der Werkzeugleiste (die
+                 * ist 50 rem hoch, CS2 haelt 12 rem Abstand):
+                 *   Leiste    waagerecht mittig, 1680 breit, ~320 hoch
+                 *   Hochkant  links im Slot von CS2s Werkzeugfenster
+                 * Genau nachgerechnet wird beim Zuruecksetzen - nur das
+                 * Panel kennt Aufloesung und tatsaechliche Breite.
+                 */
+                PanelX = 120f / 1920f,
+                // Abstand der UNTERKANTE vom unteren Bildrand, gemessen:
+                // CS2s Hauptleiste beginnt bei 980 px, unser Fenster soll
+                // bei 974 enden - also 106 von 1080.
+                PanelY = 106f / 1080f,
+                PanelXHochkant = 12f / 1920f,
+                PanelYHochkant = 68f / 1080f,
             };
         }
 
@@ -1015,6 +1076,8 @@ namespace ParkingLotTool.Tools
         {
             geladen.PanelX = geladen.PanelX ?? werk.PanelX;
             geladen.PanelY = geladen.PanelY ?? werk.PanelY;
+            geladen.PanelXHochkant = geladen.PanelXHochkant ?? werk.PanelXHochkant;
+            geladen.PanelYHochkant = geladen.PanelYHochkant ?? werk.PanelYHochkant;
             geladen.SurfaceRoadOn = geladen.SurfaceRoadOn ?? werk.SurfaceRoadOn;
             geladen.SurfaceApronOn = geladen.SurfaceApronOn ?? werk.SurfaceApronOn;
             geladen.SurfaceDecorationOn =
@@ -1096,7 +1159,9 @@ namespace ParkingLotTool.Tools
                 reason = "AngleMode";
                 return false;
             }
-            if (!ValidFraction(values.PanelX) || !ValidFraction(values.PanelY))
+            if (!ValidFraction(values.PanelX) || !ValidFraction(values.PanelY)
+                || !ValidFraction(values.PanelXHochkant)
+                || !ValidFraction(values.PanelYHochkant))
             {
                 reason = "PanelPosition";
                 return false;
@@ -1155,6 +1220,123 @@ namespace ParkingLotTool.Tools
          * Sekunde sind das 60 Schreibvorgaenge, fuer ein Ergebnis, das erst
          * beim Loslassen feststeht.
          */
+        /**
+         * Nimmt nur die beiden bekannten Werte an.
+         *
+         * Rueckgabe `null` heisst "unbrauchbar" - dann greift beim Laden die
+         * Werkseinstellung. Eine von Hand verstellte Datei mit "Hochkant "
+         * oder "seitlich" darf das Panel nicht in einen Stil bringen, fuer
+         * den es kein Aussehen gibt; dann steht es ohne jede Regel da.
+         */
+        private static string NormalisiereStil(string wert)
+        {
+            if (string.IsNullOrWhiteSpace(wert)) return null;
+            var k = wert.Trim().ToLowerInvariant();
+            if (k == PanelStilHochkant) return PanelStilHochkant;
+            if (k == PanelStilHorizontal) return PanelStilHorizontal;
+            return null;
+        }
+
+        /**
+         * Holt den Stil aus den Modeinstellungen an die Oberflaeche.
+         *
+         * Laeuft in jedem Bild mit, wie die Sprache - und aus demselben
+         * Grund: CS2 meldet die Aenderung einer ModSetting nicht an fremde
+         * Systeme. Wer den Stil im Optionsmenue umstellt, hat das Werkzeug
+         * gerade nicht offen; ohne diese Zeile saehe er die Aenderung erst
+         * nach einem Neustart.
+         *
+         * Kostet einen Zeichenkettenvergleich je Bild.
+         */
+        internal void PflegeFensterstil()
+        {
+            var jetzt = Mod.Optionen?.FensterstilKuerzel() ?? PanelStilHorizontal;
+            if (_panelStil == null || _panelStil.value == jetzt) return;
+            UebernimmStil(jetzt);
+        }
+
+        /**
+         * Stil setzen UND die Ecke des neuen Stils mitziehen.
+         *
+         * Jeder Stil merkt sich seine eigene Stelle. Wird nur der Stil
+         * gewechselt, zeigt die Oberflaeche die Stelle des alten - und
+         * schreibt sie beim naechsten Verschieben ins Fach des neuen.
+         *
+         * Genau das ist passiert, weil es den Wechsel an zwei Stellen gab
+         * und nur eine davon die Ecke nachzog. Deshalb steht die Antwort
+         * jetzt nur noch hier, und beide Wege gehen hindurch.
+         *
+         * Reihenfolge ist Pflicht: `StilX`/`StilY` lesen den Stil aus der
+         * Bindung, die also vorher stimmen muss.
+         */
+        private void UebernimmStil(string stil)
+        {
+            _panelStil?.Update(stil);
+            _panelX?.Update(StilX() ?? 0f);
+            _panelY?.Update(StilY() ?? 0f);
+        }
+
+        /**
+         * Der Umschalter aus der Kopfzeile des Panels.
+         *
+         * Wird sofort geschrieben, nicht erst beim Schliessen: anders als
+         * beim Verschieben gibt es hier keine Zwischenzustaende, die man
+         * buendeln muesste - ein Klick, ein Wert.
+         */
+        private void SetPanelStil(string wert)
+        {
+            var stil = NormalisiereStil(wert);
+            if (stil == null)
+            {
+                Mod.log.Warn("PLT-Panel: unbekannter Stil '" + wert
+                    + "' verworfen; es bleibt bei '"
+                    + (_panelStil?.value ?? PanelStilHorizontal) + "'.");
+                return;
+            }
+            if (_panelStil != null && _panelStil.value == stil) return;
+            /*
+             * Geschrieben wird in die MODEINSTELLUNG, nicht in die
+             * Panel-Datei. Sie ist der einzige Speicherort; die Bindung wird
+             * ohnehin jedes Bild aus ihr nachgezogen.
+             */
+            var optionen = Mod.Optionen;
+            if (optionen == null)
+            {
+                UebernimmStil(stil);
+                return;
+            }
+            optionen.Fensterstil = stil == PanelStilHochkant
+                ? Setting.Fensterstilwahl.Hochkant
+                : Setting.Fensterstilwahl.Horizontal;
+            optionen.ApplyAndSave();
+            UebernimmStil(stil);
+        }
+
+        /**
+         * Steht das Fenster gerade hochkant?
+         *
+         * ZUERST DIE EINSTELLUNG, DANN DIE BINDUNG - und nicht umgekehrt.
+         * Die Bindung entsteht in `OnCreate` erst NACH `_panelX`/`_panelY`,
+         * die sich ihren Startwert von hier holen. Wer hier nur die Bindung
+         * liest, bekommt in diesem Moment `null` und damit "waagerecht":
+         * ein hochkantes Fenster stand nach jedem Spielstart an der
+         * waagerechten Ecke, und `PflegeFensterstil` zog es nie nach, weil
+         * der Stil ja stimmte.
+         *
+         * Die Einstellung ist ohnehin der einzige Speicherort; die Bindung
+         * ist nur ihr Abbild fuer die Oberflaeche.
+         */
+        private bool IstHochkant()
+            => (Mod.Optionen?.FensterstilKuerzel()
+                ?? _panelStil?.value
+                ?? PanelStilHorizontal) == PanelStilHochkant;
+
+        private float? StilX() => IstHochkant()
+            ? _defaults.PanelXHochkant : _defaults.PanelX;
+
+        private float? StilY() => IstHochkant()
+            ? _defaults.PanelYHochkant : _defaults.PanelY;
+
         private void SetPanelPosition(float x, float y)
         {
             if (float.IsNaN(x) || float.IsNaN(y)) return;
@@ -1162,8 +1344,17 @@ namespace ParkingLotTool.Tools
             var ky = Mathf.Clamp01(y);
             _panelX?.Update(kx);
             _panelY?.Update(ky);
-            _defaults.PanelX = kx;
-            _defaults.PanelY = ky;
+            // Nur das Paar des AKTUELLEN Stils; das andere bleibt stehen.
+            if (IstHochkant())
+            {
+                _defaults.PanelXHochkant = kx;
+                _defaults.PanelYHochkant = ky;
+            }
+            else
+            {
+                _defaults.PanelX = kx;
+                _defaults.PanelY = ky;
+            }
             TryWriteDefaults(_defaults);
         }
 
@@ -1559,8 +1750,9 @@ namespace ParkingLotTool.Tools
             // Die Werksposition gehoert zu den Werkswerten, das Fenster geht
             // also mit zurueck. Das ist zugleich der zweite Weg heraus, wenn
             // man es aus dem Bild geschoben hat.
-            _panelX?.Update(_defaults.PanelX ?? 0f);
-            _panelY?.Update(_defaults.PanelY ?? 0f);
+            // Beide Stile gehen zurueck; gezeigt wird das Paar des aktuellen.
+            _panelX?.Update(StilX() ?? 0f);
+            _panelY?.Update(StilY() ?? 0f);
             PublishDefaults();
             if (ApplyDefaults(_defaults))
             {
@@ -1705,6 +1897,49 @@ namespace ParkingLotTool.Tools
          * Nutzer soll ihn markieren und kopieren koennen, und die Statuszeile
          * wird vom naechsten Klick ueberschrieben.
          */
+        /**
+         * Startet die Leistungsmessung auf Zeit.
+         *
+         * Eine Minute ist lang genug, um mehrere Ausreisser einzufangen, und
+         * kurz genug, dass jemand sie abwartet. Wer laenger messen will,
+         * drueckt danach noch einmal.
+         */
+        private void StarteLeistungstest()
+        {
+            if (ParkingLotMessung.Zeichnetauf) return;
+            ParkingLotMessung.StarteAufzeichnung(LeistungSekunden,
+                "Knopf im Melde-Reiter");
+            _leistungRest?.Update(LeistungSekunden);
+            SetStatus(ParkingLotTexte.T(
+                "Leistungsmessung läuft. Spiel normal weiter - gerade das "
+                    + "Gewöhnliche soll gemessen werden.",
+                "Performance measurement running. Just keep playing - the "
+                    + "ordinary case is what we want to see."));
+            Mod.log.Info("PLT-Messung: Aufzeichnung ueber "
+                + LeistungSekunden + " s gestartet (Melde-Reiter).");
+        }
+
+        /**
+         * Schaut je Bild nach, ob die Messung fertig ist, und schnuert dann.
+         *
+         * Laeuft im selben Takt wie Sprache und Fensterstil - also auch bei
+         * zugem Werkzeug. Das ist Absicht: gerade dieser Zustand ist der
+         * gemessene, und niemand soll das Panel offenhalten muessen.
+         */
+        internal void PflegeLeistungstest()
+        {
+            if (_leistungRest == null) return;
+            if (ParkingLotMessung.Zeichnetauf)
+            {
+                var rest = ParkingLotMessung.Restsekunden;
+                if (_leistungRest.value != rest) _leistungRest.Update(rest);
+                return;
+            }
+            if (!ParkingLotMessung.Abholbereit) return;
+            _leistungRest.Update(0);
+            SchnuereMeldung(ParkingLotMeldepaket.Anlass.Leistung);
+        }
+
         private void SchnuereMeldung(ParkingLotMeldepaket.Anlass anlass)
         {
             var pfad = ParkingLotMeldepaket.Schnuere(anlass, out var grund);

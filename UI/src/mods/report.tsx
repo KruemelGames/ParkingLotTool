@@ -6,6 +6,7 @@ import {
   markerMode$, meldungAbsturz, meldungBau, meldungOrdner, meldungPfad$,
   meldungVorschau, removeLastMarker, reportPath$, schalteMeldeLotWahl,
   setMarkerMode, writeReport,
+  leistungRest$, starteLeistungstest,
 } from "./bindings";
 import { useValue } from "cs2/api";
 import { useTexte } from "./texte";
@@ -130,9 +131,36 @@ export const ReportTab = () => {
   const baubefund = useValue(baubefund$);
   const baukurzinfo = useValue(baukurzinfo$);
   const lotWahl = useValue(meldeLotWahl$);
+  const leistungRest = useValue(leistungRest$);
 
   return (
     <div className={styles.spaltenGruppe}>
+      {/*
+        EINE EIGENE SPALTE, WEIL ES EINE ANDERE SORTE MELDUNG IST.
+        Die Knoepfe daneben beschreiben EINEN Parkplatz. Diese hier misst den
+        laufenden Betrieb - wer wegen eines ruckelnden Spiels herkommt, hat
+        gar keinen Parkplatz zu melden und soll trotzdem etwas schicken
+        koennen.
+      */}
+      <Spalte title={t.leistungTitel} ton="Melden" breit>
+        <div className={styles.explain}>{t.leistungErklaerung}</div>
+        <MitTooltip text={t.tooltipLeistung}>
+        <button
+          className={`${styles.meldeKnopf} ${
+            leistungRest > 0 ? styles.meldeKnopfAn : ""}`}
+          aria-disabled={leistungRest > 0}
+          onClick={() => { if (leistungRest === 0) starteLeistungstest(); }}
+        >
+          <img src={icon("Progress")} />
+          <span>
+            {leistungRest > 0
+              ? t.leistungLaeuft(leistungRest)
+              : t.leistungStart}
+          </span>
+        </button>
+        </MitTooltip>
+      </Spalte>
+
       <Spalte title={t.meldungTitel} ton="Melden" breit>
         {absturzErkannt ? (
           <>

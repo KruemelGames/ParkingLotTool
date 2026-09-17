@@ -137,7 +137,10 @@ namespace ParkingLotTool.Tools
                     // Erzwingt das Anlegen, auch wenn die Signatur seit einem
                     // frueheren Versuch unveraendert ist.
                     _lastPreviewSig = long.MinValue;
+                    var uhrVorschau = ParkingLotMessung.Start();
                     SyncAreaPreview();
+                    ParkingLotMessung.Ende(
+                        ParkingLotMessung.Punkt.Vorschau, uhrVorschau);
                     if (_vorflaechenPrefabFehlgeschlagen)
                     {
                         _uiSystem?.SetStatus(T(

@@ -31,7 +31,12 @@ namespace ParkingLotTool.Tools
     {
         internal void RefreshVegetationPreview()
         {
-            if (_areaPreviewLayout != null) SetVegetationPreview(_areaPreviewLayout);
+            if (_areaPreviewLayout == null) return;
+            SetVegetationPreview(_areaPreviewLayout);
+            // UND DAS NETZ MIT. Seit die Pflanzen als Instanzen gezeichnet
+            // werden, genuegt die Liste im Overlay nicht mehr - genau das
+            // war der Grund, warum nach dem Einschalten kein Kreis kam.
+            FuettereePflanzen();
         }
         private void SetVegetationPreview(ParkingLayout layout)
         {

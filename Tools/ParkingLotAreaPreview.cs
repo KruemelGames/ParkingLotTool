@@ -164,6 +164,29 @@ namespace ParkingLotTool.Tools
          * deshalb in einer eigenen Liste, weil sie ein anderes Prefab
          * brauchen.
          */
+        /**
+         * Gibt die Pflanzenliste des Overlays an das Netz weiter.
+         *
+         * EIGENE METHODE, WEIL ES ZWEI WEGE GIBT, auf denen sich die Liste
+         * aendert: ein fertiger Vorschaulauf und der Schalter "Vegetation"
+         * im Panel. Der zweite ging beim Umbau auf Instanzen verloren - die
+         * Liste fuellte sich, das Netz bekam nichts, und der Nutzer sah
+         * keinen einzigen Kreis. Gemeldet am 2026-09-17, gefunden hat es
+         * der Zaehler: "keine Pflanzen im Plan | geplant 0".
+         *
+         * Solange das Overlay die Kreise selbst zeichnete, fiel das nicht
+         * auf: dort genuegte die Liste.
+         */
+        private void FuettereePflanzen()
+        {
+            if (Flaechennetz == null) return;
+            Flaechennetz.FuegePflanzen(_overlay.Pflanzen,
+                ParkingLotPreviewStyle.VegetationTreeColor,
+                ParkingLotPreviewStyle.VegetationShrubColor,
+                ParkingLotPreviewStyle.VegetationTreeDiameter,
+                ParkingLotPreviewStyle.VegetationShrubDiameter);
+        }
+
         private void FuettereFlaechennetz(ParkingLayout layout)
         {
             if (!FuellungAlsNetz) return;
@@ -171,6 +194,8 @@ namespace ParkingLotTool.Tools
             // ein. Es holt sich das System nicht selbst - es ist kein System
             // und hat keine Welt.
             _overlay.Flaechennetz = Flaechennetz;
+
+            FuettereePflanzen();
 
             /*
              * DIE FARBE KOMMT AUS DER AUSWAHL, NICHT AUS EINER KONSTANTEN.

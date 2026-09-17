@@ -181,6 +181,8 @@ namespace ParkingLotTool.Tools
 
         protected override void OnUpdate()
         {
+            using var uhr = ParkingLotMessung.Miss(
+                ParkingLotMessung.Sys.Komfort);
             if (_tool == null) return;
             if (!_tool.TryGetCleanupPrefabs(out var lotPrefab, out var objektPrefabs)) return;
 
