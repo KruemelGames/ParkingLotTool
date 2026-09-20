@@ -648,6 +648,7 @@ namespace ParkingLotTool.Tools
                 {
                     zoningGeplant++;
                     zoningStuecke.Add((piece.A, piece.B));
+                    if (_zoningErhalten) continue;
                     // Fehlt der Klon noch, entfaellt nur die Zoning-Strasse.
                     // Der Parkplatz selbst wird trotzdem fertig gebaut.
                     if (zoningRoad == Entity.Null)

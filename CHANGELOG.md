@@ -2,6 +2,11 @@
 
 ## Unreleased — September 20, 2026
 
+- Preserve existing zoning road entities when an edit leaves the complete
+  zoning road layout and prefab unchanged. Transfer their ownership to the
+  replacement lot instead of rebuilding them, preserving the basis for zone
+  painting and buildings. In-game retention validation is still pending.
+
 - Add Alley In and Alley Out entrances using both driving lanes of a PLT
   clone of the regular Alley, with reversed course orientation for exits.
   No RoadBuilder dependency or Vanilla Alley Oneway parking strips are used.

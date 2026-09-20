@@ -310,6 +310,7 @@ namespace ParkingLotTool.Tools
         private void EntferneAlteNetzeVorDemNeubau()
         {
             if (!IsEditing) return;
+            PlaneZoningerhalt();
             /*
              * ZUERST ERFASSEN, DANN LOESCHEN.
              *
@@ -355,6 +356,8 @@ namespace ParkingLotTool.Tools
                     && !EntityManager.HasComponent<Game.Net.Node>(teil))
                     continue;
                 if (EntityManager.HasComponent<Deleted>(teil)) continue;
+
+                if (_erhalteneZoningteile.Contains(teil)) continue;
 
                 // Die Knoten der Kante MERKEN, bevor sie verschwindet -
                 // danach ist nicht mehr zu sehen, wo sie angesetzt hat.
@@ -614,6 +617,7 @@ namespace ParkingLotTool.Tools
              * Spaeter geht es auch nicht: gleich faellt das alte Lot, und
              * damit endet der Bearbeiten-Zustand samt der erfassten Liste.
              */
+            UebertrageZoningbestand(_editLot, _replacementNewLot, carrier);
             StelleVersorgungsanschluesseWiederHer(carrier);
             // Eigene automatische Leitungen bleiben beim alten Lot: derselbe
             // Aufraeumer wie beim Abriss entfernt sie samt eigenen Endknoten.
@@ -699,6 +703,7 @@ namespace ParkingLotTool.Tools
         {
             if (!IsEditing || !_editBaselinePending || layout == null) return;
             _editBaselineSignature = AreaPreviewSignature(layout);
+            MerkeZoningbestand(layout);
             _editBaselinePending = false;
         }
 
@@ -867,6 +872,9 @@ namespace ParkingLotTool.Tools
 
         private void ClearEditState()
         {
+            _alteZoningkurse = null;
+            _erhalteneZoningteile.Clear();
+            _zoningErhalten = false;
             _uiSystem?.ClearBuildReceiptTemplate();
             _editLot = Entity.Null;
             _replacementNewLot = Entity.Null;
