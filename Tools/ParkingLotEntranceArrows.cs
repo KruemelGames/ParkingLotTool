@@ -117,16 +117,21 @@ namespace ParkingLotTool.Tools
             for (var i = 0; i < layout.NetLine.Length; i++)
             {
                 var piece = layout.NetLine[i];
-                if (piece.Art != Zufahrtsart.Einfahrt
-                    && piece.Art != Zufahrtsart.Ausfahrt)
-                    continue;
+                /*
+                 * JEDE EINSPURIGE ZUFAHRT BEKOMMT IHREN PFEIL.
+                 *
+                 * Seit dem 2026-09-18 gehoeren die gerichteten Gassen dazu.
+                 * Bei ihnen ist die Richtung sonst nirgends zu sehen - genau
+                 * der Grund, aus dem der Pfeil ueberhaupt existiert.
+                 */
+                if (!Zufahrtsarten.Einspurig(piece.Art)) continue;
 
                 /*
-                 * A ist das aeussere Ende an der Strasse, B das innere. Die
-                 * Ausfahrt faehrt andersherum - derselbe Kurs mit vertauschten
-                 * Enden, genau wie im Netzbau.
+                 * A ist das aeussere Ende an der Strasse, B das innere. Was
+                 * hinausfaehrt, faehrt andersherum - derselbe Kurs mit
+                 * vertauschten Enden, genau wie im Netzbau.
                  */
-                var ausfahrt = piece.Art == Zufahrtsart.Ausfahrt;
+                var ausfahrt = Zufahrtsarten.FaehrtHinaus(piece.Art);
                 var von = ausfahrt ? piece.B : piece.A;
                 var nach = ausfahrt ? piece.A : piece.B;
                 var richtung = nach - von;

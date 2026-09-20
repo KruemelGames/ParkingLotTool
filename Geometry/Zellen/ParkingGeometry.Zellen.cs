@@ -369,7 +369,7 @@ namespace ParkingLotTool.Geometry
                             fit.Along,
                             new Punkt(fit.Direction.x, fit.Direction.y),
                             fit.Length,
-                            entrance.Breite(settings.Ai),
+                            entrance.Breite(settings.Ai, settings.Gassenbreite),
                             entrance.Art));
                         continue;
                     }
@@ -377,7 +377,7 @@ namespace ParkingLotTool.Geometry
 
                 vorgaben.Add(new Zufahrtsvorgabe(
                     kante, along, null, null,
-                    entrance.Breite(settings.Ai), entrance.Art));
+                    entrance.Breite(settings.Ai, settings.Gassenbreite), entrance.Art));
             }
 
             return new ZellenEingabe

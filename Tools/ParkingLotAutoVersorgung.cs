@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Colossal.Mathematics;
 using ParkingLotTool.Geometry;
 using Game.Common;
@@ -67,6 +67,12 @@ namespace ParkingLotTool.Tools
             }
 
             var fremde = SammleZielstrassen(unsere);
+            if (!fremde.Exists(z => !EntityManager.HasComponent<Owner>(z.Kante)))
+            {
+                _avNochOffeneNetze = 0;
+                Mod.log.Info("PLT-Autoversorgung: keine Stadtstrasse im Suchfeld; keine Leitungen angelegt.");
+                return trassen;
+            }
 
             /*
              * JEDE GRUPPE BRAUCHT IHRE EIGENE LEITUNG.
@@ -102,6 +108,7 @@ namespace ParkingLotTool.Tools
                 + "immer nur zwischen zwei Teilen, die nicht zusammenhaengen - "
                 + "ein Teil ohne Stadtanschluss hat am Ende nur noch Stadtstrassen als Ziel.");
             _avNochOffeneNetze = 0;
+            var besteLaenge = float.MaxValue;
             for (var g = 0; g < gruppen.Count; g++)
             {
                 var netzname = $"Netz {g + 1}/{gruppen.Count}";
@@ -122,11 +129,12 @@ namespace ParkingLotTool.Tools
                 }
                 _avNochOffeneNetze++;
                 var trasse = WaehleTrasseFuerGruppe(gruppen[g], _avAlleEigenen, fremde,
-                    netzname, stand?.GesperrteZiele, teile.Finde(g), teile);
+                    netzname, stand?.GesperrteZiele, teile.Finde(g), teile, besteLaenge + 0.002f);
                 if (trasse.Gefunden)
                 {
                     trasse.Startnetz = gruppen[g];
                     trassen.Add(trasse);
+                    besteLaenge = math.min(besteLaenge, trasse.Laenge);
                 }
             }
             trassen.Sort((a, b) => a.Laenge.CompareTo(b.Laenge));
@@ -167,7 +175,7 @@ namespace ParkingLotTool.Tools
             string name,
             System.Collections.Generic.ICollection<Entity> gesperrteZiele,
             int meinTeil,
-            AvTeile teile)
+            AvTeile teile, float maxLaenge)
         {
             var ergebnis = new Versorgungstrasse { Zielkante = Entity.Null };
             var versorgbar = 0;
@@ -226,9 +234,16 @@ namespace ParkingLotTool.Tools
                 return ergebnis;
             }
             var starts = SammleGruppenpunkte(gruppe, ziele);
-            VersucheKandidaten(starts, ziele, gruppe, name + ": Kante/Knoten", ref ergebnis);
-            AvUmweg(starts, gruppe, unsere, ziele, name, ref ergebnis);
-            if (!ergebnis.Gefunden)
+            // Letzter Bau 19.09.: Netz 3 kostete >500 ms fuer 67 m, obwohl
+            // Netz 2 mit 1,35 m gewann. Nur moegliche Verbesserungen pruefen.
+            // Kein Cache ueber Apply hinweg: geaenderte Netze bleiben sichtbar.
+            VersucheKandidaten(starts, ziele, gruppe, name + ": Kante/Knoten", ref ergebnis, maxLaenge);
+            AvUmweg(starts, gruppe, unsere, ziele, name, ref ergebnis,
+                ergebnis.Gefunden ? math.min(maxLaenge, ergebnis.Laenge + 0.002f) : maxLaenge);
+            if (!ergebnis.Gefunden && maxLaenge < float.MaxValue)
+                Mod.log.Info($"PLT-Autoversorgung {name}: keine bessere Trasse innerhalb {maxLaenge:F3} m; "
+                    + "Netz bleibt fuer den naechsten Anschluss offen.");
+            else if (!ergebnis.Gefunden)
                 Mod.log.Warn($"PLT-Autoversorgung {name}: {starts.Count} Starts, "
                     + $"{ziele.Count} erlaubte Ziele, 0 zulaessige Trassen. Dieses Netz "
                     + "bleibt ohne Leitung - es gibt Ziele, aber keinen Weg, der an "
@@ -311,11 +326,13 @@ namespace ParkingLotTool.Tools
             List<(Entity Kante, Bezier4x3 Bogen)> fremde,
             List<Entity> gruppe,
             string herkunft,
-            ref Versorgungstrasse ergebnis)
+            ref Versorgungstrasse ergebnis, float maxLaenge)
         {
+            var startCache = new HashSet<int>[kandidaten.Count];
             var r = Versorgungsnetz.Gerade(kandidaten.ConvertAll(p => p.xz), p => AvZielpunkte(p, fremde),
                 (i, z) => AvWege(new List<float2> { kandidaten[i].xz, z.Punkt },
-                    AvStartstrassen(kandidaten[i], gruppe), fremde[z.Index].Kante, out _, out _));
+                    startCache[i] ?? (startCache[i] = AvStartstrassen(kandidaten[i], gruppe)),
+                    fremde[z.Index].Kante, out _, out _), maxLaenge);
             if (r.Punkte == null || (ergebnis.Gefunden && !Versorgungsnetz.Kuerzer(r.Laenge, ergebnis.Laenge))) return false;
             var start = kandidaten[r.Start]; var ziel = fremde[r.Ziel];
             MathUtils.Distance(ziel.Bogen.xz, r.Punkte[1], out var t);

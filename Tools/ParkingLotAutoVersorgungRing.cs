@@ -277,8 +277,8 @@ namespace ParkingLotTool.Tools
 
         private void AvMerkeAngewandt(Versorgungstrasse trasse)
         {
-            if (trasse.Startnetz != null)
-                foreach (var e in trasse.Startnetz) _avNetzstand.Remove(e);
+            // Ein Anschluss an eine weitere eigene Zone macht zuvor
+            // gescheiterte Stadtziele nicht wieder gueltig. Historie behalten.
             var zurStadt = trasse.Zielkante != Entity.Null
                 && EntityManager.Exists(trasse.Zielkante)
                 && !EntityManager.HasComponent<Owner>(trasse.Zielkante);

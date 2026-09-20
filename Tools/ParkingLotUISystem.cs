@@ -1982,12 +1982,42 @@ namespace ParkingLotTool.Tools
             }
         }
 
+        /**
+         * Wieviel schmaler der Belag ist als die Gasse, in Metern.
+         *
+         * Zusammen, nicht je Seite: 2,5 laesst an einer 8-m-Gasse 1,25 m
+         * Bordstein je Seite frei, der Belag misst dann 5,50 m. Der Nutzer
+         * hat am 2026-09-18 der Reihe nach 7, 6 und 5,5 verlangt - jedes Mal
+         * lag der Belag noch auf der Kante.
+         */
+        private const float GassenbelagLuft = 2.5f;
+
         internal LayoutSettings CurrentSettings()
         {
             var settings = _loadedBuildReceiptTemplate?.Clone()
                 ?? LayoutSettings.Cs2;
             settings.Es = _edgeSetback.value;
             settings.Ai = _aisleWidth.value;
+            /*
+             * DIE GEMESSENE BREITE DER GASSE, an der einen Stelle, an der
+             * alle Einstellungen zusammenlaufen. Ist das Prefab noch nicht
+             * bereit, bleibt der Standardwert stehen.
+             */
+            var gassenbreite = Tool()?.Gassenbreite() ?? 0f;
+            /*
+             * EIN HALBER METER JE SEITE BLEIBT DER GASSE.
+             *
+             * `m_DefaultWidth` misst die ganze Strasse samt Bordsteinen. Ein
+             * Belag in voller Breite legt sich ueber die Bordsteinkante und
+             * laesst sie verschwinden; bei 8,00 m Gasse sind 7,00 m Belag
+             * die Breite, bei der die Kante stehen bleibt.
+             */
+            if (gassenbreite > GassenbelagLuft)
+                settings.Gassenbreite = gassenbreite - GassenbelagLuft;
+            // Eine Messung fuer alle drei Gassenarten: sie entstehen seit
+            // dem 2026-09-18 aus demselben Vorbild, und getrennte Werte
+            // koennten auseinanderlaufen. Dann faehren die Autos optisch
+            // ueber das Gras.
             settings.Cw = _crossWidth.value;
             settings.Md = _greenMedian.value ? _medianWidth.value : 0;
             /**

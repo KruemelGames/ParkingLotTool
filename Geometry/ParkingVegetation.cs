@@ -16,6 +16,9 @@ namespace ParkingLotTool.Geometry
         public bool Line;
         public int Density = 50;
         public int Ages = 6;
+        // Im Vegetationszettel gespeichert; keine neue Wuerfelung beim Laden.
+        public uint Seed;
+        public bool ShouldSerializeSeed() => Seed != 0;
         public string[] Species = Array.Empty<string>();
     }
     public struct VegetationPlacement
@@ -127,6 +130,9 @@ namespace ParkingLotTool.Geometry
             var result = new VegetationPlan();
             if (!options.Enabled || options.Density <= 0 || species.Length == 0) return result;
             var occupied = new Dictionary<long, List<int>>();
+            var anchor = new float2(float.MaxValue);
+            foreach (var area in rings ?? Array.Empty<float2[]>())
+                if (area != null) foreach (var point in area) anchor = math.min(anchor, point);
             foreach (var ring in rings ?? Array.Empty<float2[]>())
             {
                 if (ring == null || ring.Length < 3) continue;
@@ -139,6 +145,9 @@ namespace ParkingLotTool.Geometry
                     if (length > longest) { longest = length; axis = math.normalizesafe(d); }
                 }
                 if (longest < 0.01f) continue;
+                var offset = origin - anchor;
+                uint areaSeed = Hash(options.Seed ^ Hash((uint)(int)math.round(offset.x * 16f))
+                    ^ Hash((uint)(int)math.round(offset.y * 16f) + 7919u));
                 var across = new float2(-axis.y, axis.x);
                 var local = new float2[ring.Length];
                 float2 lo = new float2(float.MaxValue), hi = new float2(float.MinValue);
@@ -175,7 +184,7 @@ namespace ParkingLotTool.Geometry
                     // Modus ueber die geschnittenen Zeilen, im Line-Modus wie
                     // bisher das ganze Rechteck.
                     var zellen = options.Line ? null : Flaechenzellen(local, lo, hi, nx, ny);
-                    long total = options.Line ? (long)nx * ny : zellen.Count;
+                    long total = options.Line ? (long)nx * ny : zellen.Count * 2L;
                     if (total == 0) continue;
                     long stride=65537;
                     while(Gcd(stride,total)!=1) stride+=2;
@@ -188,16 +197,20 @@ namespace ParkingLotTool.Geometry
                         // Pflanzbaender durch eine zeilenweise Abstandssuche.
                         int ix, iy;
                         if (options.Line) { ix = x; iy = y; }
-                        else { var zelle = zellen[(int)(schritt * stride % total)]; ix = zelle.x; iy = zelle.y; }
+                        else { var zelle = zellen[(int)(schritt * stride % total / 2)]; ix = zelle.x; iy = zelle.y; }
                         uint seed = Hash((uint)(ix + iy * 65537 + pass * 104729 + 1));
+                        if (!options.Line) seed = Hash(seed ^ areaSeed ^ Hash((uint)(schritt * stride % total % 2) + 37u));
                         int which = pool[(int)(Hash(seed) % (uint)pool.Count)];
                         var kind = species[which];
                         int px = options.Line ? nx/2 + (x % 2 == 0 ? x/2 : -(x+1)/2) : ix;
                         int py = options.Line ? ny/2 + (y % 2 == 0 ? y/2 : -(y+1)/2) : iy;
                         var p = new float2(lo.x + (hi.x - lo.x) * (px + .5f) / nx,
                             lo.y + (hi.y - lo.y) * (py + .5f) / ny);
+                        // Zwei unabhaengige Kandidaten je Suchzelle, ueber ihre
+                        // ganze Flaeche verteilt. Das Raster beschleunigt nur
+                        // die Suche; die Pflanzpositionen sind frei.
                         if (!options.Line) p += new float2(Unit(Hash(seed + 7)) - .5f,
-                            Unit(Hash(seed + 11)) - .5f) * 1.5f;
+                            Unit(Hash(seed + 11)) - .5f) * (hi - lo) / new float2(nx, ny);
                         if (!Inside(p, local)) { result.AussenVerworfen++; continue; }
                         float edge = EdgeDistance(p, local);
                         float margin = Randabstand(kind.Tree);
@@ -209,6 +222,11 @@ namespace ParkingLotTool.Geometry
                             // eigentliche Dichtebremse, noch vor dem Regler.
                             float chance = kind.Tree ? math.lerp(.3f, 1f, math.saturate(edge / 4f))
                                 : math.lerp(1f, .7f, math.saturate(edge / 4f));
+                            // Weiche, unterschiedlich grosse Gruppen statt
+                            // identischer Einzelwuerfe auf jedem Gruenstreifen.
+                            float group = GroupDensity((origin + axis * p.x + across * p.y - anchor)
+                                / (kind.Tree ? 18f : 7f), options.Seed + (uint)pass * 313u);
+                            chance *= math.lerp(.35f, 1f, group);
                             if (Unit(Hash(seed + 23)) > chance)
                             { result.WuerfelVerworfen++; continue; }
                         }
@@ -278,6 +296,15 @@ namespace ParkingLotTool.Geometry
         private static long Key(int x, int y) => ((long)x << 32) ^ (uint)y;
         private static uint Hash(uint x) { x ^= x >> 16; x *= 0x7feb352d; x ^= x >> 15; x *= 0x846ca68b; return x ^ (x >> 16); }
         private static float Unit(uint x) => (x & 0xffffff) / 16777216f;
+        private static float GroupDensity(float2 p, uint seed)
+        {
+            int x = (int)math.floor(p.x), y = (int)math.floor(p.y);
+            var t = p - new float2(x, y);
+            t = t * t * (3f - 2f * t);
+            float Value(int a, int b) => Unit(Hash((uint)a * 73856093u ^ (uint)b * 19349663u ^ seed));
+            return math.lerp(math.lerp(Value(x,y), Value(x+1,y), t.x),
+                math.lerp(Value(x,y+1), Value(x+1,y+1), t.x), t.y);
+        }
         public static bool Inside(float2 p, float2[] ring)
         {
             bool inside = false;

@@ -2179,12 +2179,18 @@ $eck-reiter: 9rem;
 /* Dunkles Rot: die Gasse gehoert farblich zur Zufahrt, muss sich aber von
    deren Orange auf einen Blick trennen lassen. */
 .artGasse    { border-left: 5rem solid #bb3552; }
+/* Die gerichteten Gassen tragen denselben Ton wie ihre zweispurige
+   Verwandte - sie sind dieselbe Sache, nur einspurig. */
+.artGasseEin { border-left: 5rem solid #bb3552; }
+.artGasseAus { border-left: 5rem solid #bb3552; }
 
 .artZufahrt.artAktiv  { background-color: rgba(224, 90, 43, 0.40); }
 .artEinfahrt.artAktiv { background-color: rgba(79, 195, 247, 0.40); }
 .artAusfahrt.artAktiv { background-color: rgba(242, 193, 78, 0.40); }
 .artFussweg.artAktiv  { background-color: rgba(126, 217, 87, 0.40); }
 .artGasse.artAktiv    { background-color: rgba(187, 53, 82, 0.40); }
+.artGasseEin.artAktiv { background-color: rgba(187, 53, 82, 0.40); }
+.artGasseAus.artAktiv { background-color: rgba(187, 53, 82, 0.40); }
 
 /*
  * DIE OBERGRENZE IST EINE BILDUNTERSCHRIFT, KEIN FUENFTER KNOPF.

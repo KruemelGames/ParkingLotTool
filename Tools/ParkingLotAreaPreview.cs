@@ -61,6 +61,8 @@ namespace ParkingLotTool.Tools
         private EntityQuery _definitionQuery;
         private Entity _grassSurfacePrefab = Entity.Null;
         private Entity _vorflaechenPrefab = Entity.Null;
+        /** Klon des Hauptbelags, der auch auf Strassen zeichnet. */
+        private Entity _asphaltBelagPrefab = Entity.Null;
         private bool _vorflaechenPrefabAusstehend;
         private bool _vorflaechenPrefabFehlgeschlagen;
         private Entity _pavementSurfacePrefab = Entity.Null;
@@ -112,6 +114,29 @@ namespace ParkingLotTool.Tools
          * haette ich ihm etwas zugesagt, was der Code nicht liefert.
          */
         private const int ZoningBelagPrioritaet = -94;
+
+        /**
+         * EIGENER WERT FUER DIE VORFLAECHE, und das ist Absicht.
+         *
+         * Die -94 des Zoningbelags hat der Nutzer im September ausdruecklich
+         * bestellt; sie bleiben unangetastet. Die Vorflaeche hat seit dem
+         * 2026-09-18 eine andere Aufgabe: sie liegt ueber einer SICHTBAREN
+         * Strasse.
+         *
+         * Gemessen an diesem Tag: derselbe Aufschlag, dasselbe Decal, und
+         * trotzdem liegt sie mit "Pavement Area Material 01" ueber der
+         * Strasse und mit "Sand Area Material 01" darunter. Da
+         * `renderQueue = shader.renderQueue + m_RendererPriority` gilt und
+         * der Aufschlag gleich war, muss die Queue des MATERIALS
+         * unterschiedlich sein.
+         *
+         * -90 ist der naechste Messpunkt, kein erwiesener Wert. Meine Notiz
+         * vom 2026-08-25 sagt, dass Flaechen ausserhalb von etwa -100..-95
+         * ganz verschwinden; -94 laeuft trotzdem, die Notiz ist also nicht
+         * die ganze Wahrheit. Verschwindet die Flaeche bei -90, ist die
+         * Grenze gefunden und wir gehen zurueck.
+         */
+        private const int VorflaechePrioritaet = -90;
         private Entity _zoningBelagPrefab = Entity.Null;
         private Entity _dekoBelagPrefab = Entity.Null;
         private Entity _zoningBodenPrefab = Entity.Null;
@@ -322,10 +347,23 @@ namespace ParkingLotTool.Tools
                 && _vorflaechen != null && _vorflaechen.Length > 0;
             _vorflaechenPrefabFehlgeschlagen = false;
             var vorflaecheAufgegeben = false;
+            /*
+             * DIE VORFLAECHE BEKOMMT DENSELBEN ZIELWERT.
+             *
+             * Bis zum 2026-09-18 lief sie mit 0, also unveraendert auf -96.
+             * Das genuegte, solange unter ihr nur Gelaende lag. Seit die
+             * Zufahrtsgasse eine SICHTBARE Strasse ist, ueber der unser
+             * Belag liegen soll, zeichnet die Strasse ihre Knotengeometrie
+             * darueber - im Bild des Nutzers als Halbkreis in der
+             * Einmuendung.
+             *
+             * -94 ist derselbe Wert, den Zoningbelag und Parzellenboden seit
+             * dem 2026-09-02 tragen, und er ist erprobt.
+             */
             _vorflaechenPrefab = vorflaecheGewuenscht
                 ? VorflaechenPrefab(_pavementSurfacePrefab,
                     out _vorflaechenPrefabFehlgeschlagen,
-                    out vorflaecheAufgegeben)
+                    out vorflaecheAufgegeben, VorflaechePrioritaet)
                 : Entity.Null;
             /*
              * EIGENER KLON FUER DEN ZONINGBELAG.
@@ -345,6 +383,14 @@ namespace ParkingLotTool.Tools
                 : Entity.Null;
             _dekoBelagPrefab = VorflaechenPrefab(_grassSurfacePrefab,
                 out _, out _, ZoningBelagPrioritaet);
+            /*
+             * UND DERSELBE KLON FUER DEN HAUPTBELAG - siehe die Begruendung
+             * an der Asphaltgruppe weiter unten. Derselbe Zielwert wie die
+             * Vorflaeche, denn beide liegen jetzt ueber derselben sichtbaren
+             * Gasse.
+             */
+            _asphaltBelagPrefab = VorflaechenPrefab(_pavementSurfacePrefab,
+                out _, out _, VorflaechePrioritaet);
             /*
              * DER PARZELLENBODEN GEHOERT AUCH DAZU.
              *
@@ -673,9 +719,31 @@ namespace ParkingLotTool.Tools
             if (dekoAn)
                 flaechen += CreateAreaPreviewGroup("Grass", gras,
                     grasPrefab, ref heightData);
+            /*
+             * DER HAUPTBELAG BEKOMMT DENSELBEN KLON WIE DIE VORFLAECHE.
+             *
+             * Befund des Nutzers vom 2026-09-18: die Vorflaeche ueberdeckt
+             * den hellen Halbkreis der Gasse, der Hauptbelag nicht. Der
+             * Unterschied steht im Log:
+             *
+             *   PLT Vorflaeche (Pavement Surface 01)  Ebenen Terrain, Roads
+             *   Pavement Surface 01 (Vanilla)         Ebenen Terrain
+             *
+             * Das Vanilla-Prefab zeichnet gar nicht auf Strassen. Seit die
+             * Zufahrtsgasse eine sichtbare Strasse MITTEN im Parkplatz ist,
+             * reicht das nicht mehr - der Belag muss auch dort zeichnen.
+             *
+             * MIT RUECKFALL: ist der Klon nicht fertig, wird wie bisher mit
+             * dem Vanilla-Prefab gebaut. Der Asphalt jedes Parkplatzes daran
+             * zu haengen, dass ein Laufzeitprefab rechtzeitig entsteht,
+             * waere ein zu grosser Einsatz.
+             */
             if (strasseAn)
                 flaechen += CreateAreaPreviewGroup("Asphalt", asphalt,
-                    _pavementSurfacePrefab, ref heightData);
+                    _asphaltBelagPrefab != Entity.Null
+                        ? _asphaltBelagPrefab
+                        : _pavementSurfacePrefab,
+                    ref heightData);
             /*
              * DAS BAULAND HAT SEINEN EIGENEN SCHALTER NICHT.
              *
@@ -759,10 +827,21 @@ namespace ParkingLotTool.Tools
                 + " vorflaeche " + (verschmolzen.Length
                     + einzelneVorflaechen.Length)
                 + " | entitaeten gesamt folgt");
-            // Wege und Decals haengen an derselben Vorschau-Transaktion. Ein
-            // einziges ApplyMode.Apply macht spaeter alles zusammen dauerhaft;
-            // getrennte Durchgaenge wuerden auseinanderlaufende Zustaende
-            // erzeugen, sobald einer davon fehlschlaegt.
+            /*
+             * REIHENFOLGE GEMESSEN, NICHT ANGENOMMEN.
+             *
+             * Am 2026-09-18 standen diese zwei Zeilen versuchsweise VOR den
+             * Flaechen - die Vermutung war, dass die Entstehungsreihenfolge
+             * ueber die Zeichenreihenfolge entscheidet. Sie tut es nicht:
+             * der helle Halbkreis in der Einmuendung blieb unveraendert.
+             * Damit ist auch dieser Weg ausgeschlossen, und die Zeilen
+             * stehen wieder dort, wo sie immer standen.
+             *
+             * Wege und Decals haengen an derselben Vorschau-Transaktion. Ein
+             * einziges ApplyMode.Apply macht spaeter alles zusammen
+             * dauerhaft; getrennte Durchgaenge wuerden auseinanderlaufende
+             * Zustaende erzeugen, sobald einer davon fehlschlaegt.
+             */
             ProtokolliereBauschritt("CreateNetDefinitions");
             created += CreateNetDefinitions(layout, _areaPreviewSettings,
                 ref heightData);

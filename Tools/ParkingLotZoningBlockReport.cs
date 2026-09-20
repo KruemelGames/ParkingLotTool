@@ -347,7 +347,18 @@ namespace ParkingLotTool.Tools
                     : "Je Block: " + string.Join(" | ", groessen)));
         }
 
-        /** Die Prefab-Entities unserer unsichtbaren Zoning-Strassen. */
+        /**
+         * Die Prefab-Entities unserer unsichtbaren Strassen.
+         *
+         * BEIDE SORTEN, seit dem 2026-09-18. Die Zufahrtsgasse ist genauso
+         * unsichtbar wie die Zoningstrasse und braucht dieselbe Behandlung -
+         * vor allem den Namen aus einem Zeichen ohne Breite, sonst steht
+         * "Gasse 12" quer ueber dem Parkplatz.
+         *
+         * Die zoningspezifischen Aufrufer stoert das nicht: die Gasse traegt
+         * `m_ZoneBlock = null`, an ihr gibt es also weder Bloecke noch
+         * Kacheln noch eine Seitenwahl zu finden.
+         */
         private HashSet<Entity> SammleZoningPrefabs()
         {
             var ergebnis = new HashSet<Entity>();
@@ -357,7 +368,8 @@ namespace ParkingLotTool.Tools
             {
                 if (!_prefabSystem.TryGetPrefab<PrefabBase>(kandidaten[i],
                         out var prefab) || prefab == null) continue;
-                if (!prefab.name.StartsWith("PLT Zoningstrasse")) continue;
+                if (!prefab.name.StartsWith("PLT Zoningstrasse")
+                    && !prefab.name.StartsWith("PLT Zufahrtsgasse")) continue;
                 ergebnis.Add(kandidaten[i]);
             }
             return ergebnis;

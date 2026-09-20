@@ -56,6 +56,65 @@ namespace ParkingLotTool.Geometry
          * unterscheidet sie, und nur beim aeusseren Stueck.
          */
         Gasse,
+        /**
+         * Einspurige Gasse HINEIN: von der Stadtstrasse in den Parkplatz.
+         *
+         * Wie `Gasse`, aber aus der Vanilla-"Alley Oneway" gebaut und damit
+         * gerichtet. Die Richtung entsteht aus der Reihenfolge der
+         * Endpunkte - dieselbe Regel wie bei `Einfahrt`.
+         *
+         * HINTEN ANGEHAENGT, und das muss so bleiben: der Bauzettel
+         * speichert die Art als Zahl.
+         */
+        GasseEin,
+        /** Einspurige Gasse HINAUS: vom Parkplatz auf die Stadtstrasse. */
+        GasseAus,
+    }
+
+    /**
+     * DIE FRAGEN AN EINE ZUFAHRTSART, JEDE AN GENAU EINER STELLE.
+     *
+     * Ohne diese Klasse stand dieselbe Aufzaehlung im Netzbau, in der
+     * Vorflaeche, bei den Pfeilen und in der Zugangspruefung - und beim
+     * Anlegen der einspurigen Gassen am 2026-09-18 wurden davon drei von
+     * vier vergessen. Wer eine Art hinzufuegt, aendert von hier an nur noch
+     * die Antworten hier.
+     */
+    internal static class Zufahrtsarten
+    {
+        /** Alle Gassenarten - sie werden als geteilte Strasse gebaut. */
+        internal static bool IstGasse(Zufahrtsart art)
+            => art == Zufahrtsart.Gasse || art == Zufahrtsart.GasseEin
+               || art == Zufahrtsart.GasseAus;
+
+        /** Eine Fahrtrichtung statt zweier. */
+        internal static bool Einspurig(Zufahrtsart art)
+            => art == Zufahrtsart.Einfahrt || art == Zufahrtsart.Ausfahrt
+               || art == Zufahrtsart.GasseEin || art == Zufahrtsart.GasseAus;
+
+        /**
+         * Faehrt vom Parkplatz zur Strasse.
+         *
+         * Entscheidet ueberall die Reihenfolge der Endpunkte: der Kurs im
+         * Netzbau, die Richtung des Fahrbahnpfeils.
+         */
+        internal static bool FaehrtHinaus(Zufahrtsart art)
+            => art == Zufahrtsart.Ausfahrt || art == Zufahrtsart.GasseAus;
+
+        /** Name fuers Log. */
+        internal static string Name(Zufahrtsart art)
+        {
+            switch (art)
+            {
+                case Zufahrtsart.Einfahrt: return "Einfahrt";
+                case Zufahrtsart.Ausfahrt: return "Ausfahrt";
+                case Zufahrtsart.Fussweg: return "Fussweg";
+                case Zufahrtsart.Gasse: return "Gasse";
+                case Zufahrtsart.GasseEin: return "Gasse rein";
+                case Zufahrtsart.GasseAus: return "Gasse raus";
+                default: return "Zufahrt";
+            }
+        }
     }
 
     public sealed class Entrance
@@ -80,17 +139,35 @@ namespace ParkingLotTool.Geometry
         /** Faehrt hier ueberhaupt ein Auto? Der Fussweg ist die Ausnahme. */
         internal bool FuerAutos => Art != Zufahrtsart.Fussweg;
 
-        /** Einspurig sind Ein- und Ausfahrt; die Zufahrt hat beide Richtungen. */
-        internal bool Einspurig
-            => Art == Zufahrtsart.Einfahrt || Art == Zufahrtsart.Ausfahrt;
+        /** Einspurig sind Ein- und Ausfahrt und die gerichteten Gassen. */
+        internal bool Einspurig => Zufahrtsarten.Einspurig(Art);
+
+        /** Alle Gassenarten - sie werden als geteilte Strasse gebaut. */
+        internal bool IstGasse => Zufahrtsarten.IstGasse(Art);
 
         /**
          * Die Flaeche folgt dem gemessenen Netzquerschnitt. `normaleBreite`
          * bleibt ein Parameter, damit die bestaetigte alte Zufahrt weiterhin
          * exakt dem Ai-Regler folgt.
          */
-        internal double Breite(double normaleBreite)
+        internal double Breite(double normaleBreite, double gassenbreite = 0)
         {
+            /*
+             * JEDE GASSE ZUERST, AUCH DIE GERICHTETE.
+             *
+             * Zwei Gruende, und beide zaehlen:
+             *
+             * Sonst faenge `Einspurig` die gerichteten Gassen ab und gaebe
+             * ihnen die Breite einer gewoehnlichen Einfahrt - sie sind aber
+             * echte Strassen und bringen ihr Mass vom Prefab mit.
+             *
+             * Und alle drei teilen sich EINE Zahl. Getrennte Werte koennen
+             * auseinanderlaufen, und das sieht man sofort: liegt der Belag
+             * schmaler als die Fahrbahn, fahren die Autos ueber das Gras.
+             * Seit alle drei aus derselben "Alley" entstehen, gibt es
+             * keinen Grund fuer einen zweiten Wert.
+             */
+            if (IstGasse && gassenbreite > 0) return gassenbreite;
             if (Einspurig) return EinspurigeBreite;
             if (Art == Zufahrtsart.Fussweg) return Fusswegbreite;
             return normaleBreite;
@@ -181,6 +258,18 @@ namespace ParkingLotTool.Geometry
         public double Sl { get; set; } = 5.5;
         public double Sw { get; set; } = 3;
         public double Md { get; set; } = 2.5;
+        /**
+         * Breite des Belags auf JEDER Zufahrtsgasse, in Metern.
+         *
+         * Eine Zahl fuer alle drei Arten - siehe `Entrance.Breite`.
+         *
+         * Das Werkzeug misst die Gasse am Prefab, zieht die Bordsteinluft ab
+         * und setzt das Ergebnis hier ein. Die 5,5 sind nur der Rueckfall
+         * fuer den Fall, dass das Prefab noch nicht bereit ist; der
+         * Rechenkern selbst darf das Spiel nicht fragen.
+         */
+        public double Gassenbreite { get; set; } = 5.5;
+
         public double Cr { get; set; } = 34;
         public bool Qk { get; set; } = true;
         public bool Randstrassen { get; set; } = true;

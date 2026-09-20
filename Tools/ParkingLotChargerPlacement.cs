@@ -37,6 +37,7 @@ namespace ParkingLotTool.Tools
             internal CollisionMask Mask;
             internal float3 Position;
             internal quaternion Rotation;
+            internal float SearchRadius;
         }
 
         private sealed class ChargerSearchResult
@@ -89,6 +90,8 @@ namespace ParkingLotTool.Tools
                 return 0;
             }
 
+            var clock=System.Diagnostics.Stopwatch.StartNew();
+            _chargerCandidateVisits=0; _chargerExactTests=0; _chargerSearchCandidates=0;
             var decalBoxes = BuildPlannedDecalBoxes(plan, ref heightData);
             var created = 0;
             for (var i = 0; i < plan.Chargers.Length; i++)
@@ -126,9 +129,11 @@ namespace ParkingLotTool.Tools
                         found.Center, facing, ref heightData, ref fixedSeed))
                     created++;
             }
+            Mod.log.Info($"PLT-Ladesaeulensuche: {clock.Elapsed.TotalMilliseconds:F1} ms; {plan.Chargers.Length} Saeulen, {decalBoxes.Count} Decals; {_chargerSearchCandidates} lokale Kandidaten insgesamt, {_chargerCandidateVisits} Kandidatenbesuche, {_chargerExactTests} exakte Boxpruefungen.");
             return created;
         }
 
+        private static int _chargerCandidateVisits, _chargerExactTests, _chargerSearchCandidates;
         private List<PlannedDecalBox> BuildPlannedDecalBoxes(
             ParkingBayDecals.DecalPlan plan, ref TerrainHeightData heightData)
         {
@@ -152,6 +157,7 @@ namespace ParkingLotTool.Tools
                     Mask = mask,
                     Position = position,
                     Rotation = rotation,
+                    SearchRadius = ChargerCandidates.Radius(CollisionBounds(geometry).min, CollisionBounds(geometry).max),
                 });
             }
             return result;
@@ -179,6 +185,19 @@ namespace ParkingLotTool.Tools
             var anchor = new double2(charger.Center.x, charger.Center.y);
             var maximumStep = (int)Math.Floor(
                 (settings.Md + ChargerPlacementEpsilon) / ChargerBackStep);
+            // Einmal pro Saeule den gesamten Suchkorridor abdecken. Die exakte
+            // Boxpruefung und alle 0,01-m-Schritte bleiben unveraendert.
+            var box=CollisionBounds(chargerGeometry);
+            var radius=ChargerCandidates.Radius(box.min,box.max);
+            var start=new float2((float)anchor.x,(float)anchor.y);
+            var end=start+back*(float)(maximumStep*ChargerBackStep);
+            var nearby=new List<PlannedDecalBox>();
+            foreach(var decal in decalBoxes)
+            {
+                var overridable=(decal.Geometry.m_Flags & (GeometryFlags.Overridable | GeometryFlags.DeleteOverridden))==GeometryFlags.Overridable;
+                if(!overridable && (chargerMask & decal.Mask)!=0 && ChargerCandidates.MayIntersect(start,end,radius,decal.Position.xz,decal.SearchRadius)) nearby.Add(decal);
+            }
+            _chargerSearchCandidates+=nearby.Count;
             var previousOffset = 0.0;
             var previousBlockers = 0;
             var collisionFreeSeen = false;
@@ -197,7 +216,7 @@ namespace ParkingLotTool.Tools
                 // Dieser Test laeuft an JEDEM Schritt, auch wenn derselbe
                 // Kandidat danach an der Flaechengrenze verworfen wird.
                 var blockers = CountBlockingDecals(position, rotation,
-                    chargerGeometry, chargerMask, decalBoxes);
+                    chargerGeometry, chargerMask, nearby);
                 if (blockers == 0)
                 {
                     collisionFreeSeen = true;
@@ -301,6 +320,8 @@ namespace ParkingLotTool.Tools
             for (var i = 0; i < decals.Count; i++)
             {
                 var decal = decals[i];
+                _chargerCandidateVisits++;
+                if ((chargerMask & decal.Mask)!=0) _chargerExactTests++;
                 if ((chargerMask & decal.Mask) == 0
                     || !ShrunkBoxesIntersect(chargerPosition, chargerRotation,
                         chargerGeometry, decal.Position, decal.Rotation,

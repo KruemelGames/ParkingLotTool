@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Colossal.Mathematics;
 using Game.Net;
 using Game.Prefabs;
@@ -109,7 +109,7 @@ namespace ParkingLotTool.Tools
         }
 
         private bool AvUmweg(List<float3> starts, List<Entity> gruppe, List<Entity> unsere,
-            List<(Entity Kante, Bezier4x3 Bogen)> fremde, string name, ref Versorgungstrasse trasse)
+            List<(Entity Kante, Bezier4x3 Bogen)> fremde, string name, ref Versorgungstrasse trasse, float maxLaenge)
         {
             var uhr = System.Diagnostics.Stopwatch.StartNew();
             var punkte = starts.ConvertAll(p => p.xz);
@@ -136,13 +136,13 @@ namespace ParkingLotTool.Tools
                 (weg, zielIndex) => {
                     var index = punkte.IndexOf(weg[0]);
                     return index >= 0 && AvWege(weg, startstrassen[index], fremde[zielIndex].Kante, out _, out _);
-                }, AutoVersorgungAnschlussbereich + _avAchsabstand, i => AvZielstrassen(fremde[i].Kante));
+                }, AutoVersorgungAnschlussbereich + _avAchsabstand, i => AvZielstrassen(fremde[i].Kante), maxLaenge);
             Mod.log.Info($"PLT-Autoversorgung HINDERNISWEG [{name}]: {starts.Count} Starts, "
                 + $"{fremde.Count} Zielstrassen, {hindernisse.Count} aufgeweitete Huellen, "
                 + $"{r.Erreicht}/{r.Knoten} Graphknoten erreicht, {r.Sichtpruefungen} Sichtpruefungen, "
                 + $"{r.Zielpruefungen} Zielpruefungen, {(r.Punkte == null ? 0 : r.Punkte.Count - 1)} Teilstrecken, "
-                + $"{uhr.Elapsed.TotalMilliseconds:F1} ms. "
-                + (r.Punkte == null ? "0 zulaessige Wege im konservativen Sichtbarkeitsgraph; keine Strassenquerung freigegeben."
+                + $"{uhr.Elapsed.TotalMilliseconds:F1} ms, Suchgrenze {maxLaenge:F3} m. "
+                + (r.Punkte == null ? "Keine zulaessige Verbesserung innerhalb der Suchgrenze; keine Strassenquerung freigegeben."
                     : $"Gewaehlter Graphweg {r.Laenge:F2} m."));
             if (r.Punkte == null || (trasse.Gefunden && !Versorgungsnetz.Kuerzer(r.Laenge, trasse.Laenge))) return false;
             MathUtils.Distance(fremde[r.Ziel].Bogen.xz, r.Punkte[r.Punkte.Count - 1], out var lage);

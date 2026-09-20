@@ -45,6 +45,14 @@ namespace ParkingLotTool.Tools
     public sealed partial class ParkingLotToolSystem
     {
         /**
+         * Wieviel vor der Fahrbahn der Belag einer Gasse endet, in Metern.
+         *
+         * Dort liegt die Bordsteinrampe der Einmuendung, und die soll
+         * sichtbar bleiben.
+         */
+        private const float GassenbelagAbstand = 2f;
+
+        /**
          * Laenger als das ist keine Vorflaeche mehr plausibel. Beim Vanilla-
          * Querschnitt liegen zwischen Grundstueck und Asphalt hoechstens
          * Gehweg (bis 7 m) und Gruenstreifen.
@@ -100,6 +108,15 @@ namespace ParkingLotTool.Tools
         private const float VorflaecheMinSeite = 0.05f;
 
         private string _letzteVorflaechenmeldung = string.Empty;
+        /*
+         * JE ART EIN EINTRAG, nicht ein einziger Merker.
+         *
+         * `CurrentSettings` misst beide Gassen nacheinander. Mit nur einem
+         * Merker ueberschreibt die zweite Messung immer die erste, beide
+         * gelten als neu, und die Meldung stuende bei jeder Mausbewegung
+         * doppelt im Log.
+         */
+        private readonly HashSet<string> _gemeldeteGassenbreiten = new();
 
         /**
          * Die Vorflaechen des zuletzt gerechneten Layouts.
@@ -190,9 +207,37 @@ namespace ParkingLotTool.Tools
                     continue;
                 // Regel 4: der Fussweg bekommt keine Vorflaeche.
                 if (segment.Art == Zufahrtsart.Fussweg) continue;
+                /*
+                 * DIE GASSE BEKOMMT IHRE VORFLAECHE ZURUECK - und diesmal
+                 * ist sie der Zweck, nicht der Notbehelf.
+                 *
+                 * Belegt am 2026-09-18: Flaechen tragen ein Material mit
+                 * `AreaDecalShader`, Strassenbauteile nehmen nur
+                 * `SurfaceAsset`s. Das Material der gewaehlten Flaeche laesst
+                 * sich also NICHT in die Strasse schreiben.
+                 *
+                 * Es geht andersherum: unser Flaechenklon traegt die
+                 * Decal-Ebenen `Terrain, Roads` und zeichnet damit AUF der
+                 * Strasse. Die Gasse bleibt sichtbar - dann stimmt ihre
+                 * Einmuendung -, und unser Belag legt sich darueber.
+                 *
+                 * Die Grenze bleibt, wo sie war: die Vorflaeche endet an der
+                 * Fahrbahnkante der Stadtstrasse. Ein Decal faerbt nichts um,
+                 * es zeichnet nur, wo sein Polygon liegt - und das darf
+                 * niemals ueber einer fremden Fahrbahn liegen.
+                 */
 
+                /*
+                 * NUR NOCH DIE PLAUSIBILITAETSSCHRANKE.
+                 *
+                 * Die Vorflaeche uebernimmt ihre aeusseren Ecken vom
+                 * Zufahrtsrechteck (siehe `VorflaecheFuer`); diese Breite
+                 * dient dort als Pruefmass. Sie muss deshalb dieselbe Regel
+                 * benutzen wie das Rechteck selbst - samt Gassenbreite,
+                 * sonst verwirft die Schranke ein richtiges Rechteck.
+                 */
                 var breite = (float)new Entrance { Art = segment.Art }
-                    .Breite(settings?.Ai ?? 6.0);
+                    .Breite(settings?.Ai ?? 6.0, settings?.Gassenbreite ?? 0);
                 if (breite <= 0f) continue;
 
                 var ring = VorflaecheFuer(segment, breite, aufweitung,
@@ -343,8 +388,47 @@ namespace ParkingLotTool.Tools
              * die Haelfte, rund 0,37 m. 1,5 m sind das Vierfache davon - die
              * Naht ist sicher ueberdeckt, und die Randstrasse bleibt frei.
              */
+            /*
+             * DIE GASSE ZIEHT BIS ANS INNERE ENDE DURCH.
+             *
+             * Versuch auf Wunsch des Nutzers vom 2026-09-18: die Vorflaeche
+             * soll die Randstrasse ueberlappen und bis ans Gras reichen.
+             *
+             * Das gab es schon einmal - siehe oben - und wurde damals
+             * beanstandet, weil sie sichtbar ueber der Randstrasse lag. Bei
+             * der Gasse ist die Lage aber eine andere: dort liegt keine
+             * unsichtbare Zufahrt mehr, sondern eine SICHTBARE Strasse, die
+             * ohnehin verdeckt werden soll.
+             *
+             * Fuer alle anderen Zufahrtsarten bleibt es bei der Reserve.
+             */
+            /*
+             * VERSUCH VOM 2026-09-18, ZURUECKGENOMMEN: die Vorflaeche der
+             * Gasse ueber das Zufahrtsende hinaus bis ans Gras zu ziehen.
+             * Sie ging deutlich zu weit.
+             *
+             * Der Versuch hat aber das Entscheidende gezeigt: die Vorflaeche
+             * KANN den hellen Halbkreis in der Einmuendung ueberdecken. Was
+             * sie vom Hauptbelag unterscheidet, ist der Klon mit der
+             * Decal-Ebene `Roads` - das Vanilla-Prefab zeichnet nur auf
+             * Gelaende.
+             */
             var innenreserve = math.min(VorflaecheInnenreserve,
                 math.distance(aussen, innen));
+            /*
+             * ZWEI ZAHLEN, WEIL SIE ZWEI FRAGEN BEANTWORTEN.
+             *
+             * `innenreserve` sagt, wie weit die FLAECHE nach innen greift.
+             * Die Pruefung weiter unten fragt dagegen, wie weit die STRASSE
+             * entfernt ist, und zieht denselben Wert ab, damit der Teil
+             * innerhalb des Polygons nicht als Laenge zaehlt.
+             *
+             * Solange beide Zahlen gleich waren, fiel das nicht auf. Seit die
+             * Gasse bis ans innere Ende durchzieht, verschluckt die Pruefung
+             * die ganze Laenge: gemessen am 2026-09-18 kamen -7,90 m heraus
+             * und die Vorflaeche entfiel ersatzlos.
+             */
+            var laengenreserve = innenreserve;
             var start = aussen - richtung * innenreserve;
             /*
              * DIE BREITE WIRD GENOMMEN, NICHT GERECHNET.
@@ -363,6 +447,27 @@ namespace ParkingLotTool.Tools
              * Verschmelzen fallen ihre Innenpunkte mit vorhandenen Ringecken
              * zusammen statt neue danebenzusetzen.
              */
+            /*
+             * DIE GASSE RECHNET IHRE ECKEN SELBST.
+             *
+             * Die Uebernahme aus dem Zufahrtsrechteck ist fuer gewoehnliche
+             * Zufahrten richtig - sie verhindert den Absatz zwischen
+             * Zufahrtsbelag und Vorflaeche. Sie bindet die Flaeche aber an
+             * das Ende dieses Rechtecks, und genau darueber hinaus soll die
+             * Gasse reichen.
+             *
+             * Der Nutzer am 2026-09-18, nachdem ein groesserer Zuschlag
+             * nichts bewirkt hatte: *"es endet immer noch bei blau und das
+             * sehe ich an der Rundung der Flaeche an den Ecken."* Die
+             * Rundung IST das uebernommene Rechteck.
+             *
+             * Ein Absatz entsteht dabei nicht: Zufahrtsrechteck und
+             * Vorflaeche der Gasse rechnen beide mit `Breite()`, also mit
+             * derselben Zahl.
+             */
+            // Vorher deklariert, weil `&&` kurzschliesst: bei der Gasse laeuft
+            // `TryAeussereEcken` gar nicht, und dann saehe der Compiler die
+            // beiden `out`-Werte als nicht zugewiesen.
             var uebernommen = TryAeussereEcken(zufahrtsrechtecke, start,
                 richtung, quer, breite, out var links, out var rechts);
             if (!uebernommen)
@@ -382,10 +487,31 @@ namespace ParkingLotTool.Tools
                 return null;
             }
 
+            /*
+             * DIE GASSE HOERT VOR DER STRASSE AUF.
+             *
+             * Eine gewoehnliche Zufahrt soll bis an den Asphalt reichen -
+             * das ist der Zweck der Vorflaeche. Bei der Gasse liegt zwischen
+             * Belag und Fahrbahn aber die Bordsteinrampe der Einmuendung,
+             * und die soll man sehen. Ansage des Nutzers am 2026-09-18:
+             * "nicht bis ganz an die Strasse ziehen, 2 m vorher aufhoeren,
+             * damit die Flaeche zwischen der Curb ist."
+             *
+             * Abgezogen wird vom Strahlparameter, und der ist in Metern -
+             * `richtung` ist normiert.
+             */
+            // Gilt fuer JEDE Gasse. Vor der einspurigen steht dieselbe
+            // Bordsteinrampe wie vor der zweispurigen.
+            if (Zufahrtsarten.IstGasse(segment.Art))
+            {
+                tLinks = math.max(0f, tLinks - GassenbelagAbstand);
+                tRechts = math.max(0f, tRechts - GassenbelagAbstand);
+            }
+
             // Der Teil INNERHALB des Polygons zaehlt nicht als Laenge - sonst
             // waere die Mindestlaenge allein durch den Vorlauf erfuellt, und
             // die Plausibilitaetsgrenze schlueg bei langen Zufahrten an.
-            var echteLaenge = math.max(tLinks, tRechts) - innenreserve;
+            var echteLaenge = math.max(tLinks, tRechts) - laengenreserve;
             if (echteLaenge < VorflaecheMinLaenge)
             {
                 /*
@@ -568,16 +694,43 @@ namespace ParkingLotTool.Tools
             return summe * 0.5f;
         }
 
-        private static string Art(Zufahrtsart art)
+        private static string Art(Zufahrtsart art) => Zufahrtsarten.Name(art);
+
+        /**
+         * Die Breite der Vanilla-Gasse, direkt am Prefab gelesen.
+         *
+         * Keine Zahl im Quelltext: was die Gasse misst, entscheidet das
+         * Spiel. Ist das Prefab noch nicht bereit - beim allerersten Bau
+         * nach dem Start -, bleibt es bei der Breite, die der Aufrufer schon
+         * hat; eine etwas zu schmale Vorflaeche ist besser als eine
+         * geratene.
+         */
+        internal float Gassenbreite() => Gassenbreite(Zufahrtsart.Gasse);
+
+        private float Gassenbreite(Zufahrtsart art)
         {
-            switch (art)
-            {
-                case Zufahrtsart.Einfahrt: return "Einfahrt";
-                case Zufahrtsart.Ausfahrt: return "Ausfahrt";
-                case Zufahrtsart.Fussweg: return "Fussweg";
-                case Zufahrtsart.Gasse: return "Gasse";
-                default: return "Zufahrt";
-            }
+            if (!TryResolveZufahrtsgasse(art, out var prefab)
+                || !EntityManager.HasComponent<Game.Prefabs.NetGeometryData>(prefab))
+                return 0f;
+            var breite = EntityManager
+                .GetComponentData<Game.Prefabs.NetGeometryData>(prefab)
+                .m_DefaultWidth;
+            MeldeGassenbreite(art, breite);
+            return breite;
+        }
+
+        /**
+         * Die gemessene Gassenbreite einmal ins Log.
+         *
+         * Gemessen wird bei jedem Vorschaulauf; gemeldet nur, wenn sich der
+         * Wert aendert.
+         */
+        private void MeldeGassenbreite(Zufahrtsart art, float breite)
+        {
+            var text = art + " " + breite.ToString("F2");
+            if (!_gemeldeteGassenbreiten.Add(text)) return;
+            Mod.log.Info($"PLT-Gassenbreite: {art} misst {breite:F2} m "
+                + $"am Prefab, Belag also {breite - 2.5f:F2} m.");
         }
 
         /**

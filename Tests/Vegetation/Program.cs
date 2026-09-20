@@ -46,6 +46,21 @@ class Program {
   Check(!klein.Limited&&!gross.Limited,"Keine Schranke bei gewoehnlichen Groessen");
  }
  o.Density=100;
+ // Gleiche Beete im selben Parkplatz duerfen keine Stempelkopien sein.
+ o.Line=false;o.Seed=12345;o.Density=100;
+ var bed=Rect(80,20);var shift=new float2(0,60);
+ var beds=ParkingVegetation.Plan(new[]{bed,bed.Select(p=>p+shift).ToArray()},o,species);
+ var first=beds.Plants.Where(p=>p.Position.y<20).ToArray();
+ var second=beds.Plants.Where(p=>p.Position.y>59).ToArray();
+ Check(first.Length>0&&second.Length>0,"Beide gleichen Beete bepflanzt");
+ int copies=second.Count(p=>first.Any(q=>math.distance(p.Position-shift,q.Position)<.01f));
+ Check(copies<second.Length/10,"Keine wiederholten Pflanzenpositionen in gleichen Beeten");
+ var seeded=ParkingVegetation.Plan(rings,o,species);
+ o.Seed=54321;var otherSeed=ParkingVegetation.Plan(rings,o,species);
+ Check(otherSeed.Plants.Count>0&&!seeded.Plants[0].Position.Equals(otherSeed.Plants[0].Position),"Seed aendert freien Entwurf");
+ o.Line=true;var lineA=ParkingVegetation.Plan(rings,o,species);o.Seed=987;
+ var lineB=ParkingVegetation.Plan(rings,o,species);
+ Check(lineA.Plants.Count==lineB.Plants.Count&&lineA.Plants.Zip(lineB.Plants,(a,b)=>a.Position.Equals(b.Position)&&a.Species==b.Species&&a.Seed==b.Seed).All(x=>x),"Line bleibt unabhaengig vom neuen Seed");
  o.Enabled=false;Check(ParkingVegetation.Plan(rings,o,species).Plants.Count==0,"Standard aus");
  Console.WriteLine($"Vegetation: {checks} Pruefungen, 0 Fehler; 50%={half.Plants.Count}, 100%={all.Plants.Count}; Median={median.Plants.Count}");
  }

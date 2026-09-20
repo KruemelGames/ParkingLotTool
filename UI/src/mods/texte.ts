@@ -53,6 +53,8 @@ const en = {
     "Switches the window between a narrow upright column at the left and a "
     + "wide bar above the toolbar. Same settings either way.",
   artNameGasse: "Alley",
+  artNameGasseEin: "Alley in",
+  artNameGasseAus: "Alley out",
   artNameFussweg: "Footpath",
   artNameEinfahrt: "Entry",
   artNameAusfahrt: "Exit",
@@ -371,6 +373,12 @@ const en = {
     "Same placement as an entrance, but built as an invisible alley. "
     + "The street outside gets a real junction, so its kerb opens up. "
     + "It costs a few zoning cells there.",
+  tooltipGasseEin:
+    "An alley that only leads IN: from the street into the lot. "
+    + "Narrower than the two-way alley, and the kerb opens up just the same.",
+  tooltipGasseAus:
+    "An alley that only leads OUT: from the lot onto the street. "
+    + "Narrower than the two-way alley, and the kerb opens up just the same.",
   tooltipFussweg:
     "The way in on foot. Disabled and electric bays move here.",
   tooltipEinfahrt: "One way in. Needs an exit somewhere else.",
@@ -574,6 +582,8 @@ const de: Texte = {
     "Wechselt zwischen schmaler Spalte links und breiter Leiste über der "
     + "Werkzeugleiste. Die Einstellungen sind in beiden dieselben.",
   artNameGasse: "Gasse",
+  artNameGasseEin: "Gasse rein",
+  artNameGasseAus: "Gasse raus",
   artNameFussweg: "Fußweg",
   artNameEinfahrt: "Einfahrt",
   artNameAusfahrt: "Ausfahrt",
@@ -898,6 +908,12 @@ const de: Texte = {
     "Wird gesetzt wie eine Zufahrt, aber als unsichtbare Gasse gebaut. "
     + "Die Straße draußen bekommt dadurch eine echte Einmündung, und ihr "
     + "Bordstein geht auf. Ein paar Zonenkacheln kostet das dort.",
+  tooltipGasseEin:
+    "Eine Gasse, die nur HINEIN führt: von der Straße in den Parkplatz. "
+    + "Schmaler als die zweispurige, und der Bordstein geht genauso auf.",
+  tooltipGasseAus:
+    "Eine Gasse, die nur HINAUS führt: vom Parkplatz auf die Straße. "
+    + "Schmaler als die zweispurige, und der Bordstein geht genauso auf.",
   tooltipFussweg:
     "Der Weg zu Fuß. Behinderten- und E-Plätze rücken hierher.",
   tooltipEinfahrt: "Nur rein. Braucht anderswo eine Ausfahrt.",

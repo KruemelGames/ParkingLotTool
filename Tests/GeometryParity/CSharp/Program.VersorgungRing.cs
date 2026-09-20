@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using ParkingLotTool.Geometry;
 using Unity.Mathematics;
@@ -67,6 +67,8 @@ internal static partial class Program
             pruefe(!Versorgungsweg.Frei(P(0, 0), P(40, 0), fahrgassen),
                 $"Fahrgassen {grad}: ZF ohne Startausnahme bleibt gesperrt");
         }
+        PruefeSuchgrenze(pruefe);
+        PruefeProjektionsFixpunkt(pruefe);
         var graph = new List<int2> { new int2(1, 2), new int2(2, 3), new int2(3, 1),
             new int2(4, 5), new int2(5, 6), new int2(6, 4), new int2(3, 4) };
         pruefe(Versorgungsnetz.Erreichbar(new[] { 0 }, graph).Count == 1, "Stadtpfad: zwei verbundene Ringe ohne Quelle bleiben unversorgt");
@@ -79,4 +81,78 @@ internal static partial class Program
         graph.Add(new int2(0, 7));
         pruefe(Versorgungsnetz.Erreichbar(new[] { 0 }, graph).Contains(7), "Stadtpfad: unabhaengiges Netz bleibt baubar");
     }
+    private static void PruefeSuchgrenze(Action<bool, string> pruefe)
+    {
+        long altSicht = 0, neuSicht = 0, altKnoten = 0, neuKnoten = 0;
+        for (var fall = 0; fall < 200; fall++)
+        {
+            var winkel = fall * 0.137f;
+            float2 P(float x, float y) => new float2(x * math.cos(winkel) - y * math.sin(winkel),
+                x * math.sin(winkel) + y * math.cos(winkel)) + new float2(8000, -7000);
+            var h = new List<Versorgungsweg.Hindernis>();
+            for (var i = 0; i < 20; i++)
+            {
+                var x = 4 + i * 4f;
+                h.Add(new Versorgungsweg.Hindernis { Ring = new[] {
+                    P(x,-3), P(x+2,-3), P(x+2,3), P(x,3) } });
+            }
+            var starts = new List<float2> { P(0, 0), P(-2, -1) };
+            IEnumerable<Versorgungsweg.Ziel> Ziele(float2 p) => new[] {
+                new Versorgungsweg.Ziel { Index = 0, Punkt = P(10, 0) },
+                new Versorgungsweg.Ziel { Index = 1, Punkt = P(85, 0) } };
+            Versorgungsweg.Ergebnis Suche(float grenze) => Versorgungsweg.Suche(starts, h,
+                _ => new HashSet<int>(), Ziele, (_, __) => true, maxLaenge: grenze);
+            var alt = Suche(float.MaxValue);
+            var neu = Suche(alt.Laenge + 0.002f);
+            pruefe(alt.Punkte != null && neu.Punkte != null && alt.Ziel == neu.Ziel
+                && math.abs(alt.Laenge - neu.Laenge) < 0.002f,
+                $"Suchgrenze {fall}: gueltiger Umweg und Ziel bleiben erhalten");
+            var eng = Suche(1.35f);
+            pruefe(eng.Punkte == null && eng.Sichtpruefungen == 0 && eng.Knoten == starts.Count,
+                $"Suchgrenze {fall}: fernes Netz verursacht keine Graphsuche");
+            altSicht += alt.Sichtpruefungen; neuSicht += neu.Sichtpruefungen;
+            altKnoten += alt.Knoten; neuKnoten += neu.Knoten;
+            var aufrufe = 0;
+            var gerade = Versorgungsnetz.Gerade(starts, Ziele, (_, __) => { aufrufe++; return true; }, 1.35f);
+            pruefe(gerade.Punkte == null && aufrufe == 0,
+                $"Suchgrenze {fall}: keine teure Spurpruefung ausserhalb der Grenze");
+            var gueltig = Versorgungsnetz.Gerade(starts,
+                p => new[] { new Versorgungsweg.Ziel { Punkt = p + new float2(1.2f, 0) } },
+                (_, __) => true, 1.35f);
+            pruefe(gueltig.Punkte != null, $"Suchgrenze {fall}: kuerzere Gerade wird gefunden");
+        }
+        pruefe(neuKnoten < altKnoten && neuSicht < altSicht, "Suchgrenze: messbar weniger Grapharbeit");
+        Console.WriteLine($"Suchgrenze 200 Faelle: Knoten {altKnoten} -> {neuKnoten}, Sichtpruefungen {altSicht} -> {neuSicht}");
+    }
+
+    private static void PruefeProjektionsFixpunkt(Action<bool, string> pruefe)
+    {
+        int vorher = 0, nachher = 0;
+        for (int fall = 0; fall < 200; fall++)
+        {
+            float w = fall * 0.071f;
+            float2 P(float x, float y) => new float2(x * math.cos(w) - y * math.sin(w),
+                x * math.sin(w) + y * math.cos(w)) + new float2(8000, -7000);
+            var a = P(0, 0); var b = P(100, 0); var c = P(10, 20); var d = P(90, 20);
+            float2 Start(float t) => math.lerp(a, b, t);
+            float2 Ziel(float t) => math.lerp(c, d, t);
+            float2 SP(float2 p) => Versorgungsnetz.Projektion(p, a, b);
+            float2 ZP(float2 p) => Versorgungsnetz.Projektion(p, c, d);
+            var alt = new List<float2>();
+            foreach (var p in Versorgungsnetz.Kantenstarts(a, b, c, d)) alt.Add(SP(p));
+            for (int i = 0; i <= 16; i++)
+            {
+                var p = Start(i / 16f);
+                for (int j = 0; j < 12; j++) { p = SP(ZP(p)); vorher++; }
+                alt.Add(p);
+            }
+            var neu = new List<float2>(Versorgungsnetz.Kantenpunkte(Start, SP, Ziel, p => { nachher++; return ZP(p); }));
+            pruefe(neu.Count == alt.Count, $"Fixpunkt {fall}: alle Kandidaten erhalten");
+            for (int i = 0; i < alt.Count; i++)
+                pruefe(math.all(neu[i] == alt[i]), $"Fixpunkt {fall}/{i}: bitgleicher Kandidat");
+        }
+        pruefe(nachher < vorher / 2, "Fixpunkt: mehr als die Haelfte der Projektionen eingespart");
+        Console.WriteLine($"Fixpunkt: {vorher} -> {nachher} Projektionspaare, Kandidaten bitgleich");
+    }
+
 }

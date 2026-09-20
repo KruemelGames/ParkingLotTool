@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System;
 using Unity.Mathematics;
 
@@ -29,7 +29,7 @@ namespace ParkingLotTool.Geometry
 
         internal static Versorgungsweg.Ergebnis Gerade(List<float2> starts,
             Func<float2, IEnumerable<Versorgungsweg.Ziel>> ziele,
-            Func<int, Versorgungsweg.Ziel, bool> zulaessig)
+            Func<int, Versorgungsweg.Ziel, bool> zulaessig, float maxLaenge = float.MaxValue)
         {
             var r = new Versorgungsweg.Ergebnis { Laenge = float.MaxValue };
             for (var i = 0; i < starts.Count; i++)
@@ -37,7 +37,7 @@ namespace ParkingLotTool.Geometry
                 {
                     r.Zielpruefungen++;
                     var l = math.distance(starts[i], ziel.Punkt);
-                    if (!Kuerzer(l, r.Laenge) || !zulaessig(i, ziel)) continue;
+                    if (l > maxLaenge || !Kuerzer(l, r.Laenge) || !zulaessig(i, ziel)) continue;
                     r.Laenge = l; r.Start = i; r.Ziel = ziel.Index;
                     r.Punkte = new List<float2> { starts[i], ziel.Punkt };
                 }
@@ -72,7 +72,14 @@ namespace ParkingLotTool.Geometry
             for (var i = 0; i <= 16; i++)
             {
                 var p = start(i / 16f);
-                for (var j = 0; j < 12; j++) p = startprojektion(zielprojektion(p));
+                for (var j = 0; j < 12; j++)
+                {
+                    var naechster = startprojektion(zielprojektion(p));
+                    // Exakter Fixpunkt: weitere identische Projektionen koennen
+                    // nichts aendern. Kein Epsilon, damit Kandidaten gleich bleiben.
+                    if (math.all(naechster == p)) break;
+                    p = naechster;
+                }
                 yield return p;
             }
         }

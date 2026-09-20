@@ -96,6 +96,8 @@ namespace ParkingLotTool.Tools
          */
         private const float GassenSuchweite = 40f;
 
+
+
         private EntityQuery _gassenStrassen;
 
         /**
@@ -106,10 +108,15 @@ namespace ParkingLotTool.Tools
          * suchen, und ein Knoten dort wuerde nur unser eigenes Netz teilen.
          */
         private bool SucheStadtstrasseFuerGasse(float2 punkt, out float2 mitte,
-                                                out float halbeBreite)
+                                                out float halbeBreite,
+                                                out Entity strasse, out float t,
+                                                out float hoehe)
         {
             mitte = default;
             halbeBreite = 0f;
+            strasse = Entity.Null;
+            t = 0f;
+            hoehe = 0f;
             if (_gassenStrassen == default)
                 _gassenStrassen = GetEntityQuery(
                     ComponentType.ReadOnly<Game.Net.Edge>(),
@@ -122,21 +129,34 @@ namespace ParkingLotTool.Tools
             var beste = GassenSuchweite;
             var treffer = Entity.Null;
             var trefferMitte = float2.zero;
+            var trefferT = 0f;
+            var trefferHoehe = 0f;
             using var kanten = _gassenStrassen.ToEntityArray(Allocator.TempJob);
             for (var i = 0; i < kanten.Length; i++)
             {
                 var prefab = EntityManager.GetComponentData<PrefabRef>(kanten[i]).m_Prefab;
                 if (!EntityManager.HasComponent<RoadData>(prefab)) continue;
                 var bogen = EntityManager.GetComponentData<Curve>(kanten[i]).m_Bezier;
-                var abstand = MathUtils.Distance(bogen.xz, punkt, out var t);
+                var abstand = MathUtils.Distance(bogen.xz, punkt, out var tKante);
                 if (abstand >= beste) continue;
                 beste = abstand;
                 treffer = kanten[i];
-                trefferMitte = MathUtils.Position(bogen, t).xz;
+                var punktAufKurve = MathUtils.Position(bogen, tKante);
+                trefferMitte = punktAufKurve.xz;
+                trefferT = tKante;
+                // Die HOEHE der Fahrbahn an dieser Stelle - nicht die des
+                // Gelaendes darunter, das dort weggeschnitten ist.
+                trefferHoehe = punktAufKurve.y;
             }
             if (treffer == Entity.Null) return false;
 
             mitte = trefferMitte;
+            // Beides nur zum Nachmessen: WELCHE Kante wir getroffen haben und
+            // WO auf ihr. Nahe 0 oder 1 heisst Kantenende, also ein
+            // vorhandener Knoten statt einer Teilung.
+            strasse = treffer;
+            t = trefferT;
+            hoehe = trefferHoehe;
             var strassenprefab = EntityManager
                 .GetComponentData<PrefabRef>(treffer).m_Prefab;
             // Die Breite steht am Prefab, nicht an den Querschnitten -
@@ -159,18 +179,20 @@ namespace ParkingLotTool.Tools
         private int CreateGassenstueck(
             NetSegment piece,
             int index,
+            float vorflaechenbreite,
             ref TerrainHeightData heightData,
             Dictionary<(long, long), float> heights,
             ref Unity.Mathematics.Random random,
             List<string> bericht)
         {
-            if (!TryResolveZufahrtsgasse(out var gasse))
+            if (!TryResolveZufahrtsgasse(piece.Art, out var gasse))
             {
                 bericht.Add($"Zufahrt {index}: Gassenklon noch nicht bereit");
                 return 0;
             }
             if (!SucheStadtstrasseFuerGasse(piece.A, out var mitte,
-                    out var halbeBreite))
+                    out var halbeBreite, out var strasse, out var t,
+                    out var strassenhoehe))
             {
                 bericht.Add($"Zufahrt {index}: keine Stadtstrasse in "
                     + $"{GassenSuchweite:F0} m");
@@ -187,27 +209,72 @@ namespace ParkingLotTool.Tools
             richtung /= abstand;
 
             /*
-             * Normalfall ist der Polygonrand als Ende - dort faengt der
-             * unsichtbare Weg an, und beruehrende Enden geben dem
-             * LocalConnect den kuerzesten Weg.
+             * DIE GASSE GEHT DURCH BIS ZUR FAHRGASSE.
              *
-             * Liegt der Rand naeher an der Strasse als der noetige
-             * Ueberstand, wird die Gasse trotzdem so lang gemacht. Sie ragt
-             * dann ein Stueck in den Parkplatz - unsichtbar, unter unserem
-             * eigenen Belag, und immer noch besser als eine Gasse, die CS2
-             * als "Ungueltige Form" ablehnt.
+             * Bis zum 2026-09-18 endete sie 2 m hinter dem Bordstein, und
+             * der unsichtbare Weg begann am Polygonrand - die beiden lagen
+             * zwei Meter uebereinander. Autos fuhren herein, wendeten und
+             * fuhren wieder hinaus.
+             *
+             * `piece.B` IST der Punkt, an dem der Weg bisher an die
+             * Fahrgasse stiess, und er wird UNVERAENDERT uebernommen: innen
+             * verbindet CS2 nur ueber einen identischen Endpunkt, nicht ueber
+             * LocalConnect. Ein neu gerechneter Punkt laege um Float-Reste
+             * daneben und verbaende nichts.
              */
-            var laenge = math.max(abstand, halbeBreite + GassenUeberstand);
-            var ende = mitte + richtung * laenge;
+            var ende = piece.B;
+            var laenge = math.distance(mitte, ende);
+            if (!(laenge > halbeBreite))
+            {
+                bericht.Add($"Zufahrt {index}: zu kurz - {laenge:F2} m ab "
+                    + $"Strassenmitte, Fahrbahnrand bei {halbeBreite:F2} m");
+                return 0;
+            }
 
-            if (!CreateCourseDefinition("entrance-gasse", index, mitte, ende,
+            /*
+             * DER ENDPUNKT AN DER STRASSE BEKOMMT DIE HOEHE DER STRASSE.
+             *
+             * `SampleCourseHeight` tastet das GELAENDE ab, und unter einer
+             * Strasse ist das weggeschnitten und liegt tiefer als der
+             * Asphalt. Ohne diese Zeile setzt die Gasse dort unter der
+             * Fahrbahn an und graebt sich ein - im Bild des Nutzers vom
+             * 2026-09-18 ein Loch mitten in der Einmuendung.
+             *
+             * Der Hoehenspeicher wird VOR der Abtastung befragt; ihn zu
+             * fuellen genuegt.
+             */
+            MerkeHoehe(mitte, strassenhoehe, heights);
+
+            /*
+             * DIE RICHTUNG STECKT IN DER REIHENFOLGE DER ENDPUNKTE.
+             *
+             * `mitte` liegt auf der Strasse, `ende` im Parkplatz. Eine
+             * Gasse HINAUS faehrt also von `ende` nach `mitte` - dieselbe
+             * Regel wie bei `Ausfahrt`, wo `piece.B` vor `piece.A` kommt.
+             * Bei der zweispurigen Gasse ist die Reihenfolge gleichgueltig.
+             */
+            var hinaus = Zufahrtsarten.FaehrtHinaus(piece.Art);
+            var kursVon = hinaus ? ende : mitte;
+            var kursNach = hinaus ? mitte : ende;
+
+            if (!CreateCourseDefinition("entrance-gasse", index,
+                    kursVon, kursNach,
                     gasse, ref heightData, heights, ref random))
             {
                 bericht.Add($"Zufahrt {index}: Gassenkurs abgelehnt "
                     + $"({laenge:F2} m)");
                 return 0;
             }
-            bericht.Add($"Zufahrt {index}: Gasse {laenge:F2} m ab Strassenmitte, "
+            /*
+             * Was wir wussten, fuer die Rueckschau nach dem Bau. Der Zettel
+             * hier haelt nur die Absicht fest; ob daraus eine ordentliche
+             * Kreuzung geworden ist, misst `PLT-Gassenbefund` am fertigen
+             * Netz.
+             */
+            MerkeGassenplan(index, mitte, ende, strasse, t,
+                piece.B - piece.A, halbeBreite, gasse, vorflaechenbreite);
+            bericht.Add($"Zufahrt {index}: Gasse {laenge:F2} m ab Strassenmitte "
+                + "bis zur Fahrgasse, "
                 + $"Fahrbahnrand bei {halbeBreite:F2} m, Ueberstand "
                 + $"{laenge - halbeBreite:F2} m"
                 + (laenge > abstand + 1e-3f
@@ -216,9 +283,10 @@ namespace ParkingLotTool.Tools
             return 1;
         }
 
-        private bool TryResolvePedestrianPath(out Entity prefab)
+        private bool TryResolvePedestrianPath(out Entity prefab, bool gesetzterZugang = false)
         {
-            prefab = World.GetOrCreateSystemManaged<ParkingLotFusswegPrefabSystem>().Bereit;
+            var system = World.GetOrCreateSystemManaged<ParkingLotFusswegPrefabSystem>();
+            prefab = gesetzterZugang ? system.ZugangBereit : system.Bereit;
             if (prefab != Entity.Null) return true;
             Mod.log.Warn("PLT-Bauzettel: Fusswegklon noch nicht bereit; Fusskurs entfaellt.");
             return false;
@@ -365,10 +433,31 @@ namespace ParkingLotTool.Tools
         private bool TryResolveZoningRoad(string name, out Entity prefab)
             => TryResolveStrassenklon(name, Strassenklonart.Zoning, out prefab);
 
-        /** Die Zufahrtsgasse kommt immer aus der Vanilla-Gasse. */
-        private bool TryResolveZufahrtsgasse(out Entity prefab)
-            => TryResolveStrassenklon("Alley", Strassenklonart.Zufahrtsgasse,
+        /**
+         * BEIDE GASSEN KOMMEN AUS DERSELBEN VANILLA-STRASSE.
+         *
+         * Nicht aus "Alley" und "Alley Oneway": letztere bringt links und
+         * rechts je 2,5 m Parkstreifen mit, auf denen Fahrzeuge mitten in
+         * der Zufahrt parken. Gemessen am 2026-09-18, und der Nutzer hat
+         * es im Spiel bestaetigt.
+         *
+         * Stattdessen entsteht die gerichtete Gasse aus derselben "Alley",
+         * deren beide Fahrspuren im Klon auf dieselbe Richtung gedreht
+         * werden. Zwei Spuren statt einer, dafuer ohne Parkgasse - der
+         * Vorschlag des Nutzers.
+         */
+        private bool TryResolveZufahrtsgasse(Zufahrtsart art, out Entity prefab)
+            => TryResolveStrassenklon(
+                "Alley",
+                art == Zufahrtsart.Gasse
+                    ? Strassenklonart.Zufahrtsgasse
+                    : Strassenklonart.ZufahrtsgasseEinbahn,
                 out prefab);
+
+        // Zufahrten verwenden dauerhaft das unveraenderte Vanilla-Alley-
+        // Prefab. Eigene Alley-Klone teilten Sections/Pieces mit dem globalen
+        // CS2-Prefabcache und verursachten dadurch intermittierende Fehler.
+        private const bool VerwendeVanillaAlley = false;
 
         private bool TryResolveStrassenklon(string name, Strassenklonart art,
             out Entity prefab)
@@ -410,6 +499,12 @@ namespace ParkingLotTool.Tools
                         + "' nicht gefunden; die Zoning-Strasse entfaellt.");
                 }
                 return false;
+            }
+
+            if (VerwendeVanillaAlley && art != Strassenklonart.Zoning)
+            {
+                prefab = original;
+                return true;
             }
 
             _zoningRoadPrefabSystem ??= World
@@ -470,6 +565,9 @@ namespace ParkingLotTool.Tools
             var gassenGeplant = 0;
             var gassenGebaut = 0;
             var gassenBericht = new List<string>();
+            // Der Befund gehoert zu DIESEM Bau; ein alter Plan wuerde sonst
+            // eine Kreuzung melden, die niemand gerade gebaut hat.
+            VergissGassenplan();
             var zoningStuecke = new List<(float2 A, float2 B)>();
             // Nur anfordern, wenn das Layout ueberhaupt eine Zoning-Strasse
             // enthaelt - sonst bestellt jeder Parkplatz einen Prefabklon.
@@ -502,6 +600,8 @@ namespace ParkingLotTool.Tools
                             piece, i, ref heightData, heights, ref random);
                         continue;
                     }
+                    // NUR die unsichtbaren Einbahn-Wege. Die gerichteten
+                    // GASSEN werden weiter unten als geteilte Strasse gebaut.
                     if (piece.Art == Zufahrtsart.Einfahrt
                         || piece.Art == Zufahrtsart.Ausfahrt)
                     {
@@ -510,18 +610,38 @@ namespace ParkingLotTool.Tools
                         continue;
                     }
                     /*
-                     * Die Gasse ist ein ZUSAETZLICHES Stueck vor der Zufahrt,
-                     * kein Ersatz. Deshalb kein `continue` - der gewohnte
-                     * Weg nach innen wird gleich darunter genauso gebaut wie
-                     * bei jeder anderen Zufahrt.
+                     * DIE GASSE ERSETZT DIE ZUFAHRT, sie ergaenzt sie nicht
+                     * mehr.
+                     *
+                     * Beides zu bauen hiess: zwei Meter Ueberlappung
+                     * zwischen Gasse und unsichtbarem Weg, und Autos, die in
+                     * der Einfahrt wenden. Seit dem 2026-09-18 geht die
+                     * Gasse durch bis zur Fahrgasse, und der Weg entfaellt.
                      */
-                    if (piece.Art == Zufahrtsart.Gasse)
+                    if (Zufahrtsarten.IstGasse(piece.Art))
                     {
                         gassenGeplant++;
-                        var gebaut = CreateGassenstueck(piece, i, ref heightData,
+                        /*
+                         * DIESELBE REGEL WIE DIE VORFLAECHE, nicht der rohe
+                         * Ai-Regler: seit dem 2026-09-18 hat die Gasse ihre
+                         * eigene Breite, und der Befund soll melden, was
+                         * wirklich gebaut wird.
+                         */
+                        var gebaut = CreateGassenstueck(piece, i,
+                            (float)new ParkingLotTool.Geometry.Entrance
+                                { Art = piece.Art }
+                                .Breite(settings.Ai, settings.Gassenbreite),
+                            ref heightData,
                             heights, ref random, gassenBericht);
                         created += gebaut;
                         gassenGebaut += gebaut;
+                        /*
+                         * Nur wenn die Gasse wirklich steht. Faellt sie aus,
+                         * bleibt der gewohnte Weg als Rueckfall - eine
+                         * Zufahrt ohne geoeffneten Bordstein ist besser als
+                         * gar keine.
+                         */
+                        if (gebaut > 0) continue;
                     }
                 }
                 if (string.Equals(piece.Kind, "zoning", StringComparison.Ordinal))
@@ -614,7 +734,7 @@ namespace ParkingLotTool.Tools
             Dictionary<(long, long), float> heights,
             ref Unity.Mathematics.Random random)
         {
-            if (!TryResolvePedestrianPath(out var pedestrian))
+            if (!TryResolvePedestrianPath(out var pedestrian, gesetzterZugang: true))
                 return 0;
             return CreateCourseDefinition(
                 "entrance-pedestrian", index, piece.A, piece.B, pedestrian,
@@ -639,7 +759,7 @@ namespace ParkingLotTool.Tools
             if (!TryResolvePathPrefab(OnewayPathName, out var oneway))
                 return 0;
 
-            var outgoing = piece.Art == Zufahrtsart.Ausfahrt;
+            var outgoing = Zufahrtsarten.FaehrtHinaus(piece.Art);
             var from = outgoing ? piece.B : piece.A;
             var to = outgoing ? piece.A : piece.B;
             var created = CreateCourseDefinition(
@@ -868,6 +988,20 @@ namespace ParkingLotTool.Tools
             });
             RecordNetDefinition(kind, index, prefab, definition, a, b);
             return true;
+        }
+
+        /**
+         * Setzt eine Hoehe fest, bevor das Gelaende befragt wird.
+         *
+         * Dieselbe Rasterung wie `SampleCourseHeight` - sonst traefe der
+         * Schluessel nicht, und der Eintrag bliebe wirkungslos.
+         */
+        private static void MerkeHoehe(float2 point, float hoehe,
+                                       Dictionary<(long, long), float> heights)
+        {
+            var key = ((long)math.round(point.x * 40f),
+                       (long)math.round(point.y * 40f));
+            heights[key] = hoehe;
         }
 
         private float SampleCourseHeight(float2 point, ref TerrainHeightData heightData,

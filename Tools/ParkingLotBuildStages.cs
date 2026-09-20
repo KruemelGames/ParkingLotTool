@@ -240,6 +240,11 @@ namespace ParkingLotTool.Tools
                 built = false;
             }
             _buildStage = BuildStage.Idle;
+            // Erst jetzt gibt es ueberhaupt etwas nachzumessen. Die Messung
+            // selbst folgt ein paar Bilder spaeter - eine Strassenteilung
+            // braucht mehr als ein Bild.
+            if (built) MeldeGassenbefundAn();
+            if (built) _fusswegBefundAb = UnityEngine.Time.frameCount + 30;
             return built;
         }
 

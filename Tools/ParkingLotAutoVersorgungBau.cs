@@ -316,8 +316,10 @@ namespace ParkingLotTool.Tools
                     }
                     return true;
                 }
-                // 60 Werkzeugframes geben den Graphsystemen nach Apply Zeit.
-                if (_avHatPlan && vergangen < AutoVersorgungWartenFrames) return true;
+                // Nach Apply/Clear mindestens die naechste Barriere abwarten.
+                // Danach entscheiden Abriss und Temp-Entities unten, nicht 60
+                // pauschale Bilder. Der Flussgraph wird separat nachgemessen.
+                if (_avHatPlan && vergangen < 2) return true;
                 if (_buildStage != BuildStage.Idle || SammleUnsereKanten(_avTraeger).Count == 0
                     || !AvTempQuery().IsEmptyIgnoreFilter)
                 {

@@ -1,0 +1,42 @@
+using System;
+using System.Diagnostics;
+using Unity.Mathematics;
+using Colossal.Mathematics;
+using Game.Objects;
+using Game.Prefabs;
+using ParkingLotTool.Geometry;
+class Program {
+// HELPERS
+static int checks,hits;
+static void Check(bool ok){checks++;if(!ok)throw new Exception("Moegliche Kollision ausgefiltert");}
+static void Main(){
+ var rng=new Unity.Mathematics.Random(1731);
+ for(int i=0;i<30000;i++){
+ var origin=new float3(i%2==0?8000:-8000,0,9000);
+ var a=new ObjectGeometryData{m_Bounds=new Bounds3(new float3(-.6f,-.3f,-.4f),new float3(.7f,2,.5f))};
+ var offset=rng.NextFloat3(-3,3);var size=rng.NextFloat3(.1f,6f);
+ var b=new ObjectGeometryData{m_Bounds=new Bounds3(offset-size,offset+size)};
+ var ar=quaternion.EulerXYZ(rng.NextFloat3(-3,3));var br=quaternion.EulerXYZ(rng.NextFloat3(-3,3));
+ var start=origin+rng.NextFloat3(-10,10);var end=start+rng.NextFloat3(-5,5);
+ var pos=math.lerp(start,end,rng.NextFloat());var other=origin+rng.NextFloat3(-10,10);
+ bool exact=ShrunkBoxesIntersect(pos,ar,a,other,br,b);
+ bool candidate=ChargerCandidates.MayIntersect(start.xz,end.xz,ChargerCandidates.Radius(a.m_Bounds.min,a.m_Bounds.max),other.xz,ChargerCandidates.Radius(b.m_Bounds.min,b.m_Bounds.max));
+ if(exact){hits++;Check(candidate);}
+ }
+ Check(hits>100);
+ // Gleiche 56 Suchschritte wie im Log, 472 Decals, exakte native Boxpruefung.
+ var charger=new ObjectGeometryData{m_Bounds=new Bounds3(new float3(-.67f,0,-.415f),new float3(.67f,1,.415f))};
+ var decal=new ObjectGeometryData{m_Bounds=new Bounds3(new float3(-1.6f,0,-3.1f),new float3(1.6f,1,3.1f))};
+ var places=new float3[472];for(int i=0;i<places.Length;i++)places[i]=new float3((i%24)*3.2f,0,(i/24)*8f);
+ var start2=new float2(0,3.3f);var end2=start2+new float2(0,.55f);
+ int visits=0,filtered=0;var timer=Stopwatch.StartNew();
+ for(int step=0;step<56;step++){
+  var pos=new float3(0,0,3.3f+step*.01f);int oldCount=0,newCount=0;
+  foreach(var p in places){visits++;bool exact=ShrunkBoxesIntersect(pos,quaternion.identity,charger,p,quaternion.identity,decal);if(exact)oldCount++;
+   if(ChargerCandidates.MayIntersect(start2,end2,ChargerCandidates.Radius(charger.m_Bounds.min,charger.m_Bounds.max),p.xz,ChargerCandidates.Radius(decal.m_Bounds.min,decal.m_Bounds.max))){filtered++;if(exact)newCount++;}
+  }Check(oldCount==newCount);
+ }
+ Check(filtered<visits/10);
+ Console.WriteLine($"{checks} Pruefungen, {hits} native Kollisionen erhalten; Kandidaten {visits} -> {filtered}; alle 56 Blockerzahlen identisch. Testlauf {timer.ElapsedMilliseconds} ms (kein Ingame-Benchmark).");
+}
+}

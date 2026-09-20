@@ -66,9 +66,23 @@ namespace ParkingLotTool.Tools
             return kollisionen == 0;
         }
 
-        private bool AvTempAnStrasse(Entity knoten, IEnumerable<Entity> strassen)
+        private bool AvTempAnStrasse(Entity knoten, IEnumerable<Entity> strassen, AvKurs kurs)
         {
             if (knoten == Entity.Null) return false;
+            // CS2 erzeugt am Anschluss teils ein senkrechtes Zwischenstueck.
+            // Dieses wurde bereits erfasst, bisher aber beim Nachweis ignoriert.
+            // Nur echte gemeinsame Entities verbinden; Naehe reicht nicht.
+            var kanten = new List<int2>();
+            foreach (var e in kurs.Anschlussstuecke)
+            {
+                if (!EntityManager.HasComponent<Edge>(e) || EntityManager.HasComponent<Deleted>(e)) continue;
+                if (!EntityManager.HasComponent<Temp>(e)) continue;
+                var t = EntityManager.GetComponentData<Temp>(e);
+                if (t.m_Original != Entity.Null || (t.m_Flags & (TempFlags.Delete | TempFlags.Cancel)) != 0) continue;
+                var k = EntityManager.GetComponentData<Edge>(e);
+                kanten.Add(new int2(k.m_Start.Index, k.m_End.Index));
+            }
+            var erreicht = Versorgungsnetz.Erreichbar(new[] { knoten.Index }, kanten);
             // GenerateEdges schreibt zuerst ConnectedNode an die Temp-Strasse.
             // Den umgekehrten ConnectedEdge-Eintrag ergaenzt erst ApplyNetSystem.
             using var temp = AvTempQuery().ToEntityArray(Allocator.Temp);
@@ -81,10 +95,10 @@ namespace ParkingLotTool.Tools
                 foreach (var strasse in strassen) if (original == strasse) passt = true;
                 if (!passt) continue;
                 var edge = EntityManager.GetComponentData<Edge>(e);
-                if (edge.m_Start == knoten || edge.m_End == knoten) return true;
+                if (erreicht.Contains(edge.m_Start.Index) || erreicht.Contains(edge.m_End.Index)) return true;
                 if (!EntityManager.HasBuffer<ConnectedNode>(e)) continue;
                 foreach (var n in EntityManager.GetBuffer<ConnectedNode>(e, true))
-                    if (n.m_Node == knoten) return true;
+                    if (erreicht.Contains(n.m_Node.Index)) return true;
             }
             return false;
         }
@@ -125,8 +139,8 @@ namespace ParkingLotTool.Tools
                         if (math.distance(pos.xz, kurs.Ende.xz) <= VersorgungskursPruefung.Toleranz) ende = n;
                     }
                 }
-                var a = AvTempAnStrasse(start, kurs.Trasse.Startnetz);
-                var b = AvTempAnStrasse(ende, new[] { kurs.Trasse.Zielkante });
+                var a = AvTempAnStrasse(start, kurs.Trasse.Startnetz, kurs);
+                var b = AvTempAnStrasse(ende, new[] { kurs.Trasse.Zielkante }, kurs);
                 AvMesseStartumfeld(kurs, start);
                 AvMesseZielumfeld(kurs, ende);
                 // Je Kurs merken, nicht nur zaehlen: sonst laesst sich ein
@@ -136,7 +150,7 @@ namespace ParkingLotTool.Tools
                 kurs.Angeschlossen = a && b && zusammen;
                 anschluesse += kurs.Angeschlossen ? 2 : 0;
                 Mod.log.Info($"PLT-Autoversorgung TEMP-ANSCHLUSS [{kurs.Name}]: "
-                    + $"Start/Ziel {(a ? 1 : 0)}/{(b ? 1 : 0)}, zusammenhaengend {(zusammen ? 1 : 0)}, {kurs.Punkte.Count - 1} Teilstrecken. Versorgungsgraph folgt erst nach Created ohne Temp.");
+                    + $"Start/Ziel {(a ? 1 : 0)}/{(b ? 1 : 0)}, zusammenhaengend {(zusammen ? 1 : 0)}, {kurs.Punkte.Count - 1} Teilstrecken, {kurs.Anschlussstuecke.Count} Anschlussstuecke mitgeprueft. Versorgungsgraph folgt erst nach Created ohne Temp.");
             }
             return anschluesse == _avKurse.Count * 2;
         }

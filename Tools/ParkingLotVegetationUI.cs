@@ -46,6 +46,11 @@ namespace ParkingLotTool.Tools
                 try {
                     var v = JsonConvert.DeserializeObject<VegetationOptions>(json);
                     if (v == null) return;
+                    if (v.Enabled && v.Seed == 0)
+                    {
+                        v.Seed = Vegetation.Seed;
+                        if (v.Seed == 0) v.Seed = BitConverter.ToUInt32(Guid.NewGuid().ToByteArray(), 0) | 1u;
+                    }
                     v.Density = Math.Max(0, Math.Min(100, v.Density)); v.Ages &= 63;
                     if (v.Ages == 0) v.Ages = 4;
                     v.Species = (v.Species ?? Array.Empty<string>()).Where(id => !string.IsNullOrWhiteSpace(id) && id.Length <= 512).Distinct().OrderBy(id => id).Take(512).ToArray();

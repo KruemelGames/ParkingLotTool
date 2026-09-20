@@ -344,6 +344,7 @@ namespace ParkingLotTool.Tools
             using var teile = _editOwnerParts.ToEntityArray(Allocator.Temp);
             var entfernt = 0;
             var besessen = 0;
+            var fremdeKnoten = new HashSet<Entity>();
             for (var i = 0; i < teile.Length; i++)
             {
                 var teil = teile[i];
@@ -354,13 +355,105 @@ namespace ParkingLotTool.Tools
                     && !EntityManager.HasComponent<Game.Net.Node>(teil))
                     continue;
                 if (EntityManager.HasComponent<Deleted>(teil)) continue;
+
+                // Die Knoten der Kante MERKEN, bevor sie verschwindet -
+                // danach ist nicht mehr zu sehen, wo sie angesetzt hat.
+                if (EntityManager.HasComponent<Game.Net.Edge>(teil))
+                {
+                    var kante = EntityManager
+                        .GetComponentData<Game.Net.Edge>(teil);
+                    fremdeKnoten.Add(kante.m_Start);
+                    fremdeKnoten.Add(kante.m_End);
+                }
+
                 EntityManager.AddComponent<Deleted>(teil);
                 entfernt++;
             }
 
+            FrischeTeilungsknotenAuf(fremdeKnoten);
+
+            MeldeAbriss(entfernt, besessen, teile.Length);
+        }
+
+        /**
+         * Sagt den Knoten an der Stadtstrasse, dass sie keine Kreuzung mehr
+         * sind.
+         *
+         * Betroffen ist nur, was uns NICHT gehoert und die Loeschung
+         * ueberlebt: der Knoten, an dem unsere Gasse die Stadtstrasse
+         * geteilt hat. Unsere eigenen Knoten sind zu diesem Zeitpunkt
+         * bereits `Deleted` und fallen hier durch.
+         *
+         * Angefasst wird nichts strukturell - nur `Updated`, damit CS2 die
+         * Komposition neu waehlt.
+         */
+        private void FrischeTeilungsknotenAuf(HashSet<Entity> knoten)
+        {
+            var betrachtet = 0;
+            var aufgefrischt = 0;
+            var zeilen = new List<string>();
+
+            foreach (var k in knoten)
+            {
+                if (k == Entity.Null || !EntityManager.Exists(k)) continue;
+                if (EntityManager.HasComponent<Deleted>(k)) continue;
+                if (!EntityManager.HasBuffer<Game.Net.ConnectedEdge>(k)) continue;
+                betrachtet++;
+
+                /*
+                 * DIE KANTEN ZAEHLEN, DIE UEBRIG BLEIBEN.
+                 *
+                 * `Deleted` steht zu diesem Zeitpunkt schon an unseren
+                 * Kanten, sie zaehlen also korrekt nicht mit. Bleiben zwei,
+                 * ist der Knoten ein Durchgang und keine Kreuzung mehr -
+                 * genau der Fall, den der Nutzer sieht.
+                 */
+                /*
+                 * ERST ABSCHREIBEN, DANN ANFASSEN.
+                 *
+                 * `AddComponent` ist eine strukturelle Aenderung: sie kann
+                 * die Entity in einen anderen Chunk verschieben und macht
+                 * damit jeden vorher geholten `DynamicBuffer` ungueltig.
+                 * Den Puffer danach weiterzulesen liest fremden Speicher.
+                 */
+                var uebrig = new List<Entity>();
+                var puffer = EntityManager
+                    .GetBuffer<Game.Net.ConnectedEdge>(k, true);
+                for (var i = 0; i < puffer.Length; i++)
+                {
+                    var kante = puffer[i].m_Edge;
+                    if (kante == Entity.Null || !EntityManager.Exists(kante))
+                        continue;
+                    if (EntityManager.HasComponent<Deleted>(kante)) continue;
+                    if (EntityManager.HasComponent<Temp>(kante)) continue;
+                    uebrig.Add(kante);
+                }
+
+                zeilen.Add("Knoten " + k.Index + ": " + uebrig.Count
+                    + " Kante(n)");
+                if (uebrig.Count == 0) continue;
+
+                if (!EntityManager.HasComponent<Updated>(k))
+                    EntityManager.AddComponent<Updated>(k);
+                foreach (var kante in uebrig)
+                    if (!EntityManager.HasComponent<Updated>(kante))
+                        EntityManager.AddComponent<Updated>(kante);
+                aufgefrischt++;
+            }
+
+            if (betrachtet == 0) return;
+            Mod.log.Info("PLT-Teilungsknoten: " + betrachtet
+                + " fremde(r) Knoten an den geloeschten Kanten, "
+                + aufgefrischt + " aufgefrischt. " + string.Join(" | ", zeilen)
+                + ". Zwei Kanten heisst Durchgang - steht dort trotzdem noch "
+                + "eine Kreuzung, liegt es nicht an der Komposition.");
+        }
+
+        private void MeldeAbriss(int entfernt, int besessen, int gesamt)
+        {
             Mod.log.Info("PLT-Bearbeiten: " + entfernt + " alte Wegteile von "
                 + "Lot " + _editLot.Index + " vor dem Neubau entfernt (von "
-                + besessen + " Teilen dieses Lots, " + teile.Length
+                + besessen + " Teilen dieses Lots, " + gesamt
                 + " mit Besitzer insgesamt). Ohne das wuerden die neuen Kurse "
                 + "auf den alten Kanten liegen und mit ihnen verschwinden.");
         }

@@ -108,6 +108,8 @@ const ARTEN = [
   { id: 3, ton: "artFussweg",  icon: "PedestrianPath", tooltip: "tooltipFussweg",  name: "artNameFussweg"  },
   { id: 1, ton: "artEinfahrt", icon: "ArrowUp",        tooltip: "tooltipEinfahrt", name: "artNameEinfahrt" },
   { id: 2, ton: "artAusfahrt", icon: "ArrowDown",      tooltip: "tooltipAusfahrt", name: "artNameAusfahrt" },
+  { id: 5, ton: "artGasseEin", icon: "ArrowUp",        tooltip: "tooltipGasseEin", name: "artNameGasseEin" },
+  { id: 6, ton: "artGasseAus", icon: "ArrowDown",      tooltip: "tooltipGasseAus", name: "artNameGasseAus" },
 ] as const;
 
 export const ParkingLotPanel = () => {

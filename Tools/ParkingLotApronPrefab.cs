@@ -588,11 +588,13 @@ namespace ParkingLotTool.Tools
                  * eines Gebaeudes unseren Zoningbelag ueberdeckt; mit einem
                  * Aufschlag liegt unsere Flaeche darueber.
                  *
-                 * Die Vorflaeche bekommt Aufschlag 0 und bleibt damit
-                 * unveraendert - sie funktioniert seit Tagen, und eine
-                 * stillschweigend geaenderte Zeichenreihenfolge waere genau
-                 * die Art Nebenwirkung, die man erst drei Fehler spaeter
-                 * bemerkt.
+                 * Die Vorflaeche hatte bis zum 2026-09-18 Aufschlag 0 und
+                 * blieb damit unveraendert. Seit die Zufahrtsgasse eine
+                 * SICHTBARE Strasse ist, ueber der unser Belag liegen soll,
+                 * reicht das nicht mehr: im Bild des Nutzers zeichnete die
+                 * Strasse ihre Knotengeometrie als Halbkreis ueber den
+                 * Belag. Sie bekommt jetzt denselben Zielwert wie der
+                 * Zoningbelag.
                  */
                 /*
                  * ZIELWERT, KEIN AUFSCHLAG.

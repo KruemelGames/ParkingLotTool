@@ -20,8 +20,10 @@ namespace ParkingLotTool.Tools
         private PrefabSystem _prefabs;
         private EntityQuery _wege;
         private Entity _klon;
+        private Entity _zugang;
         private bool _fehler;
         public Entity Bereit { get; private set; }
+        public Entity ZugangBereit { get; private set; }
 
         [Preserve]
         protected override void OnCreate()
@@ -57,6 +59,20 @@ namespace ParkingLotTool.Tools
                         if (komponente != null && !(komponente is UIObject)) klon.AddComponentFrom(komponente);
                     if (!_prefabs.AddPrefab(klon)) throw new InvalidOperationException("AddPrefab gab false zurueck");
                     _klon = _prefabs.GetEntity(klon);
+                    var zugang = ScriptableObject.CreateInstance<PathwayPrefab>();
+                    zugang.name = "PLT Pedestrian Entrance Path";
+                    for (var typ = original.GetType(); typ != typeof(PrefabBase) && typ != null; typ = typ.BaseType)
+                    foreach (var feld in typ.GetFields(BindingFlags.Instance | BindingFlags.Public
+                        | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                        if (!feld.IsInitOnly && !feld.IsLiteral) feld.SetValue(zugang, feld.GetValue(original));
+                    foreach (var komponente in original.components)
+                        if (komponente != null && !(komponente is UIObject)) zugang.AddComponentFrom(komponente);
+                    if (!_prefabs.AddPrefab(zugang))
+                    {
+                        UnityEngine.Object.Destroy(zugang);
+                        throw new InvalidOperationException("Zugangs-AddPrefab gab false zurueck");
+                    }
+                    _zugang = _prefabs.GetEntity(zugang);
                 }
                 catch (Exception e)
                 {
@@ -70,6 +86,15 @@ namespace ParkingLotTool.Tools
 
         internal void SperreAutomatischeVerlaengerung()
         {
+            if (_zugang != Entity.Null && EntityManager.HasComponent<LocalConnectData>(_zugang))
+            {
+                var zugang = EntityManager.GetComponentData<LocalConnectData>(_zugang);
+                var erlaubt = (Layer)FusswegAnschluss.Suchmaske(Zufahrtsart.Fussweg,
+                    (uint)zugang.m_Layers, gesetzterZugang: true);
+                if ((zugang.m_Flags & LocalConnectFlags.RequireDeadend) != 0
+                    && erlaubt != Layer.None && ZugangBereit == Entity.Null)
+                    ZugangBereit = _zugang;
+            }
             if (_klon == Entity.Null || !EntityManager.Exists(_klon)
                 || !EntityManager.HasComponent<LocalConnectData>(_klon)) return;
             var daten = EntityManager.GetComponentData<LocalConnectData>(_klon);

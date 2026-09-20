@@ -1,0 +1,68 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using Unity.Mathematics;
+using ParkingLotTool.Geometry;
+
+// Kleine ECS-Doubles: getestet wird die unveraenderte Produktionsmethode.
+record struct Entity(int Index) { public static Entity Null => default; }
+struct Edge { public Entity m_Start, m_End; }
+[Flags] enum TempFlags { Delete = 1, Cancel = 2 }
+struct Temp { public Entity m_Original; public TempFlags m_Flags; }
+struct Deleted { }
+struct ConnectedNode { public Entity m_Node; }
+enum Allocator { Temp }
+sealed class Entities : IDisposable, IEnumerable<Entity> {
+    public List<Entity> Values = new();
+    public Entities ToEntityArray(Allocator a) => this;
+    public IEnumerator<Entity> GetEnumerator() => Values.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    public void Dispose() { }
+}
+sealed class Manager {
+    readonly Dictionary<(Entity, Type), object> data = new();
+    public void Set<T>(Entity e, T value) => data[(e, typeof(T))] = value;
+    public bool HasComponent<T>(Entity e) => data.ContainsKey((e, typeof(T)));
+    public T GetComponentData<T>(Entity e) => (T)data[(e, typeof(T))];
+    public bool HasBuffer<T>(Entity e) => HasComponent<List<T>>(e);
+    public List<T> GetBuffer<T>(Entity e, bool readOnly) => GetComponentData<List<T>>(e);
+}
+namespace ParkingLotTool.Geometry {
+    internal static class Versorgungsweg {
+        internal struct Ziel { internal float2 Punkt; internal int Index; }
+        internal sealed class Ergebnis { internal float Laenge; internal int Zielpruefungen, Start, Ziel; internal List<float2> Punkte; }
+    }
+}
+sealed class Program {
+    sealed class AvKurs { public List<Entity> Anschlussstuecke = new(); }
+    readonly Manager EntityManager = new();
+    readonly Entities query = new();
+    Entities AvTempQuery() => query;
+    /* PRODUKTION */
+    static int Main() {
+        int errors = 0, cases = 0;
+        void Check(bool ok, string name) { cases++; if (!ok) { errors++; Console.WriteLine("FEHLER: " + name); } }
+        foreach (var kind in new[] { "direkt", "senkrecht", "zweiteilig", "abgetrennt", "geloescht", "cancel", "fremd", "falscheStrasse" }) {
+            var p = new Program(); var kurs = new AvKurs();
+            var start = new Entity(1); var oben = new Entity(2); var mitte = new Entity(3);
+            var strasse = new Entity(10); var tempStrasse = new Entity(11);
+            p.query.Values.Add(tempStrasse);
+            p.EntityManager.Set(tempStrasse, new Temp { m_Original = kind == "falscheStrasse" ? new Entity(99) : strasse });
+            p.EntityManager.Set(tempStrasse, new Edge { m_Start = new Entity(20), m_End = new Entity(21) });
+            p.EntityManager.Set(tempStrasse, new List<ConnectedNode> { new ConnectedNode { m_Node = kind == "direkt" ? start : oben } });
+            var stueck = new Entity(30); kurs.Anschlussstuecke.Add(stueck);
+            p.EntityManager.Set(stueck, new Edge { m_Start = kind == "abgetrennt" ? new Entity(80) : start, m_End = kind == "zweiteilig" ? mitte : oben });
+            p.EntityManager.Set(stueck, new Temp { m_Original = kind == "fremd" ? new Entity(90) : Entity.Null, m_Flags = kind == "cancel" ? TempFlags.Cancel : 0 });
+            if (kind == "geloescht") p.EntityManager.Set(stueck, new Deleted());
+            if (kind == "zweiteilig") {
+                var zweites = new Entity(31); kurs.Anschlussstuecke.Add(zweites);
+                p.EntityManager.Set(zweites, new Temp());
+                p.EntityManager.Set(zweites, new Edge { m_Start = oben, m_End = mitte });
+            }
+            bool erwartet = kind == "direkt" || kind == "senkrecht" || kind == "zweiteilig";
+            Check(p.AvTempAnStrasse(start, new[] { strasse }, kurs) == erwartet, kind);
+            Check(!p.AvTempAnStrasse(Entity.Null, new[] { strasse }, kurs), kind + " ohne Start");
+        }
+        Console.WriteLine($"Anschluss: {cases} Faelle, {errors} Fehler"); return errors == 0 ? 0 : 1;
+    }
+}

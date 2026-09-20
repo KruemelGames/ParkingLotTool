@@ -259,9 +259,19 @@
 	     Geloescht wird ausschliesslich, was aelter als zwei Stunden ist -
 	     laufende Builds und ein geoeffnetes Spiel bleiben unberuehrt. Fehler
 	     werden ignoriert; ein fehlgeschlagenes Aufraeumen darf keinen Build
-	     kippen. -->
+	     kippen.
+
+	     KEIN `^` VOR DEN PIPES. Hier stand einmal `^|`, und damit hat das
+	     Ziel wochenlang NICHTS getan: `Exec` schreibt den Befehl in eine
+	     Batchdatei, und dort ist `^` nur AUSSERHALB von Anfuehrungszeichen
+	     ein Fluchtzeichen. Innerhalb bleibt es stehen, PowerShell bekommt
+	     `... SilentlyContinue ^| Where-Object ...` und scheitert am Parser.
+	     Weil Fehler hier absichtlich stumm sind, faellt das nie auf - am
+	     2026-09-18 lagen 2173 Ordner mit 44,7 GB in %TEMP%, zurueck bis zum
+	     31.08. Die Pipe braucht das Fluchtzeichen nicht: die
+	     Anfuehrungszeichen schuetzen sie bereits. -->
 	<Target Name="CleanStaleBuildTempCaches" AfterTargets="Build">
-		<Exec Command="powershell -NoProfile -NonInteractive -Command &quot;$cut=(Get-Date).AddHours(-2); Get-ChildItem $env:TEMP -Directory -ErrorAction SilentlyContinue ^| Where-Object { ($_.Name -like 'cache*' -or $_.Name -like 'microsoft.net.workload*') -and $_.LastWriteTime -lt $cut } ^| Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; exit 0&quot;"
+		<Exec Command="powershell -NoProfile -NonInteractive -Command &quot;$cut=(Get-Date).AddHours(-2); Get-ChildItem $env:TEMP -Directory -ErrorAction SilentlyContinue | Where-Object { ($_.Name -like 'cache*' -or $_.Name -like 'microsoft.net.workload*') -and $_.LastWriteTime -lt $cut } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; exit 0&quot;"
 			ContinueOnError="true" StandardOutputImportance="low" StandardErrorImportance="low" />
 	</Target>
 

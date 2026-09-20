@@ -76,6 +76,10 @@ namespace ParkingLotTool.Tools
          *
          * Erlaubt ist deshalb: mindestens EINE Zufahrt (die faehrt in beide
          * Richtungen), ODER mindestens je eine Einfahrt UND eine Ausfahrt.
+         *
+         * Entschieden wird nach der RICHTUNG, nicht nach der Bauart. Die
+         * zweispurige Gasse zaehlt als Zufahrt, die einspurigen zaehlen als
+         * Ein- und Ausfahrt.
          * Fusswege zaehlen dabei nie mit - sie sind eine Ergaenzung, kein
          * Zugang fuer Autos.
          *
@@ -99,7 +103,20 @@ namespace ParkingLotTool.Tools
                     // Richtungen und zaehlt deshalb genauso.
                     case Zufahrtsart.Gasse:
                     case Zufahrtsart.Zufahrt: zufahrt++; break;
+                    /*
+                     * DIE EINSPURIGEN GASSEN ZAEHLEN WIE IHRE UNSICHTBAREN
+                     * GESCHWISTER.
+                     *
+                     * Was diese Pruefung wissen will, ist eine Frage der
+                     * RICHTUNG, nicht der Bauart: kommt ein Auto herein, und
+                     * kommt es wieder heraus. Eine Gasse hinein leistet
+                     * dasselbe wie eine Einfahrt. Ohne diese beiden Zeilen
+                     * darf niemand bauen, der eine Gasse rein und eine Gasse
+                     * raus gesetzt hat - und sieht nicht, warum.
+                     */
+                    case Zufahrtsart.GasseEin:
                     case Zufahrtsart.Einfahrt: einfahrt++; break;
+                    case Zufahrtsart.GasseAus:
                     case Zufahrtsart.Ausfahrt: ausfahrt++; break;
                 }
             }

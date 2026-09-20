@@ -149,6 +149,82 @@ namespace ParkingLotTool.Tools
                 byLot.TryGetValue(lot, out var companion);
                 EnableLot(lot, companion, prefab);
             }
+
+            MeldeSteckbriefe(lots, byLot);
+        }
+
+        private string _letzterSteckbrief = string.Empty;
+
+        /**
+         * Eine Zeile je Parkplatz: was sein Infofenster fuellt.
+         *
+         * Gemeldet wird nur, wenn sich etwas geaendert hat - sonst stuende
+         * dieselbe Liste bei jedem Durchgang im Log.
+         */
+        private void MeldeSteckbriefe(NativeArray<Entity> lots,
+                                      Dictionary<Entity, Entity> byLot)
+        {
+            var zeilen = new List<string>();
+            for (var i = 0; i < lots.Length; i++)
+            {
+                var lot = lots[i];
+                if (!IsOwnLotPrefab(EntityManager
+                        .GetComponentData<PrefabRef>(lot).m_Prefab))
+                    continue;
+
+                var anlage = EntityManager
+                    .HasComponent<Game.Buildings.ParkingFacility>(lot);
+                byLot.TryGetValue(lot, out var companion);
+
+                var anbindung = "ohne Begleiter";
+                if (companion != Entity.Null && EntityManager.Exists(companion))
+                {
+                    var strasse = EntityManager.HasComponent<Building>(companion)
+                        ? EntityManager.GetComponentData<Building>(companion)
+                            .m_RoadEdge
+                        : Entity.Null;
+                    anbindung = strasse != Entity.Null
+                                && EntityManager.Exists(strasse)
+                        ? "Begleiter " + companion.Index + " an Strasse"
+                        : "Begleiter " + companion.Index + " OHNE Strasse";
+                }
+
+                zeilen.Add("Lot " + lot.Index + " '" + LotName(lot) + "': "
+                    + "ParkingFacility " + (anlage ? "JA" : "NEIN")
+                    + ", " + anbindung);
+            }
+            if (zeilen.Count == 0) return;
+
+            var text = string.Join(" | ", zeilen);
+            if (text == _letzterSteckbrief) return;
+            _letzterSteckbrief = text;
+            Mod.log.Info("PLT-Parkplatz-Steckbrief: " + text
+                + ". Fehlt ParkingFacility, ist die Flaeche vor dem "
+                + "2026-08-25 gebaut worden und muss neu gebaut werden; "
+                + "Belegungsbalken und Parkgebuehr haengen daran.");
+        }
+
+        /**
+         * Der Name, den der Nutzer im Infofenster liest.
+         *
+         * Er traegt die Stellplatzzahl - "Parking Lot (134 spaces)" - und
+         * ist damit das Einzige, woran sich ein Parkplatz im Log und auf
+         * dem Bildschirm derselbe ist. Ein erster Versuch hat stattdessen
+         * die Buchten unter der Flaeche gezaehlt und kam ueberall auf 0:
+         * die Spuren haengen am nackten Traeger, nicht an der Flaeche.
+         */
+        private string LotName(Entity lot)
+        {
+            try
+            {
+                var nameSystem = World
+                    .GetOrCreateSystemManaged<Game.UI.NameSystem>();
+                if (nameSystem.TryGetCustomName(lot, out var name)
+                    && !string.IsNullOrEmpty(name))
+                    return name;
+            }
+            catch (System.Exception) { }
+            return "ohne Namen";
         }
 
         private Dictionary<Entity, Entity> CollectCompanionsByLot()

@@ -239,6 +239,10 @@ namespace ParkingLotTool.Tools
              * aus wie ein Befund.
              */
             PruefeVersorgungswiederherstellung();
+            // Und aus demselben Grund auch der Gassenbefund: gemessen wird
+            // NACH dem Bau, und da ist unser Werkzeug oft nicht mehr aktiv.
+            PruefeGassenbefund();
+            PruefeFusswegBefund();
             if (m_ToolSystem.activeTool != this)
             {
                 PflegeAutoVersorgung();
