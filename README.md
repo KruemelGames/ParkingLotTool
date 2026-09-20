@@ -9,6 +9,10 @@ markings and surfaces, with cars that actually park.
 
 https://youtu.be/BGzduZI8sJ8
 
+## Reddit-post
+
+https://www.reddit.com/r/CitiesSkylines2/comments/1wi47hg/parking_lot_tool_test_release_out_now/
+
 ## Status
 
 Work in progress, and honest about it: it builds working parking lots, but it
