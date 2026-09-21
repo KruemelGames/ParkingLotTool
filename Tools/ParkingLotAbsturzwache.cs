@@ -179,7 +179,7 @@ namespace ParkingLotTool.Tools
                 if (File.Exists(spur))
                 {
                     File.Copy(spur, Path.Combine(Ordner,
-                        Rettung + stempel + "-schritte.log"), true);
+                        Rettung + stempel + "-steps.log"), true);
                     gerettet++;
                 }
 

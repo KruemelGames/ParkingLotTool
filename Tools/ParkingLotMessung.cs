@@ -193,8 +193,8 @@ namespace ParkingLotTool.Tools
             _anlass = anlass;
             _aufzeichnungBis = Stopwatch.GetTimestamp()
                 + (long)(sekunden * 1000.0 / MsJeTick);
-            Notiere("=== Leistungsmessung gestartet, " + sekunden
-                + " Sekunden, Anlass: " + anlass + " ===");
+            Notiere("=== performance measurement started, " + sekunden
+                + " seconds, reason: " + anlass + " ===");
         }
 
         /**
@@ -206,17 +206,18 @@ namespace ParkingLotTool.Tools
         internal static string Ernte()
         {
             _aufzeichnungBis = 0;
-            var kopf = "Leistungsmessung, Anlass: " + (_anlass ?? "-")
+            // Englisch, weil diese Datei im Meldepaket den Rechner verlaesst.
+            var kopf = "Performance measurement, reason: " + (_anlass ?? "-")
                 + Environment.NewLine
-                + Aufzeichnung.Count + " Zeilen"
+                + Aufzeichnung.Count + " lines"
                 + (_verworfeneZeilen > 0
-                    ? " (" + _verworfeneZeilen + " weitere nicht gesammelt, "
-                      + "Obergrenze " + HoechstZeilen + ")"
+                    ? " (" + _verworfeneZeilen + " more not collected, "
+                      + "cap " + HoechstZeilen + ")"
                     : string.Empty)
                 + Environment.NewLine
-                + "Lesehilfe: 'AUSREISSER' ist ein einzelnes langes Bild. "
-                + "Steht dort ueberall 0,0 und kein System, war es nicht "
-                + "dieser Mod." + Environment.NewLine + Environment.NewLine;
+                + "How to read it: OUTLIER is one single long frame. If "
+                + "everything there is 0.0 and no system is named, it was "
+                + "not this mod." + Environment.NewLine + Environment.NewLine;
             var text = kopf + string.Join(Environment.NewLine, Aufzeichnung);
             Aufzeichnung.Clear();
             return text;
@@ -299,22 +300,24 @@ namespace ParkingLotTool.Tools
          */
         private static void MeldeAusreisser(long dauer)
         {
-            var zeile = "AUSREISSER: Bild "
+            // Englisch: dieselbe Zeile landet in `performance.txt` im
+            // Meldepaket und damit bei jemandem, der kein Deutsch liest.
+            var zeile = "OUTLIER: frame "
                 + Ms(dauer) + " ms"
-                + " | Werkzeug " + Ms(BildSumme[(int)Punkt.Werkzeug])
+                + " | tool " + Ms(BildSumme[(int)Punkt.Werkzeug])
                 + " | Overlay " + Ms(BildSumme[(int)Punkt.Overlay])
-                + " (Warten " + Ms(BildSumme[(int)Punkt.Warten])
-                + ", Zeichnen " + Ms(BildSumme[(int)Punkt.Zeichnen]) + ")"
-                + " | Flaechennetz " + Ms(BildSumme[(int)Punkt.Flaechennetz])
-                + " | Vorschau " + Ms(BildSumme[(int)Punkt.Vorschau])
-                + " | Aufrufe " + (BildStueck[(int)Zaehler.Pflanzen]
+                + " (waiting " + Ms(BildSumme[(int)Punkt.Warten])
+                + ", drawing " + Ms(BildSumme[(int)Punkt.Zeichnen]) + ")"
+                + " | surface mesh " + Ms(BildSumme[(int)Punkt.Flaechennetz])
+                + " | preview " + Ms(BildSumme[(int)Punkt.Vorschau])
+                + " | calls " + (BildStueck[(int)Zaehler.Pflanzen]
                     + BildStueck[(int)Zaehler.Baender]
                     + BildStueck[(int)Zaehler.Sonstige])
-                + " (Pflanzen " + BildStueck[(int)Zaehler.Pflanzen]
-                + ", Baender " + BildStueck[(int)Zaehler.Baender]
-                + ", sonstige " + BildStueck[(int)Zaehler.Sonstige] + ")"
-                + " | Netzgruppen " + BildStueck[(int)Zaehler.Netzgruppen]
-                + ", Uebertragungen " + BildStueck[(int)Zaehler.Uebertragungen]
+                + " (plants " + BildStueck[(int)Zaehler.Pflanzen]
+                + ", bands " + BildStueck[(int)Zaehler.Baender]
+                + ", other " + BildStueck[(int)Zaehler.Sonstige] + ")"
+                + " | mesh groups " + BildStueck[(int)Zaehler.Netzgruppen]
+                + ", uploads " + BildStueck[(int)Zaehler.Uebertragungen]
                 + SystemeDiesesBild() + ".";
             Mod.log.Info("PLT-Messung " + zeile);
             Notiere(zeile);
@@ -336,24 +339,26 @@ namespace ParkingLotTool.Tools
         {
             if (_bilder > 0)
             {
-                var zeile = (werkzeugAktiv ? "" : "(Werkzeug zu) ")
-                    + _bilder + " Bilder in "
+                // Englisch: diese Zeile landet in `performance.txt` im
+                // Meldepaket, genau wie die Ausreisserzeile.
+                var zeile = (werkzeugAktiv ? "" : "(tool closed) ")
+                    + _bilder + " frames in "
                     + fensterMs.ToString("F0") + " ms = "
-                    + (fensterMs / _bilder).ToString("F1") + " ms/Bild"
-                    + ", schlechtestes " + Ms(_bildHoechstwert) + " ms."
-                    + Abschnitt("Werkzeug", Punkt.Werkzeug)
+                    + (fensterMs / _bilder).ToString("F1") + " ms/frame"
+                    + ", worst " + Ms(_bildHoechstwert) + " ms."
+                    + Abschnitt("tool", Punkt.Werkzeug)
                     + Abschnitt("Overlay", Punkt.Overlay)
-                    + Abschnitt("davon Warten", Punkt.Warten)
-                    + Abschnitt("davon Zeichnen", Punkt.Zeichnen)
-                    + Abschnitt("Flaechennetz", Punkt.Flaechennetz)
-                    + Abschnitt("Vorschau", Punkt.Vorschau)
-                    + " | je Bild: Pflanzen "
+                    + Abschnitt("of that waiting", Punkt.Warten)
+                    + Abschnitt("of that drawing", Punkt.Zeichnen)
+                    + Abschnitt("surface mesh", Punkt.Flaechennetz)
+                    + Abschnitt("preview", Punkt.Vorschau)
+                    + " | per frame: plants "
                     + (Stueck[(int)Zaehler.Pflanzen] / _bilder)
-                    + ", Baender " + (Stueck[(int)Zaehler.Baender] / _bilder)
-                    + ", sonstige " + (Stueck[(int)Zaehler.Sonstige] / _bilder)
-                    + ", Netzgruppen "
+                    + ", bands " + (Stueck[(int)Zaehler.Baender] / _bilder)
+                    + ", other " + (Stueck[(int)Zaehler.Sonstige] / _bilder)
+                    + ", mesh groups "
                     + (Stueck[(int)Zaehler.Netzgruppen] / _bilder)
-                    + ", Uebertragungen "
+                    + ", uploads "
                     + (Stueck[(int)Zaehler.Uebertragungen] / _bilder)
                     + Systeme() + ".";
                 Mod.log.Info("PLT-Messung: " + zeile);

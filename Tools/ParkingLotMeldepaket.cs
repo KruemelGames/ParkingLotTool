@@ -150,9 +150,23 @@ namespace ParkingLotTool.Tools
                  * Datum in der Reihenfolge Jahr-Monat-Tag, weil sich das von
                  * selbst sortiert.
                  */
-                var sparte = anlass == Anlass.Absturz ? "Absturz"
-                    : anlass == Anlass.Leistung ? "Leistung"
-                    : anlass == Anlass.Vorschau ? "Vorschau" : "Bau";
+                /*
+                 * DIE NAMEN IM ARCHIV SIND ENGLISCH, DER CODE BLEIBT DEUTSCH.
+                 *
+                 * Ein Meldepaket verlaesst diesen Rechner: es geht an uns,
+                 * oft ueber einen Spieler, der kein Deutsch kann, und
+                 * gelegentlich an einen anderen Modder. Ordner wie "Absturz"
+                 * und Dateien wie "umgebung.txt" sind dort eine Huerde.
+                 * Ansage des Nutzers am 2026-09-22: *"wir muessen nochmal
+                 * schauen dass die erstellten Zips und ordner auf englisch
+                 * sind bei ALLEN reports."*
+                 *
+                 * Das gilt nur fuer das, was nach aussen geht. Der Quelltext
+                 * und die Logzeilen bleiben, wie sie sind.
+                 */
+                var sparte = anlass == Anlass.Absturz ? "Crash"
+                    : anlass == Anlass.Leistung ? "Performance"
+                    : anlass == Anlass.Vorschau ? "Preview" : "Build";
                 var unterordner = Path.Combine(
                     Path.Combine(ordner, "ParkingLotTool-Logs"), sparte);
                 Directory.CreateDirectory(unterordner);
@@ -168,7 +182,7 @@ namespace ParkingLotTool.Tools
                     foreach (var datei in teile)
                         Lege(archiv, datei.FullName, datei.Name);
 
-                    LegeText(archiv, "umgebung.txt", Umgebung());
+                    LegeText(archiv, "environment.txt", Umgebung());
 
                     /*
                      * Die gesammelten Messzeilen. Sie stehen zwar auch im
@@ -176,7 +190,7 @@ namespace ParkingLotTool.Tools
                      * ist es genau die gemessene Minute.
                      */
                     if (anlass == Anlass.Leistung)
-                        LegeText(archiv, "leistung.txt",
+                        LegeText(archiv, "performance.txt",
                             ParkingLotMessung.Ernte());
 
                     /*
@@ -188,11 +202,11 @@ namespace ParkingLotTool.Tools
                      */
                     if (File.Exists(ParkingLotSchrittmarke.Pfad))
                         Lege(archiv, ParkingLotSchrittmarke.Pfad,
-                            "schritte.log");
+                            "steps.log");
 
                     var log = Path.Combine(ordner, "ParkingLotTool.Mod.log");
                     if (File.Exists(log))
-                        LegeText(archiv, "modlog-ende.txt", Logende(log));
+                        LegeText(archiv, "modlog-tail.txt", Logende(log));
 
                     /*
                      * BEIM ABSTURZ KOMMEN DIE LOGS DES VORIGEN LAUFS DAZU.
@@ -342,11 +356,10 @@ namespace ParkingLotTool.Tools
             };
 
             var text = new StringBuilder();
-            text.AppendLine("Auszug aus " + Path.GetFileName(pfad)
-                + " - nur Systemangaben und der Absturz.");
-            text.AppendLine("Pfade, Kennungen und Ladeprotokoll sind nicht "
-                + "enthalten; sie werden fuer die Fehlersuche nicht "
-                + "gebraucht.");
+            text.AppendLine("Extract from " + Path.GetFileName(pfad)
+                + " - system details and the crash only.");
+            text.AppendLine("Paths, identifiers and the loading log are left "
+                + "out; they are not needed to track this down.");
             text.AppendLine(new string('-', 70));
 
             foreach (var zeile in zeilen)
@@ -363,8 +376,8 @@ namespace ParkingLotTool.Tools
             text.AppendLine();
             if (absturz < 0)
             {
-                text.AppendLine("KEIN Absturzblock in dieser Datei. Es folgen "
-                    + "die letzten Zeilen:");
+                text.AppendLine("NO crash block in this file. Last lines "
+                    + "follow:");
                 text.AppendLine(new string('-', 70));
                 for (var i = Math.Max(0, zeilen.Length - ZeilenVorDemAbsturz);
                      i < zeilen.Length; i++)
@@ -372,8 +385,8 @@ namespace ParkingLotTool.Tools
                 return text.ToString();
             }
 
-            text.AppendLine("Absturz ab Zeile " + (absturz + 1) + "; davor "
-                + ZeilenVorDemAbsturz + " Zeilen Vorlauf:");
+            text.AppendLine("Crash from line " + (absturz + 1) + "; "
+                + ZeilenVorDemAbsturz + " lines of run-up before it:");
             text.AppendLine(new string('-', 70));
             for (var i = Math.Max(0, absturz - ZeilenVorDemAbsturz);
                  i < zeilen.Length; i++)
@@ -488,12 +501,12 @@ namespace ParkingLotTool.Tools
         private static string Umgebung()
         {
             var text = new StringBuilder();
-            text.AppendLine("Parking Lot Tool - Umgebung der Meldung");
+            text.AppendLine("Parking Lot Tool - report environment");
             text.AppendLine(new string('-', 70));
             // Dieselbe Kennung wie im Dateinamen: damit ein Archiv, das
             // umbenannt weitergereicht wurde, sich selbst noch zuordnen kann.
-            text.AppendLine("Kennung:        " + _kennung);
-            text.AppendLine("Zeitpunkt:      "
+            text.AppendLine("Report ID:      " + _kennung);
+            text.AppendLine("Time:           "
                 + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             try
             {
@@ -508,24 +521,24 @@ namespace ParkingLotTool.Tools
                 var dll = typeof(ParkingLotMeldepaket).Assembly.Location;
                 if (!string.IsNullOrEmpty(dll))
                 {
-                    text.AppendLine("Mod-DLL:        " + Path.GetFileName(dll));
+                    text.AppendLine("Mod DLL:        " + Path.GetFileName(dll));
                     if (File.Exists(dll))
-                        text.AppendLine("DLL gebaut:     "
+                        text.AppendLine("DLL built:      "
                             + File.GetLastWriteTime(dll)
                                 .ToString("yyyy-MM-dd HH:mm:ss"));
                 }
-                text.AppendLine("Mod-Fassung:    "
+                text.AppendLine("Mod version:    "
                     + typeof(ParkingLotMeldepaket).Assembly
                         .GetName().Version);
             }
             catch (Exception ausnahme)
             {
-                text.AppendLine("Mod-Fassung:    nicht lesbar ("
+                text.AppendLine("Mod version:    unreadable ("
                     + ausnahme.Message + ")");
             }
-            text.AppendLine("Spielversion:   " + Application.version);
+            text.AppendLine("Game version:   " + Application.version);
             text.AppendLine("Unity:          " + Application.unityVersion);
-            text.AppendLine("Betriebssystem: " + SystemInfo.operatingSystem);
+            text.AppendLine("OS:             " + SystemInfo.operatingSystem);
 
             /*
              * DIE MODLISTE GEHOERT HIERHER, NICHT IN EINEN LOGAUSZUG.
@@ -545,13 +558,13 @@ namespace ParkingLotTool.Tools
                         namen.Add(eintrag.asset.name);
                 namen.Sort(StringComparer.OrdinalIgnoreCase);
                 text.AppendLine();
-                text.AppendLine("Geladene Mods (" + namen.Count + "):");
+                text.AppendLine("Loaded mods (" + namen.Count + "):");
                 foreach (var name in namen)
                     text.AppendLine("  " + name);
             }
             catch (Exception ausnahme)
             {
-                text.AppendLine("Geladene Mods: nicht lesbar ("
+                text.AppendLine("Loaded mods: unreadable ("
                     + ausnahme.Message + ")");
             }
             return text.ToString();
