@@ -194,14 +194,35 @@ namespace ParkingLotTool.Geometry.Zellen
                 }
                 foreach (var span in spans)
                 {
-                    var a = Math.Max(p.Links, span.A + reserve);
-                    var b = Math.Min(p.Rechts, span.B - reserve);
+                    /*
+                     * AN EINER ZONINGKANTE KEINE RESERVE.
+                     *
+                     * Die Reserve haelt die Gasse vom Rand des Parkplatzes
+                     * fort. Wo aber die Zoningflaeche geschnitten hat, soll
+                     * die Gasse bis an sie heranlaufen - sonst bleibt ein
+                     * toter Streifen, in den der Code spaeter eine
+                     * geklemmte Querstrasse setzt.
+                     *
+                     * Erkannt wird die Kante daran, dass sie auf dem Rand
+                     * eines Hindernisses liegt; der Name der Kante taugt
+                     * nicht, weil `-1` auch die globale Klammer bedeutet.
+                     */
+                    bool AnZoning(double x) => hindernisse.Any(box =>
+                        box.Max(v => v.Y) >= y - e.Fahrgassenbreite / 2
+                        && box.Min(v => v.Y) <= y + e.Fahrgassenbreite / 2
+                        && (Math.Abs(box.Min(v => v.X) - x) < 1e-6
+                            || Math.Abs(box.Max(v => v.X) - x) < 1e-6));
+
+                    var reserveA = AnZoning(span.A) ? 0.0 : reserve;
+                    var reserveB = AnZoning(span.B) ? 0.0 : reserve;
+                    var a = Math.Max(p.Links, span.A + reserveA);
+                    var b = Math.Min(p.Rechts, span.B - reserveB);
                     if (b - a < e.Buchtbreite - 1e-6) continue;
                     p.Gassen.Add(new Weg { A = new Punkt(a, y), B = new Punkt(b, y),
                         Breite = e.Fahrgassenbreite, Band = m.Fahrgasse.Id,
                         // Die globale Klammer ist keine Konturkante.
-                        KanteA = p.Links > span.A + reserve ? -1 : span.KanteA,
-                        KanteB = p.Rechts < span.B - reserve ? -1 : span.KanteB });
+                        KanteA = p.Links > span.A + reserveA ? -1 : span.KanteA,
+                        KanteB = p.Rechts < span.B - reserveB ? -1 : span.KanteB });
                 }
             }
             }
@@ -480,11 +501,20 @@ namespace ParkingLotTool.Geometry.Zellen
                  * keine Gitterlinie zu holen. An der Treppe faellt das Band
                  * auf einen einzigen Punkt zusammen (lRegel = rRegel = 34,5).
                  */
-                if (double.IsNaN(x))
+                // Der Streifen, in den keine Buchtreihe mehr passt. Was
+                // ganz darin liegt, steht zwischen Fahrgasse und
+                // Zoningstrasse - und genau das soll dort nicht stehen.
+                var zoningluft = ParkingGeometry.ZoningStrassenbreite / 2
+                                 + e.Buchttiefe;
+                var geklemmt = double.IsNaN(x);
+                if (geklemmt)
                     x = Math.Max(lRegel, Math.Min(rRegel, anker));
+                var gitterwunsch = x;
+                var ausgewichen = false;
                 var verbindung = new Weg { A = new Punkt(x, a.A.Y), B = new Punkt(x, b.A.Y), Breite = e.Querstrassenbreite };
                 if (!Frei(verbindung, innen, zoning))
                 {
+                    ausgewichen = true;
                     // Der erste Anker ist bevorzugt. Bei einem Hindernis wird
                     // vor dem Raster eine andere geometrisch freie Verbindung gesucht.
                     /*
@@ -517,13 +547,68 @@ namespace ParkingLotTool.Geometry.Zellen
                     p.Querwege.Add(new Querstrassenstueck { Querstrasse = q,
                         Anfang = new Punkt(mitte, a.A.Y), Ende = new Punkt(mitte, b.A.Y) });
                 }
+                /*
+                 * DIE GEKLEMMTE STRASSE FAELLT AN EINER ZONINGFLAECHE WEG.
+                 *
+                 * Nur die geklemmte: wo eine Gitterlinie ins Band passt,
+                 * steht die Strasse im Raster und stoert niemanden. Und nur
+                 * an einer Zoningflaeche: ein von Natur aus schmaler
+                 * Korridor bekommt seine Verbindung weiterhin, sonst haengen
+                 * dort zwei Fahrgassen in der Luft.
+                 */
+                if (geklemmt && ZoningZerschneidetKorridor(
+                        zoning, l, r, a.A.Y, b.A.Y, zoningluft))
+                {
+                    if (ParkingGeometry.LiveAn)
+                        ParkingGeometry.Live("  querstrassen korridor"
+                            + " | band " + l.ToString("F2") + ".."
+                            + r.ToString("F2")
+                            + " | geklemmt bei " + x.ToString("F2")
+                            + " an einer Zoningflaeche - WEGGELASSEN");
+                    continue;
+                }
+
                 Fuege(x, true);
-                foreach (var vorzeichen in new[] { -1, 1 })
-                    for (var xx = x + vorzeichen * schritt; xx > l + rest && xx < r - rest; xx += vorzeichen * schritt)
-                    {
-                        var w = new Weg { A = new Punkt(xx, a.A.Y), B = new Punkt(xx, b.A.Y), Breite = e.Querstrassenbreite };
-                        if (Frei(w, innen, zoning)) Fuege(xx, false);
-                    }
+                /*
+                 * Eine zusaetzliche Querstrasse darf an die Zoningstrasse
+                 * STOSSEN, aber nicht neben ihr herlaufen. Liegt sie auf
+                 * ganzer Laenge in dem Streifen, in den keine Buchtreihe
+                 * mehr passt, bleibt dort totes Band - dann faellt sie weg
+                 * und die Reihe reicht bis an die Zoningstrasse.
+                 */
+                var gefuellt = new List<double>();
+                var gewuenscht = double.IsNaN(gitterwunsch) ? anker : gitterwunsch;
+                var vonK = (int)Math.Ceiling((l + rest - anker) / schritt);
+                var bisK = (int)Math.Floor((r - rest - anker) / schritt);
+                for (var k = vonK; k <= bisK; k++)
+                {
+                    var xx = anker + k * schritt;
+                    if (!(xx > l + rest) || !(xx < r - rest)) continue;
+                    // Die notwendige Verbindung steht schon; eine zweite
+                    // Strasse, die sie ueberlappt, waere keine.
+                    if (Math.Abs(xx - x) < e.Querstrassenbreite) continue;
+                    var w = new Weg { A = new Punkt(xx, a.A.Y), B = new Punkt(xx, b.A.Y), Breite = e.Querstrassenbreite };
+                    if (!Frei(w, innen, zoning)) continue;
+                    if (LiegtZwischenZoningUndGasse(w, zoning, zoningluft))
+                        continue;
+                    Fuege(xx, false);
+                    gefuellt.Add(xx);
+                }
+
+                if (ParkingGeometry.LiveAn)
+                    ParkingGeometry.Live("  querstrassen korridor"
+                        + " | anker " + anker.ToString("F2")
+                        + " | schritt " + schritt.ToString("F2")
+                        + " | band " + l.ToString("F2") + ".." + r.ToString("F2")
+                        + " | gewuenscht " + gewuenscht.ToString("F2")
+                        + (ausgewichen ? " AUSGEWICHEN" : " frei")
+                        + " | notwendig bei " + x.ToString("F2")
+                        + " | Rasterabstand " + (schritt <= 0 ? "-"
+                            : (Math.Abs(x - anker) / schritt).ToString("F3"))
+                        + " | zusaetzlich " + gefuellt.Count
+                        + (gefuellt.Count == 0 ? string.Empty
+                            : " bei " + string.Join(", ",
+                                gefuellt.Select(v => v.ToString("F2")))));
             }
             p.VereinigeFussstreifen();
             p.PlaneZufahrten(eingang, areal, zoning);
@@ -744,6 +829,86 @@ namespace ParkingLotTool.Geometry.Zellen
                     if (aa.Max() <= bb.Min() + 1e-6 || bb.Max() <= aa.Min() + 1e-6) return false;
                 }
             return true;
+        }
+
+        /**
+         * Reicht eine Zoningflaeche in diesen Korridor hinein?
+         *
+         * Der Korridor spannt sich von `l` bis `r` in Reihenrichtung und
+         * von `y1` bis `y2` quer dazu. Beruehrt ihn eine Zoningflaeche -
+         * mit `luft` Zuschlag, weil ihre Strasse aussen herumlaeuft -, dann
+         * ist sein Band von ihr zerschnitten und nicht von der Form des
+         * Parkplatzes.
+         *
+         * Genau dann darf die Klemme nicht greifen: sie wuerde die
+         * Querstrasse an eine Kante heften, die der Nutzer beim naechsten
+         * Verschieben mitnimmt.
+         */
+        private static bool ZoningZerschneidetKorridor(
+            IReadOnlyList<Zoningvorgabe> zoning,
+            double l, double r, double y1, double y2, double luft)
+        {
+            if (zoning == null || zoning.Count == 0) return false;
+            var yMin = Math.Min(y1, y2) - luft;
+            var yMax = Math.Max(y1, y2) + luft;
+            foreach (var z in zoning)
+            {
+                var ecken = z.Ecken().ToArray();
+                if (ecken.Length < 3) continue;
+                var zxMin = ecken.Min(p2 => p2.X) - luft;
+                var zxMax = ecken.Max(p2 => p2.X) + luft;
+                var zyMin = ecken.Min(p2 => p2.Y) - luft;
+                var zyMax = ecken.Max(p2 => p2.Y) + luft;
+                if (zxMin <= r && zxMax >= l && zyMin <= yMax && zyMax >= yMin)
+                    return true;
+            }
+            return false;
+        }
+
+        /**
+         * Liegt dieser Weg auf GANZER LAENGE im Streifen neben einer
+         * Zoningflaeche?
+         *
+         * `Frei` fragt nur nach Ueberlappung. Das genuegt fuer ein
+         * Hindernis, aber nicht fuer die Zoningstrasse: die laeuft AUSSEN
+         * um die Flaeche herum, und was dicht daneben liegt, ueberlappt
+         * nichts und ist trotzdem im Weg.
+         *
+         * ENTSCHEIDEND IST DER GROESSTE ABSTAND, nicht der kleinste.
+         * Ansage des Nutzers am 2026-09-21: *"querstrassen duerfen an die
+         * Zoningstrasse laufen aber nicht dazwischen liegen, zwischen
+         * Fahrtgasse und Zoningstrasse."* Eine Querstrasse, die auf die
+         * Zoningstrasse ZULAEUFT, hat ihr Ende dort - der kleinste Abstand
+         * ist also nahezu null, und nach ihm gemessen fiele sie faelschlich
+         * weg. Ihr fernes Ende liegt aber weit draussen. Was wirklich
+         * dazwischenliegt, ist mit ALLEN Ecken im Streifen.
+         */
+        private static bool LiegtZwischenZoningUndGasse(Weg w,
+            IReadOnlyList<Zoningvorgabe> zoning, double abstand)
+        {
+            if (zoning == null || zoning.Count == 0 || abstand <= 0) return false;
+            var wegEcken = w.Ecken;
+            if (wegEcken == null || wegEcken.Length == 0) return false;
+            foreach (var z in zoning)
+            {
+                var zEcken = z.Ecken().ToArray();
+                if (zEcken.Length < 3) continue;
+
+                var alleDrin = true;
+                foreach (var ecke in wegEcken)
+                {
+                    var naechster = double.MaxValue;
+                    for (var j = 0; j < zEcken.Length; j++)
+                        naechster = Math.Min(naechster,
+                            Geometrie.AbstandPunktStrecke(ecke,
+                                zEcken[j], zEcken[(j + 1) % zEcken.Length]));
+                    if (naechster < abstand) continue;
+                    alleDrin = false;
+                    break;
+                }
+                if (alleDrin) return true;
+            }
+            return false;
         }
 
         private static bool Frei(Weg w, IReadOnlyList<Punkt> innen, IReadOnlyList<Zoningvorgabe> zoning)

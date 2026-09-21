@@ -24,7 +24,18 @@ import { useTexte } from "./texte";
  * aus und schreckt genau die Leute ab, deren Meldung man braucht. Fuer die
  * Entwicklung bleibt er wertvoll - dort steht er jetzt.
  */
-export const MarkierSpalten = () => {
+export const MarkierSpalten = ({ abschnitt }: {
+  /**
+   * Liefert die Klappeigenschaften fuer einen Abschnitt, oder fehlt.
+   *
+   * Fehlt er - so im Melden-Reiter -, stehen die drei Schritte offen
+   * untereinander; dort sind sie der ganze Inhalt. Im Debug-Reiter reicht
+   * ihn der Aufrufer herein, und sie ordnen sich in dessen Ziehharmonika
+   * ein.
+   */
+  abschnitt?: (name: string) => object;
+} = {}) => {
+  const klapp = (name: string) => abschnitt ? abschnitt(name) : {};
   const t = useTexte();
   const markerMode = useValue(markerMode$);
   const markerCount = useValue(markerCount$);
@@ -33,7 +44,7 @@ export const MarkierSpalten = () => {
 
   return (
     <>
-      <Spalte title={t.schritt1} ton="Melden" breit>
+      <Spalte title={t.schritt1} {...klapp("schritt1")} ton="Melden" breit>
         {/* Der Schalter traegt seinen Zustand im Text, nicht nur in der
             Farbe. */}
         <MitTooltip text={t.tooltipStellenMarkieren}>
@@ -54,7 +65,7 @@ export const MarkierSpalten = () => {
         </div>
       </Spalte>
 
-      <Spalte title={t.schritt2} ton="Melden" breit>
+      <Spalte title={t.schritt2} {...klapp("schritt2")} ton="Melden" breit>
         <div className={styles.controlHead}>
           <span className={styles.label}>{t.gesetzt}</span>
           <span className={`${styles.value} ${styles.titelMelden}`}>
@@ -85,7 +96,7 @@ export const MarkierSpalten = () => {
         </div>
       </Spalte>
 
-      <Spalte title={t.schritt3} ton="Melden" breit>
+      <Spalte title={t.schritt3} {...klapp("schritt3")} ton="Melden" breit>
         {/* Ohne Markierung waere der Bericht leer, deshalb sagt der Knopf
             das, statt still eine nutzlose Datei zu schreiben. */}
         <MitTooltip text={t.tooltipBerichtSchreiben}>

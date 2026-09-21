@@ -2761,3 +2761,66 @@ $eck-reiter: 9rem;
     background-color: var(--panelColorDark);
   }
 }
+
+/* ===================================== WERKZEUGWAHL IM DEBUG-REITER */
+/**
+ * EINE ZEILE KNOEPFE STATT ELF SPALTEN.
+ *
+ * Der Debug-Reiter hat elf Werkzeuge. Als `Spalte` nebeneinander sind das
+ * 2530 rem in einem 1680-rem-Panel: die Titel liegen uebereinander, der
+ * Rest bricht in eine zweite Zeile unter den Panelrand und ist dort
+ * unerreichbar - Gameface schneidet nicht ab und zeigt keine
+ * Bildlaufleiste. Genau das hat der Nutzer am 2026-09-21 im Bild gezeigt.
+ *
+ * `flex-basis: 100%` zwingt die Zeile auf die volle Breite der
+ * Spaltengruppe; das gewaehlte Werkzeug landet dadurch sicher darunter
+ * und nicht daneben.
+ *
+ * Kein `gap` - Cohtml kennt es nicht. Der Abstand steckt im Knopf.
+ */
+.werkzeugzeile {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  padding-bottom: $raum-5;
+  /**
+   * NUR SO HOCH WIE DIE KNOEPFE.
+   *
+   * `.spaltenGruppe` stellt ihre Kinder auf `align-items: stretch`. Weil
+   * diese Zeile als einzige auf ihrer Flex-Zeile steht, wurde daraus die
+   * VOLLE Panelhoehe - im Bild des Nutzers vom 2026-09-21 ein leerer Block
+   * unter den Knoepfen, und das gewaehlte Werkzeug lag unterhalb des
+   * Panelrands.
+   *
+   * `align-self` schlaegt das `align-items` des Elternteils; die Zeile
+   * nimmt jetzt ihre eigene Hoehe, und darunter bleibt der Platz fuer das
+   * Werkzeug.
+   */
+  align-self: flex-start;
+}
+
+.werkzeugKnopf {
+  padding: 4rem 10rem;
+  margin-right: $s2;
+  margin-bottom: $s2;
+  border: none;
+  border-radius: $eck-reiter;
+  background-color: $flaeche;
+  color: $text-1;
+  font-size: $type-sm;
+  white-space: nowrap;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+}
+
+/* Dieselbe Sprache wie der gewaehlte Hauptreiter: die Farbe des Panels. */
+.werkzeugKnopfAktiv,
+.werkzeugKnopfAktiv:hover {
+  background-color: $grund;
+  color: var(--menuTitleNormal);
+  font-weight: bold;
+}

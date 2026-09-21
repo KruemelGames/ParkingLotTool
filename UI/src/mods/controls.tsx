@@ -538,6 +538,16 @@ interface SpalteProps {
   einklappbar?: boolean;
   offen?: boolean;
   onKlick?: () => void;
+  /**
+   * GANZ WEG, nicht nur zugeklappt.
+   *
+   * Eine zugeklappte Spalte zeigt weiter ihren Titel - und im waagerechten
+   * Panel steht jede Spalte NEBEN der naechsten. Elf Titel nebeneinander
+   * passen nicht in 1680 rem; sie ueberlappen sich und brechen in eine
+   * zweite Zeile unter den Panelrand. Der Debug-Reiter waehlt deshalb ein
+   * Werkzeug aus und versteckt die anderen vollstaendig.
+   */
+  versteckt?: boolean;
   children: any;
 }
 
@@ -551,8 +561,9 @@ interface SpalteProps {
  * Beschriftungen darunter.
  */
 export const Spalte = ({ title, ton, breit, titleTooltip, bereichTooltip,
-                         einklappbar, offen = true, onKlick,
+                         einklappbar, offen = true, onKlick, versteckt,
                          children }: SpalteProps) => {
+  if (versteckt) return null;
   const titel = (
     <div
       className={`${styles.spaltenTitel} ${styles[`titel${ton}`]}

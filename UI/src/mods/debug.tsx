@@ -43,15 +43,58 @@ export const DebugTab = () => {
   // die Bindung zur Sonde eine einzige Zeichenkette bleibt.
   const [zoningUnsichtbar, setZoningUnsichtbar] = useState(false);
 
+  /**
+   * EIN WERKZEUG ZUR ZEIT, GEWAEHLT UEBER EINE KNOPFZEILE.
+   *
+   * Der erste Versuch am 2026-09-21 war eine Ziehharmonika - und er ging
+   * daneben, weil die Hoehe gar nicht das Problem war: im waagerechten
+   * Panel steht jede Spalte NEBEN der naechsten. Elf Spalten sind
+   * 2530 rem breit, das Panel hat 1680. Die Titel lagen uebereinander, der
+   * Rest fiel in eine zweite Zeile unter den Panelrand.
+   *
+   * Jetzt steht oben eine Zeile kurzer Knoepfe, darunter genau ein
+   * Werkzeug in voller Breite. Damit ist beides begrenzt - die Breite auf
+   * eine Spalte, die Hoehe auf einen Abschnitt.
+   */
+  const werkzeuge = [
+    ["schritt1", t.kurzSchritt1],
+    ["schritt2", t.kurzSchritt2],
+    ["schritt3", t.kurzSchritt3],
+    ["debugSonde", t.kurzDebugSonde],
+    ["debugSondeErgebnis", t.kurzDebugSondeErgebnis],
+    ["debugZoningsonde", t.kurzDebugZoningsonde],
+    ["debugSezieren", t.kurzDebugSezieren],
+    ["debugTraeger", t.kurzDebugTraeger],
+    ["debugUeberlappung", t.kurzDebugUeberlappung],
+    ["debugPrefabvergleich", t.kurzDebugPrefabvergleich],
+    ["debugLiveLog", t.kurzDebugLiveLog],
+  ];
+  const [werkzeug, setWerkzeug] = useState("debugLiveLog");
+  const abschnitt = (name: string) => ({ versteckt: werkzeug !== name });
+
   return (
     <div className={styles.spaltenGruppe}>
       {/* Der ausfuehrliche Meldeweg - markieren, zaehlen, Bericht schreiben.
           Stand bis zum 2026-09-15 im Melden-Reiter; dort braucht ein Tester
           einen Knopf, keinen dreistufigen Ablauf. */}
-      <MarkierSpalten />
+      <div className={styles.werkzeugzeile}>
+        {werkzeuge.map(([name, kurz]) => (
+          <button
+            key={name}
+            className={`${styles.werkzeugKnopf} ${
+              werkzeug === name ? styles.werkzeugKnopfAktiv : ""}`}
+            onClick={() => setWerkzeug(name)}
+          >
+            {kurz}
+          </button>
+        ))}
+      </div>
+
+      <MarkierSpalten abschnitt={abschnitt} />
 
       <Spalte
         title={t.debugSonde}
+        {...abschnitt("debugSonde")}
         ton="Melden"
         breit
         bereichTooltip={t.tooltipDebugSonde}
@@ -76,6 +119,7 @@ export const DebugTab = () => {
 
       <Spalte
         title={t.debugZoningsonde}
+        {...abschnitt("debugZoningsonde")}
         ton="Melden"
         breit
         bereichTooltip={t.tooltipDebugZoningsonde}
@@ -144,6 +188,7 @@ export const DebugTab = () => {
       */}
       <Spalte
         title={t.debugSezieren}
+        {...abschnitt("debugSezieren")}
         ton="Melden"
         breit
         bereichTooltip={t.tooltipDebugSezieren}
@@ -168,6 +213,7 @@ export const DebugTab = () => {
       */}
       <Spalte
         title={t.debugTraeger}
+        {...abschnitt("debugTraeger")}
         ton="Melden"
         breit
         bereichTooltip={t.tooltipDebugTraeger}
@@ -196,6 +242,7 @@ export const DebugTab = () => {
       */}
       <Spalte
         title={t.debugUeberlappung}
+        {...abschnitt("debugUeberlappung")}
         ton="Melden"
         breit
         bereichTooltip={t.tooltipDebugUeberlappung}
@@ -215,6 +262,7 @@ export const DebugTab = () => {
 
       <Spalte
         title={t.debugPrefabvergleich}
+        {...abschnitt("debugPrefabvergleich")}
         ton="Melden"
         breit
       >
@@ -227,6 +275,7 @@ export const DebugTab = () => {
 
       <Spalte
         title={t.debugLiveLog}
+        {...abschnitt("debugLiveLog")}
         ton="Melden"
         breit
         bereichTooltip={t.tooltipDebugLiveLog}
@@ -241,7 +290,8 @@ export const DebugTab = () => {
         ) : null}
       </Spalte>
 
-      <Spalte title={t.debugSondeErgebnis} ton="Melden" breit>
+      <Spalte title={t.debugSondeErgebnis}
+        {...abschnitt("debugSondeErgebnis")} ton="Melden" breit>
         {ergebnisse.length === 0 ? (
           <div className={styles.explain}>{t.debugNochNichts}</div>
         ) : (
