@@ -1076,6 +1076,16 @@ namespace ParkingLotTool.Tools
                             Reihen = Zoningflaechen[i].Reihen,
                             Winkel = Zoningflaechen[i].Winkel,
                             Rand = Zoningflaechen[i].Rand,
+                            // Ohne diese vier verloere der Parkplatz seine
+                            // Aussenbaender beim naechsten Laden.
+                            Aussen0 = ParkingGeometry.ZoningAussentiefe(
+                                Zoningflaechen[i], 0),
+                            Aussen1 = ParkingGeometry.ZoningAussentiefe(
+                                Zoningflaechen[i], 1),
+                            Aussen2 = ParkingGeometry.ZoningAussentiefe(
+                                Zoningflaechen[i], 2),
+                            Aussen3 = ParkingGeometry.ZoningAussentiefe(
+                                Zoningflaechen[i], 3),
                         });
                 }
                 else if (EntityManager.HasBuffer<ParkingLotBuildZoning>(lot))
@@ -1299,6 +1309,11 @@ namespace ParkingLotTool.Tools
                         Spalten = z.Spalten,
                         Reihen = z.Reihen,
                         Winkel = z.Winkel,
+                        // `Deserialize` hat bei alten Zetteln die frueher
+                        // ringsum gleiche Tiefe schon auf die vier Seiten
+                        // verteilt; hier steht sie nur noch durch.
+                        Aussentiefen = new[]
+                            { z.Aussen0, z.Aussen1, z.Aussen2, z.Aussen3 },
                     };
                 }
             }

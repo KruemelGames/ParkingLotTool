@@ -8,6 +8,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="Program.Zoningkanten.cs" />
+    <Compile Include="Program.Gassenreste.cs" />
     <Compile Include="Program.Gassenabstand.cs" />
     <Compile Include="Program.Randstrassen.cs" />
     <Compile Include="Program.Zufahrtsschnitt.cs" />

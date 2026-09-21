@@ -211,6 +211,7 @@ namespace ParkingLotTool.Tools
          * nach dem naechsten Spielstart wieder vergessen.
          */
         private ValueBinding<bool> _altwegOhneWarnung;
+        private ValueBinding<bool> _autoZufahrtModus;
         private ValueBinding<float> _rowAngle;
         private ValueBinding<float> _edgeSetbackDefault;
         private ValueBinding<float> _aisleWidthDefault;
@@ -229,7 +230,6 @@ namespace ParkingLotTool.Tools
         private ValueBinding<bool> _zoningModus;
         private ValueBinding<string> _zoningWinkelmodus;
         private ValueBinding<string> _zoningZug;
-        private ValueBinding<string> _zoningSeite;
         private ValueBinding<int> _zoningAussentiefe;
         private ValueBinding<bool> _zoningLinienwahl;
         private ValueBinding<float> _zoningAusrichtwinkel;
@@ -485,6 +485,10 @@ namespace ParkingLotTool.Tools
                 "AltEngineOhneWarnung",
                 Mod.Optionen?.AltRechenwegOhneWarnung ?? false));
 
+            AddBinding(_autoZufahrtModus = new ValueBinding<bool>(Group,
+                "AutoEntryMode",
+                Mod.Optionen?.AutomatischZufahrtModus ?? true));
+
             AddBinding(_edgeSetbackDefault = new ValueBinding<float>(Group,
                 "EdgeSetbackDefault", _defaults.EdgeSetback));
             AddBinding(_aisleWidthDefault = new ValueBinding<float>(Group,
@@ -566,10 +570,6 @@ namespace ParkingLotTool.Tools
                 Group, "ZoningAusrichtwinkel", float.NaN));
             AddBinding(_zoningAuswahl = new ValueBinding<int>(
                 Group, "ZoningAuswahl", -1));
-            AddBinding(_zoningSeite = new ValueBinding<string>(
-                Group, "ZoningSeite", "innen"));
-            AddBinding(new TriggerBinding<string>(Group, "SetZoningSeite",
-                wert => Tool()?.SetzeZoningSeite(wert)));
             AddBinding(_zoningAussentiefe = new ValueBinding<int>(
                 Group, "ZoningAussentiefe", 2));
             AddBinding(new TriggerBinding<int>(Group, "SetZoningAussentiefe",
@@ -914,6 +914,21 @@ namespace ParkingLotTool.Tools
                     }
                     _altwegOhneWarnung.Update(value);
                 }));
+            /*
+             * Der Knopf im Panel schreibt dieselbe Einstellung wie das
+             * Optionsmenue und speichert sie. Der Abgleich in die andere
+             * Richtung steht in `PflegeSchalter`.
+             */
+            AddBinding(new TriggerBinding<bool>(Group, "SetAutoEntryMode",
+                value =>
+                {
+                    if (Mod.Optionen != null)
+                    {
+                        Mod.Optionen.AutomatischZufahrtModus = value;
+                        Mod.Optionen.ApplyAndSave();
+                    }
+                    _autoZufahrtModus.Update(value);
+                }));
             AddBinding(new TriggerBinding(Group, "ResetAll", ResetAll));
             AddBinding(new TriggerBinding<string>(Group, "ResetOne", ResetOne));
             AddBinding(new TriggerBinding<string>(Group, "SetAsDefault", SetAsDefault));
@@ -1250,9 +1265,26 @@ namespace ParkingLotTool.Tools
          */
         internal void PflegeFensterstil()
         {
+            PflegeSchalter();
             var jetzt = Mod.Optionen?.FensterstilKuerzel() ?? PanelStilHorizontal;
             if (_panelStil == null || _panelStil.value == jetzt) return;
             UebernimmStil(jetzt);
+        }
+
+        /**
+         * Zieht die Schalter im Panel nach, wenn sie anderswo umgelegt wurden.
+         *
+         * Ohne das zeigte der Knopf im Panel weiter den alten Stand, wenn
+         * der Nutzer die Einstellung im ESC-Menue aendert - zwei Anzeigen
+         * derselben Sache, die sich widersprechen. Kostet einen
+         * Wahrheitswertvergleich je Bild.
+         */
+        private void PflegeSchalter()
+        {
+            if (_autoZufahrtModus == null || Mod.Optionen == null) return;
+            var jetzt = Mod.Optionen.AutomatischZufahrtModus;
+            if (_autoZufahrtModus.value != jetzt)
+                _autoZufahrtModus.Update(jetzt);
         }
 
         /**
@@ -1491,12 +1523,6 @@ namespace ParkingLotTool.Tools
         {
             if (_zoningAuswahl != null && _zoningAuswahl.value != index)
                 _zoningAuswahl.Update(index);
-        }
-
-        internal void SetZoningSeite(string seite)
-        {
-            if (_zoningSeite != null && _zoningSeite.value != seite)
-                _zoningSeite.Update(seite);
         }
 
         internal void SetZoningAussentiefe(int parzellen)

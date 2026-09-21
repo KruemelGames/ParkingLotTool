@@ -96,24 +96,18 @@ const en = {
   zoningSetzenAus: "Stop placing",
   zoningWinkel: "Parcel angle",
   zoningLinie: "Line",
-  zoningSeite: "Where parcels go",
-  zoningInnen: "Inside",
-  zoningAussen: "Outside",
-  zoningBeides: "Both",
-  zoningAussentiefe: "Outer depth",
+  zoningSeite: "Outer band",
+  zoningAussentiefe: "Depth in tiles",
   zoningSeiteHinweis:
-    "The zoning road runs around what you drew. Parcels can sit inside it, "
-    + "outside it, or both — outside needs extra room, so the parking "
-    + "lot keeps it free.",
-  zoningTiefeUeberSechs:
-    "Above 6 the game grows nothing any more — that part stays "
-    + "reserved empty ground for buildings you place yourself.",
-  tooltipZoningSeite: "Decides which side of the zoning road gets parcels.",
-  tooltipZoningInnen: "Parcels only in the rectangle you drew.",
-  tooltipZoningAussen: "Parcels only around the road, none inside.",
-  tooltipZoningBeides: "Parcels on both sides of the road.",
+    "The zoning road runs around what you drew. Every side of it can carry "
+    + "extra parcels outside, each with its own depth. The parking lot keeps "
+    + "that room free — no aisle, no cross road, no bays.",
+  zoningTiefeKlick:
+    "Pick a depth, then turn on “Toggle road side” and click the OUTER "
+    + "side of a zoning road. Clicking the same side again removes the band.",
   tooltipZoningAussentiefe:
-    "How deep the outer parcels reach, in 8 m steps.",
+    "How deep the next band you click becomes, in 8 m tiles.",
+  tooltipZoningTiefeKnopf: "Tiles deep:",
   zoningFlaeche: "Parcel ground",
   zoningFlaecheHinweis:
     "The ground under the parcels only — the zoning road stays a road "
@@ -161,6 +155,11 @@ const en = {
   trennungFertig: "Done splitting",
   debugLiveLog: "Live log",
   kurzDebugLiveLog: "Live log",
+  autoZufahrt: "Auto switch to Entry",
+  schalterAn: "On",
+  schalterAus: "Off",
+  tooltipAutoZufahrt:
+    "After the outline is closed, switch to entrance placement right away. Same switch as in the mod settings.",
   kurzDebugUeberlappung: "Overlaps",
   kurzDebugPrefabvergleich: "Road prefabs",
   kurzDebugSonde: "Shape probe",
@@ -636,25 +635,20 @@ const de: Texte = {
   zoningSetzenAus: "Setzen beenden",
   zoningWinkel: "Parzellenwinkel",
   zoningLinie: "Linie",
-  zoningSeite: "Wo Parzellen liegen",
-  zoningInnen: "Innen",
-  zoningAussen: "Außen",
-  zoningBeides: "Beides",
-  zoningAussentiefe: "Tiefe außen",
+  zoningSeite: "Außenband",
+  zoningAussentiefe: "Tiefe in Kacheln",
   zoningSeiteHinweis:
-    "Die Zoning-Straße läuft außen um das gezogene Rechteck. Parzellen "
-    + "können innen, außen oder auf beiden Seiten liegen — außen "
-    + "braucht zusätzlichen Platz, den der Parkplatz freihält.",
-  zoningTiefeUeberSechs:
-    "Über 6 wächst im Spiel nichts mehr — der Rest bleibt "
-    + "reservierter freier Boden für selbst gesetzte Gebäude.",
-  tooltipZoningSeite:
-    "Bestimmt, welche Seite der Zoning-Straße Parzellen bekommt.",
-  tooltipZoningInnen: "Parzellen nur im gezogenen Rechteck.",
-  tooltipZoningAussen: "Parzellen nur rings um die Straße, keine innen.",
-  tooltipZoningBeides: "Parzellen auf beiden Seiten der Straße.",
+    "Die Zoning-Straße läuft außen um das gezogene Rechteck. Jede ihrer "
+    + "Seiten kann außen zusätzliche Parzellen tragen, jede mit eigener "
+    + "Tiefe. Der Parkplatz hält den Platz frei — keine Fahrgasse, keine "
+    + "Querstraße, keine Buchten.",
+  zoningTiefeKlick:
+    "Tiefe wählen, dann „Straßenseite schalten“ einschalten und auf die "
+    + "AUSSENSEITE einer Zoning-Straße klicken. Noch einmal auf dieselbe "
+    + "Seite klicken nimmt das Band wieder weg.",
   tooltipZoningAussentiefe:
-    "Wie tief die äußeren Parzellen reichen, in 8-m-Schritten.",
+    "Wie tief das nächste angeklickte Band wird, in 8-m-Kacheln.",
+  tooltipZoningTiefeKnopf: "Kacheln tief:",
   zoningFlaeche: "Parzellenboden",
   zoningFlaecheHinweis:
     "Nur der Boden unter den Parzellen — die Zoning-Straße bleibt eine "
@@ -702,6 +696,11 @@ const de: Texte = {
   trennungFertig: "Trennung fertig",
   debugLiveLog: "Live-Log",
   kurzDebugLiveLog: "Live-Log",
+  autoZufahrt: "Automatisch zur Zufahrt",
+  schalterAn: "An",
+  schalterAus: "Aus",
+  tooltipAutoZufahrt:
+    "Nach dem Schließen des Umrisses sofort in den Zufahrt-Modus wechseln. Derselbe Schalter wie in den Mod-Einstellungen.",
   kurzDebugUeberlappung: "Überlappung",
   kurzDebugPrefabvergleich: "Straßenprefabs",
   kurzDebugSonde: "Flächensonde",

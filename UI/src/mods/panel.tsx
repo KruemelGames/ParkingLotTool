@@ -9,7 +9,7 @@ import {
 } from "./controls";
 import { ReportTab } from "./report";
 import { DebugTab } from "./debug";
-import { entwicklerDebug$ } from "./bindings";
+import { entwicklerDebug$, autoEntryMode$, setAutoEntryMode } from "./bindings";
 import { ZoningTab } from "./zoning";
 import { ListeTab } from "./liste";
 import {
@@ -303,6 +303,7 @@ export const ParkingLotPanel = () => {
   // und im Spiel starb die ganze Oberflaeche beim Oeffnen (UI.log
   // 2026-09-14 20:44:39). Derselbe Fehler wie am 2026-08-11.
   const entwicklerDebug = useValue(entwicklerDebug$);
+  const autoEntryMode = useValue(autoEntryMode$);
   const toolActive = useValue(toolActive$);
   const edgeSetback = useValue(edgeSetback$);
   const edgeSetbackDefault = useValue(edgeSetbackDefault$);
@@ -1286,6 +1287,24 @@ export const ParkingLotPanel = () => {
           liest man sie viermal und aendert sie beim naechsten Mal dreimal
           nicht mit.
         */}
+        {/*
+          DER SCHALTER STEHT UEBER DEN KNOEPFEN, ZU DENEN ER GEHOERT.
+          Er ist derselbe wie im Optionsmenue; wer ihn hier umlegt, aendert
+          die Einstellung, und umgekehrt zieht dieser hier nach.
+        */}
+        <TooltipKnopf text={t.tooltipAutoZufahrt}
+          className={`${styles.autoZufahrt} ${
+            autoEntryMode ? styles.autoZufahrtAn : ""}`}
+          onClick={() => setAutoEntryMode(!autoEntryMode)}>
+          {/* Der Zustand steht als WORT daneben, nicht als Sinnbild.
+              Haken und Punkt sehen sich zu aehnlich, um auf einen Blick
+              zu sagen, was gerade gilt. */}
+          <span>{t.autoZufahrt}</span>
+          <span className={styles.schalterWort}>
+            {autoEntryMode ? t.schalterAn : t.schalterAus}
+          </span>
+        </TooltipKnopf>
+
         <div className={styles.artZeile}>
           {ARTEN.map((art) => {
             const aktiv = entranceMode && entranceKind === art.id;

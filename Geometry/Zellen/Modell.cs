@@ -825,12 +825,39 @@ namespace ParkingLotTool.Geometry.Zellen
         /**
          * Der freizuhaltende Rand um die Parzellen, in Metern.
          *
-         * Er traegt die Zoning-Strasse und - wenn aussen auch Bauland
-         * entsteht - deren Parzellen. Der Zellenkern kennt nur diese eine
-         * Zahl; ob sie aus Strassenbreite allein oder aus Strassenbreite
-         * plus Aussentiefe stammt, entscheidet das Werkzeug.
+         * Er traegt die Zoning-Strasse. Aeusseres Bauland steckt NICHT mehr
+         * hier drin, sondern in `Aussen` - bis zum 2026-09-21 wurde beides
+         * in diese eine Zahl gerechnet, und weil `Enthaelt` dann alles bis
+         * zum aeusseren Rand abdeckte, wurde das ganze Band zu
+         * `Zellart.Zoningstrasse`, also Asphalt. Die eingestellte Tiefe
+         * schob die Dinge nur weiter weg, statt Bauland zu erzeugen.
          */
         internal double Rand { get; set; }
+
+        /**
+         * Wie weit reicht das Bauland AUSSERHALB der Zoning-Strasse, je
+         * Seite und in Metern? Index wie die Kanten von `EckenMitAufschlag`:
+         * 0 liegt an der ersten Kante (Ecke -> Ecke+Breite), dann im
+         * Uhrzeigersinn weiter.
+         *
+         * Vier Werte statt einem, weil der Nutzer es am 2026-09-21 so
+         * skizziert hat: links vier Kacheln tief, unten zwei, oben und
+         * rechts nichts. Ein einzelner Rand kann das nicht abbilden.
+         *
+         * `null` oder zu kurz heisst ueberall 0 - so lesen sich auch
+         * Parkplaetze, die vor dieser Aenderung gespeichert wurden.
+         */
+        internal double[] Aussen { get; set; }
+
+        /** Aussentiefe der Seite `s`, auch wenn `Aussen` fehlt. */
+        internal double AussenSeite(int s) =>
+            Aussen != null && s >= 0 && s < Aussen.Length
+                ? Math.Max(0.0, Aussen[s]) : 0.0;
+
+        /** Gibt es ueberhaupt aeusseres Bauland? */
+        internal bool HatAussenband =>
+            AussenSeite(0) > 1e-6 || AussenSeite(1) > 1e-6
+                || AussenSeite(2) > 1e-6 || AussenSeite(3) > 1e-6;
 
         /**
          * Halbe Breite der Zoning-Strasse.
@@ -886,6 +913,117 @@ namespace ParkingLotTool.Geometry.Zellen
          * gezeichnet.
          */
         internal Punkt[] Ecken() => EckenMitAufschlag(Rand);
+
+        /**
+         * Der freigehaltene Bereich EINSCHLIESSLICH des aeusseren Baulands.
+         *
+         * Ohne Aussenband sind das dieselben vier Punkte wie `Ecken()`. Mit
+         * Aussenband wird daraus ein Treppenzug: jede Seite beult um ihre
+         * eigene Tiefe aus, und an den Ecken geht der Umriss auf den
+         * Strassenring zurueck. Genau so hat der Nutzer es am 2026-09-21
+         * skizziert - das Band links und das Band unten stossen aneinander,
+         * das Eck dazwischen bleibt frei.
+         *
+         * Die Aussenrichtung wird ueber den Schwerpunkt bestimmt, nicht
+         * ueber den Umlaufsinn: `quer` ist `laengs` um +90 Grad gedreht,
+         * und ob das im Weltbild rechts- oder linksherum laeuft, haengt am
+         * Vorzeichen der Y-Achse. Ein falsches Vorzeichen hier wuerde das
+         * Band nach INNEN legen, mitten in die Parzellen.
+         */
+        internal Punkt[] Umriss()
+        {
+            var ring = Ecken();
+            if (!HatAussenband) return ring;
+
+            var mitte = new Punkt(
+                (ring[0].X + ring[1].X + ring[2].X + ring[3].X) / 4.0,
+                (ring[0].Y + ring[1].Y + ring[2].Y + ring[3].Y) / 4.0);
+
+            var punkte = new List<Punkt>(12);
+            void Fuege(Punkt p)
+            {
+                if (punkte.Count > 0)
+                {
+                    var letzt = punkte[punkte.Count - 1];
+                    if (Math.Abs(letzt.X - p.X) < 1e-6
+                        && Math.Abs(letzt.Y - p.Y) < 1e-6) return;
+                }
+                punkte.Add(p);
+            }
+
+            for (var s = 0; s < 4; s++)
+            {
+                var a = ring[s];
+                var b = ring[(s + 1) % 4];
+                var tiefe = AussenSeite(s);
+                var dx = b.X - a.X;
+                var dy = b.Y - a.Y;
+                var laenge = Math.Sqrt(dx * dx + dy * dy);
+                if (laenge <= 1e-9) continue;
+                if (tiefe <= 1e-6) { Fuege(a); Fuege(b); continue; }
+
+                var normale = new Punkt(dy / laenge, -dx / laenge);
+                var kantenmitte = new Punkt((a.X + b.X) / 2.0, (a.Y + b.Y) / 2.0);
+                if ((kantenmitte.X - mitte.X) * normale.X
+                    + (kantenmitte.Y - mitte.Y) * normale.Y < 0.0)
+                    normale = new Punkt(-normale.X, -normale.Y);
+
+                var aussen = new Punkt(normale.X * tiefe, normale.Y * tiefe);
+                Fuege(new Punkt(a.X + aussen.X, a.Y + aussen.Y));
+                Fuege(new Punkt(b.X + aussen.X, b.Y + aussen.Y));
+                Fuege(b);
+            }
+
+            // Der Ringschluss kann den Anfangspunkt doppeln.
+            if (punkte.Count > 1)
+            {
+                var erst = punkte[0];
+                var letzt = punkte[punkte.Count - 1];
+                if (Math.Abs(erst.X - letzt.X) < 1e-6
+                    && Math.Abs(erst.Y - letzt.Y) < 1e-6)
+                    punkte.RemoveAt(punkte.Count - 1);
+            }
+            return punkte.Count >= 3 ? punkte.ToArray() : ring;
+        }
+
+        /**
+         * Liegt der Punkt im aeusseren Bauland - also AUSSERHALB der
+         * Zoning-Strasse, aber innerhalb der fuer diese Seite eingestellten
+         * Tiefe?
+         *
+         * Laengs der Kante ist das Band genau so lang wie der Strassenring;
+         * es laeuft nicht um die Ecke. Deshalb wird jede Seite gegen BEIDE
+         * Achsen geprueft und nicht nur gegen ihre eigene.
+         */
+        internal bool ImAussenband(Punkt welt)
+        {
+            if (!HatAussenband) return false;
+
+            var bogen = Winkel * Math.PI / 180.0;
+            var laengs = new Punkt(Math.Cos(bogen), Math.Sin(bogen));
+            var quer = new Punkt(-laengs.Y, laengs.X);
+            var d = welt - (Ecke - laengs * Rand - quer * Rand);
+            var u = d.X * laengs.X + d.Y * laengs.Y;
+            var v = d.X * quer.X + d.Y * quer.Y;
+            var breite = Spalten * 8.0 + 2 * Rand;
+            var tiefe = Reihen * 8.0 + 2 * Rand;
+
+            // Seite 0 ist die Kante Ecke -> Ecke+Breite, also v = 0; dann
+            // im Uhrzeigersinn weiter. Dieselbe Zuordnung wie in `Umriss`.
+            if (u >= -1e-6 && u <= breite + 1e-6)
+            {
+                if (v <= 1e-6 && v >= -AussenSeite(0) - 1e-6) return true;
+                if (v >= tiefe - 1e-6 && v <= tiefe + AussenSeite(2) + 1e-6)
+                    return true;
+            }
+            if (v >= -1e-6 && v <= tiefe + 1e-6)
+            {
+                if (u >= breite - 1e-6 && u <= breite + AussenSeite(1) + 1e-6)
+                    return true;
+                if (u <= 1e-6 && u >= -AussenSeite(3) - 1e-6) return true;
+            }
+            return false;
+        }
 
         /**
          * Liegt der Punkt darin? Im Rahmen der Flaeche gerechnet, nicht ueber

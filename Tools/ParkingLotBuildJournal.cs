@@ -205,6 +205,17 @@ namespace ParkingLotTool.Tools
                     .Append(",\"reihen\":").Append(f.Reihen)
                     .Append(",\"winkel\":").Append(Num(f.Winkel))
                     .Append(",\"rand\":").Append(Num(f.Rand))
+                    // Die vier Aussentiefen gehoeren ins Protokoll: sie
+                    // erklaeren, warum an einer Seite Platz frei blieb.
+                    .Append(",\"aussen\":[")
+                    .Append(Num(ParkingGeometry.ZoningAussentiefe(f, 0)))
+                    .Append(',')
+                    .Append(Num(ParkingGeometry.ZoningAussentiefe(f, 1)))
+                    .Append(',')
+                    .Append(Num(ParkingGeometry.ZoningAussentiefe(f, 2)))
+                    .Append(',')
+                    .Append(Num(ParkingGeometry.ZoningAussentiefe(f, 3)))
+                    .Append(']')
                     .Append('}');
             }
             return text.Append(']').ToString();

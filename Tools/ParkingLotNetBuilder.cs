@@ -621,27 +621,13 @@ namespace ParkingLotTool.Tools
                     if (Zufahrtsarten.IstGasse(piece.Art))
                     {
                         gassenGeplant++;
-                        /*
-                         * DIESELBE REGEL WIE DIE VORFLAECHE, nicht der rohe
-                         * Ai-Regler: seit dem 2026-09-18 hat die Gasse ihre
-                         * eigene Breite, und der Befund soll melden, was
-                         * wirklich gebaut wird.
-                         */
-                        var gebaut = CreateGassenstueck(piece, i,
-                            (float)new ParkingLotTool.Geometry.Entrance
-                                { Art = piece.Art }
-                                .Breite(settings.Ai, settings.Gassenbreite),
-                            ref heightData,
-                            heights, ref random, gassenBericht);
+                        var breite = (float)new ParkingLotTool.Geometry.Entrance { Art = piece.Art }
+                            .Breite(settings.Ai, settings.Gassenbreite);
+                        var gebaut = CreateGassenstueck(piece, i, breite,
+                            ref heightData, heights, ref random, gassenBericht);
                         created += gebaut;
                         gassenGebaut += gebaut;
-                        /*
-                         * Nur wenn die Gasse wirklich steht. Faellt sie aus,
-                         * bleibt der gewohnte Weg als Rueckfall - eine
-                         * Zufahrt ohne geoeffneten Bordstein ist besser als
-                         * gar keine.
-                         */
-                        if (gebaut > 0) continue;
+                        continue;
                     }
                 }
                 if (string.Equals(piece.Kind, "zoning", StringComparison.Ordinal))
@@ -958,6 +944,20 @@ namespace ParkingLotTool.Tools
                 m_RandomSeed = random.NextInt(),
             });
             EntityManager.AddComponent<Updated>(definition);
+            /*
+             * Die Gasse bringt ihren eigenen Knoten mit; Zebrastreifen
+             * gehoeren dort nicht hin. `Upgraded` an der Definition wandert
+             * mit auf die fertige Kante - so macht es CS2s eigenes
+             * Strassenwerkzeug auch.
+             */
+            if (string.Equals(kind, "entrance-gasse", StringComparison.Ordinal))
+                EntityManager.AddComponentData(definition, new Game.Net.Upgraded
+                {
+                    m_Flags = new Game.Prefabs.CompositionFlags(
+                        default,
+                        Game.Prefabs.CompositionFlags.Side.RemoveCrosswalk,
+                        Game.Prefabs.CompositionFlags.Side.RemoveCrosswalk),
+                });
             EntityManager.AddComponentData(definition, new NetCourse
             {
                 m_Curve = curve,

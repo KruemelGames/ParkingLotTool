@@ -400,13 +400,31 @@ namespace ParkingLotTool.Tools
          * Ebene tiefer. Alte Zettel bleiben gueltig: sie hatten den Rand nie
          * anders als in Strassenbreite, und genau die wird nachgetragen.
          */
-        public const int CurrentVersion = 3;
+        /**
+         * Fassung 4 fuehrt die vier AUSSENTIEFEN mit.
+         *
+         * Bis dahin steckte das aeussere Bauland im `Rand`, also in einer
+         * einzigen Zahl fuer alle vier Seiten. Seit dem 2026-09-21 hat jede
+         * Seite ihre eigene Tiefe, und ohne diese vier Werte verloere ein
+         * geladener Parkplatz seine Baender - genau der Fehler, den Fassung
+         * 2 fuer den Rand behoben hat, eine Ebene weiter.
+         *
+         * Alte Zettel bleiben gueltig. Ihr `Rand` trug die alte, ringsum
+         * gleiche Aussentiefe; sie wird beim Lesen auf alle vier Seiten
+         * verteilt, damit ein vor der Aenderung gebauter Parkplatz
+         * aussieht wie vorher.
+         */
+        public const int CurrentVersion = 4;
         public int Version;
         public float2 Ecke;
         public int Spalten;
         public int Reihen;
         public double Winkel;
         public double Rand;
+        public double Aussen0;
+        public double Aussen1;
+        public double Aussen2;
+        public double Aussen3;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -416,6 +434,10 @@ namespace ParkingLotTool.Tools
             writer.Write(Reihen);
             writer.Write(Winkel);
             writer.Write(Rand);
+            writer.Write(Aussen0);
+            writer.Write(Aussen1);
+            writer.Write(Aussen2);
+            writer.Write(Aussen3);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -427,6 +449,27 @@ namespace ParkingLotTool.Tools
             reader.Read(out Winkel);
             if (Version >= 2) reader.Read(out Rand);
             else Rand = 8.0;
+            if (Version >= 4)
+            {
+                reader.Read(out Aussen0);
+                reader.Read(out Aussen1);
+                reader.Read(out Aussen2);
+                reader.Read(out Aussen3);
+                return;
+            }
+
+            /*
+             * DER ALTE RAND WAR RINGSUM DIE AUSSENTIEFE.
+             *
+             * Was ueber die Strassenbreite hinausging, war aeusseres
+             * Bauland auf allen vier Seiten. Genau so wird es
+             * zurueckgegeben, und `Rand` faellt auf die Strassenbreite -
+             * sonst zaehlte dieselbe Tiefe zweimal.
+             */
+            var alteTiefe = math.max(0.0,
+                Rand - ParkingGeometry.ZoningStrassenbreite);
+            Aussen0 = Aussen1 = Aussen2 = Aussen3 = alteTiefe;
+            Rand = ParkingGeometry.ZoningStrassenbreite;
         }
     }
 

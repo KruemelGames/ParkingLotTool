@@ -7,7 +7,7 @@ import {
   zoningZug$, zoningLinienwahl$, setZoningLinienwahl,
   zoningAusrichtwinkel$, zoningAuswahl$,
   surfaceZoning$, setSurfaceZoning, surfaceList$,
-  zoningSeite$, setZoningSeite, zoningAussentiefe$, setZoningAussentiefe,
+  zoningAussentiefe$, setZoningAussentiefe,
 } from "./bindings";
 import { Auswahl, Flaeche, ModeChooser, Slider, Spalte, TooltipKnopf }
   from "./controls";
@@ -41,7 +41,6 @@ export const ZoningTab = () => {
   const bezug = useValue(zoningAusrichtwinkel$);
   const auswahl = useValue(zoningAuswahl$);
   const flaeche = useValue(surfaceZoning$);
-  const seite = useValue(zoningSeite$);
   const aussentiefe = useValue(zoningAussentiefe$);
   /* Dieselbe Zerlegung wie im Layout-Reiter: eine Zeile je Flaeche, darin
      Name und Bildadresse durch einen Tabulator getrennt. */
@@ -117,35 +116,26 @@ export const ZoningTab = () => {
 
       <Spalte title={t.zoningSeite} ton="Zuschnitt" breit>
         <div className={styles.explain}>{t.zoningSeiteHinweis}</div>
+        {/* SECHS KNOEPFE, KEIN WAEHLER UND KEIN ZAEHLER.
+            Welche Seite gemeint ist, sagt der Klick auf die Aussenseite im
+            Seitenmodus - dafuer braucht es keine Auswahl im Panel. Hier
+            steht nur, wie tief das naechste angeklickte Band wird. Der
+            Nutzer am 2026-09-21: *"einfach nur ein voreinstellen fuers
+            klicken ... statt eine Auswahl mit + und - ... einfach 6 buttons
+            hinbauen mit 1-6 die sozusagen die Tiefe darstellen."* */}
         <ModeChooser
-          label={t.zoningSeite}
-          tooltip={t.tooltipZoningSeite}
-          value={seite}
-          ton="Zuschnitt"
-          options={[
-            { id: "innen", text: t.zoningInnen, tooltip: t.tooltipZoningInnen },
-            { id: "aussen", text: t.zoningAussen, tooltip: t.tooltipZoningAussen },
-            { id: "beides", text: t.zoningBeides, tooltip: t.tooltipZoningBeides },
-          ]}
-          onChange={setZoningSeite}
-        />
-        {/* Der Regler zaehlt nur, wenn aussen ueberhaupt Bauland entsteht. */}
-        <Slider
           label={t.zoningAussentiefe}
           tooltip={t.tooltipZoningAussentiefe}
-          value={aussentiefe}
-          min={1}
-          max={12}
-          step={1}
-          digits={0}
-          unit=""
+          value={String(aussentiefe)}
           ton="Zuschnitt"
-          onChange={(n) => setZoningAussentiefe(Math.round(n))}
-          disabled={seite === "innen"}
+          options={[1, 2, 3, 4, 5, 6].map((n) => ({
+            id: String(n),
+            text: String(n),
+            tooltip: `${t.tooltipZoningTiefeKnopf} ${n}`,
+          }))}
+          onChange={(id) => setZoningAussentiefe(Number(id))}
         />
-        {seite !== "innen" && aussentiefe > 6 ? (
-          <div className={styles.explain}>{t.zoningTiefeUeberSechs}</div>
-        ) : null}
+        <div className={styles.explain}>{t.zoningTiefeKlick}</div>
       </Spalte>
 
       <Spalte title={t.zoningWinkel} ton="Zuschnitt" breit>

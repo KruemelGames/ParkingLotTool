@@ -26,6 +26,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using System;
 using Game.Areas;
 using Game.Common;
 using Game.Tools;
@@ -53,23 +54,72 @@ namespace ParkingLotTool.Tools
         private const string HarmonyId = "de.kruemelmonster.parkinglottool.raycast";
         private static Harmony _harmony;
 
+        /**
+         * Ohne diese Schranke reisst ein umbenanntes Ziel den Hook mit.
+         *
+         * `PatchAll` wirft, sobald ein einziges Ziel fehlt, und nimmt dabei
+         * auch die Klassen mit, die noch patchbar waeren. Harmony ruft
+         * `Prepare` vor dem Patchen auf und ueberspringt die Klasse bei
+         * `false`. Aus einem kaputten Mod wird so ein fehlendes Stueck.
+         */
+        [HarmonyPrepare]
+        private static bool Prepare()
+        {
+            if (AccessTools.Method(typeof(ToolRaycastSystem),
+                    nameof(ToolRaycastSystem.GetRaycastResult)) != null)
+                return true;
+
+            Mod.log.Warn("PLT: ToolRaycastSystem.GetRaycastResult gibt es nicht "
+                + "mehr. Der Parkplatz laesst sich dann nur ueber seine "
+                + "Einzelteile anklicken; Bauen und Bearbeiten laufen weiter.");
+            return false;
+        }
+
+        /**
+         * WARUM DAS HIER IN EINEM try/catch STEHT.
+         *
+         * Am 2026-09-21 hat ein Tester eine `MissingMethodException` auf
+         * `HarmonyLib.HarmonyMethod.op_Implicit` gemeldet - ein anderer Mod
+         * war gegen Harmony 2.3+ gebaut, geladen war eine 2.2.2. Faellt so
+         * etwas bei UNS an, wirft schon `PatchAll`, und ohne diesen Fang
+         * stirbt der Rest von `Mod.OnLoad` mit: die Tastenbelegung dahinter
+         * meldet sich dann nie an. Ein fehlender Hook ist ein Mangel, ein
+         * halb geladener Mod ist ein Raetsel.
+         */
         internal static void Install()
         {
             if (_harmony != null) return;
 
-            _harmony = new Harmony(HarmonyId);
-            _harmony.PatchAll(typeof(ParkingLotRaycastPatch).Assembly);
-            Mod.log.Info("  Raycast-Hook aktiv: PLT-Teilrelation -> Lot-Flaeche; "
-                + "SubElements bleibt unangetastet.");
-            Mod.log.Info("  Belegungs-Hook aktiv: PLT-Lot -> technischer Traeger; "
-                + "Vanilla zaehlt weiter die echten Parkspuren.");
+            try
+            {
+                _harmony = new Harmony(HarmonyId);
+                _harmony.PatchAll(typeof(ParkingLotRaycastPatch).Assembly);
+                Mod.log.Info("  Raycast-Hook aktiv: PLT-Teilrelation -> Lot-Flaeche; "
+                    + "SubElements bleibt unangetastet.");
+                Mod.log.Info("  Belegungs-Hook aktiv: PLT-Lot -> technischer Traeger; "
+                    + "Vanilla zaehlt weiter die echten Parkspuren.");
+            }
+            catch (Exception ausnahme)
+            {
+                Mod.log.Error(ausnahme, "PLT: die Harmony-Hooks liessen sich "
+                    + "nicht anmelden. Anklicken, Bulldozer-Rueckfrage und "
+                    + "Unterhaltsanzeige fallen aus; Werkzeug, Bauen und "
+                    + "Wirtschaft laufen weiter. Haeufigste Ursache ist eine "
+                    + "fremde Harmony-Version im Spielstand.");
+            }
         }
 
         internal static void Uninstall()
         {
             if (_harmony == null) return;
 
-            _harmony.UnpatchAll(HarmonyId);
+            // Ist Harmony selbst das Problem, wirft auch das Aufraeumen.
+            try { _harmony.UnpatchAll(HarmonyId); }
+            catch (Exception ausnahme)
+            {
+                Mod.log.Warn("PLT: die Harmony-Hooks liessen sich nicht "
+                    + "zuruecknehmen. Ursache: " + ausnahme.Message);
+            }
             _harmony = null;
         }
 

@@ -2824,3 +2824,47 @@ $eck-reiter: 9rem;
   color: var(--menuTitleNormal);
   font-weight: bold;
 }
+
+/* ======================================= SCHALTER UEBER DEN ZUFAHRTEN */
+/**
+ * "Automatisch zur Zufahrt" - derselbe Schalter wie im Optionsmenue.
+ *
+ * Er steht ueber den Zufahrtsknoepfen, weil er zu ihnen gehoert: er
+ * entscheidet, ob man nach dem Schliessen des Umrisses sofort bei ihnen
+ * landet. Schmaler und ruhiger als ein Zufahrtsknopf - er setzt nichts,
+ * er stellt nur ein.
+ */
+.autoZufahrt {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 3rem 8rem;
+  margin-bottom: $s2;
+  border: none;
+  border-radius: $eck-reiter;
+  background-color: $flaeche;
+  color: $text-2;
+  font-size: $type-sm;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover { background-color: $flaeche-hell; }
+}
+
+/**
+ * Das Zustandswort traegt die Farbe, nicht die Beschriftung.
+ *
+ * So liest man erst, WAS der Schalter tut, und dann, ob er an ist - und
+ * die Zeile bleibt ruhig, wenn sich nur der Zustand aendert.
+ */
+.schalterWort {
+  margin-left: $s3;
+  font-weight: bold;
+  color: $text-3;
+}
+
+.autoZufahrtAn {
+  color: $text-1;
+
+  .schalterWort { color: var(--menuTitleNormal); }
+}

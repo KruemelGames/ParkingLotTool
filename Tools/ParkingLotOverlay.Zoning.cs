@@ -143,11 +143,21 @@ namespace ParkingLotTool.Tools
                  * er eingestellt hat. Er hat es sofort gemerkt - statt zwei
                  * Reihen standen vier da, die letzte davon ausgefranst.
                  *
-                 * `Rand` ist Fahrbahnbreite plus Aussentiefe, also genau die
-                 * Zahl, die er kennt.
+                 * `Rand` ist die Fahrbahnbreite. Seit dem 2026-09-21 steckt
+                 * die Aussentiefe nicht mehr darin, sondern je Seite in
+                 * `Aussentiefen` - deshalb reicht ein symmetrisches Fenster
+                 * nicht mehr. Es wird so weit aufgezogen, wie die TIEFSTE
+                 * Seite braucht, und jede Kachel einzeln gefragt.
                  */
-                var ringe = math.max(1,
+                var strassenringe = math.max(1,
                     (int)math.round((float)f.Rand / kante));
+                var tiefste = math.max(math.max(
+                        ParkingGeometry.ZoningAussenkacheln(f, 0),
+                        ParkingGeometry.ZoningAussenkacheln(f, 1)),
+                    math.max(
+                        ParkingGeometry.ZoningAussenkacheln(f, 2),
+                        ParkingGeometry.ZoningAussenkacheln(f, 3)));
+                var ringe = strassenringe + tiefste;
                 // Ein schmaler Spalt zwischen den Kacheln - so liest man sie
                 // als Kacheln und nicht als eine grosse Flaeche.
                 var fuellbreite = kante - 0.6f;
@@ -155,6 +165,11 @@ namespace ParkingLotTool.Tools
                 for (var i = -ringe; i < f.Spalten + ringe; i++)
                 for (var j = -ringe; j < f.Reihen + ringe; j++)
                 {
+                    // Das Band laeuft nicht um die Ecke; ohne diese Frage
+                    // stuenden dort Kacheln, die der Parkplatz nicht
+                    // freihaelt.
+                    if (!ParkingGeometry.ZoningKachelGehoert(f, i, j)) continue;
+
                     var zellmitte = f.Ecke
                         + laengs * ((i + 0.5f) * kante)
                         + quer * ((j + 0.5f) * kante);

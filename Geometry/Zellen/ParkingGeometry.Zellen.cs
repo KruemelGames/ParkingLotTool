@@ -227,6 +227,7 @@ namespace ParkingLotTool.Geometry
                         Reihen = f.Reihen,
                         Winkel = f.Winkel,
                         Rand = f.Rand,
+                        Aussen = f.Aussentiefen,
                     })
                     .ToArray(),
                 /*
@@ -564,6 +565,7 @@ namespace ParkingLotTool.Geometry
                         Reihen = f.Reihen,
                         Winkel = f.Winkel - rahmenwinkel,
                         Rand = f.Rand,
+                        Aussen = f.Aussentiefen,
                     };
                 })
                 .ToArray();
@@ -1312,6 +1314,8 @@ namespace ParkingLotTool.Geometry
                     + eigeneBreite * 0.5;
                 foreach (var zoning in zoningstrassen)
                 {
+                    if (bau.Ringlos != null && !zoning.Randzoning
+                        && GeplanterZoningknoten(kind, a, b, zoning)) continue;
                     // Ein geplanter T-Knoten gehoert beiden Kursen. Der
                     // Abstandsschutz fuer getrennte Objekte kappte ihn im
                     // Fall 22:22 von 8,411699 auf 2,911774 m: exakt 5,50 m
@@ -1410,7 +1414,8 @@ namespace ParkingLotTool.Geometry
                     ausgabe[i].Gesetzt = true;
                 }
             }
-            ausgabe.AddRange(zoningstrassen);
+            ausgabe.AddRange(bau.Ringlos == null ? zoningstrassen
+                : ZoningAnAnschluessenGeteilt(zoningstrassen, ausgabe).ToList());
             return ausgabe;
         }
 

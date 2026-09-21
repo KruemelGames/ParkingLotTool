@@ -1036,8 +1036,8 @@ namespace ParkingLotTool.Geometry.Zellen
             foreach (var flaeche in bauland)
             {
                 foreach (var ecke in ecken)
-                    if (flaeche.Enthaelt(ecke)) return true;
-                var baulandecken = flaeche.Ecken();
+                    if (flaeche.Enthaelt(ecke) || flaeche.ImAussenband(ecke)) return true;
+                var baulandecken = flaeche.Umriss();
                 foreach (var ecke in baulandecken)
                     if (Geometrie.EnthaeltOderRand(ecken, ecke)) return true;
                 for (var i = 0; i < ecken.Length; i++)

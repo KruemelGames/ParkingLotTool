@@ -333,7 +333,19 @@ namespace ParkingLotTool
             // Der Raycast-Hook greift vor Hover, Auswahl und Bulldozer zu.
             // Das fruehere PostTool-System war erst nach diesen Verbrauchern
             // dran und suchte ausserdem raeumlich im Polygon.
-            ParkingLotRaycastPatch.Install();
+            //
+            // Der zweite Fang ist kein Doppel: `Install` faengt selbst, aber
+            // wirft Mono schon beim Uebersetzen der Methode - etwa weil eine
+            // fremde Harmony-Version ein Mitglied nicht kennt -, greift der
+            // innere Block nie. Alles ab hier, insbesondere die
+            // Tastenbelegung, muss trotzdem angemeldet werden.
+            try { ParkingLotRaycastPatch.Install(); }
+            catch (Exception ausnahme)
+            {
+                log.Error(ausnahme, "PLT: Harmony liess sich nicht laden. "
+                    + "Anklicken, Bulldozer-Rueckfrage und Unterhaltsanzeige "
+                    + "fallen aus; alles andere laeuft weiter.");
+            }
             // Ohne diesen Aufruf taucht die Belegung nicht in CS2s
             // Tastenuebersicht auf und die Aktion bleibt leer.
             Optionen?.RegisterKeyBindings();

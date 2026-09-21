@@ -127,8 +127,86 @@ namespace ParkingLotTool.Tools
             if (_gassenplan.Count == 0) return;
 
             for (var i = 0; i < _gassenplan.Count; i++)
+            {
                 MeldeEineGasse(_gassenplan[i]);
+                NimmUeberwegeAmKnoten(_gassenplan[i]);
+            }
             _gassenplan.Clear();
+        }
+
+        /**
+         * Nimmt den Strassenkanten am Gassenknoten ihre Fussgaengerueberwege.
+         *
+         * Messen und Aendern in derselben Datei ist nicht schoen; die Stelle
+         * ist es trotzdem. Der Knoten steht erst Frames nach dem Bau fest,
+         * und genau darauf wartet dieser Durchgang ohnehin. Die Suche ist
+         * dieselbe, das Ergebnis dasselbe - ein zweiter Sucher waere eine
+         * zweite Gelegenheit, den Knoten zu verfehlen.
+         */
+        private void NimmUeberwegeAmKnoten(Gassenplan plan)
+        {
+            if (KantenAmPunkt(plan.Mitte, out var knoten, out _) == 0) return;
+            if (knoten == Entity.Null
+                || !EntityManager.HasBuffer<ConnectedEdge>(knoten)) return;
+
+            // Abschreiben, bevor angefasst wird: `AddComponent` ist eine
+            // strukturelle Aenderung und macht den Puffer ungueltig.
+            var kanten = new List<Entity>();
+            var puffer = EntityManager.GetBuffer<ConnectedEdge>(knoten, true);
+            for (var i = 0; i < puffer.Length; i++)
+            {
+                var kante = puffer[i].m_Edge;
+                if (kante == Entity.Null || !EntityManager.Exists(kante)) continue;
+                if (EntityManager.HasComponent<Deleted>(kante)) continue;
+                if (EntityManager.HasComponent<Temp>(kante)) continue;
+                kanten.Add(kante);
+            }
+
+            var gesetzt = new List<string>();
+            foreach (var kante in kanten)
+            {
+                if (!EntityManager.HasComponent<Game.Net.Edge>(kante)) continue;
+                // Die Gasse selbst bringt ihr Flag schon von der Definition
+                // mit; hier geht es um die Strassenhaelften.
+                var prefab = EntityManager.HasComponent<PrefabRef>(kante)
+                    ? EntityManager.GetComponentData<PrefabRef>(kante).m_Prefab
+                    : Entity.Null;
+                if (prefab == plan.Gassenprefab) continue;
+
+                var edge = EntityManager.GetComponentData<Game.Net.Edge>(kante);
+                var amAnfang = edge.m_Start == knoten;
+                var seite = amAnfang
+                    ? Game.Prefabs.CompositionFlags.Side.RemoveCrosswalk
+                    : default;
+                var gegenseite = amAnfang
+                    ? default
+                    : Game.Prefabs.CompositionFlags.Side.RemoveCrosswalk;
+
+                var flaggen = EntityManager.HasComponent<Game.Net.Upgraded>(kante)
+                    ? EntityManager.GetComponentData<Game.Net.Upgraded>(kante).m_Flags
+                    : default;
+                flaggen.m_Left |= seite;
+                flaggen.m_Right |= gegenseite;
+
+                if (EntityManager.HasComponent<Game.Net.Upgraded>(kante))
+                    EntityManager.SetComponentData(kante,
+                        new Game.Net.Upgraded { m_Flags = flaggen });
+                else
+                    EntityManager.AddComponentData(kante,
+                        new Game.Net.Upgraded { m_Flags = flaggen });
+                if (!EntityManager.HasComponent<Updated>(kante))
+                    EntityManager.AddComponent<Updated>(kante);
+
+                gesetzt.Add(kante.Index + (amAnfang ? " links" : " rechts"));
+            }
+
+            if (gesetzt.Count > 0)
+                Mod.log.Info("PLT-Gassenueberwege: " + gesetzt.Count
+                    + " Strassenkante(n) am Knoten ohne Ueberweg - "
+                    + string.Join(", ", gesetzt)
+                    + ". Seite aus Anfang/Ende der Kante abgeleitet; "
+                    + "verschwinden die Streifen am falschen Ende, ist die "
+                    + "Zuordnung zu tauschen.");
         }
 
         private void MeldeEineGasse(Gassenplan plan)

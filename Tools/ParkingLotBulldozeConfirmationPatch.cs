@@ -49,6 +49,38 @@ namespace ParkingLotTool.Tools
             = new ConditionalWeakTable<BulldozeToolSystem, Freigabe>();
         private static readonly FieldInfo Zustand = AccessTools.Field(typeof(BulldozeToolSystem), "m_State");
 
+        /**
+         * Diese Hooks haengen an drei privaten Namen auf einmal.
+         *
+         * `m_State` wird gelesen UND gesetzt, `applyMode` ueber den privaten
+         * Setter von `ToolBaseSystem`. Faellt einer davon weg, liefe der
+         * Prefix in eine `NullReferenceException` bei jedem Bulldozer-Update -
+         * und `PatchAll` risse ohne diese Schranke den Raycast-Hook mit, also
+         * das Anklicken des Parkplatzes.
+         *
+         * Harmony ruft `Prepare` vor dem Patchen und ueberspringt die Klasse
+         * bei `false`. Dann faellt nur die Rueckfrage aus: der Bulldozer
+         * loescht den Parkplatz wie jedes andere Objekt, ohne zu fragen.
+         */
+        [HarmonyPrepare]
+        private static bool Prepare()
+        {
+            var fehlt = new System.Collections.Generic.List<string>();
+            if (Zustand == null) fehlt.Add("BulldozeToolSystem.m_State");
+            if (AccessTools.Method(typeof(BulldozeToolSystem), "OnUpdate") == null)
+                fehlt.Add("BulldozeToolSystem.OnUpdate");
+            if (AccessTools.Method(typeof(BulldozeToolSystem), "Apply") == null)
+                fehlt.Add("BulldozeToolSystem.Apply");
+            if (AccessTools.PropertySetter(typeof(ToolBaseSystem), "applyMode") == null)
+                fehlt.Add("ToolBaseSystem.applyMode");
+            if (fehlt.Count == 0) return true;
+
+            Mod.log.Warn("PLT: die Bulldozer-Rueckfrage bleibt aus, es fehlt "
+                + string.Join(", ", fehlt.ToArray())
+                + ". Der Parkplatz laesst sich dann ohne Nachfrage loeschen.");
+            return false;
+        }
+
         [HarmonyPatch(typeof(BulldozeToolSystem), "OnUpdate")]
         [HarmonyPrefix]
         private static void VorUpdate(BulldozeToolSystem __instance)

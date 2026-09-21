@@ -115,8 +115,11 @@ namespace ParkingLotTool.Tools
                         Winkel = f.Winkel,
                         // Der Rand gehoert dazu - ohne ihn faellt das
                         // aeussere Bauland bei jedem Rueckgaengig auf den
-                        // Standardwert zurueck.
+                        // Standardwert zurueck. Seit dem 2026-09-21 stehen
+                        // die Baender in `Aussentiefen`, und fuer die gilt
+                        // dasselbe: ein Rueckgaengig ohne sie raeumt sie ab.
                         Rand = f.Rand,
+                        Aussentiefen = f.Aussentiefen?.Clone() as double[],
                     }).ToArray(),
                 Randzoning = _randzoning.Select(l => l.Clone()).ToArray(),
             };

@@ -77,6 +77,17 @@ export const engine$ = bindValue<string>(MOD, "Engine", "zellen");
  */
 export const altEngineOhneWarnung$ =
   bindValue<boolean>(MOD, "AltEngineOhneWarnung", false);
+/**
+ * Nach dem Schliessen des Polygons sofort in den Zufahrt-Modus?
+ *
+ * Dieselbe Einstellung wie im Optionsmenue - der Knopf im Panel und der
+ * dort schreiben beide `AutomatischZufahrtModus`, und das Werkzeug gleicht
+ * die Bindung bei jedem Bild dagegen ab. Zwei Anzeigen, eine Wahrheit.
+ */
+export const autoEntryMode$ = bindValue<boolean>(MOD, "AutoEntryMode", true);
+export const setAutoEntryMode = (v: boolean) =>
+  trigger(MOD, "SetAutoEntryMode", v);
+
 export const edgeSetbackDefault$ = bindValue<number>(MOD, "EdgeSetbackDefault", 1);
 export const aisleWidthDefault$ = bindValue<number>(MOD, "AisleWidthDefault", 7);
 export const crossWidthDefault$ = bindValue<number>(MOD, "CrossWidthDefault", 3);
@@ -356,10 +367,9 @@ export const zoningWinkel$ = bindValue<number>(MOD, "ZoningWinkel", 0);
 export const setZoningWinkel = (grad: number) =>
   trigger(MOD, "SetZoningWinkel", grad);
 export const zoningZug$ = bindValue<string>(MOD, "ZoningZug", "");
-/* Wo Bauland entsteht: "innen" (Vorgabe), "aussen" oder "beides". */
-export const zoningSeite$ = bindValue<string>(MOD, "ZoningSeite", "innen");
-export const setZoningSeite = (s: string) =>
-  trigger(MOD, "SetZoningSeite", s);
+/* Wie tief das naechste angeklickte Aussenband wird, in Kacheln (1..6).
+   Eine Vorwahl fuers Klicken, keine Einstellung an einer Flaeche: welche
+   Seite gemeint ist, sagt der Klick im Seitenmodus. */
 export const zoningAussentiefe$ =
   bindValue<number>(MOD, "ZoningAussentiefe", 2);
 export const setZoningAussentiefe = (n: number) =>

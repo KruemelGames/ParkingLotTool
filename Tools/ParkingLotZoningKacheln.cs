@@ -101,11 +101,14 @@ namespace ParkingLotTool.Tools
                     var zurMitte = innen - mitte;
                     var innenIstLinks =
                         richtung.x * zurMitte.y - richtung.y * zurMitte.x > 0f;
-                    var seite = ZoningSeite;
-                    var innenAn = seite != ParkingGeometry.Zoningseite.Aussen;
-                    var aussenAn = seite != ParkingGeometry.Zoningseite.Innen;
-                    linksAn = innenIstLinks ? innenAn : aussenAn;
-                    rechtsAn = innenIstLinks ? aussenAn : innenAn;
+                    // JE KANTE, nicht je Parkplatz - dieselbe Regel wie in
+                    // `ParkingLotZoningSides`. Nach aussen zont nur, wer an
+                    // SEINER Seite ein Band hat; sonst laegen die Kacheln auf
+                    // Buchten, fuer die kein Platz freigehalten wurde.
+                    var aussenAn = ParkingGeometry.ZoningAussenkachelnBei(
+                        _zoningflaechen, mitte) > 0;
+                    linksAn = innenIstLinks ? true : aussenAn;
+                    rechtsAn = innenIstLinks ? aussenAn : true;
                 }
 
                 // ZULETZT die Handschaltungen - sie sind die Abweichung von

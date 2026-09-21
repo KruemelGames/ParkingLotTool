@@ -67,6 +67,8 @@ namespace ParkingLotTool.Tools
 
         private int _zoningSeitenZiel = -1;
         private bool _zoningSeitenLinks;
+        /** Wo der Zeiger stand, als die Seite gewaehlt wurde. */
+        private float2 _zoningSeitenPunkt;
 
         /** Was die Suche zuletzt ergeben hat - Text fuer den Zeiger. */
         private string _zoningSeitenBefund;
@@ -374,6 +376,10 @@ namespace ParkingLotTool.Tools
 
             _zoningSeitenZiel = treffer;
             _zoningSeitenLinks = trefferLinks;
+            // Der Zeiger selbst sagt, WELCHE Seite gemeint ist - genauer als
+            // jede Ableitung aus der Kantenrichtung, und `SchalteAussenband`
+            // braucht genau diesen Punkt.
+            _zoningSeitenPunkt = zeiger;
             var an = trefferLinks
                 ? plan[treffer].LinksAn : plan[treffer].RechtsAn;
             var seitenwort = trefferLinks
@@ -412,13 +418,38 @@ namespace ParkingLotTool.Tools
             SchalteGebauteZoningSeite(kante.A, kante.B, _zoningSeitenLinks,
                 !warAn);
 
+            /*
+             * WAR ES DIE AUSSENSEITE, BEKOMMT SIE AUCH DEN PLATZ.
+             *
+             * Die Flagge allein laesst CS2 dort zonen - sie sagt aber nicht,
+             * dass der Parkplatz den Boden freihaelt. Ohne das laegen die
+             * Kacheln auf Buchten. Der Nutzer wollte es genau hier haben:
+             * *"wir entscheiden ja selbst welche Seite per Klick auf die
+             * Aussenseite in der Preview ... einfach nur ein voreinstellen
+             * fuers klicken."* Die Tiefe steht im Panel, die Seite sagt der
+             * Klick.
+             */
+            var tiefe = SchalteAussenband(_zoningSeitenPunkt, out var aussen);
+
             // Sofort neu rechnen, sonst zeigte der Zeigertext bis zum
             // naechsten Frame noch den alten Zustand an.
             _zoningStrassenAktuell = ZoningStrassenMitSeiten();
             Mod.log.Info("PLT-Zoningseite von Hand: "
                 + (_zoningSeitenLinks ? "links" : "rechts")
                 + " an der geplanten Kante ist jetzt "
-                + (warAn ? "AUS" : "AN") + ".");
+                + (warAn ? "AUS" : "AN")
+                + (aussen
+                    ? " | Aussenband " + (tiefe > 0
+                        ? tiefe + " Kachel(n)" : "abgeraeumt")
+                    : " | innen, kein Band")
+                + ".");
+            if (aussen)
+                _uiSystem?.SetStatus(tiefe > 0
+                    ? T($"Außen {tiefe} Kacheln tief — der Parkplatz hält den "
+                            + "Platz frei.",
+                        $"Outside {tiefe} tiles deep — the parking lot keeps "
+                            + "that room free.")
+                    : T("Außenband entfernt.", "Outer band removed."));
         }
 
         /** Legt die Umschaltung in die Merkliste oder aendert sie dort. */

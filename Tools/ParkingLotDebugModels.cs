@@ -242,6 +242,7 @@ namespace ParkingLotTool.Tools
                         Reihen = flaeche.Reihen,
                         Winkel = flaeche.Winkel,
                         Rand = flaeche.Rand,
+                        Aussentiefen = flaeche.Aussentiefen,
                     }).ToArray(),
                 Randzoning = (settings.Randzoning
                         ?? Array.Empty<ParkingGeometry.RandzoningLinie>())
@@ -284,6 +285,9 @@ namespace ParkingLotTool.Tools
         public int Reihen { get; set; }
         public double Winkel { get; set; }
         public double Rand { get; set; }
+        /* Vier Tiefen im Uhrzeigersinn. Ohne sie faende man im Abzug nicht
+           wieder, warum der Parkplatz an einer Seite Platz laesst. */
+        public double[] Aussentiefen { get; set; }
     }
 
     internal sealed class DebugPreview

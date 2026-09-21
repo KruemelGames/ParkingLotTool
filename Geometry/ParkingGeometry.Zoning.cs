@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Unity.Mathematics;
 
 namespace ParkingLotTool.Geometry
@@ -143,17 +144,36 @@ namespace ParkingLotTool.Geometry
             /**
              * Wieviel Platz um die Parzellen herum freibleiben muss.
              *
-             * Immer mindestens die Strassenbreite - die Zoning-Strasse
-             * laeuft aussen um das Rechteck herum, und der Nutzer hat
-             * entschieden, dass das gezogene Rechteck NUR die Parzellen
-             * sind. Kommt aussen noch Bauland dazu, waechst der Rand um
-             * dessen Tiefe.
+             * Immer die Strassenbreite - die Zoning-Strasse laeuft aussen um
+             * das Rechteck herum, und der Nutzer hat entschieden, dass das
+             * gezogene Rechteck NUR die Parzellen sind.
+             *
+             * Aeusseres Bauland steckt NICHT hier drin, sondern in
+             * `Aussentiefen`. Bis zum 2026-09-21 wurde es hier mitgerechnet,
+             * und weil der Zellenkern alles innerhalb von `Rand` als
+             * Fahrbahn einstufte, wurde das ganze Band zu Asphalt statt zu
+             * Bauland - die eingestellte Tiefe schob die Dinge nur weiter
+             * weg.
              *
              * Der Wert steht an der Flaeche und nicht in den Einstellungen,
              * weil die Geometrie ihn braucht - und weil eine gespeicherte
              * Flaeche sonst nicht wuesste, wieviel Platz sie belegt hat.
              */
             public double Rand { get; set; } = ZoningStrassenbreite;
+
+            /**
+             * Tiefe des aeusseren Baulands je Seite, in Metern.
+             *
+             * Vier Werte im Uhrzeigersinn, beginnend an der Kante
+             * Ecke -> Ecke+Breite. `null` heisst ueberall nichts, und so
+             * liest sich auch jeder Parkplatz, der vor dem 2026-09-21
+             * gespeichert wurde.
+             *
+             * Je Seite und nicht als eine Zahl, weil der Nutzer es so
+             * skizziert hat: links vier Kacheln tief, unten zwei, oben und
+             * rechts nichts.
+             */
+            public double[] Aussentiefen { get; set; }
 
             public int Parzellen => Spalten * Reihen;
 
@@ -167,7 +187,142 @@ namespace ParkingLotTool.Geometry
                 Reihen = Reihen,
                 Winkel = Winkel,
                 Rand = Rand,
+                // Ohne diese Zeile faellt das aeussere Bauland bei jedem
+                // Kopieren weg, und Vorschau, Rueckgaengig, Bauzettel und
+                // Bearbeitungsmodus gehen alle ueber Clone.
+                Aussentiefen = Aussentiefen?.Clone() as double[],
             };
+        }
+
+        /** Wie tief ist das aeussere Bauland an Seite `s`, in Metern? */
+        public static double ZoningAussentiefe(Zoningflaeche f, int s)
+            => f?.Aussentiefen != null && s >= 0 && s < f.Aussentiefen.Length
+                ? Math.Max(0.0, f.Aussentiefen[s]) : 0.0;
+
+        /** Wieviele Kacheln tief ist das aeussere Bauland an Seite `s`? */
+        public static int ZoningAussenkacheln(Zoningflaeche f, int s)
+            => f?.Aussentiefen != null && s >= 0 && s < f.Aussentiefen.Length
+                ? (int)Math.Round(Math.Max(0.0, f.Aussentiefen[s]) / Zoningparzelle)
+                : 0;
+
+        /**
+         * Gehoert die Kachel (i, j) zu dieser Flaeche?
+         *
+         * Gezaehlt wird vom gezogenen Rechteck aus: 0..Spalten-1 sind die
+         * Parzellen, -1 und Spalten der Ring der Zoning-Strasse, alles
+         * weiter draussen das aeussere Bauland. Die Zuordnung der Seiten ist
+         * dieselbe wie im Zellenkern - Seite 0 liegt an der Kante
+         * Ecke -> Ecke+Breite, also bei kleinem j, dann im Uhrzeigersinn.
+         *
+         * Das Band laeuft NICHT um die Ecke: laengs der Kante reicht es
+         * genau so weit wie der Strassenring, keine Kachel weiter. So hat
+         * der Nutzer es am 2026-09-21 skizziert.
+         */
+        public static bool ZoningKachelGehoert(Zoningflaeche f, int i, int j)
+        {
+            if (f == null) return false;
+            // Parzellen und Strassenring.
+            if (i >= -1 && i <= f.Spalten && j >= -1 && j <= f.Reihen)
+                return true;
+
+            var t0 = ZoningAussenkacheln(f, 0);
+            var t1 = ZoningAussenkacheln(f, 1);
+            var t2 = ZoningAussenkacheln(f, 2);
+            var t3 = ZoningAussenkacheln(f, 3);
+
+            if (i >= -1 && i <= f.Spalten)
+            {
+                if (t0 > 0 && j >= -1 - t0 && j < -1) return true;
+                if (t2 > 0 && j > f.Reihen && j <= f.Reihen + t2) return true;
+            }
+            if (j >= -1 && j <= f.Reihen)
+            {
+                if (t1 > 0 && i > f.Spalten && i <= f.Spalten + t1) return true;
+                if (t3 > 0 && i >= -1 - t3 && i < -1) return true;
+            }
+            return false;
+        }
+
+        /**
+         * Wie tief ist das aeussere Bauland an DER Seite, auf der dieser
+         * Punkt liegt? In Kacheln; 0 heisst "dort keins".
+         *
+         * Gedacht fuer die Zonenkacheln: eine gebaute Strassenkante weiss
+         * nicht, zu welcher Seite welcher Flaeche sie gehoert. Ueber den
+         * Abstand ihres Mittelpunkts zur Strassenachse findet sie es
+         * wieder. Ohne diese Frage wuerde jede Seite nach aussen zonen,
+         * sobald IRGENDEINE ein Band hat - und die Kacheln laegen dann auf
+         * Buchten, die der Parkplatz nie freigehalten hat.
+         */
+        public static int ZoningAussenkachelnBei(
+            IReadOnlyList<Zoningflaeche> flaechen, float2 punkt,
+            float toleranz = 2.0f)
+            => ZoningSeiteBei(flaechen, punkt, out var index, out var seite,
+                    toleranz)
+                ? ZoningAussenkacheln(flaechen[index], seite)
+                : 0;
+
+        /**
+         * Auf welcher Seite welcher Zoningflaeche liegt dieser Punkt?
+         *
+         * Gesucht wird die naechstgelegene Kante der STRASSENACHSE; ihr
+         * Index ist zugleich die Seitennummer, weil `Strassenring` und
+         * `Ecken` dieselbe Eckenreihenfolge haben.
+         *
+         * Gebraucht wird das an zwei Stellen: die Zonenkacheln fragen je
+         * Kante nach der Tiefe, und der Klick im Seitenmodus muss wissen,
+         * welcher Seite welcher Flaeche er gerade eine Tiefe gibt.
+         */
+        public static bool ZoningSeiteBei(
+            IReadOnlyList<Zoningflaeche> flaechen, float2 punkt,
+            out int flaecheIndex, out int seite, float toleranz = 2.0f)
+        {
+            flaecheIndex = -1;
+            seite = -1;
+            if (flaechen == null) return false;
+            var besterAbstand = float.MaxValue;
+            for (var k = 0; k < flaechen.Count; k++)
+            {
+                var f = flaechen[k];
+                if (f == null) continue;
+                var ring = ZoningEckenMitAufschlag(
+                    f, ZoningStrassenbreite / 2.0);
+                for (var i = 0; i < ring.Length; i++)
+                {
+                    var a = ring[i];
+                    var b = ring[(i + 1) % ring.Length];
+                    var ab = b - a;
+                    var laenge = math.lengthsq(ab);
+                    var t = laenge < 1e-9f ? 0f
+                        : math.clamp(math.dot(punkt - a, ab) / laenge, 0f, 1f);
+                    var abstand = math.length(punkt - (a + ab * t));
+                    if (abstand > toleranz || abstand >= besterAbstand) continue;
+                    besterAbstand = abstand;
+                    flaecheIndex = k;
+                    seite = i;
+                }
+            }
+            return flaecheIndex >= 0;
+        }
+
+        /**
+         * Zeigt dieser Punkt von der Kante aus nach AUSSEN?
+         *
+         * Der Klick im Seitenmodus trifft eine Strassenkante und eine ihrer
+         * beiden Seiten. Nur die aeussere bekommt ein Band - die innere ist
+         * das gezogene Rechteck und hat dort nichts zu suchen.
+         */
+        public static bool ZoningSeiteIstAussen(
+            Zoningflaeche f, int seite, float2 punkt)
+        {
+            if (f == null || seite < 0 || seite > 3) return false;
+            var ring = ZoningEckenMitAufschlag(f, ZoningStrassenbreite / 2.0);
+            var mitte = (ring[0] + ring[1] + ring[2] + ring[3]) * 0.25f;
+            var a = ring[seite];
+            var b = ring[(seite + 1) % 4];
+            var kantenmitte = (a + b) * 0.5f;
+            var nachAussen = kantenmitte - mitte;
+            return math.dot(punkt - kantenmitte, nachAussen) > 0f;
         }
 
         /** Die beiden Rasterrichtungen dieser Flaeche, als Einheitsvektoren. */

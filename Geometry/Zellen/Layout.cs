@@ -109,6 +109,7 @@ namespace ParkingLotTool.Geometry.Zellen
                         Reihen = vorgabe.Reihen,
                         Winkel = vorgabe.Winkel - rahmenwinkel,
                         Rand = vorgabe.Rand,
+                        Aussen = vorgabe.Aussen,
                     };
                 })
                 .ToArray();
@@ -411,7 +412,7 @@ namespace ParkingLotTool.Geometry.Zellen
                     // sich sonst zwei Ringe mit 1,00 und 0,30 m statt 1,30 m.
                     .Concat(bandplan.Baender.Where(b => b.Art != Zellart.Restgruen)
                         .SelectMany(b => new[] { b.Anfang, b.Ende }))
-                    .Concat(zoningLokal.SelectMany(z => z.Ecken()).Select(v => v.Y))
+                    .Concat(zoningLokal.SelectMany(z => z.Umriss()).Select(v => v.Y))
                     .Distinct().OrderBy(y => y).ToArray();
             Phase("vorplanung");
             var teiler = new Polygonteiler(knotenfabrik);
@@ -575,6 +576,41 @@ namespace ParkingLotTool.Geometry.Zellen
                             b);
                     }
                 }
+
+                /*
+                 * UND DIE KANTEN DES AEUSSEREN BAULANDS DAZU.
+                 *
+                 * Die Schleife darueber kennt nur Rechtecke, die auf allen
+                 * vier Seiten gleich weit wachsen. Das aeussere Bauland ist
+                 * aber je Seite verschieden tief und laeuft nicht um die
+                 * Ecke - zwei Baender stossen dort aneinander, das Eck
+                 * dazwischen bleibt frei. Sein Umriss ist deshalb ein
+                 * Treppenzug, und JEDE seiner Kanten trennt Parzellenboden
+                 * von dem, was daneben liegt.
+                 *
+                 * `Umriss` liefert genau diesen Zug; ohne Aussenband sind es
+                 * dieselben vier Punkte wie oben, und die Schnitte laufen
+                 * doppelt - das kostet nichts und macht den Sonderfall
+                 * ueberfluessig.
+                 */
+                if (zoning.HatAussenband)
+                {
+                    var umriss = zoning.Umriss();
+                    for (var k = 0; k < umriss.Length; k++)
+                    {
+                        var a = umriss[k];
+                        var b = umriss[(k + 1) % umriss.Length];
+                        if (Geometrie.Laenge(b - a) <= 1e-6) continue;
+                        fragmente = TeileAlleSegment(
+                            fragmente,
+                            teiler,
+                            linienregister.FreieGerade(
+                                a, b, Linienart.Zoningkante,
+                                $"Aussenbandkante {k}"),
+                            a,
+                            b);
+                    }
+                }
             }
 
             /*
@@ -708,6 +744,30 @@ namespace ParkingLotTool.Geometry.Zellen
                         {
                             baulandTreffer = zoningLokal[zi];
                             baulandIndex = zi;
+                            break;
+                        }
+
+                /*
+                 * DAS AEUSSERE BAULAND IST PARZELLENBODEN, NICHT FAHRBAHN.
+                 *
+                 * Es wird ABSICHTLICH wie das gezogene Rechteck behandelt -
+                 * `aufParzelle` und damit `Zellart.Zoning`. Der Nutzer hat
+                 * es am 2026-09-21 so bestimmt: *"Das funktioniert also
+                 * genau wie gruene weil es am ende das gleiche ist."* Dort
+                 * liegen keine Buchten, keine Fahrgasse und keine
+                 * Querstrasse, nur der Boden, auf dem spaeter etwas steht.
+                 *
+                 * Dieser Durchgang kommt ZULETZT: `Enthaelt` deckt Parzellen
+                 * und Strassenkorridor ab, und die Fahrbahn darf das Band
+                 * nicht an sich ziehen.
+                 */
+                if (baulandTreffer == null)
+                    for (var zi = 0; zi < zoningLokal.Length; zi++)
+                        if (zoningLokal[zi].ImAussenband(mitte))
+                        {
+                            baulandTreffer = zoningLokal[zi];
+                            baulandIndex = zi;
+                            aufParzelle = true;
                             break;
                         }
 

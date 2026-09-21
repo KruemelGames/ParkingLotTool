@@ -156,88 +156,96 @@ namespace ParkingLotTool.Tools
          * wird VOR dem Ziehen getroffen, weil sie bestimmt, wieviel Platz
          * jede Flaeche belegt.
          */
-        internal ParkingGeometry.Zoningseite ZoningSeite { get; private set; }
-            = ParkingGeometry.Zoningseite.Innen;
+        /**
+         * ABGELEITET, nicht nachgefuehrt.
+         *
+         * Bis zum 2026-09-21 war das ein eigener Schalter, der neben den
+         * Tiefen herlief. Zwei Quellen fuer dieselbe Frage sind genau die
+         * Sorte Fehler, die sich beim Zurueckstellen zeigt: Tiefe auf 0 und
+         * der Schalter stand weiter auf "aussen". Jetzt gibt es nur die
+         * Tiefen, und "aussen gibt es" heisst genau "eine ist groesser 0".
+         */
+        internal ParkingGeometry.Zoningseite ZoningSeite =>
+            _zoningflaechen.Any(f => f?.Aussentiefen != null
+                && f.Aussentiefen.Any(t => t > 1e-6))
+                ? ParkingGeometry.Zoningseite.Beides
+                : ParkingGeometry.Zoningseite.Innen;
 
         /**
-         * Wie tief das aeussere Bauland wird, in Parzellen.
+         * WIE TIEF EIN BAND WIRD, WENN MAN EINE SEITE ANKLICKT.
          *
-         * Bis 6 entstehen echte Bauparzellen - mehr laesst CS2 ab einer
-         * Strasse nicht zu (`ZoneUtils.MAX_ZONE_DEPTH`). Darueber ist es
-         * reservierter freier Platz fuer selbst gesetzte Gebaeude. Der
-         * Nutzer wollte den Regler ausdruecklich bis 12: *"Ich weiss zoning
-         * geht nur bis 6, aber einige Gebaeude sind nun mal groesser."*
+         * Eine Vorwahl, keine Einstellung an einer Flaeche. Der Nutzer am
+         * 2026-09-21: *"es braucht nicht Seite 1-4 fuer Tile-Tiefe sondern
+         * einfach nur ein voreinstellen fuers klicken."* Welche Seite
+         * gemeint ist, sagt der Klick im Seitenmodus - dort steht der Zeiger
+         * ja schon auf genau einer Seite genau einer Strasse.
+         *
+         * 1 bis 6, weil CS2 ab einer Strasse nicht tiefer zont
+         * (`ZoneUtils.MAX_ZONE_DEPTH`). Ein "0" braucht es nicht: ein
+         * zweiter Klick auf dieselbe Seite nimmt das Band wieder weg.
          */
-        internal int ZoningAussentiefe { get; private set; } = 2;
+        internal int ZoningTiefeVorwahl { get; private set; } = 2;
 
-        /** Der Rand, den eine Flaeche nach dieser Einstellung freihaelt. */
-        internal double ZoningRand =>
-            ZoningSeite == ParkingGeometry.Zoningseite.Innen
-                ? ParkingGeometry.ZoningStrassenbreite
-                : ParkingGeometry.ZoningStrassenbreite
-                    + ZoningAussentiefe * ParkingGeometry.Zoningparzelle;
+        /**
+         * Der Rand einer Flaeche - IMMER nur die Zoning-Strasse.
+         *
+         * Bis zum 2026-09-21 wurde die Aussentiefe hier aufaddiert. Das war
+         * der Fehler: der Zellenkern stuft alles innerhalb von `Rand` als
+         * Fahrbahn ein, also wurde aus dem aeusseren Bauland Asphalt. Die
+         * Tiefe steht jetzt in `Aussentiefen` an der Flaeche selbst.
+         */
+        internal double ZoningRand => ParkingGeometry.ZoningStrassenbreite;
 
-        internal void SetzeZoningSeite(string seite)
-        {
-            var neu = seite == "aussen" ? ParkingGeometry.Zoningseite.Aussen
-                : seite == "beides" ? ParkingGeometry.Zoningseite.Beides
-                : ParkingGeometry.Zoningseite.Innen;
-            if (ZoningSeite == neu) return;
-            ZoningSeite = neu;
-            UebernimmZoningRand();
-        }
-
+        /** Die Vorwahl fuer den naechsten Klick auf eine Aussenseite. */
         internal void SetzeZoningAussentiefe(int parzellen)
         {
-            var neu = math.clamp(parzellen, 1, 12);
-            if (ZoningAussentiefe == neu) return;
-            ZoningAussentiefe = neu;
-            UebernimmZoningRand();
+            var neu = math.clamp(parzellen, 1, 6);
+            if (ZoningTiefeVorwahl == neu) return;
+            ZoningTiefeVorwahl = neu;
+            _uiSystem?.SetZoningAussentiefe(neu);
         }
 
+        internal int ZoningAussentiefe => ZoningTiefeVorwahl;
+
         /**
-         * Traegt den neuen Rand in ALLE Flaechen ein.
+         * Gibt der angeklickten Aussenseite ein Band - oder nimmt es weg.
          *
-         * Anders als der Winkel gilt er fuer den ganzen Parkplatz: er sagt,
-         * wieviel Platz eine Parzellenflaeche belegt, und das darf nicht von
-         * Flaeche zu Flaeche verschieden sein - sonst haette der Nutzer zwei
-         * Zoning-Strassen verschiedener Breite.
-         *
-         * Passt eine Flaeche mit dem groesseren Rand nicht mehr in den
-         * Umriss, behaelt sie den alten und wird gemeldet - dieselbe Regel
-         * wie beim Drehen. Ein Regler, der beim Ausprobieren Arbeit
-         * auffrisst, ist ein schlechter Regler.
+         * Zurueck kommt, was passiert ist, damit der Aufrufer es melden
+         * kann: 0 heisst "war innen, nichts zu tun", sonst die neue Tiefe
+         * in Kacheln (0 = abgeraeumt).
          */
-        private void UebernimmZoningRand()
+        internal int SchalteAussenband(float2 punkt, out bool getroffen)
         {
-            _uiSystem?.SetZoningSeite(ZoningSeite.ToString().ToLowerInvariant());
-            _uiSystem?.SetZoningAussentiefe(ZoningAussentiefe);
-            var rand = ZoningRand;
-            var geaendert = false;
-            var verweigert = 0;
-            for (var i = 0; i < _zoningflaechen.Count; i++)
-            {
-                if (Math.Abs(_zoningflaechen[i].Rand - rand) < 1e-9) continue;
-                var alt = _zoningflaechen[i].Rand;
-                _zoningflaechen[i].Rand = rand;
-                if (!ZoningLiegtImUmriss(_zoningflaechen[i]))
-                {
-                    _zoningflaechen[i].Rand = alt;
-                    verweigert++;
-                    continue;
-                }
-                geaendert = true;
-            }
-            if (verweigert > 0)
-                _uiSystem?.SetStatus(T(
-                    verweigert + " Fläche(n) behalten ihren Rand: mit dem "
-                        + "größeren passen sie nicht in den Umriss.",
-                    verweigert + " patch(es) keep their margin: the larger "
-                        + "one would not fit inside."));
-            if (!geaendert) return;
+            getroffen = false;
+            if (!ParkingGeometry.ZoningSeiteBei(_zoningflaechen, punkt,
+                    out var index, out var seite,
+                    (float)ParkingGeometry.ZoningStrassenbreite))
+                return 0;
+            var f = _zoningflaechen[index];
+            if (!ParkingGeometry.ZoningSeiteIstAussen(f, seite, punkt))
+                return 0;
+
+            getroffen = true;
+            f.Aussentiefen ??= new double[4];
+            var hatte = f.Aussentiefen[seite] > 1e-6;
+            f.Aussentiefen[seite] = hatte
+                ? 0.0
+                : ZoningTiefeVorwahl * ParkingGeometry.Zoningparzelle;
             _layoutDirty = _closed;
             _geometryRevision++;
+            return hatte ? 0 : ZoningTiefeVorwahl;
         }
+
+        /*
+         * HIER STAND `UebernimmZoningRand`.
+         *
+         * Die Funktion schrieb einen neuen Rand in ALLE Flaechen und wies
+         * die zurueck, die damit nicht mehr in den Umriss passten. Seit dem
+         * 2026-09-21 ist der Rand immer die Strassenbreite, also gibt es
+         * nichts mehr nachzutragen; und das aeussere Bauland darf ohnehin
+         * nicht nachtraeglich in fremde Flaechen laufen. Es wird einzeln
+         * angeklickt, siehe `SchalteAussenband`.
+         */
 
         /** "edge" | "quer" | "fixed" - dieselben Namen wie beim Parkplatz. */
         internal string ZoningWinkelmodus { get; private set; } = "edge";
@@ -371,6 +379,7 @@ namespace ParkingLotTool.Tools
                     // Bauland bei jedem Rueckgaengig auf den Standardwert -
                     // derselbe Fehler wie beim Verschieben und Drehen.
                     Rand = f.Rand,
+                    Aussentiefen = f.Aussentiefen?.Clone() as double[],
                 });
         }
 
@@ -757,6 +766,8 @@ namespace ParkingLotTool.Tools
                 _uiSystem?.SetZoningZug(string.Empty);
                 var vorher3 = CaptureUndoState();
                 fertig.Rand = ZoningRand;
+                // Baender bekommt die Flaeche nicht beim Setzen, sondern
+                // durch einen Klick auf ihre Aussenseite im Seitenmodus.
                 _zoningflaechen.Add(fertig);
                 _zoningAuswahl = _zoningflaechen.Count - 1;
                 _uiSystem?.SetZoningAuswahl(_zoningAuswahl);
@@ -837,6 +848,7 @@ namespace ParkingLotTool.Tools
                     return true;
                 }
                 _zoningZugStart = zeiger;
+
                 _zoningZug = erste;
                 MeldeZug(_zoningZug, false, false);
                 return true;

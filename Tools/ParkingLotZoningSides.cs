@@ -261,16 +261,25 @@ namespace ParkingLotTool.Tools
                 }
                 var innenIstLinks = kreuz > 0f;
 
-                var linksAus = seite == ParkingGeometry.Zoningseite.Innen
-                    ? !innenIstLinks
-                    : seite == ParkingGeometry.Zoningseite.Aussen
-                        ? innenIstLinks
-                        : false;
-                var rechtsAus = seite == ParkingGeometry.Zoningseite.Innen
-                    ? innenIstLinks
-                    : seite == ParkingGeometry.Zoningseite.Aussen
-                        ? !innenIstLinks
-                        : false;
+                /*
+                 * JE KANTE, NICHT JE PARKPLATZ.
+                 *
+                 * Hier entschied bis zum 2026-09-21 die Panelwahl
+                 * innen/aussen/beides fuer ALLE Kanten gleich. Seit der
+                 * Nutzer die Tiefe je Seite einstellt, taugt das nicht mehr:
+                 * haette EINE Seite ein Band, zonten alle vier nach aussen -
+                 * und dort, wo kein Band ist, haelt der Parkplatz keinen
+                 * Platz frei. Die Kacheln laegen auf Buchten. Genau das
+                 * wollte er nicht: *"damit nicht die Tiles auf Strassen von
+                 * uns liegen."*
+                 *
+                 * Also fragt jede Kante ihre eigene Seite: hat sie ein Band,
+                 * zont sie nach beiden Seiten, sonst nur nach innen.
+                 */
+                var aussenkacheln =
+                    ParkingGeometry.ZoningAussenkachelnBei(flaechen, mitte);
+                var linksAus = aussenkacheln > 0 ? false : !innenIstLinks;
+                var rechtsAus = aussenkacheln > 0 ? false : innenIstLinks;
 
                 /*
                  * ZULETZT DIE HANDSCHALTUNG - sie ist die Abweichung von der

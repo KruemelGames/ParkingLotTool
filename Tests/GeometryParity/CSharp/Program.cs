@@ -150,6 +150,8 @@ internal static partial class Program
         if (args.Length == 1 && args[0] == "--marker") { RunMarker(); return 0; }
         if (args.Length == 1 && args[0] == "--zoningtreffer")
             return RunZoningtreffer();
+        if (args.Length == 1 && args[0] == "--gassenreste") return RunGassenreste();
+        if (args.Length == 1 && args[0] == "--zoningkanten") return RunZoningkanten();
         if (args.Length == 1 && args[0] == "--zoningnetz")
             return RunZoningnetz();
         if (args.Length == 1 && args[0] == "--zoningflaeche")

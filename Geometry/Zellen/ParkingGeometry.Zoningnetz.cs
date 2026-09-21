@@ -341,6 +341,7 @@ namespace ParkingLotTool.Geometry
                     Reihen = f.Reihen,
                     Winkel = f.Winkel,
                     Rand = f.Rand,
+                    Aussen = f.Aussentiefen,
                 });
             }
             if (vorgaben.Count == 0) return null;
