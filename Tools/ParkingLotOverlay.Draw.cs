@@ -43,7 +43,7 @@ namespace ParkingLotTool.Tools
                 ParkingGeometry.Zoningseite.Innen,
             IReadOnlyList<(float2 A, float2 B, bool LinksAn, bool RechtsAn)>
                 zoningstrassen = null,
-            (float2 A, float2 B, bool Links)? zoningSeitenziel = null,
+            (float2 A, float2 B, bool Links, int Kacheln)? zoningSeitenziel = null,
             bool zoningSeitenModus = false,
             IReadOnlyList<(float2 A, float2 B)> randzoning = null,
             IReadOnlyList<(float2 A, float2 B)> randzoningachsen = null,
@@ -371,7 +371,10 @@ namespace ParkingLotTool.Tools
                         ? new float2(-richtung.y, richtung.x)
                         : new float2(richtung.y, -richtung.x);
                     var halb = (float)ParkingGeometry.ZoningStrassenbreite * 0.5f;
-                    var tiefe = (float)(6 * ParkingGeometry.Zoningparzelle);
+                    // So tief, wie der Klick es machen wuerde - siehe
+                    // `ZoningSeitenVorschau`. Hier stand fest die Sechs.
+                    var tiefe = (float)(math.max(1, ziel.Kacheln)
+                        * ParkingGeometry.Zoningparzelle);
                     var mitteA = ziel.A + normale * (halb + tiefe * 0.5f);
                     var mitteB = ziel.B + normale * (halb + tiefe * 0.5f);
                     var seitenfarbe = ZoningColor;

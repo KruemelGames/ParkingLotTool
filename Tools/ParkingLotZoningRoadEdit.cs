@@ -414,9 +414,6 @@ namespace ParkingLotTool.Tools
 
             var kante = plan[_zoningSeitenZiel];
             var warAn = _zoningSeitenLinks ? kante.LinksAn : kante.RechtsAn;
-            MerkeZoningSeitenplan(kante.A, kante.B, _zoningSeitenLinks, warAn);
-            SchalteGebauteZoningSeite(kante.A, kante.B, _zoningSeitenLinks,
-                !warAn);
 
             /*
              * WAR ES DIE AUSSENSEITE, BEKOMMT SIE AUCH DEN PLATZ.
@@ -428,16 +425,48 @@ namespace ParkingLotTool.Tools
              * Aussenseite in der Preview ... einfach nur ein voreinstellen
              * fuers klicken."* Die Tiefe steht im Panel, die Seite sagt der
              * Klick.
+             *
+             * DAS BAND ENTSCHEIDET ZUERST, DANN FOLGT DIE FLAGGE.
+             *
+             * Andersherum ginge es schief: der Klick auf eine Seite, die
+             * schon ein Band hat, wuerde die Flagge ausschalten, waehrend das
+             * Band auf die neue Tiefe wechselt. Also wird erst gerechnet, was
+             * aus dem Band wird, und die Flagge daraus abgeleitet - eine
+             * Quelle statt zweier, die auseinanderlaufen koennen.
              */
-            var tiefe = SchalteAussenband(_zoningSeitenPunkt, out var aussen);
+            var tiefe = SchalteAussenband((kante.A + kante.B) * 0.5f,
+                _zoningSeitenPunkt, out var aussen);
+            var istAn = aussen ? tiefe > 0 : !warAn;
+
+            MerkeZoningSeitenplan(kante.A, kante.B, _zoningSeitenLinks, !istAn);
+            SchalteGebauteZoningSeite(kante.A, kante.B, _zoningSeitenLinks,
+                istAn);
 
             // Sofort neu rechnen, sonst zeigte der Zeigertext bis zum
             // naechsten Frame noch den alten Zustand an.
             _zoningStrassenAktuell = ZoningStrassenMitSeiten();
+
+            /*
+             * UND DER PARKPLATZ MUSS AUCH NEU GERECHNET WERDEN.
+             *
+             * `_zoningStrassenAktuell` betrifft nur die Kacheln; Buchten,
+             * Fahrgassen und Flaechen kommen aus dem Hintergrundlauf, und
+             * der startet erst mit `_layoutDirty`. Solange eine
+             * Seitenumschaltung nur Kacheln bewegte, fiel das nicht auf -
+             * seit ein Aussenband Platz wegnimmt, schon: der Nutzer sah nach
+             * dem Klick nichts und erst wieder etwas, als er die Randstrasse
+             * an- und ausschaltete, weil DAS einen Lauf anstiess.
+             *
+             * Hier steht es unbedingt, nicht nur im Aussenband-Zweig: auch
+             * eine Innenseite kann den Zonenblock verschieben, und ein Lauf
+             * je Klick ist billiger als ein zweiter Bericht darueber.
+             */
+            _layoutDirty = _closed;
+            _geometryRevision++;
             Mod.log.Info("PLT-Zoningseite von Hand: "
                 + (_zoningSeitenLinks ? "links" : "rechts")
                 + " an der geplanten Kante ist jetzt "
-                + (warAn ? "AUS" : "AN")
+                + (istAn ? "AN" : "AUS")
                 + (aussen
                     ? " | Aussenband " + (tiefe > 0
                         ? tiefe + " Kachel(n)" : "abgeraeumt")
@@ -547,11 +576,12 @@ namespace ParkingLotTool.Tools
 
         /** Fuer das Overlay: welche Seite gerade gemeint ist. */
         internal bool ZoningSeitenVorschau(out float2 a, out float2 b,
-            out bool links)
+            out bool links, out int kacheln)
         {
             a = default;
             b = default;
             links = false;
+            kacheln = ZoningTiefeAnzeigegrenze;
             var plan = _zoningStrassenAktuell;
             if (!ZoningSeitenModus || plan == null) return false;
             if (_zoningSeitenZiel < 0 || _zoningSeitenZiel >= plan.Count)
@@ -559,7 +589,38 @@ namespace ParkingLotTool.Tools
             a = plan[_zoningSeitenZiel].A;
             b = plan[_zoningSeitenZiel].B;
             links = _zoningSeitenLinks;
+
+            /*
+             * DER BALKEN ZEIGT, WAS DER KLICK ERZEUGT - nicht CS2s Maximum.
+             *
+             * Hier stand nichts, und der Balken war im Zeichner fest auf
+             * sechs Kacheln gesetzt. Der Nutzer: *"Die voranzeige beim
+             * hovern ueber die Linie sollte auch die groesse der Outerband
+             * visualisieren anstatt direkt auf 6 zu gehen."*
+             *
+             * An einer Aussenseite mit Flaeche ist das die Vorwahl; wuerde
+             * der Klick das Band abraeumen (gleiche Tiefe), steht der Balken
+             * auf der BESTEHENDEN Tiefe - dann sieht man, was verschwindet,
+             * statt einen leeren Streifen.
+             *
+             * Innen und an einer Randzoning-Strasse bleibt es bei sechs:
+             * dort gibt es kein Band, und sechs ist, was CS2 dort zont.
+             */
+            if (!ParkingGeometry.ZoningSeiteBei(_zoningflaechen,
+                    (a + b) * 0.5f, out var index, out var seite,
+                    (float)ParkingGeometry.ZoningStrassenbreite))
+                return true;
+            var f = _zoningflaechen[index];
+            if (!ParkingGeometry.ZoningSeiteIstAussen(
+                    f, seite, _zoningSeitenPunkt))
+                return true;
+
+            var steht = ParkingGeometry.ZoningAussenkacheln(f, seite);
+            kacheln = steht == ZoningTiefeVorwahl ? steht : ZoningTiefeVorwahl;
             return true;
         }
+
+        /** CS2 zont ab einer Strasse hoechstens sechs Zellen tief. */
+        private const int ZoningTiefeAnzeigegrenze = 6;
     }
 }

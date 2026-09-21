@@ -214,26 +214,55 @@ namespace ParkingLotTool.Tools
          * kann: 0 heisst "war innen, nichts zu tun", sonst die neue Tiefe
          * in Kacheln (0 = abgeraeumt).
          */
-        internal int SchalteAussenband(float2 punkt, out bool getroffen)
+        /**
+         * ZWEI PUNKTE, NICHT EINER.
+         *
+         * `aufStrasse` liegt auf der angeklickten Strassenkante und sagt,
+         * WELCHE Seite welcher Flaeche gemeint ist. `zeiger` sagt nur, ob
+         * innen oder aussen geklickt wurde.
+         *
+         * Erst stand hier nur der Zeiger, mit der Strassenbreite als
+         * Toleranz. Das ging schief: die Seitensuche laesst den Zeiger bis
+         * `ZoningSeitenreichweite` (24 m) entfernt stehen, weil man auf die
+         * Kacheln neben der Strasse zielt und nicht auf den Asphalt. Weiter
+         * als 8 m weg fand die Suche keine Flaeche, setzte kein Band - und
+         * der Nutzer sah, dass sich nach dem Klick nichts ruehrte.
+         */
+        internal int SchalteAussenband(float2 aufStrasse, float2 zeiger,
+            out bool getroffen)
         {
             getroffen = false;
-            if (!ParkingGeometry.ZoningSeiteBei(_zoningflaechen, punkt,
+            if (!ParkingGeometry.ZoningSeiteBei(_zoningflaechen, aufStrasse,
                     out var index, out var seite,
                     (float)ParkingGeometry.ZoningStrassenbreite))
                 return 0;
             var f = _zoningflaechen[index];
-            if (!ParkingGeometry.ZoningSeiteIstAussen(f, seite, punkt))
+            if (!ParkingGeometry.ZoningSeiteIstAussen(f, seite, zeiger))
                 return 0;
 
             getroffen = true;
             f.Aussentiefen ??= new double[4];
-            var hatte = f.Aussentiefen[seite] > 1e-6;
-            f.Aussentiefen[seite] = hatte
-                ? 0.0
-                : ZoningTiefeVorwahl * ParkingGeometry.Zoningparzelle;
+
+            /*
+             * AENDERN GEHT VOR ABSCHALTEN.
+             *
+             * Ein Klick auf eine Seite, die schon ein Band hat, raeumte es
+             * frueher immer ab - auch dann, wenn im Panel inzwischen eine
+             * ANDERE Tiefe stand. Wer von 2 auf 4 stellt und draufklickt,
+             * meint aber 4, nicht "weg". Ansage des Nutzers am 2026-09-21:
+             * *"wenn ich outer band aendere und erneut auf eine linie klicke
+             * die bereits belegt ist soll die aenderung erst kommen, also
+             * aenderung vor deaktivieren."*
+             *
+             * Abgeraeumt wird deshalb nur noch bei GLEICHER Tiefe - der
+             * zweite Klick mit unveraenderter Vorwahl.
+             */
+            var neu = ZoningTiefeVorwahl * ParkingGeometry.Zoningparzelle;
+            var gleich = Math.Abs(f.Aussentiefen[seite] - neu) < 1e-6;
+            f.Aussentiefen[seite] = gleich ? 0.0 : neu;
             _layoutDirty = _closed;
             _geometryRevision++;
-            return hatte ? 0 : ZoningTiefeVorwahl;
+            return gleich ? 0 : ZoningTiefeVorwahl;
         }
 
         /*

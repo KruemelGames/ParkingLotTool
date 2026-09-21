@@ -215,7 +215,7 @@ namespace ParkingLotTool.Tools
                      * aber erkennbar anders.
                      */
                     var stand = ParkingLotToolSystem.ZoningZellenstand(
-                        strassen, zellmitte);
+                        strassen, zellmitte, flaechen);
                     if (stand == ParkingLotToolSystem.Kachelstand.Keine) continue;
                     if (!ZuerstGesehen(zellmitte)) continue;
                     var kachelfarbe = stand
@@ -257,6 +257,45 @@ namespace ParkingLotTool.Tools
                     : hervor ? HoverLineWidth
                     : PolygonLineWidth;
                 Umriss(ParkingGeometry.ZoningEcken(f), ZoningColor, dick);
+
+                /*
+                 * UND JEDES AUSSENBAND BEKOMMT SEINE EIGENE KONTUR.
+                 *
+                 * Ohne sie sieht man vor dem Bauen nicht, wieviel Boden
+                 * aussen freigehalten wird - der Nutzer: *"in der Preview
+                 * wird das vorher nicht klar angezeigt wenn ich aussen
+                 * Zone."* Die Kacheln allein reichen nicht: sie sehen aus
+                 * wie die inneren, und wo keine Strasse sie bedient, fehlen
+                 * sie ganz.
+                 *
+                 * Je Seite ein eigenes Rechteck statt eines gemeinsamen
+                 * Umrisses. Das Band laeuft nicht um die Ecke, und vier
+                 * einzelne Rechtecke zeigen genau das - ein Treppenzug
+                 * liesse offen, wo das eine aufhoert und das naechste
+                 * anfaengt.
+                 */
+                var ring = ParkingGeometry.ZoningEckenMitRand(f);
+                for (var s = 0; s < 4; s++)
+                {
+                    var bandtiefe = (float)ParkingGeometry.ZoningAussentiefe(f, s);
+                    if (bandtiefe <= 0.01f) continue;
+                    var a = ring[s];
+                    var b = ring[(s + 1) % 4];
+                    var spanne = b - a;
+                    var bandlaenge = math.length(spanne);
+                    if (bandlaenge < 0.01f) continue;
+                    var r = spanne / bandlaenge;
+                    // Aussenrichtung ueber den Schwerpunkt, nicht ueber den
+                    // Umlaufsinn - dasselbe Vorzeichenproblem wie im
+                    // Zellenkern, und ein falsches Vorzeichen legte das Band
+                    // mitten in die Parzellen.
+                    var mittelpunkt = (ring[0] + ring[1] + ring[2] + ring[3])
+                        * 0.25f;
+                    var n = new float2(r.y, -r.x);
+                    if (math.dot((a + b) * 0.5f - mittelpunkt, n) < 0f) n = -n;
+                    var aus = n * bandtiefe;
+                    Umriss(new[] { a, b, b + aus, a + aus }, ZoningColor, dick);
+                }
             }
 
             if (flaechen != null)
@@ -419,7 +458,7 @@ namespace ParkingLotTool.Tools
                         if (ParkingLotToolSystem.ZoningZelleAufStrasse(
                                 strassen, zellmitte)) continue;
                         var standRz = ParkingLotToolSystem.ZoningZellenstand(
-                            strassen, zellmitte);
+                            strassen, zellmitte, flaechen);
                         if (standRz == ParkingLotToolSystem.Kachelstand.Keine)
                             continue;
                         if (!ZuerstGesehen(zellmitte)) continue;

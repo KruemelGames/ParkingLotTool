@@ -501,7 +501,8 @@ namespace ParkingLotTool.Tools
 
         internal static Kachelstand ZoningZellenstand(
             IReadOnlyList<(float2 A, float2 B, bool LinksAn, bool RechtsAn)> strassen,
-            float2 mitte)
+            float2 mitte,
+            IReadOnlyList<ParkingGeometry.Zoningflaeche> flaechen = null)
         {
             if (strassen == null) return Kachelstand.Keine;
 
@@ -544,7 +545,39 @@ namespace ParkingLotTool.Tools
 
                 var lot = s.A + richtung * laengs;
                 var abstand = math.distance(mitte, lot);
-                if (abstand > tiefe + 0.01f) continue;
+
+                /*
+                 * NACH AUSSEN GILT DIE EINGESTELLTE BANDTIEFE, NICHT 6.
+                 *
+                 * CS2 zont ab einer Strasse bis zu sechs Zellen, und genau
+                 * so sahen die Kacheln aus, sobald eine Aussenseite anging -
+                 * sechs Reihen, egal ob der Nutzer zwei eingestellt hatte.
+                 * Er hat es beim Zeigen auf die Linie gemerkt: *"Die
+                 * voranzeige beim hovern ueber die Linie sollte auch die
+                 * groesse der Outerband visualisieren anstatt direkt auf 6
+                 * zu gehen."*
+                 *
+                 * Gezeigt wird deshalb, was der Parkplatz FREIHAELT. Was
+                 * darueber hinaus geht, haelt er nicht frei, und eine Kachel
+                 * dort laege auf einer Bucht.
+                 */
+                var grenze = tiefe;
+                if (flaechen != null
+                    && ParkingGeometry.ZoningSeiteBei(flaechen, lot,
+                        out var fi, out var seite,
+                        (float)ParkingGeometry.ZoningStrassenbreite)
+                    && ParkingGeometry.ZoningSeiteIstAussen(
+                        flaechen[fi], seite, mitte))
+                {
+                    var kacheln = ParkingGeometry.ZoningAussenkacheln(
+                        flaechen[fi], seite);
+                    // Dieselbe Rechnung wie oben fuer die Sechs: Zelle n liegt
+                    // bei 8*n von der Fahrbahnmitte, also ist n*8 die Grenze.
+                    if (kacheln > 0)
+                        grenze = math.min(grenze,
+                            (float)(kacheln * ParkingGeometry.Zoningparzelle));
+                }
+                if (abstand > grenze + 0.01f) continue;
 
                 var zurZelle = mitte - lot;
                 var links = richtung.x * zurZelle.y - richtung.y * zurZelle.x > 0f;

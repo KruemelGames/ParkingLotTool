@@ -124,6 +124,24 @@ namespace ParkingLotTool.Tools
 
             [JsonProperty("CrossCaps", Required = Required.Always)]
             public bool CrossCaps { get; set; }
+
+            /**
+             * DIESE EIGENSCHAFT HATTE KEIN `JsonProperty` - und die Klasse
+             * ist `MemberSerialization.OptIn`.
+             *
+             * Damit wurde sie NIE geschrieben und nie gelesen. Der
+             * Merkknopf an "Perimeter road" sah aus wie die anderen
+             * dreizehn, meldete "Benutzerstandard gespeichert" und war nach
+             * jedem Neustart wieder auf `true`. Gemessen am 2026-09-21 an
+             * der Datei des Nutzers: 21 Schluessel, keiner davon
+             * `Randstrassen`.
+             *
+             * `Required.Default`, damit die vorhandenen Dateien ohne diesen
+             * Schluessel weiter gelten - dann greift der Initialisierer und
+             * es bleibt beim bisherigen Verhalten, statt dass die ganze
+             * Datei als ungueltig verworfen wird.
+             */
+            [JsonProperty("Randstrassen", Required = Required.Default)]
             public bool Randstrassen { get; set; } = true;
 
             [JsonProperty("AngleMode", Required = Required.Always)]

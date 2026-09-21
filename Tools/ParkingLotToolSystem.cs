@@ -394,6 +394,24 @@ namespace ParkingLotTool.Tools
                     secondaryPressed,
                     escapePressed))
             {
+                /*
+                 * DERSELBE FEHLER WIE BEIM AUSRICHTEN, ZWEI TORE WEITER OBEN.
+                 *
+                 * `HandleZoningSeiten` gibt WAEHREND DES GANZEN MODUS `true`
+                 * zurueck, nicht nur beim Klick. Ohne diesen Aufruf kommt der
+                 * Lauf also erst, wenn der Nutzer den Modus verlaesst - und
+                 * genau das hat er gemeldet: *"Zoningarea ziehen ... dann auf
+                 * 'Toggle road side' klicken und aussen auf die Strasse
+                 * klicken, es erscheinen die Tiles aber die preview aendert
+                 * sich sonst nicht weiter."* Die Kacheln kommen aus dem
+                 * Zeichner und waren deshalb sofort da; Buchten, Fahrgassen
+                 * und Flaechen kommen aus dem Hintergrundlauf, und der wurde
+                 * nie angestossen.
+                 *
+                 * Solange eine Seitenumschaltung nur Kacheln bewegte, fiel es
+                 * nicht auf. Seit ein Aussenband Platz wegnimmt, schon.
+                 */
+                StartBuildIfNeeded();
                 return RenderOverlay(deps);
             }
 
@@ -1490,9 +1508,9 @@ namespace ParkingLotTool.Tools
                 ZoningSeite,
                 _zoningStrassenAktuell,
                 ZoningSeitenVorschau(out var seiteA, out var seiteB,
-                        out var seiteLinks)
-                    ? (seiteA, seiteB, seiteLinks)
-                    : ((float2, float2, bool)?)null,
+                        out var seiteLinks, out var seiteKacheln)
+                    ? (seiteA, seiteB, seiteLinks, seiteKacheln)
+                    : ((float2, float2, bool, int)?)null,
                 ZoningSeitenModus,
                 _randzoning.Select(l => (l.A, l.B)).ToArray(),
                 RandzoningStrassenAchsen.Select(r => (r.A, r.B)).ToArray(),
