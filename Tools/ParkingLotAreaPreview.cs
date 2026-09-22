@@ -269,6 +269,8 @@ namespace ParkingLotTool.Tools
         }
         private LayoutSettings _areaPreviewSettings;
         private bool _ghostsActive;
+        /** Name der Flaeche, die sich nicht aufloesen laesst. */
+        private string _unaufloesbareFlaeche;
         private bool _missingGrassPrefabLogged;
         private bool _missingPavementPrefabLogged;
         private long _lastPreviewSig = long.MinValue;
@@ -536,6 +538,19 @@ namespace ParkingLotTool.Tools
                 ref _pavementSurfacePrefab, ref _missingPavementPrefabLogged);
             var zoning = ResolveSurfacePrefab(ZoningSurfaceName,
                 ref _zoningSurfacePrefab, ref _missingZoningPrefabLogged);
+
+            /*
+             * WELCHE Flaeche klemmt - damit der Abbruch das sagen kann.
+             *
+             * "Nichts gebaut: es entstanden keine Bauteile" war fuer den
+             * Tester am 2026-09-22 nicht zu gebrauchen; er sah nicht, dass
+             * seine Flaechenwahl der Grund war. Der Name steht hier ohnehin
+             * fest, also wird er gemerkt.
+             */
+            _unaufloesbareFlaeche = !grass ? GrassSurfaceName
+                : !pavement ? PavementSurfaceName
+                : !zoning ? ZoningSurfaceName
+                : null;
             return grass && pavement && zoning;
         }
 
@@ -549,8 +564,31 @@ namespace ParkingLotTool.Tools
             for (var i = 0; i < prefabs.Length; i++)
             {
                 var entity = prefabs[i];
+                /*
+                 * KEIN `isBuiltin` MEHR - das war ein Widerspruch zur Liste.
+                 *
+                 * `VeroeffentlicheFlaechenliste` bietet jede Flaeche mit
+                 * `AreaType.Surface` an, ausdruecklich auch die aus
+                 * Asset-Mods ("was NICHT aus dem Grundspiel kommt, ist immer
+                 * dabei"). Hier stand die Gegenbedingung, und eine gewaehlte
+                 * Mod-Flaeche loeste deshalb nie auf: keine Definitionen,
+                 * kein Bauteil, und im Panel nur "no build parts were
+                 * created". Ein Tester am 2026-09-22 mit einer Flaeche aus
+                 * dem ExtraAssetsImporter ist genau darueber gestolpert -
+                 * waehlbar, aber nicht baubar.
+                 *
+                 * Was wirklich zaehlt, prueft die Zeile darunter:
+                 * `HasUsableSurfacePrefab` verlangt einen gueltigen
+                 * Archetyp. Der entscheidet, ob CS2 aus dem Prefab eine
+                 * Flaeche machen kann - und das ist bei einer Mod-Flaeche
+                 * nicht anders als bei einer eingebauten.
+                 *
+                 * Unsere eigenen Klone koennen hier nicht hereinrutschen:
+                 * verglichen wird mit dem NAMEN aus der Auswahl, und die
+                 * Liste laesst "PLT ..." gar nicht erst zur Wahl zu.
+                 */
                 if (!_prefabSystem.TryGetPrefab<PrefabBase>(entity, out var prefab)
-                    || prefab == null || !prefab.isBuiltin
+                    || prefab == null
                     || !string.Equals(prefab.name, prefabName,
                         StringComparison.OrdinalIgnoreCase)
                     || !HasUsableSurfacePrefab(entity))
@@ -558,7 +596,24 @@ namespace ParkingLotTool.Tools
 
                 resolved = entity;
                 missingLogged = false;
-                Mod.log.Info($"PLT-Flächenvorschau verwendet '{prefabName}'.");
+                /*
+                 * MIT DEN MERKMALEN, NICHT NUR MIT DEM NAMEN.
+                 *
+                 * Seit Mod-Flaechen erlaubt sind, ist die interessante
+                 * Frage nicht mehr "welche wurde gewaehlt", sondern "was
+                 * ist das fuer eine". Ein Tester schickt einen Log, nicht
+                 * seinen Rechner - was hier nicht draufsteht, muss man
+                 * erfragen.
+                 */
+                Mod.log.Info($"PLT-Flächenvorschau verwendet '{prefabName}': "
+                    + (prefab.isBuiltin ? "aus dem Grundspiel" : "aus einem Mod")
+                    + ", "
+                    + (EntityManager.HasComponent<RenderedAreaData>(entity)
+                        ? "gerendert" : "OHNE RenderedAreaData")
+                    + ", "
+                    + (EntityManager.HasComponent<SurfaceData>(entity)
+                        ? "SurfaceData vorhanden" : "OHNE SurfaceData")
+                    + ".");
                 return true;
             }
 
@@ -566,9 +621,12 @@ namespace ParkingLotTool.Tools
             {
                 missingLogged = true;
                 RecordPreviewDiagnostic("Warning",
-                    $"Flächenvorschau wartet auf das Vanilla-Prefab '{prefabName}'.");
-                Mod.log.Warn($"PLT-Flächenvorschau wartet auf das Vanilla-Prefab "
-                    + $"'{prefabName}'.");
+                    $"Flächenvorschau findet das Prefab '{prefabName}' nicht "
+                    + "oder es hat keinen gültigen Archetyp.");
+                Mod.log.Warn($"PLT-Flächenvorschau findet das Prefab "
+                    + $"'{prefabName}' nicht oder es hat keinen gueltigen "
+                    + "Archetyp. Solange das so ist, entstehen KEINE "
+                    + "Bauteile und der Bau meldet 'nichts gebaut'.");
             }
             return false;
         }

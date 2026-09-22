@@ -249,12 +249,17 @@ namespace ParkingLotTool.Tools
             var jetzt = (int)selectedSnap;
             var erwartet = Mod.Optionen?.FangauswahlGesetzt == true
                 ? Mod.Optionen.Fangauswahl : unchecked((int)Snap.All);
-            if (jetzt == erwartet)
-            {
-                Mod.log.Info("PLT-Fangnachschau: nach 60 Bildern unveraendert "
-                    + jetzt + " - der gemerkte Wert haelt.");
-                return;
-            }
+            /*
+             * SCHWEIGT, WENN ALLES STIMMT.
+             *
+             * Am 2026-09-22 bestaetigt: nach dem Laden steht -2049 drin und
+             * nach 60 Bildern immer noch. Die Wache bleibt trotzdem - sie
+             * kostet einen Vergleich je Werkzeugstart und faengt eine
+             * Rueckkehr des Fehlers, ohne dass jemand danach sucht. Nur die
+             * Erfolgsmeldung faellt weg: eine Zeile bei JEDEM Werkzeugstart
+             * waere Rauschen, und im Log soll stehen, was nicht stimmt.
+             */
+            if (jetzt == erwartet) return;
             Mod.log.Warn("PLT-Fangnachschau: der Wert wurde nach dem Laden "
                 + "ueberschrieben. Erwartet " + erwartet + ", jetzt " + jetzt
                 + ". Jemand schreibt an unserem Setter vorbei.");

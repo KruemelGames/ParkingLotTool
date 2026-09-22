@@ -165,11 +165,22 @@ namespace ParkingLotTool.Tools
                     {
                         // Ohne diese Zeile war der Abbruch fuer den Nutzer
                         // unsichtbar: Enter, und scheinbar passiert nichts.
-                        _uiSystem?.SetStatus(T(
-                            "Nichts gebaut: es entstanden keine Bauteile.",
-                            "Nothing built: no build parts were created."));
+                        // Wenn die Flaechenwahl der Grund ist, gehoert sie in
+                        // den Satz. Alles andere schickt den Nutzer suchen.
+                        var flaeche = _unaufloesbareFlaeche;
+                        _uiSystem?.SetStatus(flaeche != null
+                            ? T($"Nichts gebaut: die Fläche '{flaeche}' lässt "
+                                + "sich nicht verwenden. Bitte eine andere wählen.",
+                                $"Nothing built: the surface '{flaeche}' cannot "
+                                + "be used. Please pick another one.")
+                            : T("Nichts gebaut: es entstanden keine Bauteile.",
+                                "Nothing built: no build parts were created."));
                         Mod.log.Warn("PLT: Es entstanden keine Bau-Definitionen; "
-                            + "nichts gebaut.");
+                            + "nichts gebaut."
+                            + (flaeche != null
+                                ? " Ursache: die Flaeche '" + flaeche
+                                  + "' liess sich nicht aufloesen."
+                                : string.Empty));
                         _buildStage = BuildStage.Idle;
                         _buildRequestedWhenReady = false;
                         if (IsEditing)
