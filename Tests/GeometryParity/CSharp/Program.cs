@@ -148,6 +148,7 @@ internal static partial class Program
         // End-to-End-Wirkungsmessung aller Bedienelemente des Panels.
         if (args.Length == 1 && args[0] == "--regler") return RunRegler();
         if (args.Length == 1 && args[0] == "--eckrand") return RunEckrand();
+        if (args.Length == 1 && args[0] == "--randgruen") return RunRandgruen();
         if (args.Length == 1 && args[0] == "--marker") { RunMarker(); return 0; }
         if (args.Length == 1 && args[0] == "--zoningtreffer")
             return RunZoningtreffer();

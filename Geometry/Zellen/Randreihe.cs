@@ -115,11 +115,20 @@ namespace ParkingLotTool.Geometry.Zellen
                     var anzahl = (int)Math.Floor(nutzbar / buchtbreite);
                     if (anzahl <= 0) continue;
                     var rest = nutzbar - anzahl * buchtbreite;
-                    var buchtanfang = abschnitt.AnZufahrtVorn
-                        ? abschnitt.Von
-                        : abschnitt.AnZufahrtHinten
-                            ? abschnitt.Von + rest
-                            : abschnitt.Von + rest / 2;
+                    // Im 63,36-m-Fall bleiben zwischen Fussweg und Zufahrt
+                    // 1,78 m uebrig. An beiden spiegelgleichen Abschnitten
+                    // muss dieser Rest zum Fussweg; an der Autozufahrt bleibt
+                    // die geplante 3,00-m-Graskappe genau 3,00 m breit.
+                    var restZumFusswegVorn = abschnitt.AnFusswegVorn
+                        && abschnitt.AnZufahrtHinten && !abschnitt.AnFusswegHinten;
+                    var restZumFusswegHinten = abschnitt.AnFusswegHinten
+                        && abschnitt.AnZufahrtVorn && !abschnitt.AnFusswegVorn;
+                    var buchtanfang = restZumFusswegVorn
+                        ? abschnitt.Von + rest
+                        : restZumFusswegHinten ? abschnitt.Von
+                        : abschnitt.AnZufahrtVorn ? abschnitt.Von
+                        : abschnitt.AnZufahrtHinten ? abschnitt.Von + rest
+                        : abschnitt.Von + rest / 2;
 
                     for (var grenze = 0; grenze <= anzahl; grenze++)
                     {
@@ -254,6 +263,7 @@ namespace ParkingLotTool.Geometry.Zellen
                     {
                         Von = zufahrt.Along - halb,
                         Bis = zufahrt.Along + halb,
+                        IstFussweg = zufahrt.Art == Zufahrtsart.Fussweg,
                     });
                 }
             sperren.Sort((a, b) => a.Von.CompareTo(b.Von));
@@ -261,6 +271,7 @@ namespace ParkingLotTool.Geometry.Zellen
             var abschnitte = new List<Abschnitt>();
             var laufend = anfang;
             var vorherZufahrt = false;
+            var vorherFussweg = false;
             foreach (var sperre in sperren)
             {
                 if (sperre.Bis <= laufend)
@@ -269,6 +280,7 @@ namespace ParkingLotTool.Geometry.Zellen
                     // Kappen ueberlappen: die zweite verschiebt nur die Grenze.
                     if (sperre.Bis > laufend) laufend = sperre.Bis;
                     vorherZufahrt = true;
+                    vorherFussweg = sperre.IstFussweg;
                     continue;
                 }
                 if (sperre.Von > laufend)
@@ -278,9 +290,12 @@ namespace ParkingLotTool.Geometry.Zellen
                         Bis = Math.Min(sperre.Von, ende),
                         AnZufahrtVorn = vorherZufahrt,
                         AnZufahrtHinten = sperre.Von <= ende,
+                        AnFusswegVorn = vorherFussweg,
+                        AnFusswegHinten = sperre.Von <= ende && sperre.IstFussweg,
                     });
                 laufend = Math.Max(laufend, sperre.Bis);
                 vorherZufahrt = true;
+                vorherFussweg = sperre.IstFussweg;
                 if (laufend >= ende) break;
             }
             if (laufend < ende)
@@ -290,6 +305,7 @@ namespace ParkingLotTool.Geometry.Zellen
                     Bis = ende,
                     AnZufahrtVorn = vorherZufahrt,
                     AnZufahrtHinten = false,
+                    AnFusswegVorn = vorherFussweg,
                 });
             return abschnitte;
         }
@@ -308,6 +324,9 @@ namespace ParkingLotTool.Geometry.Zellen
             internal double Bis;
             internal bool AnZufahrtVorn;
             internal bool AnZufahrtHinten;
+            internal bool AnFusswegVorn;
+            internal bool AnFusswegHinten;
+            internal bool IstFussweg;
         }
     }
 }

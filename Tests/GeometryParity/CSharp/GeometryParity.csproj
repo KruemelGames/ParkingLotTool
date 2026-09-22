@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="Program.Randgruen.cs" />
     <Compile Include="Program.Zoningkanten.cs" />
     <Compile Include="Program.Gassenreste.cs" />
     <Compile Include="Program.Gassenabstand.cs" />
