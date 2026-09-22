@@ -291,6 +291,61 @@ namespace ParkingLotTool
             updateSystem.UpdateAt<ParkingLotCleanupSystem>(
                 SystemUpdatePhase.Modification3);
             /*
+             * DIE STADTREINIGUNG MARKIERT UNMITTELBAR VOR DEM AUFRAEUMER.
+             *
+             * Der erste Anlauf markierte direkt aus dem Options-Setter, also
+             * in einem beliebigen Frame und einer beliebigen Phase. Der
+             * Aufraeumer sammelt geloeschte Lots aber NUR in Phase 3; wird
+             * danach markiert, kann CS2s eigenes Aufraeumen die Flaeche noch
+             * im selben Frame zerstoeren, ohne dass je ein Auftrag entsteht -
+             * und die Teile blieben als Waisen stehen.
+             *
+             * Der Setter stellt deshalb nur noch einen Auftrag. Hier wird er
+             * angenommen.
+             *
+             * PRETOOL, NICHT MODIFICATION3 - berichtigt am 2026-09-22.
+             *
+             * Bis hierher stand die Annahme in `Modification3`, direkt vor
+             * dem Aufraeumer. Damit konnte der Belag gar nicht verschwinden,
+             * und zwar aus einem Grund, den ich zweimal falsch erklaert
+             * habe. Die Reihenfolge IM Bild ist (`SystemOrder` Zeile 58/60):
+             *
+             *     ToolSystem      -> PreTool, ToolUpdate, PostTool
+             *     ModificationSystem -> Modification1 .. ModificationEnd
+             *     PrepareCleanUpSystem / CleanUpSystem -> zerstoert
+             *
+             * `Game.Objects.SubElementDeleteSystem` laeuft in `PostTool`.
+             * Es nimmt JEDE Entity mit `Deleted`, die einen `SubArea`-,
+             * `SubNet`- oder `SubRoute`-Puffer hat, und setzt `Deleted` an
+             * alle Kinder darin. CS2 KASKADIERT ALSO DOCH - mein Satz
+             * "CS2 kaskadiert nicht" war falsch, der Bulldozer legt seine
+             * `CreationDefinition`s fuer Vorschau und Rueckgaengig an, nicht
+             * fuers Loeschen.
+             *
+             * Nur: aus `Modification3` markiert, ist `PostTool` in diesem
+             * Bild laengst vorbei, und am Bildende zerstoert `CleanUpSystem`
+             * die Flaeche samt Puffer. Das naechste `PostTool` findet
+             * nichts mehr. Die Kaskade lief nie - nicht ein einziges Mal.
+             *
+             * In `PreTool` markiert, passiert alles in EINEM Bild und in
+             * der richtigen Reihenfolge:
+             *
+             *     PreTool         wir markieren den Parkplatz
+             *     PostTool        CS2 markiert Flaechen und Strassen
+             *     Modification2B  `Game.Net.ReferencesSystem` raeumt die
+             *                     Knotenpuffer der geloeschten Kanten
+             *     Modification3   unser Aufraeumer sieht den Auftrag noch
+             *     Cleanup         alles wird zerstoert
+             *
+             * Damit ist auch die Absturzserie vom 2026-09-22 erklaert: wir
+             * haben die Kanten selbst geloescht, aus Phase 3, also hinter
+             * dem System, das die Verweise darauf haette raeumen muessen.
+             * Jetzt loescht CS2 sie selbst, eine Phase vor seinem eigenen
+             * Aufraeumer.
+             */
+            updateSystem.UpdateAt<ParkingLotStadtreinigungSystem>(
+                SystemUpdatePhase.PreTool);
+            /*
              * MODIFICATION2, NICHT 3 - UND DAS IST DER GANZE WITZ.
              *
              * `Game.Net.ReferencesSystem` laeuft in `Modification2B` und nimmt

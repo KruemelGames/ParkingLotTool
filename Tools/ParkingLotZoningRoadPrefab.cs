@@ -273,9 +273,31 @@ namespace ParkingLotTool.Tools
         protected override void OnUpdate()
         {
             SaeheStandardklone();
+            HeileVanillaGasse();
             foreach (var eintrag in _eintraege.Values)
             {
-                if (eintrag.Fehler || eintrag.Bereit) continue;
+                if (eintrag.Fehler) continue;
+                if (eintrag.Bereit)
+                {
+                    /*
+                     * NACHSCHAU STATT EINMALAKTION.
+                     *
+                     * `NetInitializeSystem` (PrefabUpdate, direkt hinter
+                     * `PrefabInitializeSystem`) setzt `ClipTerrain` und
+                     * `FlattenTerrain` per |= an jedem Strassenprefab, das
+                     * in diesem Frame `Created` traegt. Wir laufen VOR
+                     * beiden. Faellt unsere Korrektur zufaellig auf genau
+                     * diesen einen Frame, wird sie noch im selben Frame
+                     * ueberschrieben - und wer sie nur einmal ausfuehrt,
+                     * merkt das nie.
+                     *
+                     * Die Methode schreibt und meldet nur, wenn die Flagge
+                     * wirklich wieder dasteht. Erscheint ihre Logzeile ein
+                     * zweites Mal, ist genau dieser Fall eingetreten.
+                     */
+                    EntferneTerraineingriff(eintrag);
+                    continue;
+                }
 
                 if (eintrag.KlonEntity == Entity.Null)
                 {
@@ -686,6 +708,121 @@ namespace ParkingLotTool.Tools
          *
          * `BlockZone` BLEIBT. Daran haengen die Zonenbloecke.
          */
+        /**
+         * NUR DIE MELDUNG IST EINMALIG, NICHT DIE HEILUNG.
+         *
+         * Der erste Entwurf merkte sich "schon erledigt" und hoerte danach
+         * auf hinzuschauen. Das waere derselbe Fehler gewesen, der den Fix
+         * vom 2026-09-20 hat bruechig wirken lassen: `NetGeometryPrefab`
+         * setzt die Flags beim Initialisieren aus den Bauteilen, und ein
+         * Prefab wird nicht nur einmal initialisiert. Kommt `ClipTerrain`
+         * zurueck, muss es wieder weg - sonst ist es genau das
+         * "weg, da, weg, da", das der Nutzer beschrieben hat.
+         *
+         * Geprueft wird deshalb in jedem Zyklus; das ist ein
+         * Komponentenlesen. Geschrieben und gemeldet wird nur, wenn die
+         * Flagge wirklich dasteht.
+         */
+        private bool _vanillaGasseGemeldet;
+        private Entity _vanillaGasse = Entity.Null;
+        private int _vanillaGasseAbgeraeumt;
+
+        /**
+         * NIMMT DER VANILLA-GASSE DEN GELAENDESCHNITT.
+         *
+         * Das hier fasst ein SPIEL-ASSET an, nicht unseren Klon. Der Nutzer
+         * hat das am 2026-09-22 ausdruecklich so entschieden, nachdem der
+         * Befund klar war.
+         *
+         * DER BEFUND: die Alley bringt an ihren Enden eigene
+         * Intersection-Flaechen mit. `ClipTerrain` schneidet darunter einen
+         * Terrainkeil heraus - und weil die Kappen ueber diesem Keil liegen,
+         * fehlt ihnen der Untergrund. Sichtbar als helle, durchscheinende
+         * Viertelkreise an beiden Enden. Fuer UNSEREN Klon hat Codex die
+         * Flagge am 2026-09-20 entfernt (`EntferneTerraineingriff`); die
+         * Vanilla-Gasse behielt sie und zeigt den Fehler weiter, auch ohne
+         * dass ein Parkplatz in der Naehe ist.
+         *
+         * WAS ES KOSTET: jede Gasse in dieser Stadt schneidet sich nicht
+         * mehr ins Gelaende. An einer Steigung kann sie dadurch eher
+         * aufliegen statt sich einzugraben. `FlattenTerrain` bleibt, die
+         * Gasse planiert also weiterhin unter sich.
+         *
+         * WAS ES NICHT IST: dauerhaft. Prefabs stehen nicht im Spielstand;
+         * ohne den Mod ist die Flagge beim naechsten Start wieder da. Es
+         * bleibt also nichts zurueck, was jemand spaeter nicht erklaeren
+         * koennte.
+         */
+        private void HeileVanillaGasse()
+        {
+            if (_vanillaGasse == Entity.Null)
+            {
+                const string name = "Alley";
+                if (!_prefabSystem.TryGetPrefab(
+                        new PrefabID(nameof(RoadPrefab), name), out var basis)
+                    || basis == null) return;
+                var gefunden = _prefabSystem.GetEntity(basis);
+                if (gefunden == Entity.Null
+                    || !EntityManager.HasComponent<NetGeometryData>(gefunden))
+                    return;
+                _vanillaGasse = gefunden;
+            }
+
+            if (!EntityManager.Exists(_vanillaGasse)
+                || !EntityManager.HasComponent<NetGeometryData>(_vanillaGasse))
+            {
+                // Prefab-Entity ist weg (Weltwechsel). Beim naechsten Zyklus
+                // neu suchen, statt auf eine tote Entity zu schreiben.
+                _vanillaGasse = Entity.Null;
+                _vanillaGasseGemeldet = false;
+                return;
+            }
+
+            var geometrie = EntityManager
+                .GetComponentData<NetGeometryData>(_vanillaGasse);
+            var vorher = geometrie.m_Flags;
+            if ((vorher & Game.Net.GeometryFlags.ClipTerrain) == 0)
+            {
+                if (!_vanillaGasseGemeldet)
+                {
+                    _vanillaGasseGemeldet = true;
+                    Mod.log.Info("PLT-Vanillagasse: 'Alley' hat kein "
+                        + "ClipTerrain - nichts zu tun. Flags " + vorher);
+                }
+                return;
+            }
+
+            geometrie.m_Flags &= ~Game.Net.GeometryFlags.ClipTerrain;
+            EntityManager.SetComponentData(_vanillaGasse, geometrie);
+
+            if (_vanillaGasseGemeldet)
+            {
+                // ZWEITE UND JEDE WEITERE MELDUNG IST EIN BEFUND.
+                // Sie heisst: irgendetwas setzt die Flagge nach unserer
+                // Korrektur wieder. Genau das wuerde der Nutzer als
+                // "weg, da, weg, da" sehen. Kommt diese Zeile im Log vor,
+                // ist der Verursacher zu suchen - die Wiederholung hier
+                // repariert nur die Sicht, nicht die Ursache.
+                _vanillaGasseAbgeraeumt++;
+                Mod.log.Warn("PLT-Vanillagasse: ClipTerrain war WIEDER da "
+                    + "und wurde erneut entfernt (" + _vanillaGasseAbgeraeumt
+                    + ". Wiederholung). Bekannter Verursacher ist "
+                    + "NetInitializeSystem: es setzt die Flagge per |= an "
+                    + "jedem Strassenprefab, das in diesem Frame 'Created' "
+                    + "traegt, und laeuft hinter uns. Eine einzelne "
+                    + "Wiederholung kurz nach dem Start ist genau dieses "
+                    + "Rennen. Mehrere hintereinander sind ein Befund.");
+                return;
+            }
+
+            _vanillaGasseGemeldet = true;
+            Mod.log.Info("PLT-Vanillagasse: ClipTerrain am SPIEL-PREFAB "
+                + "'Alley' entfernt, damit die Endkappen ihren Untergrund "
+                + "behalten. FlattenTerrain bleibt. Flags " + vorher + " -> "
+                + geometrie.m_Flags + ". Gilt nur zur Laufzeit; ohne den Mod "
+                + "ist die Flagge beim naechsten Start wieder da.");
+        }
+
         private void EntferneTerraineingriff(Eintrag eintrag)
         {
             var entity = eintrag.KlonEntity;
@@ -754,6 +891,27 @@ namespace ParkingLotTool.Tools
          * ist. Der Aufrufer behaelt dann sein eigenes Mass - eine etwas zu
          * schmale Vorflaeche ist besser als eine geratene.
          */
+        /**
+         * Alle fertigen Klon-Prefabs, in eine vorhandene Menge hinein.
+         *
+         * Gedacht fuer die Namenswache: die muss wissen, welche Strassen
+         * UNSERE sind, und zwar ohne den `SubNet`-Puffer eines Traegers -
+         * der ueberlebt das Laden nicht (gemessen 109 -> 0).
+         *
+         * Gefragt wird die eigene Liste, nicht der Prefabname. Namen sind
+         * Zeichenketten, die Liste ist die Quelle.
+         */
+        internal void SammleKlonprefabs(HashSet<Entity> ziel)
+        {
+            if (ziel == null) return;
+            foreach (var eintrag in _eintraege.Values)
+            {
+                if (!eintrag.Bereit) continue;
+                if (eintrag.KlonEntity == Entity.Null) continue;
+                ziel.Add(eintrag.KlonEntity);
+            }
+        }
+
         internal float FahrbahnbreiteVon(Entity klon)
         {
             if (klon == Entity.Null) return 0f;

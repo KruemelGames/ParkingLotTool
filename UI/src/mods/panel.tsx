@@ -1394,7 +1394,16 @@ export const ParkingLotPanel = () => {
       NACHBAR DES PANELS, NICHT KIND: so bleibt es liegen, wenn das Panel
       verschoben wird. Beide haengen am selben positionierten Vorfahren.
     */}
-    {vegOffen ? (
+    {/*
+      NUR AUF DEM ENTWURFSREITER SICHTBAR - aber NICHT geschlossen.
+      Der Schalter, der es oeffnet, steht dort; auf den anderen Reitern
+      haette das Fenster keinen Bezug und verdeckte nur Bild. `vegOffen`
+      bleibt dabei stehen, deshalb steht es beim Zurueckkommen wieder da,
+      an derselben Stelle. Der Nutzer am 2026-09-22: *"Vegetation-Fenster
+      kann zugehen wenn ich aus dem Draft reiter gehe. Und wieder aufgehen
+      wenn ich wieder nach Draft gehe."*
+    */}
+    {vegOffen && tab === "layout" ? (
       <VegetationFenster
         pos={vegStelle ?? undefined}
         onPos={vegStelleSetzen}

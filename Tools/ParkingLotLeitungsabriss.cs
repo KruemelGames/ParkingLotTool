@@ -110,6 +110,17 @@ namespace ParkingLotTool.Tools
     public sealed partial class ParkingLotLeitungsabrissSystem : GameSystemBase
     {
         private EntityQuery _leitungen;
+        private EntityQuery _abrisskanten;
+
+        /**
+         * Wieviele Strassenkanten je Durchgang fallen duerfen.
+         *
+         * Acht, nicht 32: eine Netzkante zieht mehr nach sich als ein
+         * Aufkleber - Knotenpuffer, Fahrspuren, Zonenbloecke. Bei 37 auf
+         * einmal stuerzte CS2 am 2026-09-22 ab. Die Zahl ist geraten und
+         * bewusst klein; wer sie hebt, braucht einen Messwert.
+         */
+        private const int KantenJeDurchgang = 8;
 
         /*
          * NACHSCHAU STATT THEORIE.
@@ -155,12 +166,69 @@ namespace ParkingLotTool.Tools
                     ComponentType.ReadOnly<Temp>(),
                 },
             });
+
+            // Die vom Aufraeumer vorgemerkten Strassenkanten, siehe
+            // `LoescheVorgemerkteKanten`.
+            _abrisskanten = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<ParkingLotAbrisskante>(),
+                    ComponentType.ReadOnly<Edge>(),
+                },
+                None = new[]
+                {
+                    ComponentType.ReadOnly<Deleted>(),
+                    ComponentType.ReadOnly<Temp>(),
+                },
+            });
             /*
              * KEIN `RequireForUpdate`. Die Abfrage schliesst `Deleted` aus,
              * also waere sie leer, sobald die letzte Leitung markiert ist -
              * und dann liefe die Nachschau nie, die genau danach melden soll.
              * Der Durchlauf kostet ohne Treffer nichts.
              */
+        }
+
+        /**
+         * DIE STRASSEN DES PARKPLATZES - vorgemerkt vom Aufraeumer.
+         *
+         * Zoningstrassen und Zufahrten tragen keine Teilebeziehung, nur einen
+         * `Owner`. Der Aufraeumer findet sie darueber, darf sie aber nicht
+         * selbst loeschen: er laeuft in `Modification3`, und eine Netzkante
+         * dort zu markieren ist der Absturz vom 2026-09-14. Er setzt deshalb
+         * nur `ParkingLotAbrisskante`, und hier - eine Phase frueher, vor
+         * `Game.Net.ReferencesSystem` in `Modification2B` - wird sie
+         * eingeloest.
+         *
+         * Derselbe Weg wie bei den Versorgungsleitungen darunter, aus
+         * demselben Grund.
+         */
+        private void LoescheVorgemerkteKanten()
+        {
+            if (_abrisskanten.IsEmptyIgnoreFilter) return;
+
+            using var kanten = _abrisskanten.ToEntityArray(Allocator.Temp);
+            var geloescht = 0;
+            var uebrig = 0;
+            for (var i = 0; i < kanten.Length; i++)
+            {
+                var kante = kanten[i];
+                if (!EntityManager.Exists(kante)) continue;
+                // Portionsweise wie alles andere am Abriss. 37 Kanten auf
+                // einmal standen am 2026-09-22 unmittelbar vor dem Absturz.
+                if (geloescht >= KantenJeDurchgang) { uebrig++; continue; }
+                EntityManager.AddComponent<Deleted>(kante);
+                geloescht++;
+            }
+            if (geloescht == 0) return;
+
+            Mod.log.Info("PLT-Leitungsabriss: " + geloescht
+                + " vorgemerkte Strassenkante(n) des Parkplatzes in "
+                + "Modification2 geloescht, " + uebrig + " bleiben fuer den "
+                + "naechsten Durchgang.");
+            ParkingLotSchrittmarke.Setze(
+                "Abriss: " + geloescht + " Strassenkante(n) geloescht");
         }
 
         [Preserve]
@@ -170,6 +238,7 @@ namespace ParkingLotTool.Tools
                 ParkingLotMessung.Sys.Leitungsabriss);
             RaeumeVerwaisteKnoten();
             PruefeLeitungsknoten();
+            LoescheVorgemerkteKanten();
             if (_leitungen.IsEmptyIgnoreFilter) return;
 
             using var kanten = _leitungen.ToEntityArray(Allocator.Temp);

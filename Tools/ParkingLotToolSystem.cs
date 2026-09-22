@@ -372,6 +372,7 @@ namespace ParkingLotTool.Tools
             // dann die Klicks verteilen.
             PflegeZoningBlockmessung();
             PflegeZoningStrassenplan();
+            PflegeFangnachschau();
             ZoningFolgeDemUmriss();
             // Der unsichtbare Strassenklon wird bestellt, sobald eine Flaeche
             // steht - nicht erst beim Bauen. Sonst faehrt der erste Bau ohne

@@ -19,6 +19,25 @@ namespace ParkingLotTool.Tools
      * spaetere Loeschen einen raeumlichen Rueckschluss ueber Vanilla-Prefab
      * und Polygon.
      */
+    /**
+     * VORGEMERKT ZUM ABRISS - eine Kante, die eine Phase frueher sterben muss.
+     *
+     * Der Aufraeumer laeuft in `Modification3`. Eine NETZKANTE dort als
+     * geloescht zu markieren ist der Absturz vom 2026-09-14:
+     * `Game.Net.ReferencesSystem` arbeitet in `Modification2B` und bekommt sie
+     * nie zu sehen. Deshalb setzt der Aufraeumer nur diese Marke, und
+     * `ParkingLotLeitungsabrissSystem` loescht sie im naechsten Durchgang in
+     * `Modification2` - derselbe Weg, den die Versorgungsleitungen schon
+     * gehen.
+     *
+     * NICHT serialisierbar, und das mit Absicht: die Marke lebt ein bis zwei
+     * Frames. Was davon in einen Spielstand geriete, waere eine Kante, die
+     * beim naechsten Laden ohne Grund verschwindet.
+     */
+    public struct ParkingLotAbrisskante : IComponentData, IQueryTypeParameter
+    {
+    }
+
     public struct ParkingLotPartRelation : IComponentData, IQueryTypeParameter,
                                            ISerializable
     {
@@ -490,6 +509,30 @@ namespace ParkingLotTool.Tools
                     && EntityManager.Exists(_lotCarrier)
                     && EntityManager.HasComponent<Game.Net.Edge>(entity))
                     AddCarrierSubNet(entity);
+                /*
+                 * UND FLAECHEN IN DIE SUBAREA-LISTE - das fehlte.
+                 *
+                 * Die Kanten oben werden von Hand eingetragen, die Flaechen
+                 * bekamen nur den `Owner`. CS2s Loeschkaskade folgt aber der
+                 * LISTE AM BESITZER, nicht dem Vermerk am Kind (das hatten
+                 * wir am 2026-08-25 schon einmal falsch herum). Eine leere
+                 * `SubArea`-Liste heisst: der Parkplatz weiss nicht, dass
+                 * diese Flaechen zu ihm gehoeren - und nimmt sie beim Sterben
+                 * nicht mit.
+                 *
+                 * Genau das hat der Nutzer am 2026-09-22 gesehen: alle Teile
+                 * weg, Flaechen und Zoningstrassen standen noch. Mein erster
+                 * Versuch, sie selbst zu loeschen, hat CS2 dreimal
+                 * umgebracht. Das Spiel WUERDE sie mitnehmen; es wusste nur
+                 * nicht, dass es soll.
+                 *
+                 * `SubAreaReferencesSystem` fuellt die Liste nicht selbst
+                 * nach: sein Zweig dafuer laeuft, wenn ein Kind dauerhaft
+                 * WIRD. Unsere Flaechen sind das schon, wenn sie den Besitzer
+                 * bekommen.
+                 */
+                if (EntityManager.HasComponent<Game.Areas.Area>(entity))
+                    AddOwnerSubArea(entity);
                 attached++;
             }
             return attached;
@@ -501,6 +544,20 @@ namespace ParkingLotTool.Tools
             for (var i = 0; i < buffer.Length; i++)
                 if (buffer[i].m_SubNet == edge) return;
             buffer.Add(new Game.Net.SubNet(edge));
+        }
+
+        /** Das Gegenstueck fuer Flaechen - siehe `AttachByPrefab`. */
+        private void AddOwnerSubArea(Entity area)
+        {
+            if (_lotOwner == Entity.Null || area == _lotOwner
+                || !EntityManager.Exists(_lotOwner)
+                || !EntityManager.HasBuffer<Game.Areas.SubArea>(_lotOwner))
+                return;
+            var buffer = EntityManager
+                .GetBuffer<Game.Areas.SubArea>(_lotOwner);
+            for (var i = 0; i < buffer.Length; i++)
+                if (buffer[i].m_Area == area) return;
+            buffer.Add(new Game.Areas.SubArea(area));
         }
 
         /**
@@ -603,6 +660,78 @@ namespace ParkingLotTool.Tools
                 + "gespeicherten Teilrelationen gefuellt; "
                 + $"{invalidRelations} ungueltige Relation(en), "
                 + $"{missingSources} Flaeche(n) ohne SubNet-Quelle.");
+
+            RestoreOwnerSubAreasAfterLoad(lotsByCarrier);
+        }
+
+        /**
+         * FUELLT DIE SUBAREA-LISTE DER PARKPLAETZE NACH DEM LADEN.
+         *
+         * Dieselbe Luecke wie beim SubNet, nur eine Ebene daneben: die
+         * Flaechen tragen ihren `Owner` im Spielstand, die LISTE am Besitzer
+         * ist nach dem Laden aber leer. Und CS2s Loeschkaskade folgt der
+         * Liste, nicht dem Vermerk am Kind.
+         *
+         * Ohne das hier bliebe jeder Parkplatz aus einem gespeicherten Stand
+         * beim Abriss als Flaechenfeld stehen - genau der Befund des Nutzers
+         * vom 2026-09-22. Beim Bauen wird die Liste seit demselben Tag
+         * gefuellt (`AddOwnerSubArea`); das hier ist der Nachtrag fuer alles,
+         * was schon existiert.
+         *
+         * Gefuellt wird aus dem Besitzer am Kind - der ist serialisiert und
+         * ueberlebt. Die Richtung ist also umgekehrt zur Kaskade, und genau
+         * deshalb laesst sie sich daraus wiederherstellen.
+         */
+        private void RestoreOwnerSubAreasAfterLoad(
+            Dictionary<Entity, Entity> lotsByCarrier)
+        {
+            if (lotsByCarrier.Count == 0) return;
+
+            var lots = new HashSet<Entity>();
+            foreach (var pair in lotsByCarrier) lots.Add(pair.Value);
+
+            var query = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<Game.Areas.Area>(),
+                    ComponentType.ReadOnly<Owner>(),
+                },
+                None = new[]
+                {
+                    ComponentType.ReadOnly<Deleted>(),
+                    ComponentType.ReadOnly<Temp>(),
+                },
+            });
+            using var flaechen = query.ToEntityArray(Allocator.TempJob);
+
+            var eingetragen = 0;
+            var betroffen = new HashSet<Entity>();
+            for (var i = 0; i < flaechen.Length; i++)
+            {
+                var flaeche = flaechen[i];
+                var besitzer = EntityManager
+                    .GetComponentData<Owner>(flaeche).m_Owner;
+                if (!lots.Contains(besitzer) || besitzer == flaeche) continue;
+                if (!EntityManager.HasBuffer<Game.Areas.SubArea>(besitzer))
+                    EntityManager.AddBuffer<Game.Areas.SubArea>(besitzer);
+
+                var buffer = EntityManager
+                    .GetBuffer<Game.Areas.SubArea>(besitzer);
+                var schonDrin = false;
+                for (var k = 0; k < buffer.Length; k++)
+                    if (buffer[k].m_Area == flaeche) { schonDrin = true; break; }
+                if (schonDrin) continue;
+
+                buffer.Add(new Game.Areas.SubArea(flaeche));
+                betroffen.Add(besitzer);
+                eingetragen++;
+            }
+
+            Mod.log.Info("PLT-Laden: SubArea fuer " + betroffen.Count
+                + " Parkplatz/Parkplaetze mit " + eingetragen
+                + " Flaeche(n) nachgetragen. Ohne diese Liste nimmt CS2 die "
+                + "Flaechen beim Abriss nicht mit.");
         }
 
         /**

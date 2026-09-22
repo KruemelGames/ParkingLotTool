@@ -43,6 +43,9 @@ namespace ParkingLotTool.Tools
         private ModificationBarrier3 _barrier;
         private EntityQuery _deletedLotQuery;
         private EntityQuery _partQuery;
+        private EntityQuery _besitzQuery;
+        // Der Besitzkinder-Befund einmal je Sitzung, nicht je Durchgang.
+        private bool _besitzGemeldet;
         private readonly List<CleanupWork> _pending = new List<CleanupWork>();
         private readonly HashSet<Entity> _knownLots = new HashSet<Entity>();
 
@@ -80,6 +83,14 @@ namespace ParkingLotTool.Tools
                     ComponentType.ReadOnly<Deleted>(),
                 },
                 None = new[] { ComponentType.ReadOnly<Temp>() },
+            });
+
+            // Alles, was einen Besitzer hat - daraus filtert
+            // `MarkBesitzkinder` die Kinder des gerade abgerissenen Lots.
+            _besitzQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<Owner>() },
+                None = new[] { ComponentType.ReadOnly<Deleted>() },
             });
 
             // Temp bleibt hier sichtbar, damit ein temporaeres Teil das
@@ -138,6 +149,7 @@ namespace ParkingLotTool.Tools
             var buffer = _barrier.CreateCommandBuffer();
             var (marked, remaining, pflanzen, pflanzenUebrig) =
                 MarkRelatedParts(buffer, work.Lot);
+            var besitz = MarkBesitzkinder(buffer, work.Lot, work.Carrier);
             /*
              * DIE LEITUNGEN WERDEN HIER NICHT MEHR ANGEFASST.
              *
@@ -154,6 +166,36 @@ namespace ParkingLotTool.Tools
              * `remaining` mit. Der Traeger faellt weiterhin erst, wenn kein
              * relationiertes Teil mehr uebrig ist.
              */
+
+            /*
+             * DIESE ZAHL IST SEIT DEM 2026-09-22 KEINE WARNUNG MEHR.
+             *
+             * Sie hiess "bleiben aber STEHEN", und das war falsch gemessen:
+             * gezaehlt wird ueber `Owner`, geloescht wird ueber die Puffer
+             * des Besitzers. `SubElementDeleteSystem` (Phase `PostTool`)
+             * vererbt `Deleted` an alles in `SubArea` und `SubNet` - und
+             * seit die Markierung in `PreTool` faellt, laeuft diese Kaskade
+             * auch wirklich. Der Nutzer hat es bestaetigt: die Flaechen sind
+             * weg.
+             *
+             * Was diese Zahl noch wert ist: sie sagt, wieviel an diesem
+             * Parkplatz haengt. Weicht sie stark von dem ab, was die
+             * Stadtreinigung vorher in die Listen eingetragen hat, gehoert
+             * das nachgesehen - deshalb bleibt sie im Log, aber als
+             * Auskunft, nicht als Alarm.
+             */
+            if (!_besitzGemeldet
+                && (besitz.Flaechen > 0 || besitz.Kanten > 0))
+            {
+                _besitzGemeldet = true;
+                Mod.log.Info("PLT-Aufraeumer: " + besitz.Flaechen
+                    + " eigene Flaeche(n) und " + besitz.Kanten
+                    + " Strassenkante(n) haengen an diesem Parkplatz. "
+                    + "Geloescht werden sie nicht von hier, sondern von "
+                    + "CS2s Besitzkaskade in PostTool - die Stadtreinigung "
+                    + "markiert dafuer in PreTool und traegt vorher alles "
+                    + "in SubArea und SubNet ein.");
+            }
 
             if (marked > 0)
             {
@@ -228,6 +270,119 @@ namespace ParkingLotTool.Tools
                && EntityManager.HasComponent<Game.Prefabs.PlantData>(
                    EntityManager.GetComponentData<Game.Prefabs.PrefabRef>(part)
                        .m_Prefab);
+
+        /**
+         * FLAECHEN UND STRASSEN GEHOEREN AUCH DAZU.
+         *
+         * Sie tragen KEINE `ParkingLotPartRelation` - beim Bauen bekommen sie
+         * nur einen `Owner` auf das Lot. Verschwinden sollten sie ueber CS2s
+         * eigene Besitzkaskade, und die braucht die Listen am Besitzer:
+         * `SubArea` fuer Flaechen, `SubNet` fuer Kanten.
+         *
+         * Genau die traegt aber nicht: der `SubNet`-Puffer des Traegers
+         * ueberlebt das Laden nicht (gemessen 109 -> 0). Wer einen
+         * gespeicherten Stand laedt und dann abreisst, hat die Liste leer -
+         * und niemand weiss mehr, dass diese Strassen dazugehoerten. Der
+         * Nutzer am 2026-09-22: *"die Flaechen und Zoningstrassen sind noch
+         * da"*, obwohl alle 640 Teile weg waren.
+         *
+         * Also wird nicht mehr auf die Kaskade gehofft, sondern der Besitzer
+         * gefragt. Das findet auch die Parkplaetze aus alten Spielstaenden,
+         * die von einer Bauzeit-Markierung nie etwas wissen wuerden.
+         *
+         * FLAECHEN sofort, KANTEN nur vorgemerkt: eine Netzkante in dieser
+         * Phase zu loeschen ist der Absturz vom 2026-09-14. Sie bekommt
+         * `ParkingLotAbrisskante` und stirbt eine Phase frueher im naechsten
+         * Durchgang.
+         */
+        private (int Flaechen, int Kanten, int Uebrig) MarkBesitzkinder(
+            EntityCommandBuffer buffer, Entity lot, Entity carrier)
+        {
+            var flaechen = 0;
+            var kanten = 0;
+            var uebrig = 0;
+            using var kinder = _besitzQuery.ToEntityArray(Allocator.TempJob);
+            for (var i = 0; i < kinder.Length; i++)
+            {
+                var kind = kinder[i];
+                if (kind == lot || kind == carrier) continue;
+                var besitzer = EntityManager
+                    .GetComponentData<Owner>(kind).m_Owner;
+                if (besitzer != lot && besitzer != carrier) continue;
+                if (EntityManager.HasComponent<Temp>(kind)) continue;
+
+                /*
+                 * DIESELBE PORTIONSGRENZE WIE FUER DIE TEILE.
+                 *
+                 * Der erste Anlauf loeschte alles auf einmal - im Protokoll
+                 * vom 2026-09-22 waren das 391 Flaechen in einem Durchgang,
+                 * direkt daneben die Zeile "Grenze 32 je Durchgang" fuer die
+                 * Teile. Danach stuerzte CS2 ab. Die 32 stammen aus der
+                 * Absturzserie im Juli; sie gelten fuer alles, was hier
+                 * strukturell geaendert wird, nicht nur fuer Aufkleber.
+                 */
+                if (flaechen >= PartsPerPass) { uebrig++; continue; }
+
+                /*
+                 * STRASSENKANTEN BLEIBEN VORERST STEHEN - AUSGESETZT.
+                 *
+                 * Hier wurden sie fuer `Modification2` vorgemerkt, und dort
+                 * geloescht. Am 2026-09-22 ist CS2 damit ZWEIMAL abgestuerzt,
+                 * beide Male unmittelbar nach dem Loeschen - die Schrittmarke
+                 * endet jedes Mal auf "N Strassenkante(n) geloescht". Erst
+                 * bei 37 auf einmal, dann auch portionsweise bei acht.
+                 *
+                 * Die Phase allein erklaert es nicht: derselbe Weg traegt die
+                 * Versorgungsleitungen seit dem 2026-09-14 ohne Absturz. Was
+                 * an einer ZONINGSTRASSE anders ist - Zonenbloecke,
+                 * Fahrspuren, geteilte Knoten mit der Stadtstrasse - ist
+                 * ungeklaert.
+                 *
+                 * Solange das so ist, bleibt der Zweig aus. Eine
+                 * stehengebliebene Strasse ist ein Mangel; ein Absturz
+                 * mitten im Abriss kostet den Spielstand. Die Marke und der
+                 * Loeschweg in `ParkingLotLeitungsabriss` bleiben im Code -
+                 * ohne Vormerkung laufen sie ins Leere, und sobald die
+                 * Ursache feststeht, ist es eine Zeile.
+                 */
+                if (EntityManager.HasComponent<Game.Net.Edge>(kind))
+                {
+                    kanten++;
+                    continue;
+                }
+
+                /*
+                 * UEBER DIE BARRIERE, nicht ueber den EntityManager.
+                 *
+                 * Im Dateikopf steht die Regel: Strukturaenderungen laufen
+                 * ausschliesslich ueber die Barrier derselben Phase. Mein
+                 * erster Einschub hielt sich nicht daran und aenderte mitten
+                 * im Durchlauf direkt - waehrend andere Systeme derselben
+                 * Phase noch auf denselben Chunks arbeiten.
+                 */
+                /*
+                 * AUCH DIE FLAECHEN SIND AUSGESETZT - dritter Absturz.
+                 *
+                 * Am 2026-09-22 dreimal abgestuerzt. Erst hielt ich die
+                 * Kanten fuer die Ursache; mit ausgesetzten Kanten kam der
+                 * Absturz nach dem LETZTEN Flaechendurchgang:
+                 *
+                 *     17:28:41.039  32 Flaechen,  5 uebrig, 37 ausgesetzt
+                 *     17:28:41.081   5 Flaechen,  0 uebrig, 37 ausgesetzt
+                 *
+                 * Danach nichts mehr. Damit ist die gemeinsame Ursache nicht
+                 * das Kantenloeschen, sondern dieser ganze Zweig - und vor
+                 * ihm hat der Aufraeumer jahrelang nicht abgestuerzt.
+                 *
+                 * Gezaehlt wird weiter, damit im Log steht, WIEVIEL stehen
+                 * bleibt. Angefasst wird nichts, bis die Ursache feststeht.
+                 * Ein Parkplatzrest ist ein Mangel; ein Absturz mitten im
+                 * Abriss kostet den Spielstand.
+                 */
+                flaechen++;
+            }
+            return (flaechen, kanten, uebrig);
+        }
 
         private (int Marked, int Remaining, int Pflanzen, int PflanzenUebrig)
             MarkRelatedParts(EntityCommandBuffer buffer, Entity lot)

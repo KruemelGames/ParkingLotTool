@@ -27,10 +27,12 @@ namespace ParkingLotTool
     [FileLocation("ModsSettings/ParkingLotTool/optionen")]
     [SettingsUIGroupOrder(GruppeSprache, GruppeTasten, GruppeZufahrt,
         GruppeZoning, GruppeVegetation, GruppeWirtschaft, GruppeHinweise,
-        GruppeFenster, GruppeZuruecksetzen, GruppeEntwickler)]
+        GruppeFenster, GruppeZuruecksetzen, GruppeEntwickler,
+        GruppeDeinstallation)]
     [SettingsUIShowGroupName(GruppeSprache, GruppeTasten, GruppeZufahrt,
         GruppeZoning, GruppeVegetation, GruppeWirtschaft, GruppeHinweise,
-        GruppeFenster, GruppeZuruecksetzen, GruppeEntwickler)]
+        GruppeFenster, GruppeZuruecksetzen, GruppeEntwickler,
+        GruppeDeinstallation)]
     [SettingsUIKeyboardAction(AktionWerkzeug, ActionType.Button, usages: new[] { "PLT" })]
     public class Setting : ModSetting
     {
@@ -45,6 +47,13 @@ namespace ParkingLotTool
         public const string GruppeVegetation = "Vegetation";
         public const string GruppeZuruecksetzen = "Zuruecksetzen";
         public const string GruppeEntwickler = "Entwickler";
+
+        /**
+         * GANZ UNTEN, und das ist Absicht: was hier steht, macht man genau
+         * einmal und dann nie wieder. Zwischen den Reglern waere es eine
+         * Stolperfalle.
+         */
+        public const string GruppeDeinstallation = "Deinstallation";
 
         /**
          * ZEIGT DEN ENTWICKLER-REITER IM PANEL.
@@ -482,6 +491,91 @@ namespace ParkingLotTool
          * Einstellung, sondern die Liste der Prefabs, die vorhandene
          * Spielstaende zum Laden brauchen.
          */
+        /**
+         * AUFRAEUMEN VOR DEM DEINSTALLIEREN.
+         *
+         * Ist der Mod erst weg, kann niemand mehr etwas an dem tun, was er
+         * hinterlassen hat. Die Objekte bleiben stehen - CS2 haelt die
+         * Kennung unserer Prefabs als "veraltet" fest -, aber sie zeigen auf
+         * eine Bauanleitung, die nichts mehr sagt, und unsere Datenkomponenten
+         * wirft der Lader weg. Speichert der Nutzer in dem Zustand, ist das
+         * Wissen endgueltig verloren.
+         *
+         * Also der Griff, den er VORHER hat. Er steht hier und nicht im
+         * Panel, weil man beim Deinstallieren in der Modliste ist und nicht
+         * in einem Werkzeug - und weil man von hier aus sieht, ob ueberhaupt
+         * eine Stadt geladen ist.
+         */
+        [SettingsUIButton]
+        [SettingsUIConfirmation]
+        [SettingsUIDisableByCondition(typeof(Setting), nameof(KeineStadt))]
+        [SettingsUISection(ReiterAllgemein, GruppeDeinstallation)]
+        public bool ParkplaetzeEntfernen
+        {
+            set
+            {
+                var welt = World.DefaultGameObjectInjectionWorld;
+                var reinigung = welt?
+                    .GetExistingSystemManaged<ParkingLotStadtreinigungSystem>();
+                if (reinigung == null)
+                {
+                    Mod.log.Warn("PLT-Stadtreinigung: kein System - es ist "
+                        + "keine Stadt geladen.");
+                    return;
+                }
+
+                if (reinigung.Laeuft)
+                {
+                    Mod.log.Info("PLT-Stadtreinigung: es laeuft schon ein "
+                        + "Abriss. Der zweite Klick bleibt folgenlos.");
+                    return;
+                }
+
+                reinigung.Bestand(out var abraeumbar, out var ohneTraeger,
+                    out var teile);
+                if (abraeumbar == 0)
+                {
+                    /*
+                     * "Nichts zu tun" nur sagen, wenn auch wirklich nichts
+                     * mehr lebt. Null Lots und trotzdem Teile heisst nicht
+                     * "sauber", sondern "Waisen" - und das ist ein Befund.
+                     */
+                    if (teile == 0 && ohneTraeger == 0)
+                        Mod.log.Info("PLT-Stadtreinigung: in dieser Stadt "
+                            + "steht kein PLT-Parkplatz. Nichts zu tun.");
+                    else
+                        Mod.log.Warn("PLT-Stadtreinigung: kein abraeumbarer "
+                            + "Parkplatz, aber " + teile + " lebende Teil(e) "
+                            + "und " + ohneTraeger + " Flaeche(n) ohne "
+                            + "Traegerreferenz. Das sind Waisen - bitte "
+                            + "melden, von hier aus sind sie nicht "
+                            + "abzuraeumen.");
+                    return;
+                }
+
+                Mod.log.Info("PLT-Stadtreinigung: Bestand vor dem Abriss - "
+                    + abraeumbar + " abraeumbare Parkplaetze, " + ohneTraeger
+                    + " ohne Traegerreferenz, " + teile + " lebende Teile. "
+                    + "Auftrag gestellt; ausgefuehrt wird er in der "
+                    + "naechsten Werkzeugphase, vor CS2s eigener "
+                    + "Besitzkaskade.");
+                reinigung.Beauftrage();
+            }
+        }
+
+        /**
+         * ABGELEITET, nicht nachgefuehrt: im Hauptmenue gibt es keine Stadt,
+         * und dann ist der Knopf ausgegraut statt ins Leere zu greifen.
+         *
+         * Eine mitgefuehrte Flagge muesste bei jedem Laden und Verlassen
+         * nachgezogen werden, und genau daran ist in diesem Projekt schon
+         * einmal eine Anzeige haengengeblieben.
+         */
+        [SettingsUIHidden]
+        public bool KeineStadt =>
+            Game.SceneFlow.GameManager.instance == null
+            || Game.SceneFlow.GameManager.instance.gameMode != Game.GameMode.Game;
+
         [SettingsUIButton]
         [SettingsUIConfirmation]
         [SettingsUISection(ReiterAllgemein, GruppeZuruecksetzen)]
@@ -600,6 +694,55 @@ namespace ParkingLotTool
         private readonly Setting _setting;
         private readonly bool _deutsch;
 
+        /**
+         * Die Aufschrift des Aufraeumknopfs - sie traegt den Zustand.
+         *
+         * Wird bei jedem Neulesen der Quelle ausgewertet, und das Neulesen
+         * stoesst die Stadtreinigung selbst an, wenn sich etwas aendert.
+         */
+        private string Entfernenknopf()
+        {
+            switch (Tools.ParkingLotStadtreinigungSystem.Stand)
+            {
+                case Tools.ParkingLotStadtreinigungSystem
+                        .Knopfzustand.Laeuft:
+                    var uebrig = Tools.ParkingLotStadtreinigungSystem
+                        .StandUebrig;
+                    return _deutsch
+                        ? "Abriss läuft… noch " + uebrig + " Teile"
+                        : "Teardown running… " + uebrig + " parts left";
+                case Tools.ParkingLotStadtreinigungSystem
+                        .Knopfzustand.Fertig:
+                    var weg = Tools.ParkingLotStadtreinigungSystem
+                        .StandEntfernt;
+                    var stehen = Tools.ParkingLotStadtreinigungSystem
+                        .StandStehen;
+                    if (stehen > 0)
+                        return _deutsch
+                            ? "Fertig: " + weg + " entfernt, " + stehen
+                              + " blieben stehen — siehe Log"
+                            : "Done: " + weg + " removed, " + stehen
+                              + " remained — see the log";
+                    return _deutsch
+                        ? "Fertig: " + weg + " entfernt — jetzt speichern"
+                        : "Done: " + weg + " removed — save now";
+                case Tools.ParkingLotStadtreinigungSystem
+                        .Knopfzustand.Haengt:
+                    return _deutsch
+                        ? "Kommt nicht voran — siehe Log"
+                        : "Not progressing — see the log";
+                case Tools.ParkingLotStadtreinigungSystem
+                        .Knopfzustand.Nichts:
+                    return _deutsch
+                        ? "Nichts zu entfernen"
+                        : "Nothing to remove";
+                default:
+                    return _deutsch
+                        ? "Alle PLT-Parkplätze entfernen"
+                        : "Remove all PLT parking lots";
+            }
+        }
+
         public Beschriftungen(Setting setting, bool deutsch)
         {
             _setting = setting;
@@ -653,6 +796,8 @@ namespace ParkingLotTool
                        + nameof(Setting.EntwicklerDebug);
             var pfadAbsturzspur = seite + "." + nameof(Setting) + "."
                        + nameof(Setting.Absturzspur);
+            var pfadEntfernen = seite + "." + nameof(Setting) + "."
+                       + nameof(Setting.ParkplaetzeEntfernen);
             var pfadZonTiefe = seite + "." + nameof(Setting) + "."
                        + nameof(Setting.ZoningMaxTiefeText);
 
@@ -663,6 +808,22 @@ namespace ParkingLotTool
                 { "Options.OPTION_DESCRIPTION[" + pfadLoeschen + "]",
                     _deutsch ? "Vor dem Bulldozen eines PLT-Parkplatzes nachfragen. Standard: an. Gilt sofort; Bestätigungen anderer Gebäude bleiben unverändert."
                         : "Ask before bulldozing a PLT parking lot. Default: on. Takes effect immediately; confirmations for other buildings remain unchanged." },
+                /*
+                 * DER KNOPF SAGT SELBST, WAS LOS IST.
+                 *
+                 * Vorher stand hier ein fester Text, und die Antwort landete
+                 * in einer Logdatei. Wer drueckt, sieht dann nichts passieren
+                 * und drueckt nochmal. `ReloadActiveLocale` laesst CS2 diese
+                 * Quelle neu lesen, sobald sich der Zustand aendert - der
+                 * Text wechselt also im offenen Menue.
+                 */
+                { "Options.OPTION[" + pfadEntfernen + "]", Entfernenknopf() },
+                { "Options.OPTION_DESCRIPTION[" + pfadEntfernen + "]",
+                    _deutsch ? "Reißt die mit diesem Mod gebauten Parkplätze in der geladenen Stadt ab. Gedacht für den Schritt VOR dem Deinstallieren: danach kann der Mod nichts mehr aufräumen, und ein ohne ihn gespeicherter Stand verliert die Daten seiner Parkplätze endgültig. Gewachsene Zoning-Häuser bleiben stehen — die gehören dir, nicht dem Mod; ihre Straßen- und Versorgungsanbindung kann allerdings mit abgerissen werden. Warte ab, bis auf dem Knopf „Fertig“ steht, und speichere dann. Im Hauptmenü ausgegraut, weil es dort keine Stadt gibt."
+                        : "Demolishes the parking lots this mod built in the loaded city. Meant for the step BEFORE uninstalling: afterwards the mod can no longer clean anything up, and a save written without it loses its parking lot data for good. Grown zoning buildings stay — those are yours, not the mod's; their road and utility connections may go with the teardown, though. Wait until the button says “Done”, then save. Greyed out in the main menu, where there is no city." },
+                { "Options.WARNING[" + pfadEntfernen + "]",
+                    _deutsch ? "Alle mit diesem Mod gebauten Parkplätze in dieser Stadt abreißen? Das lässt sich im Werkzeug nicht rückgängig machen — sichere vorher deinen Spielstand."
+                        : "Demolish every parking lot this mod built in this city? The tool's undo cannot take this back — back up your save first." },
                 { "Options.OPTION[" + pfadAbsturzspur + "]",
                     _deutsch ? "Absturzspur mitschreiben"
                         : "Record a crash trace" },
@@ -716,6 +877,11 @@ namespace ParkingLotTool
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeHinweise + "]",
                     _deutsch ? "Hinweise" : "Prompts"
+                },
+                {
+                    "Options.GROUP[" + seite + "."
+                        + Setting.GruppeDeinstallation + "]",
+                    _deutsch ? "Deinstallation" : "Uninstall"
                 },
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeWirtschaft + "]",

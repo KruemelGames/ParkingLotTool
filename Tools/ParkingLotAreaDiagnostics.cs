@@ -195,14 +195,63 @@ namespace ParkingLotTool.Tools
         private int AttachChildren(List<AreaTransferRecord> candidates)
         {
             var attached = 0;
+            var gelistet = 0;
+            var ohneEntity = 0;
             foreach (var record in candidates)
             {
                 if (record.MaterializedEntity == _lotOwner) continue;
+                if (record.MaterializedEntity == Entity.Null
+                    || !EntityManager.Exists(record.MaterializedEntity))
+                {
+                    ohneEntity++;
+                    continue;
+                }
                 EntityManager.AddComponentData(record.MaterializedEntity,
                     new Owner(_lotOwner));
+                if (TrageInSubAreaEin(record.MaterializedEntity)) gelistet++;
                 attached++;
             }
+
+            /*
+             * DER BESITZER ALLEIN REICHT NICHT - die LISTE entscheidet.
+             *
+             * Hier stand bisher nur `new Owner(...)`. CS2s Loeschkaskade
+             * folgt aber der `SubArea`-Liste AM BESITZER, nicht dem Vermerk
+             * am Kind; das hatten wir am 2026-08-25 schon einmal falsch
+             * herum. Fuer Netzkanten wird die Liste in
+             * `ParkingLotLotOwner.AddCarrierSubNet` von Hand gefuellt, fuer
+             * Flaechen tat es niemand.
+             *
+             * Folge, gemeldet am 2026-09-22: alle Teile weg, der Belag stand
+             * noch. Und drei Abstuerze bei dem Versuch, ihn selbst zu
+             * loeschen, statt das Spiel machen zu lassen.
+             *
+             * Die Zahlen stehen im Log, weil genau diese Annahme heute
+             * dreimal falsch war. Weichen `Besitzer` und `gelistet`
+             * voneinander ab, sieht man es sofort.
+             */
+            Mod.log.Info("PLT-Flaechenbesitz: " + attached
+                + " Flaeche(n) haben den Parkplatz als Besitzer, " + gelistet
+                + " davon stehen in seiner SubArea-Liste"
+                + (ohneEntity > 0
+                    ? ", " + ohneEntity + " ohne materialisierte Entity"
+                    : string.Empty)
+                + ". Ohne Listeneintrag nimmt CS2 sie beim Abriss nicht mit.");
             return attached;
+        }
+
+        /** Traegt eine Flaeche in die SubArea-Liste des Parkplatzes ein. */
+        private bool TrageInSubAreaEin(Entity flaeche)
+        {
+            if (_lotOwner == Entity.Null || !EntityManager.Exists(_lotOwner))
+                return false;
+            if (!EntityManager.HasBuffer<Game.Areas.SubArea>(_lotOwner))
+                EntityManager.AddBuffer<Game.Areas.SubArea>(_lotOwner);
+            var buffer = EntityManager.GetBuffer<Game.Areas.SubArea>(_lotOwner);
+            for (var i = 0; i < buffer.Length; i++)
+                if (buffer[i].m_Area == flaeche) return true;
+            buffer.Add(new Game.Areas.SubArea(flaeche));
+            return true;
         }
 
         private void RecordAreaDefinition(

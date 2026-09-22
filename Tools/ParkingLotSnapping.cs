@@ -219,10 +219,46 @@ namespace ParkingLotTool.Tools
             // ERST JETZT scharfstellen - die Zeile davor haette sich sonst
             // selbst gespeichert.
             _fangAktiv = true;
+            _fangNachschauFrames = 0;
         }
 
         /** Beim Verlassen des Werkzeugs aufrufen. */
         private void SperreFangauswahl() => _fangAktiv = false;
+
+        /**
+         * SCHAUT KURZ NACH DEM START NOCH EINMAL HIN.
+         *
+         * Die Kette ist an allen vier Gliedern gemessen: der Setter schlaegt
+         * an, der Wert steht in `optionen.coc`, er wird beim Werkzeugstart
+         * geladen, und die Anzeige liest ihn jeden Frame frisch. Der Nutzer
+         * sieht den Knopf am 2026-09-22 trotzdem wieder an.
+         *
+         * Also die einzige Stelle, die keine Messung hat: was passiert NACH
+         * dem Laden. Schreibt jemand `selectedSnap` ohne unseren Setter -
+         * etwa CS2 selbst ueber ein Feld -, faellt es hier auf. Stimmt der
+         * Wert dagegen noch, liegt es nicht an uns, und die Suche geht in
+         * der Oberflaeche weiter.
+         */
+        private int _fangNachschauFrames = -1;
+
+        private void PflegeFangnachschau()
+        {
+            if (_fangNachschauFrames < 0) return;
+            if (++_fangNachschauFrames < 60) return;
+            _fangNachschauFrames = -1;
+            var jetzt = (int)selectedSnap;
+            var erwartet = Mod.Optionen?.FangauswahlGesetzt == true
+                ? Mod.Optionen.Fangauswahl : unchecked((int)Snap.All);
+            if (jetzt == erwartet)
+            {
+                Mod.log.Info("PLT-Fangnachschau: nach 60 Bildern unveraendert "
+                    + jetzt + " - der gemerkte Wert haelt.");
+                return;
+            }
+            Mod.log.Warn("PLT-Fangnachschau: der Wert wurde nach dem Laden "
+                + "ueberschrieben. Erwartet " + erwartet + ", jetzt " + jetzt
+                + ". Jemand schreibt an unserem Setter vorbei.");
+        }
 
         /**
          * Die Fangarten, die dieses Werkzeug wirklich kann.
