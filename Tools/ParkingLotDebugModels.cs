@@ -467,6 +467,10 @@ namespace ParkingLotTool.Tools
          * eine ganze Runde.
          */
         public string Art { get; set; }
+        // Im Abzug vom 22.09. fehlten bei 2/2 gesetzten Zufahrten die
+        // Achsfelder; ohne sie liess sich der Hindernistreffer nicht nachbauen.
+        public DebugPoint2 AxisDirection { get; set; }
+        public double? AxisLength { get; set; }
 
         internal static DebugEntrance From(Entrance entrance) => entrance == null
             ? null
@@ -476,6 +480,9 @@ namespace ParkingLotTool.Tools
                 Along = entrance.Along,
                 Corner = entrance.Corner,
                 Art = entrance.Art.ToString(),
+                AxisDirection = entrance.AxisDirection.HasValue
+                    ? DebugPoint2.From(entrance.AxisDirection.Value) : null,
+                AxisLength = entrance.AxisLength,
             };
     }
 

@@ -17,6 +17,7 @@ namespace ParkingLotTool.Geometry.Zellen
             internal int Band = -1;
             internal Zufahrtsart Art;
             internal bool Zufahrt;
+            internal Punkt? Querhalbvektor;
             /**
              * SCHRAEGE STIRN: LAENGSVERSATZ DER VIER ECKEN.
              *
@@ -79,6 +80,11 @@ namespace ParkingLotTool.Geometry.Zellen
                 {
                     var d = B - A;
                     var laenge = Geometrie.Laenge(d);
+                    if (Querhalbvektor.HasValue)
+                    {
+                        var q = Querhalbvektor.Value;
+                        return new[] { A - q, B - q, B + q, A + q };
+                    }
                     var n = new Punkt(-d.Y, d.X) * (Breite / (2 * laenge));
                     if (!Schraeg) return new[] { A - n, B - n, B + n, A + n };
                     var u = d * (1 / laenge);
@@ -731,9 +737,11 @@ namespace ParkingLotTool.Geometry.Zellen
                     continue;
                 }
                 var anschluss = new Weg { A = z.Start, B = z.Start + z.Innennormale * treffer.Min(),
-                    Breite = z.Vorgabe.Breite, Zufahrt = true, Art = z.Vorgabe.Art, Fuss = z.Vorgabe.Art == Zufahrtsart.Fussweg };
-                // Die aeussere Stirn liegt auf der Grundstückskante. Das
-                // Rechteck muss dennoch einschliesslich Breite frei bleiben.
+                    Breite = z.Vorgabe.Breite, Querhalbvektor = z.Querhalbvektor,
+                    Zufahrt = true, Art = z.Vorgabe.Art, Fuss = z.Vorgabe.Art == Zufahrtsart.Fussweg };
+                // Der Fang an Kante 3 hat Projektion 0,625: eine rechtwinklige
+                // Stirn lag 1,171 m ausserhalb. Die bereits vom Zufahrtsbauer
+                // berechnete Kantenbreite haelt beide Stirnecken auf der Kontur.
                 if (Frei(anschluss, areal, zoning)) p.Zufahrten.Add(anschluss);
                 else p.Warnungen.Add("Randstraßen aus: Zufahrt " + z.Nummer + " trifft ein Hindernis.");
             }
