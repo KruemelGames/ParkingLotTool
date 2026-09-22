@@ -97,6 +97,52 @@ namespace ParkingLotTool.Tools
             });
         }
 
+        /**
+         * WAS AUS DEM SPIELSTAND KOMMT, WURDE NICHT GERADE GEBAUT.
+         *
+         * Diese Pruefung beantwortet eine einzige Frage: *wir haben eben
+         * etwas gesetzt - hat die Sperre gehalten?* Dafuer merkt sie sich in
+         * `_loggedCompanions`, wen sie schon kennt, und nimmt von jedem
+         * Unbekannten einen Abzug der Heightmap.
+         *
+         * Diese Menge ist beim Start leer. Nach dem Laden ist damit JEDER
+         * vorhandene Begleiter "unbekannt" - und genau in dem Moment
+         * schreibt CS2 die Heightmap ohnehin neu und laesst alle Lots
+         * planieren. Die Pruefung sah also eine Aenderung, die sie gar nicht
+         * meint, und meldete sie als Fehler.
+         *
+         * Ein Tester hat am 2026-09-22 direkt beim Laden 19 Stueck bekommen,
+         * eins je Parkplatz in seinem Spielstand. Das ist die Zahl seiner
+         * Parkplaetze, nicht die Zahl seiner Probleme.
+         *
+         * Hier werden die vorhandenen Begleiter deshalb als bekannt
+         * eingetragen, ohne Abzug. Geprueft wird ab jetzt nur noch, was
+         * WAEHREND dieser Sitzung dazukommt - also das, wofuer die Sperre da
+         * ist.
+         */
+        [Preserve]
+        protected override void OnGameLoadingComplete(
+            Colossal.Serialization.Entities.Purpose purpose, GameMode mode)
+        {
+            base.OnGameLoadingComplete(purpose, mode);
+            _loggedLots.Clear();
+            _loggedCompanions.Clear();
+            _snapshots.Clear();
+            if (mode != GameMode.Game) return;
+
+            _companions.CompleteDependency();
+            using var vorhanden = _companions.ToEntityArray(Allocator.Temp);
+            for (var i = 0; i < vorhanden.Length; i++)
+                _loggedCompanions.Add(vorhanden[i]);
+            if (vorhanden.Length > 0)
+                Mod.log.Info("PLT-Gebaeudepfad: " + vorhanden.Length
+                    + " Begleiter aus dem Spielstand uebernommen und NICHT "
+                    + "auf die Terraform-Sperre geprueft - beim Laden "
+                    + "planiert CS2 alle Lots neu, eine Abweichung dort "
+                    + "sagt nichts ueber unsere Sperre. Geprueft wird, was "
+                    + "in dieser Sitzung gebaut wird.");
+        }
+
         [Preserve]
         protected override void OnUpdate()
         {

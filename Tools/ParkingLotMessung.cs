@@ -128,7 +128,26 @@ namespace ParkingLotTool.Tools
             }
         }
 
-        internal static Uhr Miss(Sys system) => new Uhr((int)system);
+        /**
+         * HIER HAENGT AUCH DIE ABSTURZSPUR DRAN.
+         *
+         * Jedes unserer Simulationssysteme beginnt sein `OnUpdate` mit
+         * dieser Uhr - zwoelf Stellen, alle schon da. Die Marke gehoert
+         * deshalb hierher und nicht in zwoelf Systeme einzeln: eine Regel an
+         * einem Ort, und kein System kann sie beim naechsten Mal vergessen.
+         *
+         * Sie wird VOR der Arbeit gesetzt, nicht danach. Nur so steht nach
+         * einem Absturz drin, WORIN es gekracht hat - eine Marke am Ende
+         * haette das System, das gerade sauber fertig wurde.
+         *
+         * Ist der Schalter aus, ist das ein Feldvergleich.
+         */
+        internal static Uhr Miss(Sys system)
+        {
+            if (ParkingLotSchrittmarke.Mitschreiben)
+                ParkingLotSchrittmarke.Setze("System: " + SysName[(int)system]);
+            return new Uhr((int)system);
+        }
 
         /**
          * Ab dieser Bildzeit gilt ein Bild als Ausreisser und wird einzeln

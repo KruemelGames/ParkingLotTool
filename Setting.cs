@@ -199,6 +199,47 @@ namespace ParkingLotTool
         [SettingsUISection(ReiterAllgemein, GruppeHinweise)]
         public bool ParkplatzLoeschenBestaetigen { get; set; } = true;
 
+        /**
+         * SCHREIBT BEI JEDEM BILD MIT, WAS DIE MOD GERADE TUT.
+         *
+         * Die Schrittmarke gab es bisher nur an den Bau- und Abrisswegen.
+         * Stuerzt CS2 beim blossen Spielen ab - fertige Parkplaetze, nichts
+         * wird gebaut -, stand dort der letzte BAU, womoeglich Stunden
+         * vorher. Genau dieser Fall wurde am 2026-09-22 gemeldet.
+         *
+         * WARUM NICHT IMMER AN. Jede Marke schreibt die Datei neu und
+         * erzwingt mit `Flush(true)` den Weg bis auf die Platte. Das ist
+         * Absicht: was im Betriebssystempuffer bleibt, ist nach einem
+         * nativen Absturz weg. Es ist damit aber zu teuer, um es jedem
+         * Nutzer dauernd zuzumuten - deshalb ein Schalter, aus als Standard.
+         *
+         * WER IHN BRAUCHT: wer einen Absturz WIEDERHOLEN kann. Anmachen,
+         * abstuerzen lassen, neu starten - dann steht im automatisch
+         * erzeugten Absturzbericht, in welchem unserer Systeme es passiert
+         * ist.
+         */
+        [SettingsUISection(ReiterAllgemein, GruppeHinweise)]
+        public bool Absturzspur
+        {
+            get => _absturzspur;
+            set
+            {
+                _absturzspur = value;
+                // Sofort, nicht erst beim naechsten Start: wer den Schalter
+                // umlegt, will den naechsten Absturz mitgeschrieben haben.
+                // Und im Log steht, ab wann die Spur gilt - sonst raetselt
+                // man spaeter, warum die Datei erst ab der Mitte etwas sagt.
+                Tools.ParkingLotSchrittmarke.Mitschreiben = value;
+                Mod.log.Info("PLT-Absturzspur " + (value ? "AN" : "AUS")
+                    + (value
+                        ? " - ab jetzt wird bei jedem Bild mitgeschrieben, "
+                          + "das kostet Leistung."
+                        : "."));
+            }
+        }
+
+        private bool _absturzspur;
+
 
         /**
          * HAUPTSCHALTER FUER DIE GESAMTE WIRTSCHAFT.
@@ -610,6 +651,8 @@ namespace ParkingLotTool
                        + nameof(Setting.ZoningMaxBreiteText);
             var pfadEntwickler = seite + "." + nameof(Setting) + "."
                        + nameof(Setting.EntwicklerDebug);
+            var pfadAbsturzspur = seite + "." + nameof(Setting) + "."
+                       + nameof(Setting.Absturzspur);
             var pfadZonTiefe = seite + "." + nameof(Setting) + "."
                        + nameof(Setting.ZoningMaxTiefeText);
 
@@ -620,6 +663,12 @@ namespace ParkingLotTool
                 { "Options.OPTION_DESCRIPTION[" + pfadLoeschen + "]",
                     _deutsch ? "Vor dem Bulldozen eines PLT-Parkplatzes nachfragen. Standard: an. Gilt sofort; Bestätigungen anderer Gebäude bleiben unverändert."
                         : "Ask before bulldozing a PLT parking lot. Default: on. Takes effect immediately; confirmations for other buildings remain unchanged." },
+                { "Options.OPTION[" + pfadAbsturzspur + "]",
+                    _deutsch ? "Absturzspur mitschreiben"
+                        : "Record a crash trace" },
+                { "Options.OPTION_DESCRIPTION[" + pfadAbsturzspur + "]",
+                    _deutsch ? "Schreibt bei JEDEM Bild mit, welches System des Mods gerade läuft, und zwingt es sofort auf die Platte — damit nach einem Absturz dort steht, wo es passiert ist. Standard: aus, weil es spürbar Leistung kostet. Nur einschalten, wenn du einen Absturz wiederholen kannst."
+                        : "Records which of the mod's systems is running on EVERY frame and forces it straight to disk, so after a crash the trace says where it happened. Default: off, because it costs noticeable performance. Only turn it on if you can reproduce a crash." },
                 { "Options.SECTION[" + seite + "]", "Parking Lot Tool" },
                 {
                     "Options.TAB[" + seite + "." + Setting.ReiterAllgemein + "]",

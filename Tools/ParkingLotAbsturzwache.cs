@@ -60,6 +60,7 @@ namespace ParkingLotTool.Tools
                         + "nicht ordentlich aufgehoert. " + Befund
                         + " Im Debug-Reiter steht jetzt ein Knopf fuer den "
                         + "Absturzbericht.");
+                    SchnuereVonSelbst();
                 }
 
                 Directory.CreateDirectory(Ordner);
@@ -76,6 +77,59 @@ namespace ParkingLotTool.Tools
                     + ausnahme.Message);
             }
         }
+
+        /**
+         * SCHNUERT DAS PAKET SOFORT, OHNE DASS JEMAND KLICKT.
+         *
+         * Der Knopf im Melde-Reiter setzt voraus, dass der Spieler wieder in
+         * seinen Spielstand kommt. Am 2026-09-22 war genau das der Fall
+         * nicht: der Stand stuerzte beim Spielen ab, und danach kam der
+         * Tester nicht mehr hinein - also auch nicht an den Knopf. Der
+         * Bericht, der den Absturz erklaert haette, war damit unerreichbar.
+         *
+         * Das Paket braucht den Spielstand aber gar nicht. Es liest Dateien:
+         * die geretteten Spuren, `Player-prev.log`, das Modlog-Ende und die
+         * Umgebung. Alles davon steht beim Start schon auf der Platte.
+         *
+         * Also wird es hier geschnuert, in dem Moment, in dem die Wache den
+         * Absturz erkennt. Der Knopf bleibt - wer hineinkommt, kann weiter
+         * einen frischen Bericht mit Bauzettel erzeugen. Dieser hier ist der
+         * Bericht fuer den Fall, dass es nicht geht.
+         *
+         * Ein Fehlschlag darf das Laden nicht aufhalten: schlimmstenfalls
+         * fehlt eine Datei, die es vorher auch nicht gab.
+         */
+        private static void SchnuereVonSelbst()
+        {
+            try
+            {
+                var pfad = ParkingLotMeldepaket.Schnuere(
+                    ParkingLotMeldepaket.Anlass.Absturz, out var grund);
+                if (pfad != null)
+                {
+                    AutoBericht = pfad;
+                    Mod.log.Warn("PLT-Absturzbericht AUTOMATISCH erstellt, "
+                        + "ohne dass etwas angeklickt werden muss: " + pfad
+                        + " - diese eine Datei genuegt fuer die Meldung. Sie "
+                        + "enthaelt keine Pfade und keine Kennungen.");
+                }
+                else
+                {
+                    Mod.log.Warn("PLT-Absturzbericht konnte nicht automatisch "
+                        + "erstellt werden: " + (grund ?? "kein Grund genannt")
+                        + " Der Knopf im Melde-Reiter geht weiter.");
+                }
+            }
+            catch (Exception ausnahme)
+            {
+                Mod.log.Warn("PLT-Absturzbericht konnte nicht automatisch "
+                    + "erstellt werden: " + ausnahme.Message);
+            }
+        }
+
+        /** Pfad des beim Start selbst erstellten Berichts, sonst leer. */
+        internal static string AutoBericht { get; private set; }
+            = string.Empty;
 
         /** Beim ordentlichen Beenden aufrufen. */
         internal static void Beende()

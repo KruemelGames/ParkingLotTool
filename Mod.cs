@@ -143,6 +143,21 @@ namespace ParkingLotTool
                 nameof(ParkingLotTool), _setting, new Setting(this));
 
             /*
+             * DEN GELESENEN WERT EINMAL DURCHREICHEN.
+             *
+             * `LoadSettings` schreibt in das Feld hinter der Eigenschaft und
+             * laeuft nicht zwingend durch deren Setter - der Schalter waere
+             * dann im Optionsmenue an und die Spur trotzdem aus, bis jemand
+             * ihn einmal umlegt. Genau diese Sorte stiller Abweichung hat
+             * uns schon zweimal Zeit gekostet.
+             */
+            Tools.ParkingLotSchrittmarke.Mitschreiben = _setting.Absturzspur;
+            if (_setting.Absturzspur)
+                log.Info("PLT-Absturzspur ist AN (aus den Einstellungen). "
+                    + "Jedes Bild wird mitgeschrieben; das kostet Leistung "
+                    + "und ist nur zum Einkreisen eines Absturzes gedacht.");
+
+            /*
              * DIE NOTBREMSE IST WEG - und das ist eine Aussage, keine
              * Nachlaessigkeit.
              *

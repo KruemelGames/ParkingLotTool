@@ -450,8 +450,17 @@ namespace ParkingLotTool.Tools
                 ParkingLotAbsturzwache.LetzteSitzungAbgestuerzt));
             AddBinding(_absturzBefund = new ValueBinding<string>(
                 Group, "AbsturzBefund", ParkingLotAbsturzwache.Befund));
+            /*
+             * DER FERTIGE BERICHT STEHT SCHON DA.
+             *
+             * Die Wache schnuert ihn beim Start selbst, weil der Knopf
+             * darunter einen geladenen Spielstand braucht und genau der beim
+             * Absturzfall fehlen kann. Wer trotzdem hineinkommt, soll den
+             * Pfad sehen, statt den Knopf noch einmal zu druecken.
+             */
             AddBinding(_meldungPfad = new ValueBinding<string>(
-                Group, "MeldungPfad", string.Empty));
+                Group, "MeldungPfad",
+                ParkingLotAbsturzwache.AutoBericht ?? string.Empty));
             AddBinding(_baubefund = new ValueBinding<string>(
                 Group, "Baubefund", string.Empty));
             AddBinding(_baukurzinfo = new ValueBinding<string>(

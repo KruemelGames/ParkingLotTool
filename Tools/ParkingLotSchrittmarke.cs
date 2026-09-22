@@ -72,6 +72,33 @@ namespace ParkingLotTool.Tools
          * Kurz halten: der Text landet unveraendert in der Datei, und die soll
          * man in drei Sekunden ueberblicken.
          */
+        /**
+         * Die Marke fuer ein SIMULATIONSSYSTEM - nur mit eingeschalteter
+         * Absturzspur.
+         *
+         * Getrennt von `Setze`, weil die Bau- und Abrisswege ihre Marken
+         * IMMER setzen sollen: sie laufen selten, und genau dort lagen die
+         * bisherigen Abstuerze. Was hier durchkommt, laeuft dagegen in jedem
+         * Bild, und ein erzwungener Schreibvorgang je Bild ist nichts, was
+         * man jemandem unterschiebt.
+         *
+         * Ist der Schalter aus, kostet der Aufruf einen Feldzugriff. Deshalb
+         * darf er an jeder Stelle stehen, auch in der heissesten Schleife.
+         */
+        internal static void Simulation(string system)
+        {
+            if (!Mitschreiben) return;
+            Setze(system);
+        }
+
+        /**
+         * Steht auf dem Schalter aus den Einstellungen. Als Feld und nicht
+         * als Zugriff auf `Mod.Optionen`, damit der Aufruf oben wirklich nur
+         * ein Vergleich ist - die Optionen haengen an einer Kette von
+         * Eigenschaften, und die laeuft sonst sechzigmal je Sekunde mit.
+         */
+        internal static bool Mitschreiben { get; set; }
+
         internal static void Setze(string schritt)
         {
             if (_kaputt) return;
