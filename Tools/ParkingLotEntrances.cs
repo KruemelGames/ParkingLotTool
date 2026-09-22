@@ -2,7 +2,12 @@ using static ParkingLotTool.Tools.ParkingLotTexte;
 using System;
 using System.Collections.Generic;
 using Colossal.Mathematics;
+using Game.Common;
+using Game.Net;
 using Game.Simulation;
+using Game.Tools;
+using Unity.Collections;
+using Unity.Entities;
 using ParkingLotTool.Geometry;
 using Unity.Mathematics;
 
@@ -25,6 +30,15 @@ namespace ParkingLotTool.Tools
         private const float EntranceRoadSnapDistance = 5f;
         private const float EntranceLineEpsilon = 0.0001f;
         private const float EntranceSnapCos = 0.9961947f; // cos(5 Grad)
+        /**
+         * Wie schraeg eine Gasse hoechstens auf die Kante treffen darf.
+         *
+         * 0,5 ist sin(30 Grad) und damit derselbe Wert, mit dem der
+         * Eckenfang seine schraegen Ecken zulaesst (`MinCornerSnapSin`).
+         * Flacher als 30 Grad waere die Zufahrt mehr als doppelt so lang
+         * wie tief.
+         */
+        private const float EntranceRoadMinProjection = 0.5f;
 
         private readonly List<Entrance> _entrances = new List<Entrance>();
         private readonly ParkingLotEntranceOverlayState _entranceOverlay =
@@ -711,8 +725,31 @@ namespace ParkingLotTool.Tools
                     var roadLength = math.length(vector);
                     if (roadLength < 0.5f) continue;
                     var roadDirection = vector / roadLength;
-                    if (math.abs(math.dot(roadDirection, gate.Inward))
-                        < EntranceSnapCos) continue;
+                    /*
+                     * AUCH SCHRAEG - und dann LAENGS DER STRASSE.
+                     *
+                     * Bis zum 2026-09-22 stand hier `EntranceSnapCos`, also
+                     * cos(5 Grad): die Gasse musste praktisch senkrecht auf
+                     * die Polygonkante treffen. An einer schraegen Kante tut
+                     * das keine, und deshalb gab es dort ueberhaupt keinen
+                     * Strassenfang - der Nutzer: *"Ich kann jetzt aber nicht
+                     * mehr an diagonale linien an die Strassen snappen."*
+                     *
+                     * Jetzt entscheidet die Projektion auf die Kantennormale,
+                     * und die Zufahrt uebernimmt die RICHTUNG DER GASSE statt
+                     * der Kantennormalen. Bei einer senkrechten Gasse ist das
+                     * dasselbe wie vorher (Projektion 1); schraeg wird die
+                     * Zufahrt entsprechend laenger, damit sie trotzdem
+                     * `Es + Sl` tief in den Platz reicht. Genau so rechnet
+                     * `EntranceCornerFit` seine schraegen Ecken auch.
+                     *
+                     * Unter 30 Grad wird abgebrochen: dort waere die Zufahrt
+                     * mehr als doppelt so lang wie tief, und das ist kein
+                     * Anschluss mehr, sondern ein Schleifschnitt.
+                     */
+                    var projektion = math.dot(roadDirection, gate.Inward);
+                    if (math.abs(projektion) < EntranceRoadMinProjection) continue;
+                    var einwaerts = projektion >= 0f ? roadDirection : -roadDirection;
                     var denominator = EntranceCross(gate.Tangent, roadDirection);
                     if (math.abs(denominator) <= EntranceLineEpsilon) continue;
                     var targetAlong = EntranceCross(
@@ -721,7 +758,8 @@ namespace ParkingLotTool.Tools
                     if (!math.isfinite(targetAlong)) continue;
                     var point = _points[gate.Edge] + gate.Tangent * targetAlong;
                     var spatial = DistanceToSegment(point, line[0], line[1]);
-                    Consider(targetAlong, gate.Inward, settings.Es + settings.Sl,
+                    Consider(targetAlong, einwaerts,
+                        (settings.Es + settings.Sl) / math.abs(projektion),
                         null, line[0], line[1], spatial, road: true);
                 }
             }
@@ -826,10 +864,123 @@ namespace ParkingLotTool.Tools
             var endCorner = ParkingGeometry.TryEntranceCornerPlacement(
                 site, settings, edge, false, out _);
             var normalMargin = (float)(settings.Ai / 2 + 2 * settings.Sw);
-            minimum = startCorner ? 0f : normalMargin;
-            maximum = length - (endCorner ? 0f : normalMargin);
+            /*
+             * AN EINER ECKE MIT STADTSTRASSE FAELLT DER ABSTAND WEG.
+             *
+             * Wofuer der Abstand da ist, ist gemessen (2026-09-22, Messform
+             * `ReglerSchraeg`, Zufahrt auf Kante 0):
+             *
+             *     Along  0,0  330 Buchten  Naht geschnitten, 1 Loch
+             *     Along  5,0  329 Buchten  Naht geschnitten, 1 Loch
+             *     Along  9,5  328 Buchten  keine Warnung
+             *
+             * 9,5 m ist `Ai/2 + 2*Sw`, und genau dort wird es sauber:
+             * naeher an der Ecke schliesst sich die Flaeche zum Ring und
+             * muss aufgeschnitten werden. Der Abstand ist also nicht
+             * willkuerlich.
+             *
+             * Der Nutzer will trotzdem an die Ecke, und zwar genau dort, wo
+             * die Stadtstrasse an ihr vorbeilaeuft - anders bekommt der
+             * Parkplatz an dieser Stelle keine Anbindung. Sein Wunsch am
+             * 2026-09-22: den Abstand weglassen, *"aber nur fuer diese Ecke
+             * sozusagen"*.
+             *
+             * Also genau so: der Abstand faellt an der Ecke weg, an der
+             * eine Stadtstrasse liegt - und nur dort. Was das kostet, steht
+             * oben in der Tabelle: eine Naht in der Flaeche. Ein Fehler ist
+             * es nicht, die Naht wird geschnitten und der Parkplatz steht.
+             */
+            var startFrei = startCorner
+                || StadtstrasseNaheAn(_points[edge]);
+            var endeFrei = endCorner
+                || StadtstrasseNaheAn(_points[(edge + 1) % _points.Count]);
+            minimum = startFrei ? 0f : normalMargin;
+            maximum = length - (endeFrei ? 0f : normalMargin);
             return minimum <= maximum + ParkingGeometry.FitEps;
         }
+
+        /**
+         * Liegt eine Stadtstrasse dicht an diesem Punkt?
+         *
+         * Gemessen wird an der FAHRBAHNKANTE, nicht an der Mittellinie -
+         * dieselbe Begruendung wie beim Arealfang in
+         * `ParkingLotSnapping.Targets`: die Mittellinie plus halbe Breite
+         * waere an jeder Kreuzung und jeder Aufweitung falsch.
+         *
+         * Eigene Netze zaehlen nicht: alles mit `Owner` gehoert einem
+         * Gebaeude oder einem Parkplatz, `Temp` ist eine laufende Vorschau.
+         *
+         * 12 m ist derselbe Radius, mit dem die Zufahrt auf den Umriss
+         * faengt - was in diesem Abstand liegt, gehoert fuer die Bedienung
+         * ohnehin zusammen.
+         */
+        private bool StadtstrasseNaheAn(float2 punkt)
+        {
+            const float radius = EntranceBoundarySnapDistance;
+            if (_netSearchSystem == null) return false;
+
+            /*
+             * GEMERKT, NICHT JEDEN FRAME GESUCHT.
+             *
+             * Diese Frage haengt am Polygon und an der Welt, nicht am
+             * Mauszeiger; sie kommt aber aus `TryBuildEntranceCandidate`
+             * und damit in jedem Bild. Der Merkzettel faellt mit jeder
+             * Geometriefassung.
+             */
+            if (_strassenEckeRevision != _geometryRevision)
+            {
+                _strassenEckeRevision = _geometryRevision;
+                _strassenEcke.Clear();
+            }
+            var schluessel = new int2(
+                (int)math.round(punkt.x * 4f), (int)math.round(punkt.y * 4f));
+            if (_strassenEcke.TryGetValue(schluessel, out var gemerkt))
+                return gemerkt;
+
+            var tree = _netSearchSystem.GetNetSearchTree(readOnly: true, out var deps);
+            deps.Complete();
+            using var results = new NativeList<Entity>(16, Allocator.Temp);
+            var iterator = new EntityIterator
+            {
+                Bounds = new Bounds2(punkt - radius, punkt + radius),
+                Results = results,
+            };
+            tree.Iterate(ref iterator);
+
+            var gefunden = false;
+            for (var i = 0; i < results.Length && !gefunden; i++)
+            {
+                var entity = results[i];
+                if (!EntityManager.HasComponent<Game.Net.Edge>(entity)
+                    || !EntityManager.HasComponent<Game.Net.Road>(entity)
+                    || EntityManager.HasComponent<Owner>(entity)
+                    || EntityManager.HasComponent<Temp>(entity)
+                    || EntityManager.HasComponent<Deleted>(entity)) continue;
+                if (!EntityManager.HasComponent<EdgeGeometry>(entity)) continue;
+                var geometrie = EntityManager.GetComponentData<EdgeGeometry>(entity);
+                foreach (var kurve in new[]
+                {
+                    geometrie.m_Start.m_Left, geometrie.m_Start.m_Right,
+                    geometrie.m_End.m_Left, geometrie.m_End.m_Right,
+                })
+                {
+                    if (!math.all(math.isfinite(kurve.a))
+                        || !math.all(math.isfinite(kurve.d))) continue;
+                    if (MathUtils.Distance(kurve.xz, punkt, out _) < radius)
+                    {
+                        gefunden = true;
+                        break;
+                    }
+                }
+            }
+
+            _strassenEcke[schluessel] = gefunden;
+            return gefunden;
+        }
+
+        private readonly Dictionary<int2, bool> _strassenEcke =
+            new Dictionary<int2, bool>();
+        private long _strassenEckeRevision = -1;
 
         /**
          * Standardmass: 7,0 m Zufahrt plus zwei 3,0-m-Kapseln = 13,0 m.

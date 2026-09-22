@@ -42,6 +42,32 @@ internal static partial class Program
         new float2(300, 105), new float2(0, 105),
     };
 
+    /** Nur zum Messen: was kostet eine Zufahrt dicht an der Ecke? */
+    internal static int RunEckrand()
+    {
+        foreach (var rand in new[] { true, false })
+            foreach (var along in new[] { 0.0, 2.0, 5.0, 9.5, 20.0 })
+            {
+                var ergebnis = BaueRegler(ReglerSchraeg, true, s =>
+                {
+                    s.Randstrassen = rand;
+                    s.Entrances = new[] { new Entrance { Edge = 0, Along = along } };
+                });
+                var l = ergebnis.Layout;
+                Console.WriteLine($"Randstrassen {(rand ? "AN " : "AUS")} "
+                    + $"Along {along,5:0.0} | "
+                    + (ergebnis.Error != null
+                        ? "FEHLER " + ergebnis.Error.GetType().Name
+                        : $"Buchten {l.Stalls,4} | Warnungen "
+                          + (l.Warnings == null
+                              ? "-"
+                              : l.Warnings.Count() == 0
+                                  ? "0"
+                                  : string.Join(" / ", l.Warnings))));
+            }
+        return 0;
+    }
+
     private static int RunRegler()
     {
         Console.WriteLine("REGLERPRUEFUNG");
