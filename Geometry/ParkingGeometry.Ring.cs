@@ -283,6 +283,33 @@ namespace ParkingLotTool.Geometry
         {
             if (site == null || site.Length < 3 || !EntranceCornerCanSnap(site, edgeIndex, atStart))
                 return null;
+            /*
+             * OHNE RANDSTRASSE GIBT ES NICHTS, WORAN DIE ECKE FANGEN KANN.
+             *
+             * `ringDistance` weiter unten ist `Es + Sl + Ai/2` - das ist
+             * Wort fuer Wort `Randstrassenmittellinientiefe`, also die Achse
+             * der Randstrasse. Dieser ganze Fang existiert nur, um die
+             * Zufahrt dort ankommen zu lassen, wo sie auf die Randstrasse
+             * trifft.
+             *
+             * Mit `Randstrassen = false` entsteht keine
+             * (`Zellen/Layout.cs`: `randstrassenabschnitte` ist dann `null`,
+             * ebenso Aussen- und Innenrand). Der Fang zielte trotzdem
+             * weiter auf diesen Ring - auf eine Strasse, die nicht gebaut
+             * wird.
+             *
+             * Der Nutzer am 2026-09-22: *"ich weiss nicht woran er in
+             * perimeter off snappen will."* Genau daran. Sichtbar war es
+             * als zwei zusaetzliche Fangpunkte je Kante, laengs der
+             * NACHBARKANTE ausgerichtet statt laengs einer Fahrgasse - und
+             * an einer schraegen Kante blieben nur diese zwei uebrig, weil
+             * dort keine Fahrgasse senkrecht ankommt.
+             *
+             * Die Fahrgassen selbst fangen weiter; die macht
+             * `ConsiderRoads` im Werkzeug, und die gibt es auch ohne
+             * Randstrasse.
+             */
+            if (!s.Randstrassen) return null;
             var count = site.Length;
             var a = site[edgeIndex];
             var b = site[(edgeIndex + 1) % count];

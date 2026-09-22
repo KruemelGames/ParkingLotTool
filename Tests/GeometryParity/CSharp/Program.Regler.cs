@@ -99,6 +99,37 @@ internal static partial class Program
                 eckSettings, 0, true, out var ecklage))
             throw new InvalidOperationException(
                 "Die Messform besitzt keinen verwendbaren Zufahrt-Eckenfang.");
+
+        /*
+         * DER ECKENFANG GEHOERT ZUR RANDSTRASSE - und nur zu ihr.
+         *
+         * `EntranceCornerFit` setzt die Zufahrt auf `Es + Sl + Ai/2`, also
+         * auf die Achse der Randstrasse. Ohne Randstrassen wird die nicht
+         * gebaut, und der Fang zielte bis zum 2026-09-22 auf einen Ring,
+         * den es nicht gab: zwei zusaetzliche Fangpunkte je Kante, laengs
+         * der Nachbarkante ausgerichtet.
+         *
+         * Diese Pruefung misst BEIDE Richtungen. Nur "ohne Randstrasse
+         * kommt nichts" waere eine Pruefung auf ein Nichts-Tun und wuerde
+         * auch dann gruen bleiben, wenn der Fang ueberhaupt nicht mehr
+         * funktioniert.
+         */
+        var ohneRand = ReglerSettings(false);
+        ohneRand.Randstrassen = false;
+        if (ParkingGeometry.TryEntranceCornerPlacement(ReglerSchraeg,
+                ohneRand, 0, true, out _))
+            throw new InvalidOperationException(
+                "Zufahrt-Eckenfang: mit ausgeschalteten Randstrassen darf es "
+                + "keinen Eckenfang geben - er zielt auf die Randstrassenachse, "
+                + "und die wird dann nicht gebaut.");
+        var mitRand = ReglerSettings(false);
+        mitRand.Randstrassen = true;
+        if (!ParkingGeometry.TryEntranceCornerPlacement(ReglerSchraeg,
+                mitRand, 0, true, out _))
+            throw new InvalidOperationException(
+                "Zufahrt-Eckenfang: mit Randstrassen MUSS es ihn geben.");
+        Console.WriteLine("Zufahrt-Eckenfang: an der Randstrasse ja, ohne sie "
+            + "nein - beide Richtungen geprueft.");
         Paar("Zufahrt-Eckenfang", "ohne Corner", "Corner=start",
             ReglerSchraeg,
             s => s.Entrances = new[]
