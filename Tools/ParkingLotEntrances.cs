@@ -333,13 +333,7 @@ namespace ParkingLotTool.Tools
             return copy;
         }
 
-        private static Entrance CopyEntrance(Entrance source) => source == null
-            ? null
-            : new Entrance
-            {
-                Edge = source.Edge, Along = source.Along,
-                Corner = source.Corner, Art = source.Art,
-            };
+        private static Entrance CopyEntrance(Entrance source) => source?.Clone();
 
         /** Der Baukern darf eine Vorgabe innerhalb derselben Kante korrigieren. */
         private bool AcceptBuiltEntrances(ParkingLayout layout, LayoutSettings settings)
@@ -408,7 +402,9 @@ namespace ParkingLotTool.Tools
             if (a == null || b == null) return a == b;
             return a.Edge == b.Edge && Math.Abs(a.Along - b.Along) <= 1e-6
                 && string.Equals(a.Corner, b.Corner, StringComparison.Ordinal)
-                && a.Art == b.Art;
+                && a.Art == b.Art
+                && a.AxisDirection.Equals(b.AxisDirection)
+                && a.AxisLength == b.AxisLength;
         }
 
         private LayoutSettings CurrentEntranceSettings()
@@ -652,6 +648,7 @@ namespace ParkingLotTool.Tools
             var direction = gate.Inward;
             var length = (float)(settings.Es + settings.Sl);
             var snapped = false;
+            var roadSnapped = false;
             var hasGuide = false;
             var guideA = float2.zero;
             var guideB = float2.zero;
@@ -709,6 +706,7 @@ namespace ParkingLotTool.Tools
                 length = (float)targetLength;
                 corner = targetCorner;
                 snapped = road || targetCorner != null;
+                roadSnapped = road;
                 hasGuide = true;
                 guideA = a;
                 guideB = b;
@@ -802,6 +800,10 @@ namespace ParkingLotTool.Tools
             {
                 Edge = gate.Edge, Along = along, Corner = corner,
                 Art = _zufahrtsart,
+                // Der Fang mass 13,0 m bei Projektion 0,8. Ohne Strasse
+                // bleiben beide Felder leer und die Kernachse lotrecht.
+                AxisDirection = roadSnapped ? direction : (float2?)null,
+                AxisLength = roadSnapped ? length : (double?)null,
             };
             var pointAtBoundary = _points[gate.Edge] + gate.Tangent * along;
             var valid = blockReason == EntranceBlockReason.None;

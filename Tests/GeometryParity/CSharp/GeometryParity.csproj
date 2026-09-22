@@ -59,6 +59,7 @@
     <Compile Include="Program.Zufahrtsarten.cs" />
     <Compile Include="Program.Sonderplaetze.cs" />
     <Compile Include="Program.Zufahrtsquads.cs" />
+    <Compile Include="Program.Zufahrtsachse.cs" />
     <Compile Include="Program.Lformtoggle.cs" />
     <Compile Include="Program.Fusswegzugang.cs" />
     <Compile Include="Program.Winkelmodus.cs" />

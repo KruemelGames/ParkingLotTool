@@ -217,13 +217,16 @@ namespace ParkingLotTool.Tools
     [InternalBufferCapacity(0)]
     public struct ParkingLotBuildEntrance : IBufferElementData, ISerializable
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
         public int Version;
         public int Edge;
         public double Along;
         /** 0=kein Eckfang, 1=start, 2=end. */
         public int Corner;
         public Zufahrtsart Art;
+        public bool HasAxis;
+        public float2 AxisDirection;
+        public double AxisLength;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -232,6 +235,15 @@ namespace ParkingLotTool.Tools
             writer.Write(Along);
             writer.Write(Corner);
             writer.Write((int)Art);
+            // Version 1 endet bei Art; sonst verschiebt ein altes
+            // Pufferelement den Anfang des naechsten Zugangs.
+            writer.Write(HasAxis);
+            if (HasAxis)
+            {
+                writer.Write(AxisDirection.x);
+                writer.Write(AxisDirection.y);
+                writer.Write(AxisLength);
+            }
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -242,6 +254,20 @@ namespace ParkingLotTool.Tools
             reader.Read(out Corner);
             reader.Read(out int art);
             Art = (Zufahrtsart)art;
+            HasAxis = false;
+            AxisDirection = default;
+            AxisLength = 0;
+            if (Version >= 2)
+            {
+                reader.Read(out HasAxis);
+                if (HasAxis)
+                {
+                    reader.Read(out float x);
+                    reader.Read(out float y);
+                    AxisDirection = new float2(x, y);
+                    reader.Read(out AxisLength);
+                }
+            }
         }
     }
 

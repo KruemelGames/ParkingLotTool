@@ -368,7 +368,7 @@ namespace ParkingLotTool.Geometry.Zellen
 
         internal int Kante { get; }
         internal double Along { get; }
-        /** Nur der Eckfang gibt eine nicht lotrechte Zufahrtsachse vor. */
+        /** Eck- und Strassenfang: Projektion 0,8 ergab 13,0 statt 10,4 m. */
         internal Punkt? AchsrichtungWelt { get; }
         internal Punkt? AchsrichtungLokal { get; private set; }
         internal double? Achslaenge { get; }

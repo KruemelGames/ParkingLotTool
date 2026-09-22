@@ -128,6 +128,9 @@ namespace ParkingLotTool.Geometry
         public double Along { get; set; }
         public string Corner { get; set; }
         public Zufahrtsart Art { get; set; } = Zufahrtsart.Zufahrt;
+        /** Strassenfang: bei Projektion 0,8 wurden aus 10,4 m genau 13,0 m. */
+        public float2? AxisDirection { get; set; }
+        public double? AxisLength { get; set; }
 
         /**
          * Hat der Nutzer diesen Zugang gesetzt? Standard ja - alles, was aus
@@ -176,6 +179,7 @@ namespace ParkingLotTool.Geometry
         internal Entrance Clone() => new Entrance
         {
             Edge = Edge, Along = Along, Corner = Corner, Art = Art,
+            AxisDirection = AxisDirection, AxisLength = AxisLength,
         };
     }
 

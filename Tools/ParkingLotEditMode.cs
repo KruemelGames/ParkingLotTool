@@ -1002,6 +1002,10 @@ namespace ParkingLotTool.Tools
                         Along = entrance.Along,
                         Corner = EncodeCorner(entrance.Corner),
                         Art = entrance.Art,
+                        HasAxis = entrance.AxisDirection.HasValue
+                            && entrance.AxisLength.HasValue,
+                        AxisDirection = entrance.AxisDirection ?? default,
+                        AxisLength = entrance.AxisLength ?? 0,
                     });
                 }
                 /*
@@ -1210,12 +1214,19 @@ namespace ParkingLotTool.Tools
             for (var i = 0; i < entranceBuffer.Length; i++)
             {
                 var entrance = entranceBuffer[i];
-                if (entrance.Version != ParkingLotBuildEntrance.CurrentVersion
+                if (entrance.Version < 1
+                    || entrance.Version > ParkingLotBuildEntrance.CurrentVersion
                     || entrance.Edge < 0 || entrance.Edge >= points.Length
                     || entrance.Corner < 0 || entrance.Corner > 2
                     || double.IsNaN(entrance.Along)
                     || double.IsInfinity(entrance.Along)
-                    || !Enum.IsDefined(typeof(Zufahrtsart), entrance.Art))
+                    || !Enum.IsDefined(typeof(Zufahrtsart), entrance.Art)
+                    || (entrance.HasAxis
+                        && (!math.all(math.isfinite(entrance.AxisDirection))
+                            || math.lengthsq(entrance.AxisDirection) <= 0f
+                            || double.IsNaN(entrance.AxisLength)
+                            || double.IsInfinity(entrance.AxisLength)
+                            || entrance.AxisLength <= 0)))
                 {
                     reason = "ungültiger Zugang " + i;
                     return false;
@@ -1226,6 +1237,10 @@ namespace ParkingLotTool.Tools
                     Along = entrance.Along,
                     Corner = DecodeCorner(entrance.Corner),
                     Art = entrance.Art,
+                    AxisDirection = entrance.HasAxis
+                        ? entrance.AxisDirection : (float2?)null,
+                    AxisLength = entrance.HasAxis
+                        ? entrance.AxisLength : (double?)null,
                 };
             }
             if (EntityManager.HasBuffer<ParkingLotBuildAlignment>(lot))

@@ -376,8 +376,11 @@ namespace ParkingLotTool.Geometry
                     }
                 }
 
+                var achse = entrance.AxisDirection;
                 vorgaben.Add(new Zufahrtsvorgabe(
-                    kante, along, null, null,
+                    kante, along,
+                    achse.HasValue ? new Punkt(achse.Value.x, achse.Value.y) : (Punkt?)null,
+                    entrance.AxisLength,
                     entrance.Breite(settings.Ai, settings.Gassenbreite), entrance.Art));
             }
 

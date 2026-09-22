@@ -317,6 +317,8 @@ internal static partial class Program
 
         if (args.Length >= 1 && args[0] == "--zufahrtsquads")
             return RunZufahrtsquads();
+        if (args.Length == 1 && args[0] == "--zufahrtsachse")
+            return RunZufahrtsachse();
 
         // Wie weit liegen die Sonderplaetze von ihrem Anker?
         if (args.Length >= 3 && args[0] == "--sonderplaetze")
