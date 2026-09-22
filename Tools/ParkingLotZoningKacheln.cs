@@ -397,20 +397,51 @@ namespace ParkingLotTool.Tools
         private List<(float2 A, float2 B, bool LinksAn, bool RechtsAn)>
             GebauteZoningseiten()
         {
-            if (_lotOwner == Entity.Null
-                || !EntityManager.Exists(_lotOwner)) return null;
-            if (!EntityManager.HasComponent<ParkingLotCarrierReference>(_lotOwner))
-                return null;
-            var traeger = EntityManager
-                .GetComponentData<ParkingLotCarrierReference>(_lotOwner).Carrier;
-            if (traeger == Entity.Null || !EntityManager.Exists(traeger))
-                return null;
-            if (!EntityManager.HasBuffer<Game.Net.SubNet>(traeger)) return null;
-
-            var prefabs = SammleZoningPrefabs();
-            if (prefabs.Count == 0) return null;
-
+            /*
+             * ZAEHLER AN JEDE ABBRUCHSTELLE.
+             *
+             * Faellt diese Abfrage aus, gilt fuer JEDE Kante die Panelwahl -
+             * und die heisst innen an. Aus einer einzigen geschalteten Seite
+             * werden dann vier. Genau das meldet der Nutzer am 2026-09-23:
+             * *"Hatte innen nur eine Seite an, dann Zone gemalt fuer Haus und
+             * im Edit waren alle 4 an."* Welche der fuenf Abbruchstellen es
+             * ist, sagt nur eine Messung; die Methode laeuft in jedem Bild,
+             * deshalb wird nur bei AENDERUNG geschrieben.
+             */
+            string grund = null;
             List<(float2, float2, bool, bool)> ergebnis = null;
+            var prefabs = new System.Collections.Generic.HashSet<Entity>();
+            var traeger = Entity.Null;
+            var subNetLaenge = -1;
+            var fremd = 0;
+
+            if (_lotOwner == Entity.Null || !EntityManager.Exists(_lotOwner))
+                grund = "kein Lot";
+            else if (!EntityManager.HasComponent<ParkingLotCarrierReference>(_lotOwner))
+                grund = "Lot ohne Traegerreferenz";
+            else
+            {
+                traeger = EntityManager
+                    .GetComponentData<ParkingLotCarrierReference>(_lotOwner).Carrier;
+                if (traeger == Entity.Null || !EntityManager.Exists(traeger))
+                    grund = "Traeger fehlt";
+                else if (!EntityManager.HasBuffer<Game.Net.SubNet>(traeger))
+                    grund = "Traeger ohne SubNet-Puffer";
+                else
+                {
+                    subNetLaenge = EntityManager
+                        .GetBuffer<Game.Net.SubNet>(traeger, true).Length;
+                    prefabs = SammleZoningPrefabs();
+                    if (prefabs.Count == 0) grund = "kein Zoning-Prefab";
+                    else if (subNetLaenge == 0) grund = "SubNet-Puffer LEER";
+                }
+            }
+            if (grund != null)
+            {
+                MeldeZoningseitenAusfall(grund, subNetLaenge, 0, 0);
+                return null;
+            }
+
             var subNets = EntityManager.GetBuffer<Game.Net.SubNet>(traeger, true);
             for (var i = 0; i < subNets.Length; i++)
             {
@@ -419,7 +450,10 @@ namespace ParkingLotTool.Tools
                 if (!EntityManager.HasComponent<PrefabRef>(kante)) continue;
                 if (!prefabs.Contains(
                         EntityManager.GetComponentData<PrefabRef>(kante).m_Prefab))
+                {
+                    fremd++;
                     continue;
+                }
                 if (!EntityManager.HasComponent<Curve>(kante)) continue;
 
                 var kurve = EntityManager.GetComponentData<Curve>(kante).m_Bezier;
@@ -430,7 +464,32 @@ namespace ParkingLotTool.Tools
                     !LiestSeite(kante, true),
                     !LiestSeite(kante, false)));
             }
+            MeldeZoningseitenAusfall(ergebnis == null
+                ? "keine Zoningkante im SubNet" : null,
+                subNets.Length, ergebnis?.Count ?? 0, fremd);
             return ergebnis;
+        }
+
+        /** Meldet nur, wenn sich das Bild seit dem letzten Bild aendert. */
+        private string _zoningseitenStand;
+
+        private void MeldeZoningseitenAusfall(string grund, int subNet,
+                                              int gefunden, int fremd)
+        {
+            var stand = grund ?? ("ok " + gefunden);
+            stand += "|" + subNet + "|" + fremd;
+            if (stand == _zoningseitenStand) return;
+            _zoningseitenStand = stand;
+            if (grund == null)
+                Mod.log.Info("PLT-Zoningseiten GELESEN: " + gefunden
+                    + " gebaute Zoningkante(n) im Traeger (SubNet " + subNet
+                    + ", davon " + fremd + " fremde). Die Seiten kommen aus "
+                    + "dem gebauten Zustand.");
+            else
+                Mod.log.Warn("PLT-Zoningseiten NICHT LESBAR: " + grund
+                    + " (SubNet " + subNet + ", fremde " + fremd + "). "
+                    + "JEDE Kante faellt jetzt auf die Panelwahl zurueck - "
+                    + "aus einer geschalteten Seite werden dadurch alle.");
         }
 
         private static bool SucheGebauteSeite(

@@ -259,7 +259,17 @@ namespace ParkingLotTool.Tools
              */
             var neu = ZoningTiefeVorwahl * ParkingGeometry.Zoningparzelle;
             var gleich = Math.Abs(f.Aussentiefen[seite] - neu) < 1e-6;
+            var vorher = f.Aussentiefen[seite];
             f.Aussentiefen[seite] = gleich ? 0.0 : neu;
+            // Anfang der Messkette zum Zoningzettel: hier entsteht der Wert,
+            // in `WriteBuildReceipt` wird er geschrieben, beim Umbau wieder
+            // gelesen. Drei Zeilen im Log, und man sieht, wo er abreisst.
+            Mod.log.Info("PLT-Aussenband GESCHALTET: Flaeche " + index
+                + ", Seite " + seite + ": " + vorher.ToString("0.##",
+                    System.Globalization.CultureInfo.InvariantCulture)
+                + " -> " + f.Aussentiefen[seite].ToString("0.##",
+                    System.Globalization.CultureInfo.InvariantCulture)
+                + " m (Vorwahl " + ZoningTiefeVorwahl + " Kacheln).");
             _layoutDirty = _closed;
             _geometryRevision++;
             return gleich ? 0 : ZoningTiefeVorwahl;

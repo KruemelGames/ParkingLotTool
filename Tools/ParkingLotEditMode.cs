@@ -1091,6 +1091,36 @@ namespace ParkingLotTool.Tools
                             Aussen3 = ParkingGeometry.ZoningAussentiefe(
                                 Zoningflaechen[i], 3),
                         });
+                    /*
+                     * ZAEHLER STATT THEORIE.
+                     *
+                     * Der Nutzer am 2026-09-23: *"wenn ich im Edit bei der
+                     * Zoningflaeche aussen das Tiling/Zoning aktiviere/
+                     * deaktiviere und baue wird das nicht gespeichert."*
+                     * Die Kette liest sich korrekt - Schalter, Schreiben,
+                     * Zurueckholen -, also sagt nur eine Messung, an welcher
+                     * Stelle die Tiefen verlorengehen. Die Zeile steht
+                     * bewusst bei jedem Bau, nicht nur beim Umbau: damit
+                     * beantwortet derselbe Log auch seine zweite Frage, ob
+                     * es nur den Umbau betrifft.
+                     */
+                    var tiefen = new System.Text.StringBuilder();
+                    for (var i = 0; i < Zoningflaechen.Count; i++)
+                    {
+                        if (i > 0) tiefen.Append(" | ");
+                        for (var s = 0; s < 4; s++)
+                        {
+                            if (s > 0) tiefen.Append('/');
+                            tiefen.Append(ParkingGeometry
+                                .ZoningAussentiefe(Zoningflaechen[i], s)
+                                .ToString("0.##",
+                                    System.Globalization.CultureInfo.InvariantCulture));
+                        }
+                    }
+                    Mod.log.Info("PLT-Zoningzettel GESCHRIEBEN ("
+                        + (IsEditing ? "Umbau" : "Neubau") + "): "
+                        + Zoningflaechen.Count + " Flaeche(n), Aussentiefen "
+                        + tiefen + " (je Flaeche Seite 0/1/2/3).");
                 }
                 else if (EntityManager.HasBuffer<ParkingLotBuildZoning>(lot))
                 {
@@ -1110,6 +1140,32 @@ namespace ParkingLotTool.Tools
                     ? EntityManager.GetBuffer<ParkingLotBuildZoningSeite>(lot)
                     : EntityManager.AddBuffer<ParkingLotBuildZoningSeite>(lot);
                 SchreibeZoningSeitenplan(seitenPuffer);
+                /*
+                 * ZAEHLER AN DIE ZWEITE HAELFTE DER KETTE.
+                 *
+                 * Aussen haelt sie nachweislich (Log vom 2026-09-23,
+                 * 16/0/16/16 geschrieben und identisch zurueckgelesen).
+                 * Innen meldet der Nutzer, dass eine abgeschaltete Seite
+                 * nach dem Bauen wieder da ist. Die Handschaltungen sind
+                 * das einzige, was davon im Zettel steht - die PANELWAHL
+                 * (Innen/Aussen/Beides) steht NIRGENDS, weder hier noch in
+                 * `LayoutSettings`. Beides gehoert gemessen, bevor daran
+                 * etwas geaendert wird.
+                 */
+                var seiten = new System.Text.StringBuilder();
+                for (var i = 0; i < seitenPuffer.Length; i++)
+                {
+                    if (i > 0) seiten.Append(", ");
+                    var e = seitenPuffer[i];
+                    seiten.Append(e.Links ? "links " : "rechts ")
+                        .Append(e.Aus ? "AUS" : "an");
+                }
+                Mod.log.Info("PLT-Zoningseitenplan GESCHRIEBEN ("
+                    + (IsEditing ? "Umbau" : "Neubau") + "): "
+                    + seitenPuffer.Length + " Handschaltung(en)"
+                    + (seitenPuffer.Length > 0 ? " - " + seiten : string.Empty)
+                    + ". Panelwahl " + ZoningSeite
+                    + " - die steht NICHT im Zettel.");
 
                 // Und das Randzoning, aus demselben Grund.
                 var randPuffer = EntityManager
@@ -1331,6 +1387,25 @@ namespace ParkingLotTool.Tools
                             { z.Aussen0, z.Aussen1, z.Aussen2, z.Aussen3 },
                     };
                 }
+                // Gegenstueck zur Zeile beim Schreiben. Stehen hier andere
+                // Zahlen als dort, ist der Zettel schuld; stehen dieselben,
+                // liegt es an dem, was danach mit ihnen passiert.
+                var gelesen = new System.Text.StringBuilder();
+                for (var i = 0; i < zonen.Length; i++)
+                {
+                    if (i > 0) gelesen.Append(" | ");
+                    for (var s = 0; s < 4; s++)
+                    {
+                        if (s > 0) gelesen.Append('/');
+                        gelesen.Append(ParkingGeometry
+                            .ZoningAussentiefe(zonen[i], s)
+                            .ToString("0.##",
+                                System.Globalization.CultureInfo.InvariantCulture));
+                    }
+                }
+                Mod.log.Info("PLT-Zoningzettel GELESEN: " + zonen.Length
+                    + " Flaeche(n), Aussentiefen " + gelesen
+                    + " (je Flaeche Seite 0/1/2/3).");
             }
 
             /*
@@ -1367,6 +1442,18 @@ namespace ParkingLotTool.Tools
              * Standard wieder da."* Aufgetragen wird deshalb erst beim
              * Aufrufer, gleich hinter den Flaechen, zu denen der Plan gehoert.
              */
+            var seitenGelesen = new System.Text.StringBuilder();
+            for (var i = 0; i < seitenplan.Count; i++)
+            {
+                if (i > 0) seitenGelesen.Append(", ");
+                seitenGelesen.Append(seitenplan[i].Links ? "links " : "rechts ")
+                    .Append(seitenplan[i].Aus ? "AUS" : "an");
+            }
+            Mod.log.Info("PLT-Zoningseitenplan GELESEN: " + seitenplan.Count
+                + " Handschaltung(en)"
+                + (seitenplan.Count > 0 ? " - " + seitenGelesen : string.Empty)
+                + ". Panelwahl steht auf " + ZoningSeite
+                + " und kommt NICHT aus dem Zettel.");
             _zoningSeitenplanAusZettel = seitenplan;
 
             // Das Randzoning aus demselben Zettel, mit derselben Nachsicht:
