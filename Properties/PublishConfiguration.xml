@@ -42,7 +42,41 @@
 	-->
 	<ShortDescription Value="Draw a shape and get a finished parking lot inside it: bays, aisles, cross roads and surfaces. The cars really park in it." />
 
-	<!--Long description of the mod. Single line or multi line. Supports minimal markdown subset-->
+	<!--
+		Long description of the mod. Single line or multi line.
+
+		WAS WIRKLICH GEHT - am 2026-09-23 an zwei Quellen geprueft, nicht
+		geraten.
+
+		AUF DER WEBSITE (cs2.paradoxwikis.com, "Modding Toolchain"):
+		*"The LongDescription and ChangeLog field supports multi-line and
+		subset of markdown (headings, bullet lists and bold text)"*.
+		Nummerierte Listen stehen dort nicht, erscheinen auf fremden
+		Modseiten aber als Nummern - also offenbar auch unterstuetzt.
+
+		IM SPIEL IST ES WENIGER. Der Browser rendert mit
+		`game-ui/common/text/renderers/markdown-renderer.tsx`
+		(Content/Game/UI/index.js). Der kann genau:
+
+		  #..###### am ZEILENANFANG   Ueberschrift; das Muster ist
+		                              /^(#+)\s+/ und faerbt die ganze Zeile
+		  **fett**                    wird zu <b>
+		  [Text](URL)                 Verweis
+		  ![Alt](URL)                 Bild
+		  <br>                        Zeilenumbruch
+
+		Und sonst NICHTS: keine Listen, kein Kursiv, kein Code, keine
+		Trennlinie. Wer die Seite mit Aufzaehlungen baut, sieht sie auf der
+		Website - im Spiel stehen dieselben Zeilen dann mit einem
+		Bindestrich davor als Fliesstext.
+
+		KEINE FUEHRENDEN LEERZEICHEN. Das Wiki ausdruecklich: *"Beware text
+		editors are stubborn and will try to reformat your file with
+		indentation. You must ensure there are no spaces at the beginning of
+		the multi-line entries to avoid issues."* Der Text unten beginnt
+		deshalb an Spalte 0, obwohl die Datei ringsum eingerueckt ist. Das
+		ist Absicht - nicht "aufraeumen".
+	-->
 	<LongDescription>
 Draw a shape on the ground and the mod fills it with a complete parking lot: parking bays, driving aisles, cross roads, a road around the edge and the ground surfaces in between. The bays are real parking lanes, so cars actually drive in and park there - they are not decoration.
 
