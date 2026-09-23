@@ -207,9 +207,9 @@ namespace ParkingLotTool.Tools
         {
             if (Mod.Optionen == null) return;
             var eintrag = vorbildname + "|" + aufschlag;
-            if (!GemerkteKlone().Add(eintrag)) return;
-            Mod.Optionen.Flaechenklone =
-                string.Join("\n", GemerkteKlone().ToArray());
+            var gemerkt = GemerkteKlone();
+            if (!gemerkt.Add(eintrag)) return;
+            Mod.Optionen.Flaechenklone = string.Join("\n", gemerkt.ToArray());
             Mod.Optionen.ApplyAndSave();
             Mod.log.Info($"PLT-Vorflaeche: '{eintrag}' gemerkt - der Klon "
                 + "entsteht ab jetzt schon beim Spielstart.");
