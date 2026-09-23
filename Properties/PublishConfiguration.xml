@@ -21,7 +21,7 @@
 
 	<!--Long description of the mod. Single line or multi line. Supports minimal markdown subset-->
 	<LongDescription>
-Draw a shape on the ground and the mod fills it with a complete parking lot: parking bays, driving aisles, cross roads, a road around the edge and the two ground surfaces. The bays are real parking lanes, so cars actually drive in and park there - they are not decoration.
+Draw a shape on the ground and the mod fills it with a complete parking lot: parking bays, driving aisles, cross roads, a road around the edge and the ground surfaces in between. The bays are real parking lanes, so cars actually drive in and park there - they are not decoration.
 
 # How to use it
 
@@ -30,29 +30,46 @@ Draw a shape on the ground and the mod fills it with a complete parking lot: par
 3. Place at least one entrance where the lot should meet an existing road.
 4. Press Enter, or the Build button.
 
-Before you build you can drag any corner or any edge to reshape the lot, and the preview follows. ESC leaves the tool.
+Before you build you can drag any corner or any edge to reshape the lot, and the preview follows. Finished lots can be reopened later with the Edit button - outline, entrances and every setting stay changeable. ESC leaves the tool.
+
+# Ways in and out
+
+An entrance can be two-way, or an entry and an exit as separate one-lane ramps, or a pedestrian access. You can also place an alley, which is a visible road rather than a hidden one, in both directions or as a one-way pair.
+
+Entrances snap to the aisle they serve, so the ramp lines up with the lane behind it instead of meeting it at an angle.
 
 # What you can change
 
-**Layout** - edge setback, row angle (follow an edge, or a fixed angle), aisle width, cross road width, and a cross road every N bays.
+**Layout** - edge setback, row angle (follow an edge, a fixed angle, or align to a polygon line), aisle width, cross road width, and a cross road every N bays.
 
-**Green** - a median between the bay rows and how deep it is, and the small grass caps where a row meets a cross road. Switch the caps off and the bays sit straight against the cross road instead.
+**Green** - a median between the bay rows and how deep it is, the perimeter road, and the small grass caps where a row meets a cross road. Switch the caps off and the bays sit straight against the cross road instead.
 
-**Surfaces** - pick any of the game's surfaces for the driving area and for everything in between, or switch either one off and paint the ground yourself.
+**Surfaces** - pick any surface in the game for the driving area and for everything in between, including surfaces added by asset mods, or switch either one off and paint the ground yourself. The lot can extend its surface out to the road it connects to.
+
+**Vegetation** - trees and bushes on the green, with density and age.
 
 **Bay markings** - the painted stall markings, on or off.
 
 Every value can be saved as your own default, so the next lot starts the way you like it.
 
+# Zoning
+
+A parking lot can carry building land. Draw a zoning patch inside the lot and the mod lays a road around it, with the parcels facing whichever side you choose - that choice decides where the buildings put their entrance. Each side of that road can also carry a band of parcels on its outside, as deep as you like in 8 m tiles, and the lot keeps that ground free of bays and aisles.
+
+# It runs as part of the city
+
+Each lot reports its spaces and how many are taken, charges a parking fee you set, and costs upkeep. The whole thing can be switched off in the options if you would rather have the geometry without the economy.
+
 # Good to know
 
 - The whole lot has a single owner: one click selects it, one bulldoze removes it.
 - The panel is English by default. German can be chosen in the mod options.
-- Something looks wrong? The "Report a problem" tab lets you mark the spot in the world and writes a short text file you can send along.
+- Before you unsubscribe, the options have an Uninstall button that removes every lot this mod built and leaves the save clean.
+- Something looks wrong? The "Report a problem" tab marks the spot in the world and writes a short file you can send along. If the game ever crashes, a report is written by itself.
 
 # Requirements
 
-Unified Icon Library.
+Unified Icon Library and Asset Icon Library. Both are picked up automatically.
 
 # Source
 
@@ -60,20 +77,40 @@ The full source is on GitHub under GPL-3.0. This mod was written with AI assista
 	</LongDescription>
 
 	<!--
-		950x500. Das hier ist NOCH das Platzhalterbild der Toolchain (blaues
-		Hexagon mit Hammer) - vor der Veroeffentlichung ersetzen.
+		950x500, eigenes Bild seit dem 2026-09-23 (vorher das blaue Hexagon
+		der Toolchain). Erzeugt aus `Properties/Thumbnail.svg`:
+
+		    msedge --headless --disable-gpu --screenshot=Thumbnail.png 		           --window-size=950,500 --hide-scrollbars Thumbnail.svg
+
+		Die Fenstergroesse MUSS der SVG-Groesse entsprechen, sonst ist das
+		Bild abgeschnitten. Wer am Bild etwas aendert, aendert das SVG und
+		rendert neu - die PNG von Hand zu bearbeiten heisst, die Quelle zu
+		verlieren.
+
+		Gezeigt wird bewusst der Vorschau-Umriss mit seinen Griffen: das ist
+		das, was der Nutzer beim Zeichnen sieht, und damit das
+		Wiedererkennungsmerkmal. Ein Screenshot des fertigen Parkplatzes
+		waere von jedem anderen Parkplatz nicht zu unterscheiden.
 	-->
 	<Thumbnail Value="Properties/Thumbnail.png" />
 
 	<!--
 		Screenshot, can be set multiple times.
-		Dateien nach Properties/Screenshots/ legen und die Zeile einkommentieren.
-		Was gezeigt werden sollte, steht in RELEASE.md.
+		Dateien nach Properties/Screenshots/ legen und die Zeile
+		einkommentieren. Die Liste unten ist die Reihenfolge, in der sie
+		erscheinen; das ERSTE Bild ist das einzige, das viele ueberhaupt
+		ansehen.
+
+		Was jedes zeigen soll, steht in RELEASE.md. Sechs statt vier, seit
+		der Mod Zoning und Gassen kann - wer die nicht sieht, haelt ihn fuer
+		einen reinen Flaechenmaler.
 	-->
 	<!--<Screenshot Value="Properties/Screenshots/01-fertiger-parkplatz.png" />-->
-	<!--<Screenshot Value="Properties/Screenshots/02-panel.png" />-->
+	<!--<Screenshot Value="Properties/Screenshots/02-parkende-autos.png" />-->
 	<!--<Screenshot Value="Properties/Screenshots/03-zeichnen.png" />-->
-	<!--<Screenshot Value="Properties/Screenshots/04-parkende-autos.png" />-->
+	<!--<Screenshot Value="Properties/Screenshots/04-panel.png" />-->
+	<!--<Screenshot Value="Properties/Screenshots/05-zoning.png" />-->
+	<!--<Screenshot Value="Properties/Screenshots/06-liste.png" />-->
 
 	<!--
 		Tag, can be set multiple times.
