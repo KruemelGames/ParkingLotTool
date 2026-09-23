@@ -542,5 +542,28 @@ namespace ParkingLotTool
                 Optionen = null;
             }
         }
+        /**
+         * WANN DIE GELADENE DLL GESCHRIEBEN WURDE - oder null.
+         *
+         * `Assembly.Location` ist bei CS2-Mods LEER, weil das Spiel die DLL
+         * aus dem Speicher laedt; der brauchbare Pfad kommt aus dem
+         * Mod-Asset. Dieselbe Regel galt schon im Vorbau-Abzug, und sie
+         * steht jetzt an EINER Stelle statt an zweien.
+         *
+         * Warum das ueberhaupt jemanden interessiert: die Versionsnummer
+         * steht waehrend der Entwicklung wochenlang still, waehrend die DLL
+         * zwanzigmal neu entsteht. Nur die Schreibzeit sagt, ob im Spiel
+         * wirklich der neue Stand liegt.
+         */
+        internal static System.DateTime? Bauzeit()
+        {
+            var pfad = !string.IsNullOrEmpty(AssetPath)
+                ? AssetPath
+                : typeof(Mod).Assembly.Location;
+            if (string.IsNullOrEmpty(pfad) || !System.IO.File.Exists(pfad))
+                return null;
+            return System.IO.File.GetLastWriteTimeUtc(pfad);
+        }
+
     }
 }

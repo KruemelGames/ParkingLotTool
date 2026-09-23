@@ -405,9 +405,9 @@ namespace ParkingLotTool.Tools
             var dllPath = !string.IsNullOrEmpty(Mod.AssetPath)
                 ? Mod.AssetPath
                 : typeof(Mod).Assembly.Location;
-            DateTime? dllBuiltUtc = null;
-            if (!string.IsNullOrEmpty(dllPath) && File.Exists(dllPath))
-                dllBuiltUtc = File.GetLastWriteTimeUtc(dllPath);
+            // Dieselbe Frage beantwortet seit dem 2026-09-23 auch die
+            // Einstellungsseite. Sie steht deshalb an EINER Stelle.
+            DateTime? dllBuiltUtc = Mod.Bauzeit();
 
             var matchesResult = _lastPreviewLayout != null
                 && inputSource == "aktuelles gezeichnetes Polygon"

@@ -25,11 +25,11 @@ namespace ParkingLotTool
      * ueber eine Pause im Spiel erreicht.
      */
     [FileLocation("ModsSettings/ParkingLotTool/optionen")]
-    [SettingsUIGroupOrder(GruppeSprache, GruppeTasten, GruppeZufahrt,
+    [SettingsUIGroupOrder(GruppeUeber, GruppeSprache, GruppeTasten, GruppeZufahrt,
         GruppeZoning, GruppeVegetation, GruppeWirtschaft, GruppeHinweise,
         GruppeFenster, GruppeZuruecksetzen, GruppeEntwickler,
         GruppeDeinstallation)]
-    [SettingsUIShowGroupName(GruppeSprache, GruppeTasten, GruppeZufahrt,
+    [SettingsUIShowGroupName(GruppeUeber, GruppeSprache, GruppeTasten, GruppeZufahrt,
         GruppeZoning, GruppeVegetation, GruppeWirtschaft, GruppeHinweise,
         GruppeFenster, GruppeZuruecksetzen, GruppeEntwickler,
         GruppeDeinstallation)]
@@ -37,6 +37,12 @@ namespace ParkingLotTool
     public class Setting : ModSetting
     {
         public const string ReiterAllgemein = "Allgemein";
+        /**
+         * GANZ OBEN. Wer die Einstellungen aufmacht, um eine Version
+         * nachzusehen, soll nicht scrollen muessen - und wer einen Fehler
+         * meldet, wird danach gefragt.
+         */
+        public const string GruppeUeber = "Ueber";
         public const string GruppeFenster = "Fenster";
         public const string GruppeHinweise = "Hinweise";
         public const string GruppeWirtschaft = "Wirtschaft";
@@ -395,6 +401,35 @@ namespace ParkingLotTool
             Automatic,
             English,
             Deutsch,
+        }
+
+        /**
+         * NUR LESEN, NICHTS EINSTELLEN.
+         *
+         * Eine Eigenschaft ohne Setter zeigt CS2 als Wert an. Gespeichert
+         * wird sie nicht - `ModSetting` serialisiert nur, was auch
+         * geschrieben werden kann.
+         *
+         * Neben der Nummer steht die BAUZEIT der geladenen DLL, und die ist
+         * im Alltag die wichtigere Zahl: die Version steht waehrend der
+         * Entwicklung wochenlang still, die Bauzeit wechselt bei jedem
+         * Uebersetzen. Wer wissen will, ob im Spiel wirklich der neue Stand
+         * liegt, liest hier nach - genau diese Frage kam heute dreimal auf.
+         */
+        [SettingsUISection(ReiterAllgemein, GruppeUeber)]
+        public string Version
+        {
+            get
+            {
+                var nummer = typeof(Mod).Assembly.GetName().Version?.ToString()
+                    ?? "?";
+                var gebaut = Mod.Bauzeit();
+                return gebaut.HasValue
+                    ? nummer + "  ·  Build "
+                      + gebaut.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm",
+                          System.Globalization.CultureInfo.InvariantCulture)
+                    : nummer;
+            }
         }
 
         [SettingsUISection(ReiterAllgemein, GruppeSprache)]
@@ -800,9 +835,16 @@ namespace ParkingLotTool
                        + nameof(Setting.ParkplaetzeEntfernen);
             var pfadZonTiefe = seite + "." + nameof(Setting) + "."
                        + nameof(Setting.ZoningMaxTiefeText);
+            var pfadVersion = seite + "." + nameof(Setting) + "."
+                       + nameof(Setting.Version);
 
             return new Dictionary<string, string>
             {
+                { "Options.OPTION[" + pfadVersion + "]",
+                    _deutsch ? "Version" : "Version" },
+                { "Options.OPTION_DESCRIPTION[" + pfadVersion + "]",
+                    _deutsch ? "Die geladene Fassung und wann ihre DLL geschrieben wurde. Bei einer Fehlermeldung gehört beides dazu; die Bauzeit sagt, ob im Spiel wirklich der neue Stand liegt."
+                        : "The loaded version and when its DLL was written. Both belong in a bug report; the build time tells you whether the game is really running the newer build." },
                 { "Options.OPTION[" + pfadLoeschen + "]",
                     _deutsch ? "Löschen von Parkplätzen bestätigen" : "Confirm parking lot demolition" },
                 { "Options.OPTION_DESCRIPTION[" + pfadLoeschen + "]",
@@ -834,6 +876,10 @@ namespace ParkingLotTool
                 {
                     "Options.TAB[" + seite + "." + Setting.ReiterAllgemein + "]",
                     _deutsch ? "Allgemein" : "General"
+                },
+                {
+                    "Options.GROUP[" + seite + "." + Setting.GruppeUeber + "]",
+                    _deutsch ? "Über diesen Mod" : "About this mod"
                 },
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeFenster + "]",
