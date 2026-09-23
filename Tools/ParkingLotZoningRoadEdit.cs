@@ -504,12 +504,13 @@ namespace ParkingLotTool.Tools
         private void SchalteGebauteZoningSeite(float2 a, float2 b, bool links,
             bool aus)
         {
-            if (_lotOwner == Entity.Null
-                || !EntityManager.Exists(_lotOwner)) return;
-            if (!EntityManager.HasComponent<ParkingLotCarrierReference>(_lotOwner))
+            var lot = AktuellesZoningLot;
+            if (lot == Entity.Null
+                || !EntityManager.Exists(lot)) return;
+            if (!EntityManager.HasComponent<ParkingLotCarrierReference>(lot))
                 return;
             var traeger = EntityManager
-                .GetComponentData<ParkingLotCarrierReference>(_lotOwner).Carrier;
+                .GetComponentData<ParkingLotCarrierReference>(lot).Carrier;
             if (traeger == Entity.Null || !EntityManager.Exists(traeger)) return;
             if (!EntityManager.HasBuffer<Game.Net.SubNet>(traeger)) return;
 

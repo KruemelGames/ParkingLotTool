@@ -415,14 +415,15 @@ namespace ParkingLotTool.Tools
             var subNetLaenge = -1;
             var fremd = 0;
 
-            if (_lotOwner == Entity.Null || !EntityManager.Exists(_lotOwner))
+            var lot = AktuellesZoningLot;
+            if (lot == Entity.Null || !EntityManager.Exists(lot))
                 grund = "kein Lot";
-            else if (!EntityManager.HasComponent<ParkingLotCarrierReference>(_lotOwner))
+            else if (!EntityManager.HasComponent<ParkingLotCarrierReference>(lot))
                 grund = "Lot ohne Traegerreferenz";
             else
             {
                 traeger = EntityManager
-                    .GetComponentData<ParkingLotCarrierReference>(_lotOwner).Carrier;
+                    .GetComponentData<ParkingLotCarrierReference>(lot).Carrier;
                 if (traeger == Entity.Null || !EntityManager.Exists(traeger))
                     grund = "Traeger fehlt";
                 else if (!EntityManager.HasBuffer<Game.Net.SubNet>(traeger))

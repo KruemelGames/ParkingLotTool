@@ -27,6 +27,11 @@ namespace ParkingLotTool.Tools
     {
         private EntityQuery _lotCarrierQuery;
 
+        // Beim Edit ist _editLot das gewaehlte Lot (Bauzettel 23.09.:
+        // Einstieg Lot 63914). _lotOwner wird beim Edit-Einstieg 0-mal
+        // gesetzt; nach einem Laden ist er null oder zeigt auf den letzten Bau.
+        private Entity AktuellesZoningLot => IsEditing ? _editLot : _lotOwner;
+
         private void InitialisiereZoningSeitenSpeicher()
         {
             _lotCarrierQuery = GetEntityQuery(

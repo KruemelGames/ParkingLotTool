@@ -1037,6 +1037,19 @@ namespace ParkingLotTool.Tools
                 signature = AppendPolygonGroup(signature, layout.AsphaltSurface);
                 signature = AppendPolygonGroup(signature, layout.ZoningRoadSurface);
                 signature = AppendPolygonGroup(signature, layout.ZoningSurface);
+                // Im Bauzettel 23.09. gingen 3 Klicks auf Innen AUS verloren:
+                // zweimal meldete Enter "ohne Aenderungen". Die Signatur
+                // muss auch die 4 geladenen Handschaltungen vergleichen.
+                signature = signature * 31 + _zoningSeitenPlan.Count;
+                foreach (var seite in _zoningSeitenPlan)
+                {
+                    signature = AppendDouble(signature, seite.A.x);
+                    signature = AppendDouble(signature, seite.A.y);
+                    signature = AppendDouble(signature, seite.B.x);
+                    signature = AppendDouble(signature, seite.B.y);
+                    signature = signature * 31 + (seite.Links ? 1 : 0);
+                    signature = signature * 31 + (seite.Aus ? 1 : 0);
+                }
                 signature = AppendPolygonGroup(signature, _vorflaechen);
                 signature = signature * 31 + ((_uiSystem?.VorflaecheAn ?? true) ? 1 : 0);
                 signature = AppendText(signature, GrassSurfaceName);
