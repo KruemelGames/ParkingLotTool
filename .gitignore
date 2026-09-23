@@ -93,3 +93,6 @@ Overlays/en/
 /Properties/Thumbnail.png
 /Properties/Screenshots/
 /RELEASE.md
+
+# Testausgaben aus Befund-Laeufen: Beweismittel, kein Projektinhalt.
+/Tests/*Befund*/

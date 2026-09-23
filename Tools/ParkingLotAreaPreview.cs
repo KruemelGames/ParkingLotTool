@@ -384,15 +384,17 @@ namespace ParkingLotTool.Tools
                     out _, out _, ZoningBelagPrioritaet)
                 : Entity.Null;
             _dekoBelagPrefab = VorflaechenPrefab(_grassSurfacePrefab,
-                out _, out _, ZoningBelagPrioritaet);
+                out var dekoRaeumerFehler, out var dekoRaeumerAufgegeben,
+                ZoningBelagPrioritaet, raeumt: true);
             /*
-             * UND DERSELBE KLON FUER DEN HAUPTBELAG - siehe die Begruendung
-             * an der Asphaltgruppe weiter unten. Derselbe Zielwert wie die
-             * Vorflaeche, denn beide liegen jetzt ueber derselben sichtbaren
-             * Gasse.
+             * HAUPTBELAG MIT EIGENEM RAEUM-KLON. Die Zeichenprioritaet ist
+             * dieselbe wie bei der Vorflaeche; das Raeumflag darf die
+             * einzelne Vorflaeche ausserhalb des Polygons nicht erben.
              */
             _asphaltBelagPrefab = VorflaechenPrefab(_pavementSurfacePrefab,
-                out _, out _, VorflaechePrioritaet);
+                out var asphaltRaeumerFehler,
+                out var asphaltRaeumerAufgegeben,
+                VorflaechePrioritaet, raeumt: true);
             /*
              * DER PARZELLENBODEN GEHOERT AUCH DAZU.
              *
@@ -429,6 +431,30 @@ namespace ParkingLotTool.Tools
                         + "initialisiert; es wurde noch keine Fläche übergeben.";
                 if (_ghostsActive)
                     ClearAreaPreviewGhosts("apron prefab not ready");
+                return;
+            }
+
+            // 120 Prefabzyklen sind die bestehende Aufgabegrenze. Bis dahin
+            // darf Enter keinen Vanilla-Belag ohne Raeumflag festschreiben.
+            // Bei Fehler/Aufgabe bleibt der bestehende baubare Rueckfall.
+            _areaPreviewLayout.SurfacesForPlacement(
+                _uiSystem?.FlaecheStrasseAn ?? true,
+                _uiSystem?.FlaecheDekoAn ?? true,
+                out var geplantesGras, out var geplanterAsphalt);
+            var dekoRaeumerNoetig = geplantesGras.Length > 0;
+            var asphaltRaeumerNoetig = geplanterAsphalt.Length > 0;
+            var raeumerAusstehend = dekoRaeumerNoetig
+                && _dekoBelagPrefab == Entity.Null
+                && !dekoRaeumerFehler && !dekoRaeumerAufgegeben
+                || asphaltRaeumerNoetig
+                && _asphaltBelagPrefab == Entity.Null
+                && !asphaltRaeumerFehler && !asphaltRaeumerAufgegeben;
+            if (raeumerAusstehend)
+            {
+                _areaTransferNote = "Gras- und Asphalt-Raeumbelag werden "
+                    + "von CS2 initialisiert; noch keine Flaeche uebergeben.";
+                if (_ghostsActive)
+                    ClearAreaPreviewGhosts("clearing surface prefab not ready");
                 return;
             }
 
@@ -647,6 +673,13 @@ namespace ParkingLotTool.Tools
             var dekoAn = _uiSystem?.FlaecheDekoAn ?? true;
             layout.SurfacesForPlacement(
                 strasseAn, dekoAn, out var gras, out var asphalt);
+            if (!dekoAn && layout.GrassForVegetation?.Length > 0)
+                RecordPreviewDiagnostic("Warning", "Dekoflaeche AUS: "
+                    + "Gelaendebaeume im Gruenstreifen bleiben sichtbar, "
+                    + "auch wenn dort eigene Pflanzen gesetzt werden.");
+            if (!strasseAn && layout.AsphaltSurface?.Length > 0)
+                RecordPreviewDiagnostic("Warning", "Strassenflaeche AUS: "
+                    + "Gelaendebaeume abseits der Wege bleiben sichtbar.");
             /*
              * Die Vorflaeche braucht ihr eigenes Prefab (Decal-Ebene `Roads`,
              * siehe ParkingLotApronPrefab). Wenn es hier eine Vorflaeche gibt,
@@ -774,11 +807,16 @@ namespace ParkingLotTool.Tools
             var grasPrefab = _dekoBelagPrefab != Entity.Null
                 ? _dekoBelagPrefab
                 : _grassSurfacePrefab;
+            if (dekoAn && gras.Length > 0 && _dekoBelagPrefab == Entity.Null)
+                RecordPreviewDiagnostic("Warning", "Gras raeumt keine "
+                    + "Gelaendebaeume: der PLT-Raeumbelag ist noch nicht "
+                    + "bereit; der Bau verwendet die gewaehlte Vanilla-Flaeche.");
             if (dekoAn)
                 flaechen += CreateAreaPreviewGroup("Grass", gras,
                     grasPrefab, ref heightData);
             /*
-             * DER HAUPTBELAG BEKOMMT DENSELBEN KLON WIE DIE VORFLAECHE.
+             * DER HAUPTBELAG BEKOMMT DIESELBEN DECAL-EBENEN WIE DIE
+             * VORFLAECHE, ABER EINEN EIGENEN KLON MIT RAEUMFLAG.
              *
              * Befund des Nutzers vom 2026-09-18: die Vorflaeche ueberdeckt
              * den hellen Halbkreis der Gasse, der Hauptbelag nicht. Der
@@ -797,11 +835,17 @@ namespace ParkingLotTool.Tools
              * waere ein zu grosser Einsatz.
              */
             if (strasseAn)
+            {
+                if (asphalt.Length > 0 && _asphaltBelagPrefab == Entity.Null)
+                    RecordPreviewDiagnostic("Warning", "Asphalt raeumt keine "
+                        + "Gelaendebaeume: der PLT-Raeumbelag ist noch nicht "
+                        + "bereit; der Bau verwendet die gewaehlte Vanilla-Flaeche.");
                 flaechen += CreateAreaPreviewGroup("Asphalt", asphalt,
                     _asphaltBelagPrefab != Entity.Null
                         ? _asphaltBelagPrefab
                         : _pavementSurfacePrefab,
                     ref heightData);
+            }
             /*
              * DAS BAULAND HAT SEINEN EIGENEN SCHALTER NICHT.
              *
@@ -863,7 +907,10 @@ namespace ParkingLotTool.Tools
             }
             if (strasseAn && verschmolzen.Length > 0)
                 flaechen += CreateAreaPreviewGroup("Asphalt mit Vorflaeche",
-                    verschmolzen, vorflaechenPrefab, ref heightData);
+                    verschmolzen,
+                    _asphaltBelagPrefab != Entity.Null
+                        ? _asphaltBelagPrefab : vorflaechenPrefab,
+                    ref heightData);
             if (strasseAn && einzelneVorflaechen.Length > 0)
                 flaechen += CreateAreaPreviewGroup("Vorflaeche",
                     einzelneVorflaechen, vorflaechenPrefab, ref heightData);
@@ -1056,6 +1103,12 @@ namespace ParkingLotTool.Tools
                 signature = AppendText(signature, PavementSurfaceName);
                 signature = signature * 31 + _vorflaechenPrefab.Index;
                 signature = signature * 31 + _vorflaechenPrefab.Version;
+                // Ein fertig initialisierter Raeumbelag muss die Vorschau
+                // ersetzen; sonst bliebe der erste Vanilla-Rueckfall stehen.
+                signature = signature * 31 + _dekoBelagPrefab.Index;
+                signature = signature * 31 + _dekoBelagPrefab.Version;
+                signature = signature * 31 + _asphaltBelagPrefab.Index;
+                signature = signature * 31 + _asphaltBelagPrefab.Version;
                 // Ohne diese zwei Zeilen bliebe die Vorschau stehen, wenn nur
                 // ein Schalter umgelegt wird: die Geometrie ist ja dieselbe.
                 signature = signature * 31 + ((_uiSystem?.FlaecheStrasseAn ?? true) ? 1 : 0);

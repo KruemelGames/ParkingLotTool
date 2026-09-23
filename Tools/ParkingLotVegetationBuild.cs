@@ -272,7 +272,7 @@ namespace ParkingLotTool.Tools
         {
             using var parts=_editRelatedParts.ToEntityArray(Allocator.Temp);
             var counts=new System.Collections.Generic.Dictionary<string,int>();
-            int hidden=0, baeume=0;
+            int hidden=0, baeume=0, besitzerkette=0;
             foreach(var part in parts)
             {
                 if(EntityManager.GetComponentData<ParkingLotPartRelation>(part).Lot!=lot || !EntityManager.HasComponent<Game.Objects.Tree>(part)) continue;
@@ -280,8 +280,26 @@ namespace ParkingLotTool.Tools
                 counts[age]=counts.TryGetValue(age,out var n)?n+1:1;
                 baeume++;
                 if(EntityManager.HasComponent<Overridden>(part)) hidden++;
+                var relation = EntityManager
+                    .GetComponentData<ParkingLotPartRelation>(part);
+                if (EntityManager.HasComponent<Owner>(part)
+                    && EntityManager.GetComponentData<Owner>(part).m_Owner
+                        == relation.Carrier
+                    && EntityManager.Exists(relation.Carrier)
+                    && EntityManager.HasComponent<Owner>(relation.Carrier)
+                    && EntityManager.GetComponentData<Owner>(relation.Carrier)
+                        .m_Owner == lot)
+                    besitzerkette++;
             }
-            Mod.log.Info("PLT-Vegetation " + anlass + " Lot " + lot.Index + ": " + string.Join("; ",counts.Select(p=>p.Key+"="+p.Value)) + "; Baeume="+baeume+"; Overridden="+hidden);
+            Mod.log.Info("PLT-Vegetation " + anlass + " Lot " + lot.Index + ": " + string.Join("; ",counts.Select(p=>p.Key+"="+p.Value)) + "; Baeume="+baeume+"; Besitzerkette Pflanze-Traeger-Lot="+besitzerkette+"/"+baeume+"; Overridden="+hidden);
+            // OverrideSystem.AreaIterator (Game.dll:1307-1317) nimmt nur
+            // dieselbe Besitzerkette aus. Nach 150 Frames sind 0 versteckte
+            // eigene Baeume und N/N intakte Ketten die Abnahmewerte.
+            if (anlass == "NACH DEM BAU" && (hidden > 0
+                || besitzerkette != baeume))
+                Mod.log.Warn("PLT-Vegetation: Rueckfall bei eigenen Pflanzen: "
+                    + hidden + " Overridden, " + besitzerkette + "/"
+                    + baeume + " intakte Besitzerketten; siehe Bauzettel.");
             if (baeume == 0) return;
             _uiSystem?.SetStatus(ParkingLotTexte.T("Bäume: ", "Trees: ")
                 + string.Join(", ", counts

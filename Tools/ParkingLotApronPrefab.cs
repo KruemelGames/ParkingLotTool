@@ -36,14 +36,15 @@ namespace ParkingLotTool.Tools
          */
         private Entity VorflaechenPrefab(Entity belagPrefab,
             out bool fehlgeschlagen, out bool aufgegeben,
-            int prioritaetsaufschlag = 0)
+            int prioritaetsaufschlag = 0, bool raeumt = false)
         {
             fehlgeschlagen = false;
             aufgegeben = _apronPrefabSystem == null;
             return _apronPrefabSystem == null
                 ? Entity.Null
                 : _apronPrefabSystem.FordereAn(belagPrefab,
-                    prioritaetsaufschlag, out fehlgeschlagen, out aufgegeben);
+                    prioritaetsaufschlag, out fehlgeschlagen, out aufgegeben,
+                    raeumt);
         }
     }
 
@@ -69,6 +70,7 @@ namespace ParkingLotTool.Tools
             public string Name;
             public DecalLayers OriginalMaske;
             public int Prioritaetsaufschlag;
+            public bool Raeumt;
             public int OriginalPrioritaet;
             public int Pruefungen;
             public bool Bereit;
@@ -85,15 +87,16 @@ namespace ParkingLotTool.Tools
         private const int AufgabenNachZyklen = 120;
 
         /*
-         * Der Schluessel traegt den Prioritaetsaufschlag mit.
+         * Der Schluessel traegt Prioritaet und Raeumwirkung mit.
          *
          * Vorflaeche und Zoningbelag klonen dasselbe Belagprefab, brauchen
          * aber verschiedene Zeichenreihenfolgen: der Zoningbelag muss ueber
          * die Gebaeudeflaechen, die Vorflaeche soll bleiben, wie sie ist.
-         * Ein gemeinsamer Klon koennte nur eine der beiden bedienen.
+         * Ein gemeinsamer Klon koennte nur eine der beiden bedienen. Seit
+         * 23.09 gilt das auch fuer Raeumbelag gegen Zoningbelag.
          */
-        private readonly Dictionary<(Entity Original, int Aufschlag), Eintrag>
-            _eintraege = new Dictionary<(Entity, int), Eintrag>();
+        private readonly Dictionary<(Entity Original, int Aufschlag, bool Raeumt), Eintrag>
+            _eintraege = new Dictionary<(Entity, int, bool), Eintrag>();
         private PrefabSystem _prefabSystem;
         private EntityQuery _flaechenprefabs;
 
@@ -112,14 +115,15 @@ namespace ParkingLotTool.Tools
          * ausschliesslich in OnUpdate und damit in der richtigen Phase.
          */
         public Entity FordereAn(Entity original, int prioritaetsaufschlag,
-            out bool fehlgeschlagen, out bool aufgegeben)
+            out bool fehlgeschlagen, out bool aufgegeben,
+            bool raeumt = false)
         {
             fehlgeschlagen = false;
             aufgegeben = false;
             if (original == Entity.Null || !EntityManager.Exists(original))
                 return Entity.Null;
 
-            var schluessel = (original, prioritaetsaufschlag);
+            var schluessel = (original, prioritaetsaufschlag, raeumt);
             if (!_eintraege.TryGetValue(schluessel, out var eintrag))
             {
                 if (!_prefabSystem.TryGetPrefab<SurfacePrefab>(original,
@@ -136,15 +140,17 @@ namespace ParkingLotTool.Tools
                     Original = original,
                     KlonEntity = Entity.Null,
                     Prioritaetsaufschlag = prioritaetsaufschlag,
+                    Raeumt = raeumt,
                     // Der Name muss sich unterscheiden: zwei Prefabs mit
                     // derselben PrefabID lehnt PrefabSystem ab.
-                    Name = (prioritaetsaufschlag == 0
+                    Name = raeumt ? "PLT Raeumbelag (" + vorbild.name + ", "
+                        + prioritaetsaufschlag + ")" : (prioritaetsaufschlag == 0
                             ? "PLT Vorflaeche ("
                             : "PLT Zoningbelag (")
                         + vorbild.name + ")",
                 };
                 _eintraege.Add(schluessel, eintrag);
-                MerkeKlon(vorbild.name, prioritaetsaufschlag);
+                MerkeKlon(vorbild.name, prioritaetsaufschlag, raeumt);
                 Mod.log.Info($"PLT-Vorflaeche: '{eintrag.Name}' fuer den "
                     + "naechsten PrefabUpdate-Zyklus angefordert.");
             }
@@ -203,10 +209,13 @@ namespace ParkingLotTool.Tools
             return gelesen;
         }
 
-        private void MerkeKlon(string vorbildname, int aufschlag)
+        private void MerkeKlon(string vorbildname, int aufschlag,
+            bool raeumt)
         {
             if (Mod.Optionen == null) return;
-            var eintrag = vorbildname + "|" + aufschlag;
+            // Alte Eintraege mit zwei Feldern bleiben ohne Raeumwirkung.
+            var eintrag = vorbildname + "|" + aufschlag
+                + (raeumt ? "|R" : "");
             var gemerkt = GemerkteKlone();
             if (!gemerkt.Add(eintrag)) return;
             Mod.Optionen.Flaechenklone = string.Join("\n", gemerkt.ToArray());
@@ -251,8 +260,13 @@ namespace ParkingLotTool.Tools
             {
                 var strich = eintrag.LastIndexOf('|');
                 if (strich <= 0) continue;
+                var raeumt = eintrag.Substring(strich + 1) == "R";
+                if (raeumt) strich = eintrag.LastIndexOf('|', strich - 1);
+                if (strich <= 0) continue;
                 var vorbildname = eintrag.Substring(0, strich);
-                if (!int.TryParse(eintrag.Substring(strich + 1),
+                var ende = raeumt ? eintrag.LastIndexOf('|') : eintrag.Length;
+                if (!int.TryParse(eintrag.Substring(strich + 1,
+                        ende - strich - 1),
                         out var aufschlag)) continue;
 
                 for (var i = 0; i < kandidaten.Length; i++)
@@ -262,7 +276,7 @@ namespace ParkingLotTool.Tools
                         || vorbild == null) continue;
                     if (!string.Equals(vorbild.name, vorbildname,
                             StringComparison.Ordinal)) continue;
-                    FordereAn(kandidaten[i], aufschlag, out _, out _);
+                    FordereAn(kandidaten[i], aufschlag, out _, out _, raeumt);
                     gefunden++;
                     break;
                 }
@@ -728,12 +742,38 @@ namespace ParkingLotTool.Tools
 
             var archetypSteht = area.m_Archetype.Valid;
             var typStimmt = geometrie.m_Type == AreaType.Surface;
+            /*
+             * Messung: Grass/Pavement Surface 01 haben Flags 0; ohne
+             * CanOverrideObjects steigt OverrideSystem (Game.dll:1321) aus.
+             * Nur die Klone fuer Gras und Asphalt raeumen. Zoningbelag und
+             * Vorflaeche duerfen fremde Gebaeuderequisiten nicht treffen.
+             * AreaInitializeSystem:343 schreibt die Flags erst waehrend der
+             * Prefabinitialisierung; deshalb setzen wir sie nach dem Archetyp.
+             */
+            if (archetypSteht && typStimmt)
+            {
+                var hatFlag = (geometrie.m_Flags
+                    & GeometryFlags.CanOverrideObjects) != 0;
+                if (hatFlag != eintrag.Raeumt)
+                {
+                    if (eintrag.Raeumt)
+                        geometrie.m_Flags |= GeometryFlags.CanOverrideObjects;
+                    else
+                        geometrie.m_Flags &= ~GeometryFlags.CanOverrideObjects;
+                    EntityManager.SetComponentData(entity, geometrie);
+                    Mod.log.Info($"PLT-Flaechenklon '{eintrag.Name}': "
+                        + $"CanOverrideObjects={(eintrag.Raeumt ? "AN" : "AUS")}, "
+                        + $"Flags={geometrie.m_Flags}.");
+                }
+            }
             var stapelSteht = stapel.m_HeightOffset > 0f;
             var eigenerStapel = originalBatch >= 0
                 && stapel.m_BatchIndex != originalBatch;
             var maskeStimmt = (klonMaske & DecalLayers.Terrain) != 0
                 && (klonMaske & DecalLayers.Roads) != 0;
             var originalUnveraendert = originalMaske == eintrag.OriginalMaske;
+            var raeumflagStimmt = ((geometrie.m_Flags
+                & GeometryFlags.CanOverrideObjects) != 0) == eintrag.Raeumt;
 
             zustand = $"'{eintrag.Name}': Archetyp="
                 + (archetypSteht ? "gueltig" : "UNGUELTIG")
@@ -746,7 +786,8 @@ namespace ParkingLotTool.Tools
                 + $"Original-Ebenen={originalMaske}.";
 
             return archetypSteht && typStimmt && stapelSteht
-                && eigenerStapel && maskeStimmt && originalUnveraendert;
+                && eigenerStapel && maskeStimmt && originalUnveraendert
+                && raeumflagStimmt;
         }
 
         private string JaNein<T>(Entity entity) where T : unmanaged,

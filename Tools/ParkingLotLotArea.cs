@@ -140,138 +140,39 @@ namespace ParkingLotTool.Tools
          * getrennt: angemeldet wird beim Einschalten, benutzt erst, wenn der
          * Archetyp steht.
          */
-        private bool _lotClearsObjects;
-
         private bool LotOwnerPrefabReady(Entity prefab)
         {
             if (LotOwnerPrefabState(prefab) != null) return false;
-            EnsureLotClearsObjects(prefab);
+            MeldeLotOhneRaeumung(prefab);
             return true;
         }
 
-        /**
-         * BAEUME UND FELSEN UNTER DEM PARKPLATZ AUSBLENDEN.
+        /*
+         * LOT BLEIBT OHNE RAEUMFLAG.
          *
-         * Nutzerbefund 2026-08-14: manche Baeume bleiben stehen, andere nicht,
-         * "es gibt keinen genauen Anhaltspunkt". Gemessen war die Erklaerung
-         * nicht die Groesse, sondern die Lage - KEINE unserer Flaechen raeumt:
-         *
-         *   PLT Parkplatzflaeche : Flags PseudoRandom  -> raeumt NEIN
-         *   Grass Surface 01     : Flags 0             -> raeumt NEIN
-         *   Pavement Surface 01  : Flags 0             -> raeumt NEIN
-         *
-         * Was verschwand, raeumten die STRASSEN weg, wie jede Vanilla-Strasse
-         * ihre Trasse freiraeumt. Alles daneben blieb stehen.
-         *
-         * Das Flag gehoert ans LOT und nicht an die Einzelflaechen: ein
-         * Polygon statt hunderter Gras- und Belagstuecke, und es deckt auch
-         * die Zwischenraeume ab.
-         *
-         * `OverrideSystem` (Game.dll, Zeile 1319) steigt ohne dieses Flag
-         * sofort aus. Es setzt `Overridden`, NICHT `Deleted` - die Baeume
-         * werden versteckt und kommen beim Bulldozern zurueck, genau wie bei
-         * einem Gebaeude. Ein eigener Loeschweg waere endgueltig gewesen.
-         *
-         * WARUM DIREKT GESCHRIEBEN: `AreaInitializeSystem` (Zeile 308) gibt
-         * einem Lot das Flag nur, wenn das Prefab `StorageAreaData` traegt -
-         * das braechte Lager- und Wirtschaftslogik mit, die ein Parkplatz
-         * nicht will. Hier wird nur das eine Bit auf UNSEREM eigenen Prefab
-         * gesetzt; kein Vanilla-Prefab wird angefasst.
+         * Nutzerbefund 2026-09-16: mit CanOverrideObjects am ganzen Lot
+         * verschwanden bei 3 von 3 Stadionversuchen die Requisiten auf der
+         * Zoningflaeche. OverrideSystem.AreaIterator (Game.dll:1307-1323)
+         * nimmt nur Objekte mit derselben Besitzerwurzel aus. Seit 23.09
+         * raeumen deshalb eigene Gras- und Asphaltklone, nie das Lot.
          */
-        /**
-         * TESTSCHALTER fuer das Hover-Flackern.
-         *
-         * Der Nutzer beschreibt am 2026-08-17: zeigt er auf eine
-         * Stellplatzmarkierung, flackern ALLE Markierungen DESSELBEN Typs kurz
-         * an einer falschen Stelle - die E-Plaetze, wenn er auf einen E-Platz
-         * zeigt, die normalen bleiben ruhig. Die Originale bleiben dabei
-         * stehen; es bewegt sich eine Kopie.
-         *
-         * Der Bewegungswaechter bestaetigt das: nach dem Bau meldet er 13
-         * Objekte mit 3 cm (das Einrasten aufs Gelaende), danach NICHTS mehr.
-         * Es bewegt sich also wirklich nichts - es ist die
-         * Instanz-Darstellung, die je Prefab gebuendelt ist.
-         *
-         * VERDACHT, nicht bewiesen: unsere Aufkleber tragen `Overridden`, weil
-         * die Lot-Flaeche `CanOverrideObjects` traegt (um Baeume zu
-         * verstecken). `PreCullingSystem` liest das CHUNK-weise (`flag4`,
-         * Zeile 700) und behandelt solche Objekte beim Sichtbarkeitswechsel
-         * anders.
-         *
-         * Steht dieser Schalter auf false, bekommt die Flaeche das Flag NICHT.
-         * Dann sollte das Flackern verschwinden - und die Baeume unter dem
-         * Parkplatz stehenbleiben. Genau dieser Tausch ist die Frage, die der
-         * Test beantwortet.
-         */
-        /**
-         * AUS - SEIT DEM 2026-09-16, UND NICHT MEHR ALS VERSUCH.
-         *
-         * Der Schalter war fuer eine Flackerfrage gedacht, die sich anders
-         * erledigt hat. Jetzt entscheidet er etwas anderes, und zwar gemessen.
-         *
-         * Der Nutzer hat dreimal dasselbe gebaut:
-         *
-         *   frisch gebaut, dann Stadion ans Zoning   -> Requisiten weg
-         *   eine Minute gewartet, dann Stadion       -> Requisiten weg
-         *   Spielstand geladen, nicht gebaut         -> Requisiten bleiben
-         *
-         * Den Unterschied nennt das Log:
-         *
-         *   17:10:28  ===== Parking Lot Tool geladen =====
-         *   17:10:59  PLT-Parkplatzflaeche raeumt jetzt Objekte
-         *
-         * Das Flag kommt erst beim ersten Bauen (`LotOwnerPrefabReady`). Wer
-         * nur laedt, hat es nicht - und dann versteckt die Flaeche nichts.
-         *
-         * `OverrideSystem.AreaIterator` versteckt jedes `Overridable` Objekt
-         * im Polygon, dessen Besitzerkette nicht bei derselben Flaeche endet.
-         * Fuer Baeume und Felsen unter dem Asphalt ist das gewollt. Fuer ein
-         * Stadion auf der Zoningflaeche nicht - und fuer jedes Haus, das dort
-         * waechst, ebensowenig; die verlieren nach derselben Regel ihre
-         * Zaeune und Vorgartenbaeume.
-         *
-         * Das Zoning auszusparen geht nicht: eine CS2-Flaeche ist EIN Ring,
-         * und die Lot-Flaeche muss eine Entity bleiben - sie besitzt alle
-         * Teile ueber ihre SubObject- und SubNet-Puffer. Ein Loch gibt es
-         * dafuer nicht, und ein aufgeschnittener Ring, der sich selbst
-         * beruehrt, verwirft CS2 ganz.
-         *
-         * Der Tausch ist damit: vorher verschwanden Baeume unter dem Asphalt -
-         * und still auch die Requisiten jedes fremden Gebaeudes auf dem
-         * Parkplatz. Jetzt verschwindet nichts, und wer die Baeume nicht will,
-         * bulldozert sie vorher. Ein sichtbarer Mangel, den der Nutzer selbst
-         * beheben kann, statt eines unsichtbaren, den niemand findet.
-         *
-         * DER SAUBERE WEG BLEIBT OFFEN: den BELAG raeumen lassen statt der
-         * Lot-Flaeche. Der liegt genau dort, wo wir bauen, und nicht auf den
-         * Zoningparzellen. Dafuer muessten die gewaehlten Flaechen ueber Klone
-         * laufen wie schon die Vorflaeche - eine eigene Runde Arbeit.
-         */
-        private static readonly bool FlaecheVerstecktObjekte = false;
+        private bool _lotRaeumungGemeldet;
 
-        private void EnsureLotClearsObjects(Entity prefab)
+        private void MeldeLotOhneRaeumung(Entity prefab)
         {
-            if (!FlaecheVerstecktObjekte)
-            {
-                if (_lotClearsObjects) return;
-                _lotClearsObjects = true;
-                Mod.log.Info("PLT-Parkplatzflaeche raeumt KEINE Objekte "
-                    + "(FlaecheVerstecktObjekte = false). Baeume und Felsen "
-                    + "unter dem Parkplatz bleiben stehen - dafuer behalten "
-                    + "fremde Gebaeude auf der Zoningflaeche ihre Requisiten.");
-                return;
-            }
-            if (_lotClearsObjects) return;
-            _lotClearsObjects = true;
+            if (_lotRaeumungGemeldet) return;
+            _lotRaeumungGemeldet = true;
             var geometry = EntityManager.GetComponentData<AreaGeometryData>(prefab);
-            if ((geometry.m_Flags & Game.Areas.GeometryFlags.CanOverrideObjects) != 0)
-                return;
-            geometry.m_Flags |= Game.Areas.GeometryFlags.CanOverrideObjects;
-            EntityManager.SetComponentData(prefab, geometry);
-            Mod.log.Info("PLT-Parkplatzflaeche raeumt jetzt Objekte: Flags "
-                + geometry.m_Flags + ". Baeume und Felsen darunter werden "
-                + "VERSTECKT (Overridden), nicht geloescht - beim Bulldozern "
-                + "kommen sie zurueck.");
+            if ((geometry.m_Flags & Game.Areas.GeometryFlags.CanOverrideObjects)
+                != 0)
+            {
+                geometry.m_Flags &= ~Game.Areas.GeometryFlags.CanOverrideObjects;
+                EntityManager.SetComponentData(prefab, geometry);
+                Mod.log.Warn("PLT-Lot: unerwartetes CanOverrideObjects entfernt. "
+                    + "Nur Gras- und Asphaltklone duerfen raeumen.");
+            }
+            Mod.log.Info("PLT-Lot raeumt keine Objekte; eigene Gras- und "
+                + "Asphaltklone raeumen ausserhalb der Zoningparzellen.");
         }
 
         /**
