@@ -18,7 +18,6 @@ namespace ParkingLotTool.Geometry
         public int Ages = 6;
         // Im Vegetationszettel gespeichert; keine neue Wuerfelung beim Laden.
         public uint Seed;
-        public bool ShouldSerializeSeed() => Seed != 0;
         public string[] Species = Array.Empty<string>();
     }
     public struct VegetationPlacement

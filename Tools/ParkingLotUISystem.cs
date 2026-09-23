@@ -2167,6 +2167,22 @@ namespace ParkingLotTool.Tools
         internal void ClearBuildReceiptTemplate()
             => _loadedBuildReceiptTemplate = null;
 
+        internal void SetBuildReceiptZoningstrasse(string name)
+        {
+            if (_loadedBuildReceiptTemplate != null
+                && !string.IsNullOrEmpty(name))
+                _loadedBuildReceiptTemplate.Zoningstrasse = name;
+        }
+
+        internal void LoadZoningBedienwerte(string modus, double winkel,
+            int tiefe, double? ausrichtung)
+        {
+            UpdateValue(_zoningWinkelmodus, modus);
+            UpdateValue(_zoningWinkel, (float)winkel);
+            SetZoningAussentiefe(tiefe);
+            SetZoningAusrichtwinkel(ausrichtung);
+        }
+
         /** Rueckmeldung des asynchron im naechsten Werkzeugframe laufenden Suchlaufs. */
         internal void SetUeberlappungsstand(string text)
         {

@@ -26,7 +26,10 @@ namespace ParkingLotTool.Tools
                                            ISerializable
     {
         /*
-         * VERSION 2 seit dem 2026-08-31: die gewaehlte Bezugslinie kam dazu.
+         * VERSION 5: auf die drei bestehenden Fassungen folgten die
+         * gemessene Gassenbreite und vier Zoning-Vorwahlen. Die Felder
+         * stehen am Ende; Fassung 3 endet nach Randstrassen, 4 nach
+         * Gassenbreite. So bleiben alte Zettel lesbar.
          *
          * Genau dafuer steht die Versionszahl an erster Stelle. Der
          * Serializer legt Instanzen ohne Laengenangabe hintereinander; wer
@@ -34,7 +37,7 @@ namespace ParkingLotTool.Tools
          * folgenden Datensaetze. Mit der Version davor weiss der Leser, wie
          * weit er lesen darf - Fassung 1 endet nach `BayIcons`.
          */
-        public const int CurrentVersion = 3;
+        public const int CurrentVersion = 5;
 
         public int Version;
         /** Bezugsrichtung in Grad; `NaN` heisst "keine Linie gewaehlt". */
@@ -55,6 +58,7 @@ namespace ParkingLotTool.Tools
         public double Sw;
         public double Md;
         public double Cr;
+        public double Gassenbreite;
         public double Angle;
         public double KantenVersatz;
         public bool Qk;
@@ -66,7 +70,7 @@ namespace ParkingLotTool.Tools
         public bool NoNotch;
         public bool Single;
         public bool NoHalf;
-        /** 0=edge, 1=fixed, 2=auto. */
+        /** 0=edge, 1=fixed, 2=auto, 3=quer. */
         public int AngleMode;
 
         public double MedianWidth;
@@ -76,6 +80,10 @@ namespace ParkingLotTool.Tools
         public bool SurfaceDecorationOn;
         public bool SurfaceApronOn;
         public bool BayIcons;
+        public int ZoningWinkelmodus;
+        public double ZoningReglerwinkel;
+        public int ZoningAussentiefeVorwahl;
+        public double ZoningAusrichtwinkel;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -112,6 +120,11 @@ namespace ParkingLotTool.Tools
             writer.Write(AusrichtBx);
             writer.Write(AusrichtBz);
             writer.Write(Randstrassen);
+            writer.Write(Gassenbreite);
+            writer.Write(ZoningWinkelmodus);
+            writer.Write(ZoningReglerwinkel);
+            writer.Write(ZoningAussentiefeVorwahl);
+            writer.Write(ZoningAusrichtwinkel);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -155,6 +168,19 @@ namespace ParkingLotTool.Tools
             else Ausrichtwinkel = double.NaN;
             Randstrassen = true;
             if (Version >= 3) reader.Read(out Randstrassen);
+            Gassenbreite = LayoutSettings.Cs2.Gassenbreite;
+            if (Version >= 4) reader.Read(out Gassenbreite);
+            ZoningWinkelmodus = 0;
+            ZoningReglerwinkel = 0;
+            ZoningAussentiefeVorwahl = 2;
+            ZoningAusrichtwinkel = double.NaN;
+            if (Version >= 5)
+            {
+                reader.Read(out ZoningWinkelmodus);
+                reader.Read(out ZoningReglerwinkel);
+                reader.Read(out ZoningAussentiefeVorwahl);
+                reader.Read(out ZoningAusrichtwinkel);
+            }
         }
 
         internal LayoutSettings ToLayoutSettings(Entrance[] entrances)
@@ -168,6 +194,7 @@ namespace ParkingLotTool.Tools
                 Sw = Sw,
                 Md = Md,
                 Cr = Cr,
+                Gassenbreite = Gassenbreite,
                 Qk = Qk,
                 Randstrassen = Randstrassen,
                 Auto = Auto,

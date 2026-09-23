@@ -428,6 +428,7 @@ namespace ParkingLotTool.Geometry
                 Sl = Sl,
                 Sw = Sw,
                 Md = Md,
+                Gassenbreite = Gassenbreite,
                 Cr = Cr,
                 Qk = Qk,
                 Randstrassen = Randstrassen,

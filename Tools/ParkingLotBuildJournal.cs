@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using ParkingLotTool.Geometry;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using Newtonsoft.Json;
 
 namespace ParkingLotTool.Tools
 {
@@ -155,6 +157,23 @@ namespace ParkingLotTool.Tools
                     .Append("\",\"mitte\":[").Append(Num(center.x)).Append(',')
                     .Append(Num(center.y)).Append("],\"polygon\":").Append(points)
                     .Append(",\"vegetation\":").Append(_vegetationReceipt?.Options ?? "null")
+                    .Append(",\"vegetationswerte\":")
+                    .Append(JsonConvert.SerializeObject(ParkingSettingsInventory
+                        .Erfasse(JsonConvert.DeserializeObject<VegetationOptions>(
+                            _vegetationReceipt?.Options ?? "{}"),
+                            ParkingSettingsInventory.Vegetation)))
+                    .Append(",\"layoutwerte\":")
+                    .Append(JsonConvert.SerializeObject(ParkingSettingsInventory
+                        .Erfasse(settings, ParkingSettingsInventory.Layout)))
+                    .Append(",\"uiwerte\":")
+                    .Append(JsonConvert.SerializeObject(ZettelUIWerte()))
+                    .Append(",\"zoningseiten\":")
+                    .Append(JsonConvert.SerializeObject(_zoningSeitenPlan.Select(seite => new
+                    {
+                        A = new[] { seite.A.x, seite.A.y },
+                        B = new[] { seite.B.x, seite.B.y },
+                        seite.Links, seite.Aus,
+                    }).ToArray()))
                     .Append(",\"zoning\":").Append(Zoningfelder(settings))
                     .Append(",\"randzoning\":").Append(Randzoningfelder(settings))
                     .Append(",\"einstellungen\":\"").Append(Escape(Describe(settings)))
@@ -174,6 +193,53 @@ namespace ParkingLotTool.Tools
                 Mod.log.Warn("PLT-Bauprotokoll konnte nicht geschrieben werden: "
                     + exception.Message);
             }
+        }
+
+        private Dictionary<string, object> ZettelUIWerte()
+        {
+            // Vierzehn Bau- und Vorwahlwerte ausserhalb von LayoutSettings.
+            return new Dictionary<string, object>
+            {
+                ["MedianWidth"] = _uiSystem?.AktuelleMedianbreite,
+                ["GreenMedian"] = _uiSystem?.MittelgruenAn,
+                ["CrossBays"] = _uiSystem?.AktuelleQuerbuchten,
+                ["SurfaceRoad"] = _uiSystem?.FlaecheStrasse,
+                ["SurfaceDecoration"] = _uiSystem?.FlaecheDekoration,
+                ["SurfaceZoning"] = _uiSystem?.FlaecheZoning,
+                ["SurfaceRoadOn"] = _uiSystem?.FlaecheStrasseAn,
+                ["SurfaceDecorationOn"] = _uiSystem?.FlaecheDekoAn,
+                ["SurfaceApronOn"] = _uiSystem?.VorflaecheAn,
+                ["BayIcons"] = _uiSystem?.Buchtsymbole,
+                ["ZoningWinkelmodus"] = ZoningWinkelmodus,
+                ["ZoningWinkel"] = ZoningReglerwinkel,
+                ["ZoningAussentiefe"] = ZoningTiefeVorwahl,
+                ["ZoningAusrichtwinkel"] = ZoningAusrichtwinkel,
+            };
+        }
+
+        private static Dictionary<string, object> ZettelUIWerte(
+            ParkingLotBuildReceipt receipt, string road, string decoration,
+            string zoning)
+        {
+            return new Dictionary<string, object>
+            {
+                ["MedianWidth"] = receipt.MedianWidth,
+                ["GreenMedian"] = receipt.GreenMedian,
+                ["CrossBays"] = receipt.CrossBays,
+                ["SurfaceRoad"] = road,
+                ["SurfaceDecoration"] = decoration,
+                ["SurfaceZoning"] = zoning,
+                ["SurfaceRoadOn"] = receipt.SurfaceRoadOn,
+                ["SurfaceDecorationOn"] = receipt.SurfaceDecorationOn,
+                ["SurfaceApronOn"] = receipt.SurfaceApronOn,
+                ["BayIcons"] = receipt.BayIcons,
+                ["ZoningWinkelmodus"] = Winkelmodus.Dekodiere(
+                    receipt.ZoningWinkelmodus),
+                ["ZoningWinkel"] = receipt.ZoningReglerwinkel,
+                ["ZoningAussentiefe"] = receipt.ZoningAussentiefeVorwahl,
+                ["ZoningAusrichtwinkel"] = double.IsNaN(
+                    receipt.ZoningAusrichtwinkel) ? null : receipt.ZoningAusrichtwinkel,
+            };
         }
 
         /**

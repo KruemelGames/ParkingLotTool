@@ -58,7 +58,10 @@ namespace ParkingLotTool.Tools
     internal sealed class DebugDumpDocument
     {
         public int SchemaVersion { get; set; }
+        public Dictionary<string, object> ZettelUIWerte { get; set; }
+        public object[] Zoningseiten { get; set; }
         public ParkingLotTool.Geometry.VegetationOptions Vegetation { get; set; }
+        public Dictionary<string, object> Vegetationswerte { get; set; }
         public DebugFramework Framework { get; set; }
         public DebugInput Input { get; set; }
         public DebugPreview Preview { get; set; }
@@ -134,6 +137,9 @@ namespace ParkingLotTool.Tools
         public DebugPoint3[] PolygonWorld { get; set; }
         public DebugPoint2[] PolygonXZ { get; set; }
         public DebugLayoutSettings LayoutSettings { get; set; }
+        public Dictionary<string, object> Layoutwerte { get; set; }
+        public Dictionary<string, object> UIWerte { get; set; }
+        public object[] Zoningseiten { get; set; }
         public int CurrentGeometryRevision { get; set; }
         public int? ResultGeometryRevision { get; set; }
         public bool MatchesResult { get; set; }
@@ -150,6 +156,7 @@ namespace ParkingLotTool.Tools
 
     internal sealed class DebugLayoutSettings
     {
+        public Dictionary<string, object> AlleWerte { get; set; }
         public double Es { get; set; }
         public double Ai { get; set; }
         public double Cw { get; set; }
@@ -208,6 +215,8 @@ namespace ParkingLotTool.Tools
                 }).ToArray();
             return new DebugLayoutSettings
             {
+                AlleWerte = ParkingSettingsInventory.Erfasse(settings,
+                    ParkingSettingsInventory.Layout),
                 Es = settings.Es,
                 Ai = settings.Ai,
                 Cw = settings.Cw,

@@ -292,6 +292,19 @@ namespace ParkingLotTool.Tools
         /** Der Reglerwert; zaehlt nur bei "fixed". */
         internal double ZoningReglerwinkel { get; private set; }
 
+        internal void LadeZoningBedienwerte(ParkingLotBuildReceipt receipt)
+        {
+            // Vier Vorwahlen werden vor den Flaechen geladen; der normale
+            // Winkel-Setter wuerde alle Flaechen drehen (4 gespeicherte Werte).
+            ZoningWinkelmodus = Winkelmodus.Dekodiere(receipt.ZoningWinkelmodus);
+            ZoningReglerwinkel = receipt.ZoningReglerwinkel;
+            ZoningTiefeVorwahl = receipt.ZoningAussentiefeVorwahl;
+            ZoningAusrichtwinkel = double.IsNaN(receipt.ZoningAusrichtwinkel)
+                ? null : receipt.ZoningAusrichtwinkel;
+            _uiSystem?.LoadZoningBedienwerte(ZoningWinkelmodus,
+                ZoningReglerwinkel, ZoningTiefeVorwahl, ZoningAusrichtwinkel);
+        }
+
         internal void SetzeZoningWinkelmodus(string modus)
         {
             if (string.IsNullOrEmpty(modus) || ZoningWinkelmodus == modus) return;

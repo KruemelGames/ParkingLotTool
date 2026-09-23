@@ -148,8 +148,12 @@ namespace ParkingLotTool.Tools
             }
 
             ResetSelection();
+            LadeZoningBedienwerte(receipt);
             _uiSystem?.LoadBuildReceipt(receipt, surfaceRoad, surfaceDecoration,
                 surfaceZoning);
+            if (TryReadBuildText(EntityManager.GetBuffer<ParkingLotBuildText>(
+                    lot, true), 5, out var zoningRoad))
+                _uiSystem?.SetBuildReceiptZoningstrasse(zoningRoad);
             LoadVegetation(lot);
             /*
              * Die Bezugslinie gehoert zum Bauzettel, nicht zu den Reglern -
@@ -825,6 +829,8 @@ namespace ParkingLotTool.Tools
                 Zahl("Sl", gespeichert.Sl, wirksam.Sl, 1e-6);
                 Zahl("Sw", gespeichert.Sw, wirksam.Sw, 1e-6);
                 Zahl("Md", gespeichert.Md, wirksam.Md, 1e-6);
+                Zahl("Gassenbreite", gespeichert.Gassenbreite,
+                    wirksam.Gassenbreite, 1e-6);
                 Zahl("Cr", gespeichert.Cr, wirksam.Cr, 0.05);
                 Zahl("Angle", gespeichert.Angle, wirksam.Angle, 1e-6);
                 Zahl("KantenVersatz", gespeichert.KantenVersatz,
@@ -850,7 +856,7 @@ namespace ParkingLotTool.Tools
                 if (abweichungen.Count == 0)
                 {
                     Mod.log.Info("PLT-Bearbeiten: Bauzettel vollstaendig "
-                        + "uebernommen, 19 Werte geprueft, keine Abweichung.");
+                        + "uebernommen, 20 Werte geprueft, keine Abweichung.");
                     return;
                 }
 
@@ -941,6 +947,7 @@ namespace ParkingLotTool.Tools
                     Sw = settings.Sw,
                     Md = settings.Md,
                     Cr = settings.Cr,
+                    Gassenbreite = settings.Gassenbreite,
                     Angle = settings.Angle,
                     KantenVersatz = settings.KantenVersatz,
                     Qk = settings.Qk,
@@ -962,6 +969,10 @@ namespace ParkingLotTool.Tools
                     SurfaceDecorationOn = _uiSystem?.FlaecheDekoAn ?? true,
                     SurfaceApronOn = _uiSystem?.VorflaecheAn ?? true,
                     BayIcons = _uiSystem?.Buchtsymbole ?? true,
+                    ZoningWinkelmodus = Winkelmodus.Kodiere(ZoningWinkelmodus),
+                    ZoningReglerwinkel = ZoningReglerwinkel,
+                    ZoningAussentiefeVorwahl = ZoningTiefeVorwahl,
+                    ZoningAusrichtwinkel = ZoningAusrichtwinkel ?? double.NaN,
                     // NaN heisst "keine Bezugslinie" - so bleibt der Wert
                     // auch ohne Ausrichtung eindeutig.
                     Ausrichtwinkel = Ausrichtwinkel ?? double.NaN,
@@ -1199,6 +1210,7 @@ namespace ParkingLotTool.Tools
                  */
                 AddBuildText(textBuffer, 3,
                     _uiSystem?.FlaecheZoning ?? string.Empty);
+                AddBuildText(textBuffer, 5, settings.Zoningstrasse);
                 WriteVegetation(lot);
                 return true;
             }
@@ -1233,7 +1245,8 @@ namespace ParkingLotTool.Tools
                 || !HasCompleteBuildReceipt(lot)) return false;
 
             receipt = EntityManager.GetComponentData<ParkingLotBuildReceipt>(lot);
-            if (receipt.Version != ParkingLotBuildReceipt.CurrentVersion)
+            if (receipt.Version < 3
+                || receipt.Version > ParkingLotBuildReceipt.CurrentVersion)
             {
                 reason = "unbekannte Bauzettel-Version " + receipt.Version;
                 return false;
@@ -1502,6 +1515,14 @@ namespace ParkingLotTool.Tools
                 && Finite(r.Sl) && Finite(r.Sw) && Finite(r.Md)
                 && Finite(r.Cr) && Finite(r.Angle) && Finite(r.KantenVersatz)
                 && Finite(r.MedianWidth) && Finite(r.CrossBays)
+                && Finite(r.Gassenbreite)
+                && r.ZoningWinkelmodus >= 0
+                && r.ZoningWinkelmodus <= Winkelmodus.GroessteZahl
+                && Finite(r.ZoningReglerwinkel)
+                && r.ZoningAussentiefeVorwahl >= 1
+                && r.ZoningAussentiefeVorwahl <= 6
+                && (double.IsNaN(r.ZoningAusrichtwinkel)
+                    || Finite(r.ZoningAusrichtwinkel))
                 && r.AngleMode >= 0
                 && r.AngleMode <= Winkelmodus.GroessteZahl;
         }
