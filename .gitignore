@@ -96,3 +96,6 @@ Overlays/en/
 
 # Testausgaben aus Befund-Laeufen: Beweismittel, kein Projektinhalt.
 /Tests/*Befund*/
+
+# Konsolenmitschnitte von Prueflaeufen im Wurzelverzeichnis: Beweismittel.
+/*.txt

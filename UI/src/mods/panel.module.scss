@@ -1886,7 +1886,24 @@ $eck-reiter: 9rem;
   padding: $s2;
   border: 1rem solid $rand;
   border-radius: $eck-innen;
-  background-color: var(--menuPanel1);
+  /**
+   * EIGENER, DECKENDER GRUND - NICHT `--menuPanel1`.
+   *
+   * Nutzer am 2026-09-23: *"Die Transparenz des Hintergrunds beim Flaechen
+   * auswaehlen ist wirklich mist, bitte niedriger machen, kann sonst kaum
+   * die Flaechen erkennen."*
+   *
+   * Er hat recht, und der Grund steht in CS2s eigener `index.css`:
+   *
+   *     --menuPanel1: rgba(16,19,29,0.3)
+   *
+   * Dreissig Prozent. Fuer CS2s eigene Listen reicht das, weil dahinter
+   * meist ein weiteres Panel liegt. Diese Liste schwebt ueber der STADT,
+   * und ein Vorschaubild von 34 rem verliert gegen Gras und Asphalt
+   * darunter. Die RGB-Werte bleiben CS2s eigene, nur die Deckung steigt -
+   * so sieht die Liste weiter aus wie eine CS2-Liste.
+   */
+  background-color: rgba(16, 19, 29, 0.96);
   backdrop-filter: var(--menuBlur);
   overflow-y: auto;
 }

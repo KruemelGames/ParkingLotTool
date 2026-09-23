@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Game;
+using Game.Common;
 using Game.Prefabs;
 using Unity.Mathematics;
 using Unity.Entities;
@@ -273,7 +274,6 @@ namespace ParkingLotTool.Tools
         protected override void OnUpdate()
         {
             SaeheStandardklone();
-            HeileVanillaGasse();
             foreach (var eintrag in _eintraege.Values)
             {
                 if (eintrag.Fehler) continue;
@@ -753,8 +753,51 @@ namespace ParkingLotTool.Tools
          * bleibt also nichts zurueck, was jemand spaeter nicht erklaeren
          * koennte.
          */
-        private void HeileVanillaGasse()
+        /**
+         * AUS SEIT DEM 2026-09-23 - UND ZWAR GEMESSEN.
+         *
+         * Der Eingriff sollte die hellen Viertelkreise an den Enden der
+         * Vanilla-Gasse beheben. Er hat zwei Voraussetzungen, und beide
+         * treffen nicht zu:
+         *
+         * 1. UNSERE Gasse benutzt dieses Prefab gar nicht.
+         *    `ParkingLotNetBuilder.VerwendeVanillaAlley` steht auf false,
+         *    gebaut wird mit unserem Klon. Der Eingriff konnte unseren
+         *    Parkplaetzen also nie helfen.
+         * 2. Er trifft dafuer JEDE von Hand gesetzte Gasse der Stadt.
+         *
+         * Was der Nutzer am 2026-09-23 um 23:15 fotografiert hat, ist genau
+         * das: eine von Hand gesetzte Gasse mit einem Riss im Belag und
+         * Gras darunter. Der Log derselben Sitzung schliesst die andere
+         * Erklaerung aus -
+         *
+         *     23:05:56  ClipTerrain am SPIEL-PREFAB 'Alley' entfernt.
+         *               0 vorhandene Alley-Kante(n) fuer Terrain neu
+         *               markiert.
+         *
+         * - null vorhandene Kanten heisst: er hat die Gasse DANACH gesetzt.
+         * Sie bekam `Created` und eine frische Terrainberechnung mit
+         * sauberem Prefab. Ein veralteter Cache kann es also nicht sein.
+         * Uebrig bleibt der fehlende Schnitt selbst.
+         *
+         * Steht der Schalter auf true, wird wieder eingegriffen. Dann sind
+         * die Viertelkreise das Thema - und die gehoeren vor dem naechsten
+         * Versuch gemessen, nicht erinnert.
+         */
+        private static readonly bool GasseOhneGelaendeschnitt = false;
+
+        internal void HeileVanillaGasse()
         {
+            if (!GasseOhneGelaendeschnitt)
+            {
+                if (_vanillaGasseGemeldet) return;
+                _vanillaGasseGemeldet = true;
+                Mod.log.Info("PLT-Vanillagasse: das Spiel-Prefab 'Alley' "
+                    + "wird NICHT angefasst (GasseOhneGelaendeschnitt = "
+                    + "false). Von Hand gesetzte Gassen schneiden wieder "
+                    + "ins Gelaende wie im Grundspiel.");
+                return;
+            }
             if (_vanillaGasse == Entity.Null)
             {
                 const string name = "Alley";
@@ -781,6 +824,9 @@ namespace ParkingLotTool.Tools
             var geometrie = EntityManager
                 .GetComponentData<NetGeometryData>(_vanillaGasse);
             var vorher = geometrie.m_Flags;
+            // Flags 0 kam im Nutzerlog vor der Initialisierung vor. Erst
+            // nach NetInitialize und mit Breite > 0 ist dies ein Befund.
+            if (vorher == 0 || geometrie.m_DefaultWidth <= 0f) return;
             if ((vorher & Game.Net.GeometryFlags.ClipTerrain) == 0)
             {
                 if (!_vanillaGasseGemeldet)
@@ -794,24 +840,18 @@ namespace ParkingLotTool.Tools
 
             geometrie.m_Flags &= ~Game.Net.GeometryFlags.ClipTerrain;
             EntityManager.SetComponentData(_vanillaGasse, geometrie);
+            var neuBerechnet = FordereVanillaGassenTerrainNeu();
 
             if (_vanillaGasseGemeldet)
             {
                 // ZWEITE UND JEDE WEITERE MELDUNG IST EIN BEFUND.
-                // Sie heisst: irgendetwas setzt die Flagge nach unserer
-                // Korrektur wieder. Genau das wuerde der Nutzer als
-                // "weg, da, weg, da" sehen. Kommt diese Zeile im Log vor,
-                // ist der Verursacher zu suchen - die Wiederholung hier
-                // repariert nur die Sicht, nicht die Ursache.
+                // Nach NetInitialize darf die Flagge nicht erneut erscheinen.
+                // Ein solcher Lauf ist ein neuer Befund und wird gezaehlt.
                 _vanillaGasseAbgeraeumt++;
                 Mod.log.Warn("PLT-Vanillagasse: ClipTerrain war WIEDER da "
                     + "und wurde erneut entfernt (" + _vanillaGasseAbgeraeumt
-                    + ". Wiederholung). Bekannter Verursacher ist "
-                    + "NetInitializeSystem: es setzt die Flagge per |= an "
-                    + "jedem Strassenprefab, das in diesem Frame 'Created' "
-                    + "traegt, und laeuft hinter uns. Eine einzelne "
-                    + "Wiederholung kurz nach dem Start ist genau dieses "
-                    + "Rennen. Mehrere hintereinander sind ein Befund.");
+                    + ". Wiederholung). " + neuBerechnet
+                    + " vorhandene Alley-Kante(n) fuer Terrain neu markiert.");
                 return;
             }
 
@@ -819,8 +859,38 @@ namespace ParkingLotTool.Tools
             Mod.log.Info("PLT-Vanillagasse: ClipTerrain am SPIEL-PREFAB "
                 + "'Alley' entfernt, damit die Endkappen ihren Untergrund "
                 + "behalten. FlattenTerrain bleibt. Flags " + vorher + " -> "
-                + geometrie.m_Flags + ". Gilt nur zur Laufzeit; ohne den Mod "
+                + geometrie.m_Flags + ". " + neuBerechnet
+                + " vorhandene Alley-Kante(n) fuer Terrain neu markiert. "
+                + "Gilt nur zur Laufzeit; ohne den Mod "
                 + "ist die Flagge beim naechsten Start wieder da.");
+        }
+
+        /**
+         * Prefab-Aenderungen wecken TerrainSystem nicht. Dessen
+         * m_RoadsChanged fragt nur Created/Updated/Deleted auf Netzen ab;
+         * im Nutzerlog blieb das Prefabbit nach 1 Wiederholung sauber.
+         * Nur bei einer wirklichen Flag-Aenderung werden daher die schon
+         * vorhandenen Alley-Kanten einmalig zur Neuberechnung markiert.
+         */
+        private int FordereVanillaGassenTerrainNeu()
+        {
+            var query = GetEntityQuery(
+                ComponentType.ReadOnly<Game.Net.EdgeGeometry>(),
+                ComponentType.ReadOnly<PrefabRef>(),
+                ComponentType.Exclude<Deleted>(),
+                ComponentType.Exclude<Game.Tools.Temp>());
+            var anzahl = 0;
+            using var kanten = query.ToEntityArray(Unity.Collections.Allocator.Temp);
+            for (var i = 0; i < kanten.Length; i++)
+            {
+                var kante = kanten[i];
+                if (EntityManager.GetComponentData<PrefabRef>(kante).m_Prefab
+                    != _vanillaGasse) continue;
+                if (!EntityManager.HasComponent<Updated>(kante))
+                    EntityManager.AddComponent<Updated>(kante);
+                anzahl++;
+            }
+            return anzahl;
         }
 
         private void EntferneTerraineingriff(Eintrag eintrag)
@@ -1427,5 +1497,15 @@ namespace ParkingLotTool.Tools
         {
             _zoningRoads.EntferneKompositionsobjekteUndMesse();
         }
+    }
+
+    // Nach NetInitialize lesen: im Nutzerlog war Flags 0 noch uninitialisiert.
+    // Damit kann derselbe PrefabUpdate-Zyklus ClipTerrain nicht wieder setzen.
+    public sealed partial class ParkingLotVanillaGasseAbschlussSystem : GameSystemBase
+    {
+        [Preserve]
+        protected override void OnUpdate()
+            => World.GetOrCreateSystemManaged<ParkingLotZoningRoadPrefabSystem>()
+                .HeileVanillaGasse();
     }
 }

@@ -518,15 +518,34 @@ namespace ParkingLotTool.Tools
                  * Fassung laeuft, und das sagen Bauzeit und Versionsnummer
                  * darunter.
                  */
-                var dll = typeof(ParkingLotMeldepaket).Assembly.Location;
-                if (!string.IsNullOrEmpty(dll))
-                {
-                    text.AppendLine("Mod DLL:        " + Path.GetFileName(dll));
-                    if (File.Exists(dll))
-                        text.AppendLine("DLL built:      "
-                            + File.GetLastWriteTime(dll)
-                                .ToString("yyyy-MM-dd HH:mm:ss"));
-                }
+                /*
+                 * NICHT `Assembly.Location` ALLEIN - DER IST OFT LEER.
+                 *
+                 * Im Testerabzug VZ4A vom 2026-09-23 fehlten beide Zeilen
+                 * ersatzlos, waehrend "Mod version" danebenstand. Der
+                 * try-Block lief also; `Location` war leer, und die
+                 * Bedingung hat beide Zeilen wortlos verschluckt.
+                 *
+                 * Das trifft ausgerechnet die Leute, von denen man die
+                 * Angabe braucht: bei einem aus der Asset-Datenbank
+                 * geladenen Mod steht der Pfad nicht in `Location`, sondern
+                 * am Asset. `Mod.Bauzeit()` nimmt zuerst diesen und faellt
+                 * erst danach auf `Location` zurueck.
+                 *
+                 * Und wenn wirklich nichts zu holen ist, steht das jetzt DA.
+                 * Eine fehlende Zeile liest sich wie "nicht eingebaut" - der
+                 * Nutzer hat am 2026-09-23 genau das vermutet.
+                 */
+                var dll = !string.IsNullOrEmpty(Mod.AssetPath)
+                    ? Mod.AssetPath
+                    : typeof(ParkingLotMeldepaket).Assembly.Location;
+                text.AppendLine("Mod DLL:        " + (string.IsNullOrEmpty(dll)
+                    ? "path unknown" : Path.GetFileName(dll)));
+                var gebaut = Mod.Bauzeit();
+                text.AppendLine("DLL built:      " + (gebaut.HasValue
+                    ? gebaut.Value.ToLocalTime()
+                        .ToString("yyyy-MM-dd HH:mm:ss")
+                    : "unknown (file not readable)"));
                 text.AppendLine("Mod version:    "
                     + typeof(ParkingLotMeldepaket).Assembly
                         .GetName().Version);

@@ -171,7 +171,7 @@ namespace ParkingLotTool.Tools
         /**
          * Legt das aeussere Gassenstueck einer Gassen-Zufahrt an.
          *
-         * Rueckgabe ist die Zahl erzeugter Kurse, also 0 oder 1. Faellt das
+         * Rueckgabe ist die Zahl erzeugter Teilkurse, also 0 oder mehr. Faellt das
          * Stueck aus, wird die Zufahrt trotzdem gebaut - sie verhaelt sich
          * dann wie eine gewoehnliche Zufahrt, nur eben ohne geoeffneten
          * Bordstein. Der Grund steht im Bauzettel.
@@ -257,13 +257,19 @@ namespace ParkingLotTool.Tools
             var kursVon = hinaus ? ende : mitte;
             var kursNach = hinaus ? mitte : ende;
 
-            if (!CreateCourseDefinition("entrance-gasse", index,
-                    kursVon, kursNach,
-                    gasse, ref heightData, heights, ref random))
+            var teilkurse = ParkingGeometry.TeileGassenkurs(
+                new NetSegment("entrance-gasse", kursVon, kursNach, piece.Art));
+            var erzeugt = 0;
+            foreach (var teilkurs in teilkurse)
+                if (CreateCourseDefinition("entrance-gasse", index,
+                        teilkurs.A, teilkurs.B, gasse, ref heightData,
+                        heights, ref random))
+                    erzeugt++;
+            if (erzeugt != teilkurse.Length)
             {
                 bericht.Add($"Zufahrt {index}: Gassenkurs abgelehnt "
-                    + $"({laenge:F2} m)");
-                return 0;
+                    + $"({laenge:F2} m), {erzeugt}/{teilkurse.Length} Teilkurse");
+                return erzeugt;
             }
             /*
              * Was wir wussten, fuer die Rueckschau nach dem Bau. Der Zettel
@@ -274,14 +280,15 @@ namespace ParkingLotTool.Tools
             MerkeGassenplan(index, mitte, ende, strasse, t,
                 piece.B - piece.A, halbeBreite, gasse, vorflaechenbreite,
                 hinaus);
-            bericht.Add($"Zufahrt {index}: Gasse {laenge:F2} m ab Strassenmitte "
+            bericht.Add($"Zufahrt {index}: Gasse {laenge:F2} m in "
+                + $"{teilkurse.Length} Kurs(en) ab Strassenmitte "
                 + "bis zur Fahrgasse, "
                 + $"Fahrbahnrand bei {halbeBreite:F2} m, Ueberstand "
                 + $"{laenge - halbeBreite:F2} m"
                 + (laenge > abstand + 1e-3f
                     ? $", davon {laenge - abstand:F2} m im Parkplatz"
                     : string.Empty));
-            return 1;
+            return erzeugt;
         }
 
         private bool TryResolvePedestrianPath(out Entity prefab, bool gesetzterZugang = false)
@@ -455,9 +462,21 @@ namespace ParkingLotTool.Tools
                     : Strassenklonart.ZufahrtsgasseEinbahn,
                 out prefab);
 
-        // Zufahrten verwenden dauerhaft das unveraenderte Vanilla-Alley-
-        // Prefab. Eigene Alley-Klone teilten Sections/Pieces mit dem globalen
-        // CS2-Prefabcache und verursachten dadurch intermittierende Fehler.
+        /*
+         * false = wir bauen mit UNSEREM Klon, nicht mit dem Spiel-Prefab.
+         *
+         * Der fruehere Kommentar hier behauptete das Gegenteil ("Zufahrten
+         * verwenden dauerhaft das unveraenderte Vanilla-Alley-Prefab") und
+         * hat am 2026-09-23 eine Fehlersuche in die falsche Richtung
+         * geschickt: Weil unsere Gasse dieses Prefab gar nicht benutzt,
+         * konnte ein Eingriff daran unseren Parkplaetzen nie helfen - er
+         * traf nur die von Hand gesetzten Gassen des Nutzers. Siehe
+         * `GasseOhneGelaendeschnitt` in ParkingLotZoningRoadPrefab.cs.
+         *
+         * Der Grund fuer den Klon bleibt gueltig: ein Klon haelt eigene
+         * Sections und Pieces, das Spiel-Prefab teilt sie mit dem globalen
+         * CS2-Prefabcache.
+         */
         private const bool VerwendeVanillaAlley = false;
 
         private bool TryResolveStrassenklon(string name, Strassenklonart art,
@@ -627,7 +646,7 @@ namespace ParkingLotTool.Tools
                         var gebaut = CreateGassenstueck(piece, i, breite,
                             ref heightData, heights, ref random, gassenBericht);
                         created += gebaut;
-                        gassenGebaut += gebaut;
+                        if (gebaut > 0) gassenGebaut++;
                         continue;
                     }
                 }

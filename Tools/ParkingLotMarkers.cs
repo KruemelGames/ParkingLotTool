@@ -182,6 +182,107 @@ namespace ParkingLotTool.Tools
          * werden, nicht ausgewertet. Der grosse JSON-Abzug bleibt daneben
          * bestehen fuer den Fall, dass der Bericht nicht reicht.
          */
+        /**
+         * WAS STEHT WIRKLICH IN DER STADT - NICHT NUR, WAS AM ZEIGER HAENGT.
+         *
+         * Ausloeser ist der Testerabzug VZ4A vom 2026-09-23 16:51. Der
+         * Tester schrieb *"when i load in it doesnt look the same, the grass
+         * disappears and it color is way lighter"*. Sein Bericht sagte dazu
+         * genau nichts: "no finished preview yet", "No marks placed".
+         *
+         * Im JSON daneben stand es die ganze Zeit -
+         *
+         *     124 Flaechen, Besitzer 1302612
+         *      94 -> Prefab 3614670   nicht aufloesbar
+         *      30 -> Prefab 3614671   nicht aufloesbar
+         *
+         * - aber das liest niemand, der einen Fehler meldet. Der Bericht ist
+         * das, was verschickt wird; was nur im Abzug steht, existiert fuer
+         * den Meldeweg nicht.
+         *
+         * Eine Flaeche ohne aufloesbares Prefab hat kein Material. Genau das
+         * beschreibt der Tester. Diese Zeile beantwortet seine Meldung also
+         * in einem Satz, und zwar OHNE Markierung und OHNE Vorschau - denn
+         * wer einen kaputt geladenen Parkplatz sieht, hat beides nicht.
+         */
+        private void BeschreibeGebauteParkplaetze(StringBuilder text)
+        {
+            EntityQuery abfrage;
+            try
+            {
+                abfrage = GetEntityQuery(
+                    ComponentType.ReadOnly<ParkingLotPartRelation>(),
+                    ComponentType.ReadOnly<PrefabRef>(),
+                    ComponentType.Exclude<Deleted>(),
+                    ComponentType.Exclude<Temp>());
+            }
+            catch (Exception ausnahme)
+            {
+                text.AppendLine("BUILT PARKING LOTS");
+                text.AppendLine("  could not be read: " + ausnahme.Message);
+                text.AppendLine();
+                return;
+            }
+
+            using var teile = abfrage.ToEntityArray(Allocator.Temp);
+            var lots = new HashSet<Entity>();
+            var tot = new Dictionary<int, int>();
+            var totGesamt = 0;
+            for (var i = 0; i < teile.Length; i++)
+            {
+                var teil = teile[i];
+                var lot = EntityManager
+                    .GetComponentData<ParkingLotPartRelation>(teil).Lot;
+                if (lot != Entity.Null) lots.Add(lot);
+                var prefab = EntityManager
+                    .GetComponentData<PrefabRef>(teil).m_Prefab;
+                var lebt = false;
+                try
+                {
+                    lebt = _prefabSystem != null
+                        && _prefabSystem.TryGetPrefab<PrefabBase>(
+                            prefab, out var gefunden)
+                        && gefunden != null;
+                }
+                catch { lebt = false; }
+                if (lebt) continue;
+                tot.TryGetValue(prefab.Index, out var bisher);
+                tot[prefab.Index] = bisher + 1;
+                totGesamt++;
+            }
+
+            text.AppendLine("BUILT PARKING LOTS (what is actually in the city)");
+            if (teile.Length == 0)
+            {
+                text.AppendLine("  none - nothing built by this mod is in "
+                    + "this save.");
+                text.AppendLine();
+                return;
+            }
+            text.AppendLine("  " + lots.Count + " lot(s), " + teile.Length
+                + " part(s).");
+            if (totGesamt == 0)
+            {
+                text.AppendLine("  All parts resolve to a prefab.");
+                text.AppendLine();
+                return;
+            }
+
+            text.AppendLine("  PROBLEM: " + totGesamt + " of " + teile.Length
+                + " part(s) point at a prefab that no longer exists.");
+            foreach (var paar in tot.OrderByDescending(p => p.Value))
+                text.AppendLine("    prefab index " + paar.Key + ": "
+                    + paar.Value + " part(s)");
+            text.AppendLine("  Such parts have no material. They look pale "
+                + "and lose their surface - grass turns into bare ground.");
+            text.AppendLine("  This happens when a surface the lot was built "
+                + "with is gone: a surface mod that is no longer loaded, or "
+                + "one whose prefab is named differently now. The mod log "
+                + "names the missing ones at startup (search for "
+                + "'PLT-Vorflaeche').");
+            text.AppendLine();
+        }
+
         internal string BuildMarkerReport()
         {
             var text = new StringBuilder();
@@ -189,6 +290,7 @@ namespace ParkingLotTool.Tools
             text.AppendLine("created " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             text.AppendLine();
             BeschreibeVorschau(text);
+            BeschreibeGebauteParkplaetze(text);
 
             if (_markers.Count == 0)
             {

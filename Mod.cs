@@ -221,6 +221,9 @@ namespace ParkingLotTool
             if (!Aus("fussweg"))
             updateSystem.UpdateAfter<ParkingLotFusswegPrefabAbschlussSystem,
                 Game.Prefabs.NetInitializeSystem>(SystemUpdatePhase.PrefabUpdate);
+            if (!Aus("zoningstrasse"))
+            updateSystem.UpdateAfter<ParkingLotVanillaGasseAbschlussSystem,
+                Game.Prefabs.NetInitializeSystem>(SystemUpdatePhase.PrefabUpdate);
             // Laeuft unabhaengig vom aktiven Werkzeug: neue Instanzen werden
             // aus ihren echten Parkspuren geeicht, geladene erhalten ihren
             // gespeicherten ServiceUsage- und UpdateFrame-Wert zurueck.

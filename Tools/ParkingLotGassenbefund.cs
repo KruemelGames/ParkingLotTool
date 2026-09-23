@@ -270,12 +270,8 @@ namespace ParkingLotTool.Tools
          */
         private string HoehenSatz(Gassenplan plan, Entity knoten)
         {
-            var kante = GassenkanteAn(knoten, plan.Gassenprefab);
-            if (kante == Entity.Null
-                || !EntityManager.HasComponent<Edge>(kante))
-                return string.Empty;
-            var edge = EntityManager.GetComponentData<Edge>(kante);
-            var fern = edge.m_Start == knoten ? edge.m_End : edge.m_Start;
+            var fern = GassenendeAbKnoten(plan, knoten,
+                out var teilkanten, out var maxTeilkante);
             if (!EntityManager.HasComponent<Game.Net.Node>(knoten)
                 || !EntityManager.HasComponent<Game.Net.Node>(fern))
                 return string.Empty;
@@ -292,6 +288,8 @@ namespace ParkingLotTool.Tools
             return $"; Gassenknoten Strasse {aStrasse.y:F2} m / innen "
                 + $"{aInnen.y:F2} m, Unterschied {gefaelle:F2} m auf "
                 + $"{laenge:F2} m"
+                + $", {teilkanten} Teilkante(n), laengste {maxTeilkante:F2} m"
+                + (maxTeilkante > 16f ? " (UEBER 16 M: SPIELKANTE PRUEFEN)" : "")
                 + (laenge > 0.1f
                     ? $" ({math.degrees(math.atan(math.abs(gefaelle) / laenge)):F1} Grad)"
                     : string.Empty)
@@ -316,12 +314,7 @@ namespace ParkingLotTool.Tools
          */
         private string NachbarschaftSatz(Gassenplan plan, Entity knoten)
         {
-            var kante = GassenkanteAn(knoten, plan.Gassenprefab);
-            if (kante == Entity.Null
-                || !EntityManager.HasComponent<Edge>(kante))
-                return string.Empty;
-            var edge = EntityManager.GetComponentData<Edge>(kante);
-            var fern = edge.m_Start == knoten ? edge.m_End : edge.m_Start;
+            var fern = GassenendeAbKnoten(plan, knoten, out _, out _);
             if (!EntityManager.HasComponent<Game.Net.Node>(fern))
                 return string.Empty;
             var ort = EntityManager
@@ -354,6 +347,61 @@ namespace ParkingLotTool.Tools
                     + $"{gefunden[i].Kanten} Kante(n)/"
                     + $"{gefunden[i].Hoehe:F2} m hoeher";
             return text;
+        }
+
+        /**
+         * Nach der Teilung ist der Nachbarknoten nur eine Naht. Im Nutzerfall
+         * werden aus 8 Kanten 14; der Hoehen- und Anschlussbefund muss bis
+         * zum wirklichen inneren Ende gehen und die reale Hoechstlaenge nennen.
+         */
+        private Entity GassenendeAbKnoten(Gassenplan plan, Entity start,
+            out int teilkanten, out float maxTeilkante)
+        {
+            teilkanten = 0;
+            maxTeilkante = 0f;
+            if (start == Entity.Null || !EntityManager.HasComponent<Node>(start))
+                return Entity.Null;
+            var aktuell = start;
+            var besucht = new HashSet<Entity>();
+            for (var schritt = 0; schritt < 1000; schritt++)
+            {
+                if (!EntityManager.HasBuffer<ConnectedEdge>(aktuell)) break;
+                var puffer = EntityManager.GetBuffer<ConnectedEdge>(aktuell, true);
+                var naechsteKante = Entity.Null;
+                var naechsterKnoten = Entity.Null;
+                var beste = float.MaxValue;
+                for (var i = 0; i < puffer.Length; i++)
+                {
+                    var kante = puffer[i].m_Edge;
+                    if (besucht.Contains(kante) || !EntityManager.Exists(kante)
+                        || EntityManager.HasComponent<Deleted>(kante)
+                        || EntityManager.HasComponent<Temp>(kante)
+                        || !EntityManager.HasComponent<Edge>(kante)
+                        || !EntityManager.HasComponent<PrefabRef>(kante)
+                        || EntityManager.GetComponentData<PrefabRef>(kante).m_Prefab
+                            != plan.Gassenprefab) continue;
+                    var edge = EntityManager.GetComponentData<Edge>(kante);
+                    var ziel = edge.m_Start == aktuell ? edge.m_End : edge.m_Start;
+                    if (!EntityManager.HasComponent<Node>(ziel)) continue;
+                    var lage = EntityManager.GetComponentData<Node>(ziel)
+                        .m_Position.xz;
+                    var abstand = math.distancesq(lage, plan.Ende);
+                    if (abstand >= beste) continue;
+                    beste = abstand;
+                    naechsteKante = kante;
+                    naechsterKnoten = ziel;
+                }
+                if (naechsteKante == Entity.Null) break;
+                var a = EntityManager.GetComponentData<Node>(aktuell).m_Position.xz;
+                var b = EntityManager.GetComponentData<Node>(naechsterKnoten)
+                    .m_Position.xz;
+                maxTeilkante = math.max(maxTeilkante, math.distance(a, b));
+                teilkanten++;
+                besucht.Add(naechsteKante);
+                aktuell = naechsterKnoten;
+                if (math.distance(b, plan.Ende) < 0.1f) break;
+            }
+            return teilkanten > 0 ? aktuell : Entity.Null;
         }
 
         /** Die Gassenkante an einem Knoten, oder `Entity.Null`. */

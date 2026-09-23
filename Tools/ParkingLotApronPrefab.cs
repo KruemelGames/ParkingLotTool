@@ -254,6 +254,7 @@ namespace ParkingLotTool.Tools
             }
 
             var gefunden = 0;
+            var offen = new System.Collections.Generic.List<string>();
             using var kandidaten = _flaechenprefabs.ToEntityArray(
                 Unity.Collections.Allocator.Temp);
             foreach (var eintrag in gemerkt)
@@ -269,6 +270,7 @@ namespace ParkingLotTool.Tools
                         ende - strich - 1),
                         out var aufschlag)) continue;
 
+                var gefundenHier = false;
                 for (var i = 0; i < kandidaten.Length; i++)
                 {
                     if (!_prefabSystem.TryGetPrefab<SurfacePrefab>(
@@ -278,12 +280,53 @@ namespace ParkingLotTool.Tools
                             StringComparison.Ordinal)) continue;
                     FordereAn(kandidaten[i], aufschlag, out _, out _, raeumt);
                     gefunden++;
+                    gefundenHier = true;
                     break;
                 }
+                if (!gefundenHier) offen.Add(vorbildname);
             }
+
+            /**
+             * EIN DURCHGANG REICHT NICHT - GEMESSEN AM TESTERABZUG VZ4A.
+             *
+             * Der erste Entwurf setzte `_gesaet` hier unbedingt, egal wie
+             * viele Vorbilder er gefunden hatte. Wer eine Flaeche aus einem
+             * Asset-Mod benutzt, dessen Prefabs spaeter dazukommen als
+             * unser Saelauf, bekam den Klon damit NIE - und der Spielstand
+             * kam mit Flaechen zurueck, die auf ein totes Prefab zeigen.
+             *
+             * Im Abzug vom 2026-09-23 16:51 (123 Mods, darunter etliche
+             * Flaechenpakete) sieht das so aus:
+             *
+             *     124 Flaechen, Besitzer 1302612
+             *      94 -> Prefab 3614670   nicht aufloesbar
+             *      30 -> Prefab 3614671   nicht aufloesbar
+             *     'PLT Parkplatzflaeche'  aufloesbar (Index 21912)
+             *
+             * Das Lot lebt, die Flaechenklone nicht. Eine Flaeche ohne
+             * aufloesbares Prefab hat kein Material - der Tester nennt das
+             * *"the grass disappears and it color is way lighter"*.
+             *
+             * Deshalb gilt fertig erst, wenn KEIN Eintrag mehr offen ist.
+             * Bleibt nach allen Zyklen einer uebrig, ist das ein Befund und
+             * keine Nebensache: dieser Parkplatz wird weiss zurueckkommen.
+             */
+            if (offen.Count > 0 && ++_saeversuche < SaeVersucheMax) return;
+
             _gesaet = true;
-            Mod.log.Info($"PLT-Vorflaeche: {gefunden} von {gemerkt.Count} "
-                + "gemerkten Flaechenklonen beim Start angefordert.");
+            if (offen.Count == 0)
+            {
+                Mod.log.Info($"PLT-Vorflaeche: {gefunden} von {gemerkt.Count} "
+                    + "gemerkten Flaechenklonen beim Start angefordert.");
+                return;
+            }
+            Mod.log.Error($"PLT-Vorflaeche: {gefunden} von {gemerkt.Count} "
+                + "gemerkten Flaechenklonen angefordert; NICHT GEFUNDEN nach "
+                + _saeversuche + " Zyklen: " + string.Join(", ", offen)
+                + ". Flaechen dieser Vorbilder zeigen im Spielstand auf ein "
+                + "totes Prefab und erscheinen ohne Material (hell, kein "
+                + "Gras). Liefert ein Mod dieses Vorbild, ist er nicht "
+                + "geladen oder heisst inzwischen anders.");
         }
 
         private bool _prioritaetenGemeldet;
