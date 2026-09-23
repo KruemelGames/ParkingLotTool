@@ -915,18 +915,28 @@ namespace ParkingLotTool.Tools
              */
             if (IstGasse(eintrag.Art))
             {
-                // Die Alley-Geometrie bringt an den Enden eigene
-                // Intersection-Flächen mit. Mit ClipTerrain wird darunter
-                // trotzdem ein Terrainkeil entfernt; genau dort entstehen
-                // die transparenten Dreiecke des Vanilla-Prefabs. Die
-                // Zufahrtsgasse bleibt planierbar, schneidet den Boden aber
-                // nicht mehr weg.
-                geometrie.m_Flags &= ~Game.Net.GeometryFlags.ClipTerrain;
+                /*
+                 * DIE GASSE SCHNEIDET WIEDER WIE JEDE VANILLA-STRASSE.
+                 *
+                 * Vom 2026-09-20 bis 24 wurde ihr `ClipTerrain` genommen, um
+                 * durchsichtige Dreiecke an den Enden loszuwerden. Die Folge
+                 * meldete der Nutzer am 2026-09-24: Gelaende drueckt durch den
+                 * Belag, sichtbar als Luecken und Hoehenlinien auf der Gasse.
+                 * Dasselbe Bild hatte die handgesetzte Vanilla-Gasse, der wir
+                 * denselben Schnitt genommen hatten (Riss mit Gras).
+                 *
+                 * Kommen die Dreiecke zurueck, wird ihre Ursache gesucht -
+                 * nicht wieder der Schnitt genommen. Moeglich ist, dass sie am
+                 * ungenauen Andocken hingen, das seit demselben Tag behoben ist.
+                 */
+                var soll = Game.Net.GeometryFlags.FlattenTerrain
+                    | Game.Net.GeometryFlags.ClipTerrain;
+                geometrie.m_Flags |= soll;
                 if (geometrie.m_Flags == vorher) return;
                 EntityManager.SetComponentData(entity, geometrie);
-                Mod.log.Info("PLT-Zufahrtsgasse: ClipTerrain entfernt; "
-                    + "FlattenTerrain bleibt aktiv. Flags " + vorher + " -> "
-                    + geometrie.m_Flags);
+                Mod.log.Info("PLT-Zufahrtsgasse: FlattenTerrain und "
+                    + "ClipTerrain aktiv wie bei Vanilla-Strassen. Flags "
+                    + vorher + " -> " + geometrie.m_Flags);
                 return;
             }
             var weg = Game.Net.GeometryFlags.FlattenTerrain

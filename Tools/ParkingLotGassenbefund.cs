@@ -289,7 +289,6 @@ namespace ParkingLotTool.Tools
                 + $"{aInnen.y:F2} m, Unterschied {gefaelle:F2} m auf "
                 + $"{laenge:F2} m"
                 + $", {teilkanten} Teilkante(n), laengste {maxTeilkante:F2} m"
-                + (maxTeilkante > 16f ? " (UEBER 16 M: SPIELKANTE PRUEFEN)" : "")
                 + (laenge > 0.1f
                     ? $" ({math.degrees(math.atan(math.abs(gefaelle) / laenge)):F1} Grad)"
                     : string.Empty)

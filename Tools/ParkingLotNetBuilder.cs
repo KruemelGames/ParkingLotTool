@@ -101,19 +101,30 @@ namespace ParkingLotTool.Tools
         private EntityQuery _gassenStrassen;
 
         /**
-         * Die naechste STADTSTRASSE zu einem Punkt.
+         * Die STADTSTRASSE, die eine Gasse in ihrer Fangrichtung erreicht.
+         *
+         * Bis zum 2026-09-24 kam hier der NAECHSTE Punkt der naechsten
+         * Strasse im Umkreis von 40 m zurueck. An einer schraegen Strasse
+         * liegt der senkrecht zur Strasse - die Gasse knickte vom Fang weg,
+         * und eine Strasse, die in Fangrichtung weiter weg lag als senkrecht,
+         * wurde falsch getroffen. Die Regel steht jetzt in
+         * `Gassenreichweite`: Strahl ab Polygonrand in Fangrichtung,
+         * Bordstein hoechstens 16 m entfernt.
          *
          * `Owner` schliesst unsere eigenen Kanten aus - an einer Zoning- oder
          * Randstrasse des Parkplatzes hat eine Zufahrtsgasse nichts zu
          * suchen, und ein Knoten dort wuerde nur unser eigenes Netz teilen.
          */
-        private bool SucheStadtstrasseFuerGasse(float2 punkt, out float2 mitte,
+        private bool SucheStadtstrasseFuerGasse(float2 rand, float2 nachAussen,
+                                                out float2 mitte,
                                                 out float halbeBreite,
+                                                out float halbeBreiteImStrahl,
                                                 out Entity strasse, out float t,
                                                 out float hoehe)
         {
             mitte = default;
             halbeBreite = 0f;
+            halbeBreiteImStrahl = 0f;
             strasse = Entity.Null;
             t = 0f;
             hoehe = 0f;
@@ -126,46 +137,117 @@ namespace ParkingLotTool.Tools
                     ComponentType.Exclude<Deleted>(),
                     ComponentType.Exclude<Temp>());
 
-            var beste = GassenSuchweite;
-            var treffer = Entity.Null;
-            var trefferMitte = float2.zero;
-            var trefferT = 0f;
-            var trefferHoehe = 0f;
-            using var kanten = _gassenStrassen.ToEntityArray(Allocator.TempJob);
-            for (var i = 0; i < kanten.Length; i++)
+            var kandidaten = new List<Gassenreichweite.Strasse>();
+            var kanten = new List<Entity>();
+            var boegen = new List<Colossal.Mathematics.Bezier4x3>();
+            using var alle = _gassenStrassen.ToEntityArray(Allocator.TempJob);
+            for (var i = 0; i < alle.Length; i++)
             {
-                var prefab = EntityManager.GetComponentData<PrefabRef>(kanten[i]).m_Prefab;
+                var prefab = EntityManager.GetComponentData<PrefabRef>(alle[i]).m_Prefab;
                 if (!EntityManager.HasComponent<RoadData>(prefab)) continue;
-                var bogen = EntityManager.GetComponentData<Curve>(kanten[i]).m_Bezier;
-                var abstand = MathUtils.Distance(bogen.xz, punkt, out var tKante);
-                if (abstand >= beste) continue;
-                beste = abstand;
-                treffer = kanten[i];
-                var punktAufKurve = MathUtils.Position(bogen, tKante);
-                trefferMitte = punktAufKurve.xz;
-                trefferT = tKante;
-                // Die HOEHE der Fahrbahn an dieser Stelle - nicht die des
-                // Gelaendes darunter, das dort weggeschnitten ist.
-                trefferHoehe = punktAufKurve.y;
+                var bogen = EntityManager.GetComponentData<Curve>(alle[i]).m_Bezier;
+                // Grobfilter: weiter weg als Reichweite plus breiteste Strasse
+                // kann keine Mittellinie im Strahl liegen.
+                if (MathUtils.Distance(bogen.xz, rand, out _)
+                    > GassenSuchweite) continue;
+                var halb = EntityManager.HasComponent<NetGeometryData>(prefab)
+                    ? EntityManager.GetComponentData<NetGeometryData>(prefab)
+                        .m_DefaultWidth * 0.5f
+                    : 4f;
+                var linie = new float2[GassenAbtastung + 1];
+                for (var k = 0; k <= GassenAbtastung; k++)
+                    linie[k] = MathUtils.Position(bogen, k / (float)GassenAbtastung).xz;
+                kandidaten.Add(new Gassenreichweite.Strasse
+                {
+                    Mittellinie = linie,
+                    HalbeBreite = halb,
+                    Kennung = kanten.Count,
+                });
+                kanten.Add(alle[i]);
+                boegen.Add(bogen);
             }
-            if (treffer == Entity.Null) return false;
 
-            mitte = trefferMitte;
+            if (!Gassenreichweite.Finde(rand, nachAussen, kandidaten,
+                    out var treffer)) return false;
+
             // Beides nur zum Nachmessen: WELCHE Kante wir getroffen haben und
             // WO auf ihr. Nahe 0 oder 1 heisst Kantenende, also ein
             // vorhandener Knoten statt einer Teilung.
-            strasse = treffer;
-            t = trefferT;
-            hoehe = trefferHoehe;
-            var strassenprefab = EntityManager
-                .GetComponentData<PrefabRef>(treffer).m_Prefab;
+            strasse = kanten[treffer.Kennung];
+            /*
+             * AUF DIE ECHTE KURVE, NICHT AUF DIE ABTASTUNG.
+             *
+             * Der Strahltest arbeitet auf 16 Sehnen je Kurve. CS2 teilt die
+             * Strasse aber an einer Stelle der BEZIERKURVE - der Punkt muss
+             * also auf ihr liegen, sonst entsteht genau der Versatz, den der
+             * Gassenbefund am 2026-09-24 meldete (0,10 und 0,26 m). Gesucht
+             * wird die Kurvenstelle, die dem Strahltreffer am naechsten ist;
+             * bei einer geraden Strasse ist das derselbe Punkt.
+             */
+            var bogenTreffer = boegen[treffer.Kennung];
+            MathUtils.Distance(bogenTreffer.xz, treffer.Mitte, out t);
+            var aufKurve = MathUtils.Position(bogenTreffer, t);
+            // Die HOEHE der Fahrbahn an dieser Stelle - nicht die des
+            // Gelaendes darunter, das dort weggeschnitten ist.
+            hoehe = aufKurve.y;
+            mitte = aufKurve.xz;
             // Die Breite steht am Prefab, nicht an den Querschnitten -
             // NetCompositionSystem Zeile 151 nimmt `m_DefaultWidth`.
-            halbeBreite = EntityManager.HasComponent<NetGeometryData>(strassenprefab)
-                ? EntityManager.GetComponentData<NetGeometryData>(strassenprefab)
-                    .m_DefaultWidth * 0.5f
-                : 4f;
+            halbeBreite = kandidaten[treffer.Kennung].HalbeBreite;
+            halbeBreiteImStrahl = treffer.HalbeBreiteImStrahl;
             return true;
+        }
+
+        /** Stuecke je Strassenkurve fuer den Strahltest. */
+        private const int GassenAbtastung = 16;
+
+        /**
+         * Woran ein Kursende andockt - so, wie CS2s Strassenwerkzeug es
+         * uebergibt (Game.dll, NetToolSystem.GetCoursePos): die KANTE samt
+         * Teilungsstelle, oder deren Endknoten, wenn die Stelle am Ende liegt.
+         * `default` heisst: kein Anschluss, CS2 verbindet ueber die Position.
+         */
+        private struct Anschluss
+        {
+            internal Entity Entity;
+            internal float Teilung;
+        }
+
+        /**
+         * Naeher als das an einem Kantenende, und die Gasse haengt sich an
+         * den vorhandenen Knoten statt die Kante zu teilen. CS2s Werkzeug
+         * macht dasselbe (`m_CurvePosition <= 0` / `>= 1`); bei uns kommt die
+         * Stelle aus einer Rechnung, deshalb eine kleine Toleranz. Beim Edit
+         * ist das der Normalfall: die alte Gasse hat die Strasse schon
+         * geteilt, ihr Knoten ueberlebt den Abriss, und der Strahl trifft
+         * ihn wieder (Gassenbefund 2026-09-24: t=0,019, "AM KANTENENDE").
+         */
+        private const float GassenKnotenfang = 0.5f;
+
+        /**
+         * `position` liegt auf der Kurve von `kante` bei `t`. Liefert den
+         * Anschluss und schiebt `position` auf den Knoten, falls einer
+         * gewaehlt wird - der Kurs muss GENAU dort beginnen.
+         */
+        private Anschluss AnschlussAnStrasse(Entity kante, float t,
+            ref float3 position)
+        {
+            if (kante == Entity.Null || !EntityManager.Exists(kante)
+                || !EntityManager.HasComponent<Game.Net.Edge>(kante))
+                return default;
+            var edge = EntityManager.GetComponentData<Game.Net.Edge>(kante);
+            foreach (var (knoten, teilung) in new[] { (edge.m_Start, 0f), (edge.m_End, 1f) })
+            {
+                if (knoten == Entity.Null || !EntityManager.Exists(knoten)
+                    || EntityManager.HasComponent<Deleted>(knoten)
+                    || !EntityManager.HasComponent<Game.Net.Node>(knoten))
+                    continue;
+                var lage = EntityManager.GetComponentData<Game.Net.Node>(knoten).m_Position;
+                if (math.distance(lage.xz, position.xz) > GassenKnotenfang) continue;
+                position = lage;
+                return new Anschluss { Entity = knoten, Teilung = teilung };
+            }
+            return new Anschluss { Entity = kante, Teilung = t };
         }
 
         /**
@@ -190,12 +272,15 @@ namespace ParkingLotTool.Tools
                 bericht.Add($"Zufahrt {index}: Gassenklon noch nicht bereit");
                 return 0;
             }
-            if (!SucheStadtstrasseFuerGasse(piece.A, out var mitte,
-                    out var halbeBreite, out var strasse, out var t,
-                    out var strassenhoehe))
+            // piece.A liegt am Polygonrand, piece.B innen; nach aussen ist
+            // also A - B. Das ist die Fangachse der Zufahrt.
+            if (!SucheStadtstrasseFuerGasse(piece.A, piece.A - piece.B,
+                    out var mitte, out var halbeBreite, out var halbeImStrahl,
+                    out var strasse, out var t, out var strassenhoehe))
             {
                 bericht.Add($"Zufahrt {index}: keine Stadtstrasse in "
-                    + $"{GassenSuchweite:F0} m");
+                    + "Fangrichtung, Bordstein hoechstens "
+                    + $"{Gassenreichweite.Reichweite:F0} m ab Polygonrand");
                 return 0;
             }
 
@@ -224,7 +309,8 @@ namespace ParkingLotTool.Tools
              */
             var ende = piece.B;
             var laenge = math.distance(mitte, ende);
-            if (!(laenge > halbeBreite))
+            // Schraeg gemessen ist die halbe Breite laenger als senkrecht.
+            if (!(laenge > halbeImStrahl))
             {
                 bericht.Add($"Zufahrt {index}: zu kurz - {laenge:F2} m ab "
                     + $"Strassenmitte, Fahrbahnrand bei {halbeBreite:F2} m");
@@ -257,20 +343,49 @@ namespace ParkingLotTool.Tools
             var kursVon = hinaus ? ende : mitte;
             var kursNach = hinaus ? mitte : ende;
 
-            var teilkurse = ParkingGeometry.TeileGassenkurs(
-                new NetSegment("entrance-gasse", kursVon, kursNach, piece.Art));
-            var erzeugt = 0;
-            foreach (var teilkurs in teilkurse)
-                if (CreateCourseDefinition("entrance-gasse", index,
-                        teilkurs.A, teilkurs.B, gasse, ref heightData,
-                        heights, ref random))
-                    erzeugt++;
-            if (erzeugt != teilkurse.Length)
+            /*
+             * EIN KURS, NICHT STUECKE.
+             *
+             * Vom 2026-09-23 bis 24 wurde die Gasse hier in Stuecke von
+             * hoechstens 16 m geteilt - ein Missverstaendnis: gemeint war die
+             * REICHWEITE bis zur Strasse (siehe `Gassenreichweite`). Die
+             * Stuecke kamen im Spiel als zwei Gassen an, die sich in der
+             * Mitte nicht verbanden; der Nutzer konnte beide einzeln mit dem
+             * Bulldozer anwaehlen.
+             */
+            /*
+             * DAS STRASSENENDE DOCKT AN WIE BEIM STRASSENWERKZEUG.
+             *
+             * Bis zum 2026-09-24 ging nur eine Koordinate an CS2, und das
+             * Spiel suchte sich die Strasse daneben selbst. Der Gassenbefund
+             * zeigte, was dabei herauskam: Einmuendungen 0,10 und 0,26 m
+             * neben dem geplanten Punkt, und nahe am Kantenende an einem
+             * anderen Knoten. Jetzt bekommt der Kurs die Kante und die
+             * Teilungsstelle - oder den Knoten, wenn er dort schon steht.
+             */
+            var strassenpunkt = new float3(mitte.x, strassenhoehe, mitte.y);
+            var anschluss = AnschlussAnStrasse(strasse, t, ref strassenpunkt);
+            if (anschluss.Entity != Entity.Null
+                && math.distance(strassenpunkt.xz, mitte) > 1e-4f)
+            {
+                // Auf einen vorhandenen Knoten verschoben: Start und Hoehe
+                // wandern mit, damit Kurs und Knoten uebereinstimmen.
+                mitte = strassenpunkt.xz;
+                strassenhoehe = strassenpunkt.y;
+                MerkeHoehe(mitte, strassenhoehe, heights);
+                kursVon = hinaus ? ende : mitte;
+                kursNach = hinaus ? mitte : ende;
+            }
+            if (!CreateCourseDefinition("entrance-gasse", index, kursVon,
+                    kursNach, gasse, ref heightData, heights, ref random,
+                    anschlussAnfang: hinaus ? default : anschluss,
+                    anschlussEnde: hinaus ? anschluss : default))
             {
                 bericht.Add($"Zufahrt {index}: Gassenkurs abgelehnt "
-                    + $"({laenge:F2} m), {erzeugt}/{teilkurse.Length} Teilkurse");
-                return erzeugt;
+                    + $"({laenge:F2} m)");
+                return 0;
             }
+            var erzeugt = 1;
             /*
              * Was wir wussten, fuer die Rueckschau nach dem Bau. Der Zettel
              * hier haelt nur die Absicht fest; ob daraus eine ordentliche
@@ -281,7 +396,7 @@ namespace ParkingLotTool.Tools
                 piece.B - piece.A, halbeBreite, gasse, vorflaechenbreite,
                 hinaus);
             bericht.Add($"Zufahrt {index}: Gasse {laenge:F2} m in "
-                + $"{teilkurse.Length} Kurs(en) ab Strassenmitte "
+                + "einem Kurs ab Strassenmitte "
                 + "bis zur Fahrgasse, "
                 + $"Fahrbahnrand bei {halbeBreite:F2} m, Ueberstand "
                 + $"{laenge - halbeBreite:F2} m"
@@ -575,6 +690,9 @@ namespace ParkingLotTool.Tools
                 return 0;
 
             var heights = new Dictionary<(long, long), float>();
+            // Beim Edit: Hoehen der alten Knoten behalten, siehe
+            // `BelegeHoehenAusAltbestand` in ParkingLotEditHeight.cs.
+            BelegeHoehenAusAltbestand(heights);
             var random = new Unity.Mathematics.Random(
                 (uint)Environment.TickCount | 1u);
             var created = 0;
@@ -916,7 +1034,9 @@ namespace ParkingLotTool.Tools
             Entity prefab,
             ref TerrainHeightData heightData,
             Dictionary<(long, long), float> heights,
-            ref Unity.Mathematics.Random random)
+            ref Unity.Mathematics.Random random,
+            Anschluss anschlussAnfang = default,
+            Anschluss anschlussEnde = default)
         {
             if (!math.all(math.isfinite(from)) || !math.all(math.isfinite(to)))
                 throw new InvalidOperationException(
@@ -986,25 +1106,25 @@ namespace ParkingLotTool.Tools
                 m_Elevation = float2.zero,
                 m_StartPosition = new CoursePos
                 {
-                    m_Entity = Entity.Null,
+                    m_Entity = anschlussAnfang.Entity,
+                    m_SplitPosition = anschlussAnfang.Teilung,
                     m_Position = a,
                     m_Rotation = NetUtils.GetNodeRotation(MathUtils.StartTangent(curve)),
                     m_CourseDelta = 0f,
                     m_Elevation = float2.zero,
                     m_Flags = CoursePosFlags.IsFirst,
                     m_ParentMesh = -1,
-                    m_SplitPosition = 0f,
                 },
                 m_EndPosition = new CoursePos
                 {
-                    m_Entity = Entity.Null,
+                    m_Entity = anschlussEnde.Entity,
+                    m_SplitPosition = anschlussEnde.Teilung,
                     m_Position = b,
                     m_Rotation = NetUtils.GetNodeRotation(MathUtils.EndTangent(curve)),
                     m_CourseDelta = 1f,
                     m_Elevation = float2.zero,
                     m_Flags = CoursePosFlags.IsLast,
                     m_ParentMesh = -1,
-                    m_SplitPosition = 0f,
                 },
             });
             RecordNetDefinition(kind, index, prefab, definition, a, b);

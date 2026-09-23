@@ -372,7 +372,10 @@ namespace ParkingLotTool.Tools
                         .GetComponentData<Game.Net.Edge>(teil);
                     fremdeKnoten.Add(kante.m_Start);
                     fremdeKnoten.Add(kante.m_End);
+                    MerkeAltknotenhoehe(kante.m_Start);
+                    MerkeAltknotenhoehe(kante.m_End);
                 }
+                else MerkeAltknotenhoehe(teil);
 
                 EntityManager.AddComponent<Deleted>(teil);
                 entfernt++;
