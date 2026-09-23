@@ -68,6 +68,10 @@ namespace ParkingLotTool.Tools
             internal Entity Gassenprefab;
             /** Breite, mit der die Vorflaeche gerechnet wird (settings.Ai). */
             internal float Vorflaechenbreite;
+            /** Geplante Fahrtrichtung des NetCourse. */
+            internal bool FaehrtHinaus;
+            /** Letzter diskreter Richtungszustand fuer Aenderungen im Bau. */
+            internal string LetzterRichtungszustand;
         }
 
         private readonly List<Gassenplan> _gassenplan = new List<Gassenplan>();
@@ -81,6 +85,7 @@ namespace ParkingLotTool.Tools
          * eine halbe Sekunde.
          */
         private int _gassenbefundAb;
+        private int _gassenrichtungStartFrame;
 
         private const int GassenbefundFrames = 30;
 
@@ -95,7 +100,8 @@ namespace ParkingLotTool.Tools
                                       float2 zufahrtsrichtung,
                                       float halbeBreiteGeplant,
                                       Entity gassenprefab,
-                                      float vorflaechenbreite)
+                                      float vorflaechenbreite,
+                                      bool faehrtHinaus)
         {
             _gassenplan.Add(new Gassenplan
             {
@@ -108,6 +114,7 @@ namespace ParkingLotTool.Tools
                 HalbeBreiteGeplant = halbeBreiteGeplant,
                 Gassenprefab = gassenprefab,
                 Vorflaechenbreite = vorflaechenbreite,
+                FaehrtHinaus = faehrtHinaus,
             });
         }
 
@@ -115,14 +122,16 @@ namespace ParkingLotTool.Tools
         internal void MeldeGassenbefundAn()
         {
             if (_gassenplan.Count == 0) return;
+            _gassenrichtungStartFrame = UnityEngine.Time.frameCount;
             _gassenbefundAb = UnityEngine.Time.frameCount + GassenbefundFrames;
         }
 
         /** Jedes Bild gerufen; tut nur etwas, wenn eine Messung ansteht. */
         private void PruefeGassenbefund()
         {
-            if (_gassenbefundAb == 0
-                || UnityEngine.Time.frameCount < _gassenbefundAb) return;
+            if (_gassenbefundAb == 0) return;
+            MeldeGassenrichtungImFrame();
+            if (UnityEngine.Time.frameCount < _gassenbefundAb) return;
             _gassenbefundAb = 0;
             if (_gassenplan.Count == 0) return;
 
