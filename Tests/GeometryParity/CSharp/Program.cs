@@ -131,6 +131,8 @@ internal static partial class Program
     {
         if (args.Length == 1 && args[0] == "--zettelvollstaendig")
             return PruefeZettelvollstaendigkeit();
+        if (args.Length == 1 && args[0] == "--klonnamen")
+            return PruefeKlonnamen();
         /*
          * `--live` schaltet denselben Live-Log ein, den der Nutzer im Spiel
          * einschaltet. Damit lesen wir hier dieselben Zeilen, die er mir

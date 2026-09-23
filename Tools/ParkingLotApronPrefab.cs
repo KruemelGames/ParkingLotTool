@@ -116,7 +116,7 @@ namespace ParkingLotTool.Tools
          */
         public Entity FordereAn(Entity original, int prioritaetsaufschlag,
             out bool fehlgeschlagen, out bool aufgegeben,
-            bool raeumt = false)
+            bool raeumt = false, bool merken = true)
         {
             fehlgeschlagen = false;
             aufgegeben = false;
@@ -143,14 +143,14 @@ namespace ParkingLotTool.Tools
                     Raeumt = raeumt,
                     // Der Name muss sich unterscheiden: zwei Prefabs mit
                     // derselben PrefabID lehnt PrefabSystem ab.
-                    Name = raeumt ? "PLT Raeumbelag (" + vorbild.name + ", "
-                        + prioritaetsaufschlag + ")" : (prioritaetsaufschlag == 0
-                            ? "PLT Vorflaeche ("
-                            : "PLT Zoningbelag (")
-                        + vorbild.name + ")",
+                    Name = ParkingLotTool.Geometry.Flaechenklonname.Name(
+                        vorbild.name, prioritaetsaufschlag, raeumt),
                 };
                 _eintraege.Add(schluessel, eintrag);
-                MerkeKlon(vorbild.name, prioritaetsaufschlag, raeumt);
+                // Vanilla-Klone entstehen bei jedem Start ohnehin; sie in
+                // die Liste zu schreiben hiesse, bei jedem Start die
+                // Einstellungen neu zu speichern.
+                if (merken) MerkeKlon(vorbild.name, prioritaetsaufschlag, raeumt);
                 Mod.log.Info($"PLT-Vorflaeche: '{eintrag.Name}' fuer den "
                     + "naechsten PrefabUpdate-Zyklus angefordert.");
             }
@@ -463,7 +463,9 @@ namespace ParkingLotTool.Tools
         protected override void OnUpdate()
         {
             MeldePrioritaeten();
+            SaeheVanillaKlone();
             SaeheGemerkteKlone();
+            RetteToteFlaechen();
             foreach (var eintrag in _eintraege.Values)
             {
                 if (eintrag.Fehler || eintrag.Bereit) continue;

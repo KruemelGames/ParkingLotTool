@@ -113,7 +113,8 @@ namespace ParkingLotTool.Tools
          * auf -97. Der Nutzer verlangte fuer BEIDE -94 - mit einem Aufschlag
          * haette ich ihm etwas zugesagt, was der Code nicht liefert.
          */
-        private const int ZoningBelagPrioritaet = -94;
+        // Wert steht in Flaechenklonname: er ist Teil der Klonnamen im Spielstand.
+        private const int ZoningBelagPrioritaet = ParkingLotTool.Geometry.Flaechenklonname.Zoning;
 
         /**
          * EIGENER WERT FUER DIE VORFLAECHE, und das ist Absicht.
@@ -136,7 +137,8 @@ namespace ParkingLotTool.Tools
          * die ganze Wahrheit. Verschwindet die Flaeche bei -90, ist die
          * Grenze gefunden und wir gehen zurueck.
          */
-        private const int VorflaechePrioritaet = -90;
+        // Wert steht in Flaechenklonname: er ist Teil der Klonnamen im Spielstand.
+        private const int VorflaechePrioritaet = ParkingLotTool.Geometry.Flaechenklonname.Vorflaeche;
         private Entity _zoningBelagPrefab = Entity.Null;
         private Entity _dekoBelagPrefab = Entity.Null;
         private Entity _zoningBodenPrefab = Entity.Null;
@@ -307,8 +309,11 @@ namespace ParkingLotTool.Tools
             ClearAreaPreviewGhosts(context);
         }
 
-        private void SyncAreaPreview()
+        private bool _areaPreviewPrefabsReady;
+
+        private void SyncAreaPreview(bool prefabsOnly = false)
         {
+            _areaPreviewPrefabsReady = false;
             var wantPreview = _closed && HasPreviewPolygons(_areaPreviewLayout);
             if (!wantPreview)
             {
@@ -458,6 +463,8 @@ namespace ParkingLotTool.Tools
                 return;
             }
 
+            _areaPreviewPrefabsReady = true;
+            if (prefabsOnly) return;
             var signature = AreaPreviewSignature(_areaPreviewLayout);
             if (signature == _lastPreviewSig) return;
 
@@ -714,9 +721,32 @@ namespace ParkingLotTool.Tools
             }
 
             BeginAreaTransfer(layout, gras, asphalt);
-            // Ohne das Warten kann der CPU-Schnappschuss noch unterwegs sein
-            // und fuer nahe Punkte voellig verschiedene Hoehen liefern.
-            var heightData = _terrainSystem.GetHeightData(waitForPending: true);
+            // Im Nutzerfall lagen zwischen Abriss und Hoehenlesen nur 45 ms;
+            // die Gasse endete 2,80 m unter der Stadtstrasse. Die Kopie vor
+            // dem Abriss haelt die alte Planierung fuer ALLE Bauteile fest.
+            var editSnapshot = IsEditing && _editHeightSnapshot.isCreated;
+            var heightData = editSnapshot
+                ? _editHeightSnapshot
+                : _terrainSystem.GetHeightData(waitForPending: true);
+            if (IsEditing && _editNetRemovalTick != 0)
+            {
+                var now = System.Diagnostics.Stopwatch.GetTimestamp();
+                var sinceRemoval = (now - _editNetRemovalTick) * 1000.0
+                    / System.Diagnostics.Stopwatch.Frequency;
+                var beforeRemoval = editSnapshot
+                    ? (_editNetRemovalTick - _editHeightReadTick) * 1000.0
+                      / System.Diagnostics.Stopwatch.Frequency
+                    : 0.0;
+                Mod.log.Info($"PLT-Edithoehe: Hoehenlesen "
+                    + (editSnapshot
+                        ? $"{beforeRemoval:F0} ms VOR Abriss"
+                        : $"{sinceRemoval:F0} ms NACH Abriss")
+                    + $", Verwendung {sinceRemoval:F0} ms nach Abriss; "
+                    + (editSnapshot ? "Quelle gesicherte Vorabrisskarte"
+                        : "Quelle aktuelle Karte")
+                    + $", GetHeightData(waitForPending: true) "
+                    + $"vor Abriss {_editHeightWaitMilliseconds} ms.");
+            }
             var sampled = 0;
             var minimum = float.PositiveInfinity;
             var maximum = float.NegativeInfinity;

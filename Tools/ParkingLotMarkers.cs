@@ -226,7 +226,7 @@ namespace ParkingLotTool.Tools
 
             using var teile = abfrage.ToEntityArray(Allocator.Temp);
             var lots = new HashSet<Entity>();
-            var tot = new Dictionary<int, int>();
+            var tot = new Dictionary<string, int>();
             var totGesamt = 0;
             for (var i = 0; i < teile.Length; i++)
             {
@@ -246,8 +246,14 @@ namespace ParkingLotTool.Tools
                 }
                 catch { lebt = false; }
                 if (lebt) continue;
-                tot.TryGetValue(prefab.Index, out var bisher);
-                tot[prefab.Index] = bisher + 1;
+                // Ein totes Prefab behaelt den Namen, den der Spielstand
+                // gesucht hat (PrefabSystem.GetObsoleteID). Der sagt dem
+                // Leser sofort, welche Flaeche fehlt - ein Index sagt nichts.
+                string gesucht;
+                try { gesucht = _prefabSystem?.GetPrefabName(prefab) ?? prefab.ToString(); }
+                catch { gesucht = "prefab index " + prefab.Index; }
+                tot.TryGetValue(gesucht, out var bisher);
+                tot[gesucht] = bisher + 1;
                 totGesamt++;
             }
 
@@ -271,15 +277,17 @@ namespace ParkingLotTool.Tools
             text.AppendLine("  PROBLEM: " + totGesamt + " of " + teile.Length
                 + " part(s) point at a prefab that no longer exists.");
             foreach (var paar in tot.OrderByDescending(p => p.Value))
-                text.AppendLine("    prefab index " + paar.Key + ": "
+                text.AppendLine("    '" + paar.Key + "': "
                     + paar.Value + " part(s)");
             text.AppendLine("  Such parts have no material. They look pale "
                 + "and lose their surface - grass turns into bare ground.");
             text.AppendLine("  This happens when a surface the lot was built "
                 + "with is gone: a surface mod that is no longer loaded, or "
                 + "one whose prefab is named differently now. The mod log "
-                + "names the missing ones at startup (search for "
-                + "'PLT-Vorflaeche').");
+                + "names the missing ones at startup and after loading "
+                + "(search for 'PLT-Vorflaeche' and 'PLT-Flaechenrettung'). "
+                + "If the surface is back, the mod reattaches these parts "
+                + "on the next load.");
             text.AppendLine();
         }
 

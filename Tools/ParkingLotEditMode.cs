@@ -331,6 +331,7 @@ namespace ParkingLotTool.Tools
              * Ohne die Liste waere sie geraten.
              */
             ErfasseVersorgungsanschluesse(_editLot);
+            ErfasseEdithoehenVorAbriss();
             /*
              * UEBER DEN BESITZER, NICHT UEBER DIE TEILRELATION.
              *
@@ -379,6 +380,7 @@ namespace ParkingLotTool.Tools
 
             FrischeTeilungsknotenAuf(fremdeKnoten);
 
+            _editNetRemovalTick = System.Diagnostics.Stopwatch.GetTimestamp();
             MeldeAbriss(entfernt, besessen, teile.Length);
         }
 
@@ -878,6 +880,7 @@ namespace ParkingLotTool.Tools
 
         private void ClearEditState()
         {
+            VerwerfeEdithoehen();
             _alteZoningkurse = null;
             _erhalteneZoningteile.Clear();
             _zoningErhalten = false;
@@ -926,6 +929,10 @@ namespace ParkingLotTool.Tools
             if (GameManager.instance != null)
                 GameManager.instance.onGameSaveLoad -= OnEditGameSaveLoad;
             CancelEditingForShutdown();
+            // Die Hoehenkarten-Kopie ist Allocator.Persistent und so gross
+            // wie die ganze Karte. Endet das Spiel mitten in einem Edit-Bau,
+            // gibt sie sonst niemand frei. Der Aufruf ist wiederholbar.
+            VerwerfeEdithoehen();
             base.OnDestroy();
         }
 

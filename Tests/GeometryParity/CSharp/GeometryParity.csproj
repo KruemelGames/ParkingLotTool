@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Program.Zettel.cs" />
+    <Compile Include="Program.Klonnamen.cs" />
     <Compile Include="Program.Randgruen.cs" />
     <Compile Include="Program.Zoningkanten.cs" />
     <Compile Include="Program.Gassenreste.cs" />

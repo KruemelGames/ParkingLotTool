@@ -74,10 +74,28 @@ namespace ParkingLotTool
             // Spielverzeichnis - der beiseitegelegte Ordner wurde trotzdem
             // geladen. Aufgefallen ist es nur an der Oberflaeche. Ohne diese
             // Zeilen raet man, welche DLL gerade laeuft.
-            var dll = typeof(Mod).Assembly.Location;
-            var gebaut = string.IsNullOrEmpty(dll) || !File.Exists(dll)
-                ? "unbekannt"
-                : File.GetLastWriteTime(dll).ToString("yyyy-MM-dd HH:mm:ss");
+            /*
+             * ERST DEN PFAD, DANN DEN KOPF.
+             *
+             * Bis zum 2026-09-24 stand die Asset-Abfrage HINTER diesen
+             * Zeilen. Der Kopf las `Assembly.Location` - bei CS2-Mods leer -
+             * und schrieb "DLL: " und "gebaut am: unbekannt", waehrend zwei
+             * Zeilen spaeter "Mod-Asset: ParkingLotTool.dll" den Pfad
+             * nachreichte. Genau die Zeile, an der man eine veraltete DLL
+             * erkennt, fehlte also bei jedem Start.
+             */
+            string assetPfad = null;
+            if (GameManager.instance.modManager.TryGetExecutableAsset(this, out var asset))
+            {
+                assetPfad = asset.path;
+                AssetPath = asset.path;
+            }
+            var dll = !string.IsNullOrEmpty(assetPfad)
+                ? assetPfad : typeof(Mod).Assembly.Location;
+            var bauzeit = Bauzeit();
+            var gebaut = bauzeit.HasValue
+                ? bauzeit.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+                : "unbekannt";
             log.Info($"===== Parking Lot Tool geladen =====");
             // Die Version gehoert in die ERSTE Zeile jedes Berichts. Seit
             // Fehler ueber GitHub-Issues kommen, ist "welche Fassung hattest
@@ -92,18 +110,17 @@ namespace ParkingLotTool
             log.Info($"  gebaut am:  {gebaut}");
             log.Info($"  jetzt ist:  {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
 
-            if (GameManager.instance.modManager.TryGetExecutableAsset(this, out var asset))
+            if (!string.IsNullOrEmpty(assetPfad))
             {
                 // Assembly.Location ist bei CS2-Mods LEER - das Spiel laedt die
                 // DLL aus dem Speicher. Der einzige verlaessliche Pfad kommt vom
                 // Mod-Asset. Ohne ihn stand im Debug-Abzug `DllBuiltAt: null`,
                 // und die Vorsichtsmassnahme gegen eine veraltete DLL war
                 // wertlos.
-                AssetPath = asset.path;
                 // Nur der Dateiname: diese Zeile landet ueber `modlog-ende.txt`
                 // in jedem Meldepaket, und der volle Pfad faengt mit
                 // C:\Users\<Name> an.
-                log.Info($"  Mod-Asset:  {System.IO.Path.GetFileName(asset.path)}");
+                log.Info($"  Mod-Asset:  {System.IO.Path.GetFileName(assetPfad)}");
             }
 
             /*

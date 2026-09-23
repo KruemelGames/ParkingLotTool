@@ -115,6 +115,38 @@ namespace ParkingLotTool.Tools
                         return false;
                     }
                     if (TryFinishUnchangedEdit()) return true;
+                    if (IsEditing)
+                    {
+                        // Im Log vom 24.09. wurden zweimal je 54 Wegteile
+                        // geloescht, bevor ein fehlender Flaechenklon den
+                        // Neubau abbrach. Vor dem Abriss nur Prefabs pruefen.
+                        SyncAreaPreview(prefabsOnly: true);
+                        if (!_areaPreviewPrefabsReady)
+                        {
+                            if (_unaufloesbareFlaeche != null
+                                || _vorflaechenPrefabFehlgeschlagen
+                                || !HasPreviewPolygons(_areaPreviewLayout))
+                            {
+                                _buildRequestedWhenReady = false;
+                                _uiSystem?.SetStatus(_unaufloesbareFlaeche != null
+                                    ? T($"Nichts gebaut: Fläche '{_unaufloesbareFlaeche}' "
+                                        + "ist nicht benutzbar.",
+                                        $"Nothing built: surface '{_unaufloesbareFlaeche}' "
+                                        + "is unavailable.")
+                                    : T("Nichts gebaut: die Flächenvorbereitung "
+                                        + "ist fehlgeschlagen.",
+                                        "Nothing built: surface preparation failed."));
+                                Mod.log.Warn("PLT-Bearbeiten: Neubau vor dem "
+                                    + "Abriss gestoppt; Flaechenprefab "
+                                    + "nicht benutzbar. Alte Wege bleiben.");
+                            }
+                            else
+                                _uiSystem?.SetStatus(T(
+                                    "Flächenprefabs werden vorbereitet.",
+                                    "Preparing surface prefabs."));
+                            return false;
+                        }
+                    }
                     // Beim Umbau muessen die alten Wege JETZT fallen - die
                     // Definitionen entstehen erst im naechsten Durchgang.
                     EntferneAlteNetzeVorDemNeubau();
@@ -189,6 +221,7 @@ namespace ParkingLotTool.Tools
                                 "Rebuild failed; the old parking lot was restored.");
                         return false;
                     }
+                    VerwerfeEdithoehen();
                     _buildRequestedWhenReady = false;
                     ProtokolliereBauschritt("AwaitMaterialization — Übergabe der Definitionen an CS2");
                     _buildStage = BuildStage.AwaitMaterialization;
@@ -262,6 +295,7 @@ namespace ParkingLotTool.Tools
         /** Bricht einen laufenden Bauvorgang ab, etwa beim Zuruecksetzen. */
         private void CancelBuildStage()
         {
+            VerwerfeEdithoehen();
             _buildRequestedWhenReady = false;
             if (_buildStage == BuildStage.Idle) return;
             _buildStage = BuildStage.Idle;
