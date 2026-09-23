@@ -464,7 +464,37 @@ namespace ParkingLotTool.Tools
                         > EdgeMoveEpsilon * EdgeMoveEpsilon;
             if (moved)
             {
-                ReprojectEntrancesAfterPointDrag();
+                /*
+                 * BEIM EXTRUDIEREN NICHT UMPROJIZIEREN.
+                 *
+                 * `TryReprojectEntrance` sucht die Kante, die der GEMERKTEN
+                 * WELTLAGE am naechsten liegt. Fuer eine Umrissaenderung um
+                 * einen festen Punkt herum ist das genau richtig, und dafuer
+                 * wurde es am 2026-08-31 eingebaut.
+                 *
+                 * Beim Extrudieren ist es das Gegenteil dessen, was der
+                 * Nutzer will. Gemerkt wurden die Lagen VOR dem Einfuegen
+                 * der zwei Punkte, also auf der alten Kante. Nach dem Zug
+                 * liegt diese Stelle am FUSS der Ausstuelpung, und die dort
+                 * naechstgelegene Kante ist eine der beiden Seitenwaende -
+                 * nicht die neue Vorderkante. Der Nutzer am 2026-09-23:
+                 * *"die Eingaenge waren nicht an der neuen extrudeten Linie
+                 * sondern ausserhalb."* Genau das.
+                 *
+                 * Sie sitzen an dieser Stelle laengst richtig: `BeginEdgeExtrude`
+                 * hat sie auf die mittlere Kante gesetzt, und die ist die
+                 * gezogene. Wer mit ihr wandert, wandert mit dem, worauf er
+                 * gesetzt wurde. Es gibt hier also nichts zu reparieren -
+                 * nur etwas zu unterlassen.
+                 */
+                if (_extrudeStart >= 0)
+                {
+                    Mod.log.Info("PLT-Extrudieren: " + _entrances.Count
+                        + " Zugang/Zugaenge wandern mit der gezogenen Kante; "
+                        + "keine Umprojektion auf die alte Weltlage.");
+                    _entrancePositionsBeforePointDrag = null;
+                }
+                else ReprojectEntrancesAfterPointDrag();
                 _geometryRevision++;
                 _layoutDirty = true;
                 _polygonTouched = true;

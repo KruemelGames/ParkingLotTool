@@ -518,6 +518,20 @@ namespace ParkingLotTool.Tools
             return geschuetzt;
         }
 
+        /**
+         * In welche Himmelsrichtung schaut der Pfeil, in Grad.
+         *
+         * Gemessen wird die gedrehte Z-Achse in der Ebene - das ist die
+         * Richtung, in die das Objekt blickt. Grad statt Quaternion, weil
+         * vier Nachkommastellen niemandem sagen, ob sich etwas umgedreht
+         * hat; 180 Grad Unterschied dagegen schon.
+         */
+        private static float Blickrichtung(quaternion drehung)
+        {
+            var v = math.mul(drehung, new float3(0f, 0f, 1f));
+            return math.degrees(math.atan2(v.x, v.z));
+        }
+
         private void LogRichtungspfeilZustand(
             string phase,
             int index,
@@ -553,6 +567,24 @@ namespace ParkingLotTool.Tools
                 + $"Overridden={(EntityManager.HasComponent<Overridden>(pfeil) ? "JA" : "NEIN")}, "
                 + $"Owner={(owner == Entity.Null ? "NEIN" : Show(owner))}, "
                 + $"Attached={(EntityManager.HasComponent<Game.Objects.Attached>(pfeil) ? "JA" : "NEIN")}, "
+                /*
+                 * DIE DREHUNG GEHOERT DAZU - ohne sie misst diese Zeile
+                 * alles ausser dem, was sich bewegt.
+                 *
+                 * Der Nutzer am 2026-09-23: *"nach dem ersten Bauen zeigt
+                 * der Pfeil bei 'Alley in' nach aussen statt nach innen.
+                 * Kurz zeigt er nach innen, dann nach aussen."* Zwei
+                 * Messungen gibt es hier bereits, VOR und NACH dem
+                 * Besitzerschutz. Stehen dort verschiedene Winkel, dreht
+                 * jemand dazwischen; stehen dieselben, war er von Anfang
+                 * an falsch herum und das Umdrehen passiert frueher.
+                 *
+                 * `Attached` in derselben Zeile ist der Hauptverdaechtige:
+                 * haengt der Pfeil an einem Netz, richtet CS2 ihn an dessen
+                 * Fahrspur aus, und die Spur einer Einfahrtsgasse zeigt
+                 * hinaus.
+                 */
+                + $"Blick {Blickrichtung(transform.m_Rotation):F1} Grad, "
                 + $"MeshBatch={(meshBatches < 0 ? "FEHLT" : meshBatches.ToString())}, "
                 + $"CullingInfo={(EntityManager.HasComponent<Game.Rendering.CullingInfo>(pfeil) ? "JA" : "NEIN")}, "
                 + $"Hidden={(EntityManager.HasComponent<Hidden>(pfeil) ? "JA" : "NEIN")}. "
