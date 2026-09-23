@@ -72,3 +72,24 @@ Overlays/en/
 # Markdown-Dateien daneben - nur eben nicht in Markdown. Bleibt lokal.
 /VIDEO-SKRIPT.html
 /VIDEO-SKRIPT.pdf
+
+# ---------------------------------------------------------------------------
+# VEROEFFENTLICHUNG BLEIBT LOKAL
+#
+# Ansage des Nutzers am 2026-09-23: *"Alles was mit Publish zutun hat gehoert
+# NICHT in die GitHub repo."*
+#
+# Das ist der Ladenauftritt bei Paradox, nicht der Quelltext: Beschreibung,
+# Bilder, Tags, Abhaengigkeiten und die Veroeffentlichungsprofile. Der Mod
+# baut ohne sie; gebraucht werden sie nur beim Hochladen, und das passiert
+# von diesem Rechner aus.
+#
+# `Properties/README.txt` bleibt ABSICHTLICH drin - die Datei landet im
+# Modordner beim Spieler und gehoert damit zur Auslieferung, nicht zum
+# Ladenauftritt.
+# ---------------------------------------------------------------------------
+/Properties/PublishConfiguration.xml
+/Properties/PublishProfiles/
+/Properties/Thumbnail.png
+/Properties/Screenshots/
+/RELEASE.md
