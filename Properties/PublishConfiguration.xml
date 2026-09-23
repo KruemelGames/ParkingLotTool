@@ -77,20 +77,21 @@ The full source is on GitHub under GPL-3.0. This mod was written with AI assista
 	</LongDescription>
 
 	<!--
-		950x500, eigenes Bild seit dem 2026-09-23 (vorher das blaue Hexagon
-		der Toolchain). Erzeugt aus `Properties/Thumbnail.svg`:
+		950x500, aus dem echten Logo gebaut (2026-09-23). Quelle:
+		`../Affinity/PLT_Logo.png`, Ausgabe dort als
+		`PLT_Paradox_950x500.png`.
 
-		    msedge --headless --disable-gpu --screenshot=Thumbnail.png 		           --window-size=950,500 --hide-scrollbars Thumbnail.svg
+		DREI SACHEN, DIE BEIM NAECHSTEN MAL ZEIT SPAREN:
 
-		Die Fenstergroesse MUSS der SVG-Groesse entsprechen, sonst ist das
-		Bild abgeschnitten. Wer am Bild etwas aendert, aendert das SVG und
-		rendert neu - die PNG von Hand zu bearbeiten heisst, die Quelle zu
-		verlieren.
+		Das Logo hat einen DURCHSICHTIGEN Rand um den blauen Kasten. Wer es
+		stur skaliert, skaliert die Luft mit; erst `getbbox()` und
+		beschneiden, dann einpassen.
 
-		Gezeigt wird bewusst der Vorschau-Umriss mit seinen Griffen: das ist
-		das, was der Nutzer beim Zeichnen sieht, und damit das
-		Wiedererkennungsmerkmal. Ein Screenshot des fertigen Parkplatzes
-		waere von jedem anderen Parkplatz nicht zu unterscheiden.
+		Der Grund ist dunkel, nicht blau. Das Logo bringt seinen eigenen
+		blauen Kasten mit, und Blau auf Blau zeigt genau dessen Kante.
+
+		"PLT Thumbnail 16_9.png" in `../Affinity/` passt NICHT: es ist
+		1,44:1 mit weissem Rand, Paradox will 950x500 = 1,90:1.
 	-->
 	<Thumbnail Value="Properties/Thumbnail.png" />
 
