@@ -6,10 +6,21 @@
 	-->
 
 	<!--
-		LEER LASSEN BIS ZUR ERSTEN VEROEFFENTLICHUNG. Paradox vergibt die Id
-		selbst; danach MUSS sie hier stehen, sonst legt jede weitere
-		Veroeffentlichung einen zweiten Mod-Eintrag an statt den ersten zu
-		aktualisieren.
+		LEER LASSEN BIS ZUR ERSTEN VEROEFFENTLICHUNG - und das ist keine
+		Empfehlung, sondern Bedingung. Am 2026-09-23 im Publisher
+		nachgelesen (`ModPublisher.dll`, dekompiliert):
+
+		  PublishOptions.cs:60   beim ERSTEN Veroeffentlichen bricht er ab,
+		                         wenn hier etwas steht:
+		                         "ModId must be not set or be equal to 0
+		                          (zero) in configuration to publish a new mod"
+		  UpdateOptions.cs:70    bei JEDER weiteren Version ist sie Pflicht:
+		                         "ModId must be set in configuration"
+
+		Paradox vergibt sie selbst und nennt sie am Ende des ersten Laufs
+		("Mod published with Id=..."). Danach MUSS sie hier stehen, sonst
+		legt die naechste Veroeffentlichung einen zweiten Mod-Eintrag an
+		statt den ersten zu aktualisieren.
 	-->
 	<ModId Value="" />
 
@@ -184,9 +195,17 @@ The full source is on GitHub under GPL-3.0. This mod was written with AI assista
 	<RequiredDLC Value="" />
 
 	<!--
-		Change log for new version. Single line or multi line.
-		Gilt fuer DIESE Version - vor jeder neuen Veroeffentlichung neu fuellen.
-		Dieselben Zeilen stehen in CHANGELOG.md.
+		Change log for new version.
+
+		BEIM ERSTEN VEROEFFENTLICHEN WIRD DAS HIER GAR NICHT GELESEN.
+		`Program.cs:321` setzt den Changelog nur, wenn die Konfiguration als
+		`UpdateOptions` laeuft - also bei `PublishNewVersion`. Beim
+		`PublishNewMod` geht ein leerer String hinaus, egal was hier steht.
+
+		Ab der zweiten Version ist er dann PFLICHT (`UpdateOptions.cs:74`:
+		"ChangeLog must be set in configuration"). Vor jeder neuen
+		Veroeffentlichung neu fuellen; dieselben Zeilen stehen in
+		CHANGELOG.md.
 	-->
 	<ChangeLog>
 First release.
