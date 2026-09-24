@@ -226,8 +226,9 @@ namespace ParkingLotTool.Tools
                     + Zeile(z) + ".");
             }
             Mod.log.Info("PLT-Waisen: Aufnahme in " + uhr.ElapsedMilliseconds
-                + " ms, " + Bauplaene.Count + " von " + Waisen.Count
-                + " Waise(n) mit vollem Bauplan im Protokoll. Nichts veraendert.");
+                + " ms; " + Bauplaene.Count + " von " + (Waisen.Count + Halbwaisen.Count)
+                + " betroffenen Parkplaetzen mit vollem Bauplan im Protokoll. "
+                + "Nichts veraendert.");
         }
 
         private void BeschreibeLot(string art, Entity lot,

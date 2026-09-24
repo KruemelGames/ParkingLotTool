@@ -166,12 +166,22 @@ namespace ParkingLotTool.Tools
                 {
                     var buffer = EntityManager.GetBuffer<ParkingLotBuildBusStop>(
                         lot, true);
-                    document.Bushaltestellen = buffer.Select(stop => (object)new
+                    // Kein LINQ auf DynamicBuffer: sein IEnumerable<T> wirft
+                    // NotImplementedException (gemessen 2026-09-25 - der
+                    // Debug-Abzug scheiterte fuer jeden Parkplatz mit Bushalt-
+                    // Puffer, also jeden seit dem 2026-09-24 gebauten).
+                    var halte = new object[buffer.Length];
+                    for (var i = 0; i < buffer.Length; i++)
                     {
-                        A = new[] { stop.A.x, stop.A.y },
-                        B = new[] { stop.B.x, stop.B.y },
-                        stop.Along, stop.Left,
-                    }).ToArray();
+                        var stop = buffer[i];
+                        halte[i] = new
+                        {
+                            A = new[] { stop.A.x, stop.A.y },
+                            B = new[] { stop.B.x, stop.B.y },
+                            stop.Along, stop.Left,
+                        };
+                    }
+                    document.Bushaltestellen = halte;
                 }
                 return;
             }
