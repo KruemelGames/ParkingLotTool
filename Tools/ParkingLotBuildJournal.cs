@@ -368,6 +368,34 @@ namespace ParkingLotTool.Tools
          * naechste Mitte zurueck: die Markierung sitzt dann etwas neben dem
          * Grundstueck, etwa auf einem ueberstehenden Aufkleber.
          */
+        /**
+         * Alle Eintraege, juengster je Kennung gewinnt.
+         *
+         * Fuer die Waisensuche: dort ist die Lot-Flaeche noch da, der Bauzettel
+         * aber weg. Die Kennung stammt aus dem gezogenen Polygon, und genau das
+         * sind die Knoten der Lot-Flaeche - also dieselbe Kennung.
+         */
+        internal static Dictionary<string, BuildRecord> LeseBauprotokoll()
+        {
+            var ergebnis = new Dictionary<string, BuildRecord>();
+            try
+            {
+                var path = JournalPath();
+                if (!File.Exists(path)) return ergebnis;
+                foreach (var line in File.ReadAllLines(path))
+                {
+                    var record = ParseRecord(line);
+                    if (record?.Id != null) ergebnis[record.Id] = record;
+                }
+            }
+            catch (Exception exception)
+            {
+                Mod.log.Warn("PLT-Bauprotokoll konnte nicht gelesen werden: "
+                    + exception.Message);
+            }
+            return ergebnis;
+        }
+
         private BuildRecord FindBuildRecord(float2 position, string ownerName)
         {
             try

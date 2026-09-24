@@ -145,7 +145,10 @@ namespace ParkingLotTool.Geometry
             var richtung = d / laenge;
             foreach (var andere in layout.NetLine)
             {
-                if (ReferenceEquals(andere, linie)) continue;
+                // NetSegment ist ein struct: ReferenceEquals waere immer
+                // falsch (Boxing). Die Linie selbst faellt ueber die Endpunkte.
+                if (math.all(andere.A == linie.A) && math.all(andere.B == linie.B))
+                    continue;
                 var e = andere.B - andere.A;
                 var el = math.length(e);
                 if (el < 0.5f) continue;
