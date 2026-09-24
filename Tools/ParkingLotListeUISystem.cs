@@ -180,7 +180,8 @@ namespace ParkingLotTool.Tools
             // Waisen zaehlen mit: wird eine repariert oder abgerissen, soll
             // die Liste das sofort zeigen, nicht erst im Takt.
             var bestand = _lotQuery.CalculateEntityCount()
-                + (_waisen?.OffeneWaisen.Count ?? 0) * 100000;
+                + (_waisen?.OffeneWaisen.Count ?? 0) * 100000
+                + (_waisen?.OhneBauzettel.Count ?? 0) * 1000;
             if (bestand != _zuletztGezaehlt)
             {
                 _zuletztGezaehlt = bestand;
@@ -426,7 +427,7 @@ namespace ParkingLotTool.Tools
 
                 SchreibeBlock(lot, Infoauswahl.WaehleMangel(werte), werte);
                 // Feld 19: Waisenzustand, Feld 20: Bauzettel vorhanden.
-                _bau.Append("\t0\t")
+                _bau.Append('\t').Append(_waisen?.Zustand(lot) ?? 0).Append('\t')
                     .Append(EntityManager.HasComponent<ParkingLotBuildReceipt>(lot)
                         ? 1 : 0);
             }

@@ -49,6 +49,29 @@ internal static partial class Program
 
         var gefunden = SammleFormate(root.FullName);
         var fehler = 0;
+        /*
+         * HILFSAUFRUFE SIND EIN BLINDER FLECK (Codex, 2026-09-25): der
+         * Fingerabdruck umfasst nur die Methodenkoerper. Ruft Serialize eine
+         * eigene Hilfsmethode auf, aendert sich das Format dort unbemerkt.
+         * Deshalb ist jeder Aufruf ausser Write/Read und ein paar reinen
+         * Rechenfunktionen rot - und muss entweder eingerueckt oder hier
+         * bewusst freigegeben werden.
+         */
+        var erlaubt = new HashSet<string> { "Write", "Read", "float2", "float3",
+            "max", "min", "clamp", "unchecked",
+            // Der Koerper ist ohne Leerzeichen normalisiert: "new float2(".
+            "newfloat2", "newfloat3" };
+        foreach (var f in gefunden)
+            foreach (Match aufruf in Regex.Matches(f.Koerper, @"(\w+)\("))
+            {
+                var name = aufruf.Groups[1].Value;
+                if (erlaubt.Contains(name) || Regex.IsMatch(name,
+                        "^(if|for|foreach|while|switch|return|new|out|nameof)$"))
+                    continue;
+                Console.WriteLine("HILFSAUFRUF: " + f.Name + " ruft " + name
+                    + "() - Format dort ist nicht im Fingerabdruck.");
+                fehler++;
+            }
         foreach (var gruppe in gefunden.GroupBy(f => f.Name).Where(g => g.Count() > 1))
         {
             Console.WriteLine("DOPPELT: " + gruppe.Key);

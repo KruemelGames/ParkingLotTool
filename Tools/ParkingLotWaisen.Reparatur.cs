@@ -45,11 +45,44 @@ namespace ParkingLotTool.Tools
 
         private bool _autoOffen;
 
-        /** 0 = nicht verwaist, 1 = verwaist und reparierbar, 2 = verwaist, nicht reparierbar. */
+        /** Bauzettel-Wiederherstellung schon einmal gescheitert - die Automatik laesst sie aus. */
+        private readonly HashSet<Entity> _gescheitert = new HashSet<Entity>();
+
+        /** Stand der Einstellung im letzten Durchlauf - fuer das Einschalten im Optionsmenue. */
+        private bool _autoWarAn;
+
+        /**
+         * Verbunden, aber ohne Bauzettel - und das Bauprotokoll hat ihn.
+         * Das sind reparierte Waisen (auch aus einer frueheren Sitzung, vor
+         * der Bauzettel-Wiederherstellung).
+         */
+        internal readonly List<Entity> OhneBauzettel = new List<Entity>();
+
+        /**
+         * 0 = in Ordnung, 1 = verwaist und reparierbar, 2 = verwaist, nicht
+         * reparierbar, 3 = verbunden, aber der Bauplan fehlt und laesst sich
+         * aus dem Protokoll wiederherstellen.
+         */
         internal int Zustand(Entity lot)
         {
-            if (!Waisen.Contains(lot)) return 0;
-            return _traegerVon.ContainsKey(lot) ? 1 : 2;
+            if (Waisen.Contains(lot)) return _traegerVon.ContainsKey(lot) ? 1 : 2;
+            return OhneBauzettel.Contains(lot) ? 3 : 0;
+        }
+
+        private void SammleOhneBauzettel()
+        {
+            OhneBauzettel.Clear();
+            foreach (var lot in Halbwaisen)
+            {
+                if (!EntityManager.HasComponent<ParkingLotCarrierReference>(lot)
+                    || EntityManager.HasComponent<ParkingLotBuildReceipt>(lot))
+                    continue;
+                if (!Bauplaene.ContainsKey(lot)) continue;
+                OhneBauzettel.Add(lot);
+            }
+            if (OhneBauzettel.Count > 0)
+                Mod.log.Info("PLT-Waisen: " + OhneBauzettel.Count + " verbundene "
+                    + "Parkplatz/Parkplaetze ohne Bauzettel, im Protokoll vorhanden.");
         }
 
         internal string Grund(Entity lot)
@@ -162,10 +195,41 @@ namespace ParkingLotTool.Tools
          */
         internal bool Reparieren(Entity lot)
         {
+            if (Waisen.Contains(lot) && !Verbinden(lot)) return false;
+            if (!OhneBauzettel.Contains(lot)) return true;
+            var werkzeug = World.GetOrCreateSystemManaged<ParkingLotToolSystem>();
+            if (werkzeug.StelleBauzettelWiederHer(lot, out var grund))
+            {
+                OhneBauzettel.Remove(lot);
+                _gescheitert.Remove(lot);
+                return true;
+            }
+            // Der Knopf bleibt fuer einen Versuch von Hand (Codex,
+            // 2026-09-25: vorher verschwand er beim ersten Fehlschlag). Nur
+            // die Automatik laesst diesen Parkplatz danach aus - sonst
+            // versuchte sie es in jedem Bild erneut.
+            _gescheitert.Add(lot);
+            Mod.log.Warn("PLT-Waisen: Bauzettel fuer Lot " + lot.Index
+                + " nicht wiederhergestellt: " + grund + ". Verbunden bleibt "
+                + "er; Bearbeiten bleibt gesperrt.");
+            return false;
+        }
+
+        private bool Verbinden(Entity lot)
+        {
             if (!_traegerVon.TryGetValue(lot, out var traeger)) return false;
+            // Die Zuordnung stammt vom Laden. Bis zum Klick kann sich der
+            // Traeger geaendert haben (Codex, 2026-09-25) - deshalb alles,
+            // worauf sie beruht, hier noch einmal.
             if (!EntityManager.Exists(lot) || !EntityManager.Exists(traeger)
                 || EntityManager.HasComponent<Deleted>(lot)
-                || EntityManager.HasComponent<ParkingLotCarrierReference>(lot))
+                || EntityManager.HasComponent<Game.Tools.Temp>(lot)
+                || EntityManager.HasComponent<ParkingLotCarrierReference>(lot)
+                || EntityManager.HasComponent<Deleted>(traeger)
+                || EntityManager.HasComponent<Game.Tools.Temp>(traeger)
+                || !EntityManager.HasBuffer<Game.Objects.SubObject>(traeger)
+                || !EntityManager.HasComponent<Owner>(traeger)
+                || EntityManager.GetComponentData<Owner>(traeger).m_Owner != lot)
             {
                 Vergessen(lot, traeger);
                 return false;
@@ -207,11 +271,13 @@ namespace ParkingLotTool.Tools
             EntityManager.AddComponentData(lot,
                 new ParkingLotCarrierReference { Carrier = traeger });
 
-            Mod.log.Info("PLT-Waisen: Lot " + lot.Index + " repariert: Traeger "
+            Mod.log.Info("PLT-Waisen: Lot " + lot.Index + " verbunden: Traeger "
                 + traeger.Index + ", " + objekte.Count + " Relationen, Begleiter "
-                + begleiter + ", " + uhr.ElapsedMilliseconds + " ms. Bauzettel "
-                + "fehlt weiterhin.");
+                + begleiter + ", " + uhr.ElapsedMilliseconds + " ms.");
+            var mitPlan = Bauplaene.ContainsKey(lot);
             Vergessen(lot, traeger);
+            // Der Bauzettel folgt im selben Zug, wenn das Protokoll ihn hat.
+            if (mitPlan && !OhneBauzettel.Contains(lot)) OhneBauzettel.Add(lot);
             return true;
         }
 
@@ -219,6 +285,8 @@ namespace ParkingLotTool.Tools
         {
             var n = 0;
             foreach (var lot in new List<Entity>(Waisen))
+                if (Reparieren(lot)) n++;
+            foreach (var lot in new List<Entity>(OhneBauzettel))
                 if (Reparieren(lot)) n++;
             return n;
         }
@@ -238,6 +306,11 @@ namespace ParkingLotTool.Tools
          */
         private void AutomatischWeiter()
         {
+            // Im Optionsmenue eingeschaltet (nicht ueber die Liste): auch
+            // dann sofort loslegen, nicht erst beim naechsten Laden.
+            var an = Mod.Optionen?.WaisenAutomatischReparieren ?? false;
+            if (an && !_autoWarAn) StarteAutomatik();
+            _autoWarAn = an;
             if (!_autoOffen) return;
             if (Mod.Optionen == null || !Mod.Optionen.WaisenAutomatischReparieren)
             {
@@ -250,11 +323,18 @@ namespace ParkingLotTool.Tools
                 Reparieren(lot);
                 return;
             }
+            foreach (var lot in OhneBauzettel)
+            {
+                if (_gescheitert.Contains(lot)) continue;
+                Reparieren(lot);
+                return;
+            }
             _autoOffen = false;
         }
 
         /** Der Schalter wurde eingeschaltet - offene Waisen jetzt angehen. */
-        internal void StarteAutomatik() => _autoOffen = Waisen.Count > 0;
+        internal void StarteAutomatik()
+            => _autoOffen = Waisen.Count > 0 || OhneBauzettel.Count > 0;
 
         private string PrefabName(Entity prefab)
         {

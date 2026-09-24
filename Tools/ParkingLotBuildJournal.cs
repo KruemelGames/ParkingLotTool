@@ -63,6 +63,14 @@ namespace ParkingLotTool.Tools
             internal float2[] Site;
             internal string Settings;
             internal string Result;
+
+            /**
+             * Stehen die vollstaendigen Bauwerte drin? Aeltere Zeilen (vor
+             * `layoutwerte`/`uiwerte`) haben nur eine Textbeschreibung und
+             * die ANZAHL der Zufahrten, nicht ihre Lage - daraus laesst sich
+             * kein Bauzettel wiederherstellen.
+             */
+            internal bool VollerBauplan;
         }
 
         /**
@@ -471,6 +479,8 @@ namespace ParkingLotTool.Tools
                 Site = ParseSite(line),
                 Settings = Field("einstellungen"),
                 Result = Field("ergebnis"),
+                VollerBauplan = line.Contains("\"layoutwerte\":")
+                    && line.Contains("\"uiwerte\":"),
             };
         }
 

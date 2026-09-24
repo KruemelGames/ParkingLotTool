@@ -95,13 +95,16 @@ namespace ParkingLotTool.Tools
             _traegerVon.Clear();
             _begleiterVon.Clear();
             _grund.Clear();
+            OhneBauzettel.Clear();
+            _gescheitert.Clear();
             _autoOffen = false;
             if (mode != GameMode.Game) return;
             try
             {
                 Aufnehmen();
                 Zuordnen();
-                _autoOffen = Waisen.Count > 0;
+                SammleOhneBauzettel();
+                _autoOffen = Waisen.Count > 0 || OhneBauzettel.Count > 0;
             }
             catch (System.Exception e)
             {
@@ -224,7 +227,7 @@ namespace ParkingLotTool.Tools
             }
             Mod.log.Info("PLT-Waisen: Aufnahme in " + uhr.ElapsedMilliseconds
                 + " ms, " + Bauplaene.Count + " von " + Waisen.Count
-                + " Waise(n) mit Bauplan im Protokoll. Nichts veraendert.");
+                + " Waise(n) mit vollem Bauplan im Protokoll. Nichts veraendert.");
         }
 
         private void BeschreibeLot(string art, Entity lot,
@@ -247,8 +250,10 @@ namespace ParkingLotTool.Tools
             if (protokoll.TryGetValue(kennung, out var eintrag))
             {
                 bauplan = "Eintrag vom " + eintrag.When + " ("
-                    + (eintrag.OwnerName ?? "?") + ")";
-                if (art == "Waise") Bauplaene[lot] = eintrag;
+                    + (eintrag.OwnerName ?? "?") + ")"
+                    + (eintrag.VollerBauplan ? ", voller Bauplan"
+                        : ", OHNE Bauwerte (zu alt) - nicht wiederherstellbar");
+                if (eintrag.VollerBauplan) Bauplaene[lot] = eintrag;
             }
             Mod.log.Info("PLT-Waisen: " + art + " " + lot.Index + " "
                 + kennung + " bei (" + mitte.x.ToString("0.0") + ", "

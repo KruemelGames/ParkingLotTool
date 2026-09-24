@@ -449,7 +449,7 @@ const en = {
     "Reconnects the lot to the mod. Shape, markings and roads stay exactly "
     + "as they are.",
   waiseNichtReparierbar:
-    "Its markings cannot be matched to it without doubt, so it is not "
+    "Its parts cannot be matched to it without doubt, so it is not "
     + "repaired.",
   waisenAlleReparieren: (n: number) => `Repair all (${n})`,
   waisenAuto: "Repair automatically",
@@ -457,6 +457,14 @@ const en = {
     "Same switch as in the mod settings. When on, orphaned lots are "
     + "reconnected after loading, one at a time.",
   ohneBauzettel: "Editing unavailable: the build plan was lost with the save.",
+  bauplanTitel: "Build plan missing",
+  bauplanText:
+    "This lot was repaired, but its build plan was lost with the save. The "
+    + "build log still has it.",
+  bauplanWiederherstellen: "Restore build plan",
+  tooltipBauplanWiederherstellen:
+    "Reads the plan back from the build log so the lot can be edited again. "
+    + "Nothing in the city changes.",
   listeNurKosten: "Upkeep / month",
   listeKeineTreffer: "No parking lots match these filters.",
   listeFilterZurueck: "Clear search and filters",
@@ -1020,7 +1028,7 @@ const de: Texte = {
     "Verbindet den Parkplatz wieder mit der Mod. Form, Markierungen und "
     + "Straßen bleiben genau, wie sie sind.",
   waiseNichtReparierbar:
-    "Seine Markierungen lassen sich ihm nicht zweifelsfrei zuordnen, "
+    "Seine Bauteile lassen sich ihm nicht zweifelsfrei zuordnen, "
     + "deshalb wird er nicht repariert.",
   waisenAlleReparieren: (n: number) => `Alle reparieren (${n})`,
   waisenAuto: "Automatisch reparieren",
@@ -1029,6 +1037,14 @@ const de: Texte = {
     + "verwaiste Parkplätze nach dem Laden wieder verbunden, einer nach dem "
     + "anderen.",
   ohneBauzettel: "Bearbeiten nicht möglich: der Bauplan ging mit dem Spielstand verloren.",
+  bauplanTitel: "Bauplan fehlt",
+  bauplanText:
+    "Dieser Parkplatz wurde repariert, sein Bauplan ging aber mit dem "
+    + "Spielstand verloren. Das Bauprotokoll hat ihn noch.",
+  bauplanWiederherstellen: "Bauplan wiederherstellen",
+  tooltipBauplanWiederherstellen:
+    "Liest den Bauplan aus dem Bauprotokoll zurück, damit der Parkplatz wieder "
+    + "bearbeitet werden kann. In der Stadt ändert sich nichts.",
   listeNurKosten: "Unterhalt / Monat",
   listeKeineTreffer: "Keine Parkplätze passen zu diesen Filtern.",
   listeFilterZurueck: "Suche und Filter zurücksetzen",

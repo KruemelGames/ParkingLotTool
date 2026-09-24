@@ -17,6 +17,22 @@ import { useTexte } from "./texte";
 export const ParkingEditSection = (props: { waise?: number; bauzettel?: boolean }) => {
   const t = useTexte();
   const waise = props.waise ?? 0;
+  if (waise === 3) {
+    return (
+      <div className={styles.editSection}>
+        <div className={styles.waiseTitel}>{t.bauplanTitel}</div>
+        <div className={styles.waiseText}>{t.bauplanText}</div>
+        <TooltipKnopf
+          text={t.tooltipBauplanWiederherstellen}
+          className={styles.editButton}
+          onMouseDown={(event: any) => event.stopPropagation()}
+          onClick={gewaehltenReparieren}
+        >
+          {t.bauplanWiederherstellen}
+        </TooltipKnopf>
+      </div>
+    );
+  }
   if (waise > 0) {
     return (
       <div className={styles.editSection}>

@@ -312,15 +312,24 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
               <img src={icon("MapMarker")} />
             </button>
           </MitTooltip>
-          <MitTooltip text={platz.bauzettel ? t.tooltipBearbeitenListe : t.ohneBauzettel}>
-            <button aria-label={t.tooltipBearbeitenListe}
-              className={`${styles.listeSymbol} ${styles.listeBearbeiten}`}
-              disabled={!platz.bauzettel}
-              onClick={() => parkplatzBearbeiten(platz.id)}
-            >
-              {t.listeBearbeiten}
-            </button>
-          </MitTooltip>
+          {platz.waise === 3
+            ? <MitTooltip text={t.tooltipBauplanWiederherstellen}>
+                <button aria-label={t.tooltipBauplanWiederherstellen}
+                  className={`${styles.listeSymbol} ${styles.listeBearbeiten}`}
+                  onClick={() => parkplatzReparieren(platz.id)}
+                >
+                  {t.bauplanWiederherstellen}
+                </button>
+              </MitTooltip>
+            : <MitTooltip text={platz.bauzettel ? t.tooltipBearbeitenListe : t.ohneBauzettel}>
+                <button aria-label={t.tooltipBearbeitenListe}
+                  className={`${styles.listeSymbol} ${styles.listeBearbeiten}`}
+                  disabled={!platz.bauzettel}
+                  onClick={() => parkplatzBearbeiten(platz.id)}
+                >
+                  {t.listeBearbeiten}
+                </button>
+              </MitTooltip>}
         </div>
 
         <div className={styles.listeBalkenBett}>
@@ -379,7 +388,7 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
             <div><Satz teile={mangel} zielId={platz.mangel.zielId} /></div>
           </div>
         )}
-        {platz.waise > 0 && <Schleier platz={platz} />}
+        {(platz.waise === 1 || platz.waise === 2) && <Schleier platz={platz} />}
       </div>
     </div>
   );
@@ -483,8 +492,10 @@ export const ListeTab = () => {
   useEffect(() => { setSeite(0); }, [suche, filter, sortierung]);
   useEffect(() => { setSeite(s => Math.min(s, seiten - 1)); }, [seiten]);
   useEffect(() => { if (gitter.current) gitter.current.scrollTop = 0; }, [aktuelleSeite, suche, filter, sortierung]);
+  // Zustand 3 (verbunden, Bauplan fehlt) zaehlt mit: "Alle reparieren"
+  // stellt auch dessen Bauplan wieder her.
   const waisen = plaetze.filter(p => p.waise > 0).length;
-  const reparierbar = plaetze.filter(p => p.waise === 1).length;
+  const reparierbar = plaetze.filter(p => p.waise === 1 || p.waise === 3).length;
   const summePlaetze = plaetze.reduce((summe, p) => summe + p.kapazitaet, 0);
   const summeFrei = plaetze.reduce((summe, p) => summe + Math.max(0, p.kapazitaet - p.belegt), 0);
   const unterhalt = plaetze.reduce((summe, p) => summe + p.unterhalt, 0);

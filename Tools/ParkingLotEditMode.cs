@@ -941,9 +941,50 @@ namespace ParkingLotTool.Tools
             base.OnDestroy();
         }
 
+        /**
+         * Der Bauzettel aus dem LAUFENDEN Werkzeugzustand - der Normalfall
+         * nach jedem Bau. Sammelt nur ein und gibt an `SchreibeBauzettel`
+         * weiter; dieselbe Schreibfunktion stellt verwaiste Parkplaetze aus
+         * dem Bauprotokoll wieder her. Eine Wahrheit ueber das Format.
+         */
         private bool WriteBuildReceipt(Entity lot, LayoutSettings settings,
                                        float3[] worldPoints)
         {
+            if (settings == null) return false;
+            var quelle = new Bauzettelquelle
+            {
+                Settings = settings,
+                Punkte = worldPoints,
+                MedianWidth = _uiSystem?.AktuelleMedianbreite ?? settings.Md,
+                GreenMedian = _uiSystem?.MittelgruenAn ?? settings.Md > 0,
+                CrossBays = _uiSystem?.AktuelleQuerbuchten
+                    ?? (settings.Cr / settings.Sw - (settings.Qk ? 2 : 0)),
+                SurfaceRoadOn = _uiSystem?.FlaecheStrasseAn ?? true,
+                SurfaceDecorationOn = _uiSystem?.FlaecheDekoAn ?? true,
+                SurfaceApronOn = _uiSystem?.VorflaecheAn ?? true,
+                BayIcons = _uiSystem?.Buchtsymbole ?? true,
+                ZoningWinkelmodus = ZoningWinkelmodus,
+                ZoningReglerwinkel = ZoningReglerwinkel,
+                ZoningAussentiefeVorwahl = ZoningTiefeVorwahl,
+                ZoningAusrichtwinkel = ZoningAusrichtwinkel,
+                Ausrichtwinkel = Ausrichtwinkel,
+                Ausrichtungen = Ausrichtungen,
+                Trennschnitte = Trennschnitte,
+                Zoningflaechen = Zoningflaechen,
+                Seitenplan = _zoningSeitenPlan,
+                Randzoning = Randzoninglinien,
+                FlaecheStrasse = _uiSystem?.FlaecheStrasse ?? string.Empty,
+                FlaecheDekoration = _uiSystem?.FlaecheDekoration ?? string.Empty,
+                FlaecheZoning = _uiSystem?.FlaecheZoning ?? string.Empty,
+                VegetationAusProtokoll = null,
+            };
+            return SchreibeBauzettel(lot, quelle);
+        }
+
+        private bool SchreibeBauzettel(Entity lot, Bauzettelquelle q)
+        {
+            var settings = q.Settings;
+            var worldPoints = q.Punkte;
             if (lot == Entity.Null || !EntityManager.Exists(lot)
                 || settings == null || worldPoints == null
                 || worldPoints.Length < MinPolygonPoints) return false;
@@ -973,26 +1014,25 @@ namespace ParkingLotTool.Tools
                     NoHalf = settings.NoHalf,
                     AngleMode = ParkingLotBuildReceipt
                         .EncodeAngleMode(settings.AngleMode),
-                    MedianWidth = _uiSystem?.AktuelleMedianbreite ?? settings.Md,
-                    GreenMedian = _uiSystem?.MittelgruenAn ?? settings.Md > 0,
-                    CrossBays = _uiSystem?.AktuelleQuerbuchten
-                        ?? (settings.Cr / settings.Sw - (settings.Qk ? 2 : 0)),
-                    SurfaceRoadOn = _uiSystem?.FlaecheStrasseAn ?? true,
-                    SurfaceDecorationOn = _uiSystem?.FlaecheDekoAn ?? true,
-                    SurfaceApronOn = _uiSystem?.VorflaecheAn ?? true,
-                    BayIcons = _uiSystem?.Buchtsymbole ?? true,
-                    ZoningWinkelmodus = Winkelmodus.Kodiere(ZoningWinkelmodus),
-                    ZoningReglerwinkel = ZoningReglerwinkel,
-                    ZoningAussentiefeVorwahl = ZoningTiefeVorwahl,
-                    ZoningAusrichtwinkel = ZoningAusrichtwinkel ?? double.NaN,
+                    MedianWidth = q.MedianWidth,
+                    GreenMedian = q.GreenMedian,
+                    CrossBays = q.CrossBays,
+                    SurfaceRoadOn = q.SurfaceRoadOn,
+                    SurfaceDecorationOn = q.SurfaceDecorationOn,
+                    SurfaceApronOn = q.SurfaceApronOn,
+                    BayIcons = q.BayIcons,
+                    ZoningWinkelmodus = Winkelmodus.Kodiere(q.ZoningWinkelmodus),
+                    ZoningReglerwinkel = q.ZoningReglerwinkel,
+                    ZoningAussentiefeVorwahl = q.ZoningAussentiefeVorwahl,
+                    ZoningAusrichtwinkel = q.ZoningAusrichtwinkel ?? double.NaN,
                     BusStopCount = settings.BusStops?.Length ?? 0,
                     // NaN heisst "keine Bezugslinie" - so bleibt der Wert
                     // auch ohne Ausrichtung eindeutig.
-                    Ausrichtwinkel = Ausrichtwinkel ?? double.NaN,
-                    AusrichtAx = Ausrichtungen.Count > 0 ? Ausrichtungen[0].LinieA.x : 0f,
-                    AusrichtAz = Ausrichtungen.Count > 0 ? Ausrichtungen[0].LinieA.y : 0f,
-                    AusrichtBx = Ausrichtungen.Count > 0 ? Ausrichtungen[0].LinieB.x : 0f,
-                    AusrichtBz = Ausrichtungen.Count > 0 ? Ausrichtungen[0].LinieB.y : 0f,
+                    Ausrichtwinkel = q.Ausrichtwinkel ?? double.NaN,
+                    AusrichtAx = q.Ausrichtungen.Count > 0 ? q.Ausrichtungen[0].LinieA.x : 0f,
+                    AusrichtAz = q.Ausrichtungen.Count > 0 ? q.Ausrichtungen[0].LinieA.y : 0f,
+                    AusrichtBx = q.Ausrichtungen.Count > 0 ? q.Ausrichtungen[0].LinieB.x : 0f,
+                    AusrichtBz = q.Ausrichtungen.Count > 0 ? q.Ausrichtungen[0].LinieB.y : 0f,
                 };
                 if (EntityManager.HasComponent<ParkingLotBuildReceipt>(lot))
                     EntityManager.SetComponentData(lot, receipt);
@@ -1038,16 +1078,16 @@ namespace ParkingLotTool.Tools
                  * schlicht nicht und fallen beim Lesen auf ihren einen
                  * gespeicherten Winkel zurueck.
                  */
-                if (Ausrichtungen.Count > 0)
+                if (q.Ausrichtungen.Count > 0)
                 {
                     var alignmentBuffer = EntityManager
                         .HasBuffer<ParkingLotBuildAlignment>(lot)
                         ? EntityManager.GetBuffer<ParkingLotBuildAlignment>(lot)
                         : EntityManager.AddBuffer<ParkingLotBuildAlignment>(lot);
                     alignmentBuffer.Clear();
-                    for (var i = 0; i < Ausrichtungen.Count; i++)
+                    for (var i = 0; i < q.Ausrichtungen.Count; i++)
                     {
-                        var alignment = Ausrichtungen[i];
+                        var alignment = q.Ausrichtungen[i];
                         alignmentBuffer.Add(new ParkingLotBuildAlignment
                         {
                             Version = ParkingLotBuildAlignment.CurrentVersion,
@@ -1065,19 +1105,19 @@ namespace ParkingLotTool.Tools
 
                 // Die Handschnitte gehoeren zu den Zuweisungen: sie legen
                 // fest, WELCHE Teilflaechen es ueberhaupt gibt.
-                if (Trennschnitte.Count > 0)
+                if (q.Trennschnitte.Count > 0)
                 {
                     var cutBuffer = EntityManager
                         .HasBuffer<ParkingLotBuildCut>(lot)
                         ? EntityManager.GetBuffer<ParkingLotBuildCut>(lot)
                         : EntityManager.AddBuffer<ParkingLotBuildCut>(lot);
                     cutBuffer.Clear();
-                    for (var i = 0; i < Trennschnitte.Count; i++)
+                    for (var i = 0; i < q.Trennschnitte.Count; i++)
                         cutBuffer.Add(new ParkingLotBuildCut
                         {
                             Version = ParkingLotBuildCut.CurrentVersion,
-                            A = Trennschnitte[i].A,
-                            B = Trennschnitte[i].B,
+                            A = q.Trennschnitte[i].A,
+                            B = q.Trennschnitte[i].B,
                         });
                 }
                 else if (EntityManager.HasBuffer<ParkingLotBuildCut>(lot))
@@ -1088,32 +1128,32 @@ namespace ParkingLotTool.Tools
                 // Die Zoning-Flaechen aus demselben Grund wie die Schnitte:
                 // ohne sie waere ein bearbeiteter Parkplatz um seine
                 // Parzellen aermer.
-                if (Zoningflaechen.Count > 0)
+                if (q.Zoningflaechen.Count > 0)
                 {
                     var zonePuffer = EntityManager
                         .HasBuffer<ParkingLotBuildZoning>(lot)
                         ? EntityManager.GetBuffer<ParkingLotBuildZoning>(lot)
                         : EntityManager.AddBuffer<ParkingLotBuildZoning>(lot);
                     zonePuffer.Clear();
-                    for (var i = 0; i < Zoningflaechen.Count; i++)
+                    for (var i = 0; i < q.Zoningflaechen.Count; i++)
                         zonePuffer.Add(new ParkingLotBuildZoning
                         {
                             Version = ParkingLotBuildZoning.CurrentVersion,
-                            Ecke = Zoningflaechen[i].Ecke,
-                            Spalten = Zoningflaechen[i].Spalten,
-                            Reihen = Zoningflaechen[i].Reihen,
-                            Winkel = Zoningflaechen[i].Winkel,
-                            Rand = Zoningflaechen[i].Rand,
+                            Ecke = q.Zoningflaechen[i].Ecke,
+                            Spalten = q.Zoningflaechen[i].Spalten,
+                            Reihen = q.Zoningflaechen[i].Reihen,
+                            Winkel = q.Zoningflaechen[i].Winkel,
+                            Rand = q.Zoningflaechen[i].Rand,
                             // Ohne diese vier verloere der Parkplatz seine
                             // Aussenbaender beim naechsten Laden.
                             Aussen0 = ParkingGeometry.ZoningAussentiefe(
-                                Zoningflaechen[i], 0),
+                                q.Zoningflaechen[i], 0),
                             Aussen1 = ParkingGeometry.ZoningAussentiefe(
-                                Zoningflaechen[i], 1),
+                                q.Zoningflaechen[i], 1),
                             Aussen2 = ParkingGeometry.ZoningAussentiefe(
-                                Zoningflaechen[i], 2),
+                                q.Zoningflaechen[i], 2),
                             Aussen3 = ParkingGeometry.ZoningAussentiefe(
-                                Zoningflaechen[i], 3),
+                                q.Zoningflaechen[i], 3),
                         });
                     /*
                      * ZAEHLER STATT THEORIE.
@@ -1129,21 +1169,21 @@ namespace ParkingLotTool.Tools
                      * es nur den Umbau betrifft.
                      */
                     var tiefen = new System.Text.StringBuilder();
-                    for (var i = 0; i < Zoningflaechen.Count; i++)
+                    for (var i = 0; i < q.Zoningflaechen.Count; i++)
                     {
                         if (i > 0) tiefen.Append(" | ");
                         for (var s = 0; s < 4; s++)
                         {
                             if (s > 0) tiefen.Append('/');
                             tiefen.Append(ParkingGeometry
-                                .ZoningAussentiefe(Zoningflaechen[i], s)
+                                .ZoningAussentiefe(q.Zoningflaechen[i], s)
                                 .ToString("0.##",
                                     System.Globalization.CultureInfo.InvariantCulture));
                         }
                     }
                     Mod.log.Info("PLT-Zoningzettel GESCHRIEBEN ("
                         + (IsEditing ? "Umbau" : "Neubau") + "): "
-                        + Zoningflaechen.Count + " Flaeche(n), Aussentiefen "
+                        + q.Zoningflaechen.Count + " Flaeche(n), Aussentiefen "
                         + tiefen + " (je Flaeche Seite 0/1/2/3).");
                 }
                 else if (EntityManager.HasBuffer<ParkingLotBuildZoning>(lot))
@@ -1163,7 +1203,16 @@ namespace ParkingLotTool.Tools
                     .HasBuffer<ParkingLotBuildZoningSeite>(lot)
                     ? EntityManager.GetBuffer<ParkingLotBuildZoningSeite>(lot)
                     : EntityManager.AddBuffer<ParkingLotBuildZoningSeite>(lot);
-                SchreibeZoningSeitenplan(seitenPuffer);
+                seitenPuffer.Clear();
+                foreach (var seite in q.Seitenplan)
+                    seitenPuffer.Add(new ParkingLotBuildZoningSeite
+                    {
+                        Version = ParkingLotBuildZoningSeite.CurrentVersion,
+                        A = seite.A,
+                        B = seite.B,
+                        Links = seite.Links,
+                        Aus = seite.Aus,
+                    });
                 var busPuffer = EntityManager.HasBuffer<ParkingLotBuildBusStop>(lot)
                     ? EntityManager.GetBuffer<ParkingLotBuildBusStop>(lot)
                     : EntityManager.AddBuffer<ParkingLotBuildBusStop>(lot);
@@ -1210,7 +1259,7 @@ namespace ParkingLotTool.Tools
                     ? EntityManager.GetBuffer<ParkingLotBuildRandzoning>(lot)
                     : EntityManager.AddBuffer<ParkingLotBuildRandzoning>(lot);
                 randPuffer.Clear();
-                foreach (var linie in Randzoninglinien)
+                foreach (var linie in q.Randzoning)
                     randPuffer.Add(new ParkingLotBuildRandzoning
                     {
                         Version = ParkingLotBuildRandzoning.CurrentVersion,
@@ -1221,10 +1270,8 @@ namespace ParkingLotTool.Tools
                     ? EntityManager.GetBuffer<ParkingLotBuildText>(lot)
                     : EntityManager.AddBuffer<ParkingLotBuildText>(lot);
                 textBuffer.Clear();
-                AddBuildText(textBuffer, 1,
-                    _uiSystem?.FlaecheStrasse ?? string.Empty);
-                AddBuildText(textBuffer, 2,
-                    _uiSystem?.FlaecheDekoration ?? string.Empty);
+                AddBuildText(textBuffer, 1, q.FlaecheStrasse ?? string.Empty);
+                AddBuildText(textBuffer, 2, q.FlaecheDekoration ?? string.Empty);
                 /*
                  * DIE DRITTE FLAECHE GEHOERT DAZU.
                  *
@@ -1234,10 +1281,10 @@ namespace ParkingLotTool.Tools
                  * heisst genau das - "nimm die Dekoflaeche"; ein alter
                  * Bauzettel ohne Eintrag verhaelt sich damit richtig.
                  */
-                AddBuildText(textBuffer, 3,
-                    _uiSystem?.FlaecheZoning ?? string.Empty);
+                AddBuildText(textBuffer, 3, q.FlaecheZoning ?? string.Empty);
                 AddBuildText(textBuffer, 5, settings.Zoningstrasse);
-                WriteVegetation(lot);
+                if (q.VegetationAusProtokoll == null) WriteVegetation(lot);
+                else SchreibeVegetationAusProtokoll(lot, q.VegetationAusProtokoll);
                 return true;
             }
             catch (Exception exception)
