@@ -226,6 +226,14 @@ namespace ParkingLotTool
         [SettingsUISection(ReiterAllgemein, GruppeSpielstand)]
         public bool WaisenAutomatischReparieren { get; set; } = false;
 
+        /**
+         * Bestehende Parkplaetze nach einem Update selbst nachruesten.
+         * Ansage des Nutzers am 2026-09-24: Standard AUS; synchron mit dem
+         * Schalter in der Parkplatzliste.
+         */
+        [SettingsUISection(ReiterAllgemein, GruppeSpielstand)]
+        public bool AutomatischSynchronisieren { get; set; } = false;
+
         [SettingsUISection(ReiterAllgemein, GruppeHinweise)]
         public bool ParkplatzLoeschenBestaetigen { get; set; } = true;
 
@@ -715,6 +723,7 @@ namespace ParkingLotTool
             AutomatischZufahrtModus = true;
             AutomatischVersorgung = true;
             WaisenAutomatischReparieren = false;
+            AutomatischSynchronisieren = false;
             VegetationsdichteFaktor = 1f;
             AltRechenwegOhneWarnung = false;
             // Ausdruecklich, nicht nur per Feldvorgabe: "Auf Standard
@@ -943,6 +952,30 @@ namespace ParkingLotTool
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeSpielstand + "]",
                     _deutsch ? "Spielstand" : "Saved games"
+                },
+                {
+                    "Options.OPTION[" + seite + "." + nameof(Setting) + "."
+                        + nameof(Setting.AutomatischSynchronisieren) + "]",
+                    _deutsch ? "Parkplätze automatisch synchronisieren"
+                        : "Synchronize parking lots automatically"
+                },
+                {
+                    "Options.OPTION_DESCRIPTION[" + seite + "." + nameof(Setting) + "."
+                        + nameof(Setting.AutomatischSynchronisieren) + "]",
+                    _deutsch
+                        ? "Neue Versionen der Mod müssen bestehende Parkplätze "
+                          + "manchmal nachrüsten. Ist dieser Schalter an, passiert "
+                          + "das nach dem Laden von selbst, verteilt über mehrere "
+                          + "Bilder, mit einer kleinen Fortschrittsmeldung unten. "
+                          + "Aus: ein Hinweis im Kopf des Parkplatz-Fensters führt "
+                          + "zur Liste, dort geht es je Parkplatz oder für alle. "
+                          + "Form und Einstellungen der Parkplätze bleiben."
+                        : "New versions of the mod sometimes need to update existing "
+                          + "parking lots. With this on, that happens after loading, "
+                          + "spread over several frames, with a small progress note "
+                          + "at the bottom. Off: a note in the parking lot window "
+                          + "leads to the list, where you update one lot or all. "
+                          + "Shape and settings of the lots stay as they are."
                 },
                 {
                     "Options.OPTION[" + seite + "." + nameof(Setting) + "."

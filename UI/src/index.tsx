@@ -3,6 +3,7 @@ import { useValue } from "cs2/api";
 import { forwardRef } from "react";
 import { ParkingLotLauncher } from "mods/launcher";
 import { ParkingLotPanel } from "mods/panel";
+import { SyncFortschritt } from "mods/sync-fortschritt";
 import { parkingFeeVisible$ } from "mods/bindings";
 import { ParkingFeeSection } from "mods/fee-section";
 import { ParkingEmployeeSection } from "mods/employee-section";
@@ -41,6 +42,7 @@ const EDIT_SECTION = "ParkingLotTool.Tools.ParkingLotEditSection";
 const register: ModRegistrar = (moduleRegistry) => {
   moduleRegistry.append("GameTopLeft", ParkingLotLauncher);
   moduleRegistry.append("Game", ParkingLotPanel);
+  moduleRegistry.append("Game", SyncFortschritt);
 
   /*
    * DER GEBUEHRENABSCHNITT DARF DEN REST NICHT MITREISSEN.

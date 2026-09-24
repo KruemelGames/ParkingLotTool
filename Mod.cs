@@ -205,6 +205,10 @@ namespace ParkingLotTool
             // bei Pause still, und nach dem Laden ist das Spiel oft pausiert.
             updateSystem.UpdateAt<ParkingLotWaisenSystem>(
                 SystemUpdatePhase.ModificationEnd);
+            // Synchronisieren: bestehende Parkplaetze nachruesten, gedrosselt.
+            // UIUpdate, weil es auch in der Pause laufen soll und die
+            // Bindungen fuer Liste, Panelkopf und Fortschrittsmeldung traegt.
+            updateSystem.UpdateAt<ParkingLotSyncSystem>(SystemUpdatePhase.UIUpdate);
             // Der Hinweis am Mauszeiger waehrend der Linienauswahl. Gleiche
             // Phase wie die Vanilla-Werkzeugtooltips.
             updateSystem.UpdateAt<ParkingLotAlignTooltipSystem>(

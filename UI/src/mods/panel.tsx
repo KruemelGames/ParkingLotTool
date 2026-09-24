@@ -39,6 +39,7 @@ import {
   ausrichtBestaetigen, trennmodus$, trennungFertig,
   altbestand$, altbestandLoeschen, altbestandBehalten,
   panelStil$, setPanelStil,
+  syncOffen$, syncAuto$,
 } from "./bindings";
 import { useTexte } from "./texte";
 
@@ -305,6 +306,8 @@ export const ParkingLotPanel = () => {
   // 2026-09-14 20:44:39). Derselbe Fehler wie am 2026-08-11.
   const entwicklerDebug = useValue(entwicklerDebug$);
   const autoEntryMode = useValue(autoEntryMode$);
+  const syncOffen = useValue(syncOffen$);
+  const syncAuto = useValue(syncAuto$);
   const toolActive = useValue(toolActive$);
   const edgeSetback = useValue(edgeSetback$);
   const edgeSetbackDefault = useValue(edgeSetbackDefault$);
@@ -940,6 +943,12 @@ export const ParkingLotPanel = () => {
           */}
           <Fangschalter />
           </div>
+          {syncOffen > 0 && !syncAuto &&
+            <TooltipKnopf text={t.tooltipSyncHinweis}
+              className={styles.syncKopfHinweis}
+              onMouseDown={haltAn} onClick={() => setTab("liste")}>
+              {t.syncHinweis(syncOffen)}
+            </TooltipKnopf>}
         </div>
 
         <div className={styles.trenner} />

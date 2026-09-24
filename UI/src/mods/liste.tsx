@@ -10,6 +10,7 @@ import {
   parkplatzListe$, parkplatzRunde$, parkplatzRundeVor,
   parkplatzUmbenennen, parkplatzWaehlen,
   parkplatzReparieren, parkplaetzeReparieren, setWaisenAuto, waisenAuto$,
+  parkplatzSynchronisieren, parkplaetzeSynchronisieren, setSyncAuto, syncAuto$, syncOffen$,
 } from "./bindings";
 
 /**
@@ -52,6 +53,7 @@ const MANGEL_AB_FELD = 12;
  */
 const WAISE_FELD = MANGEL_AB_FELD + FELDER_JE_BLOCK;
 const BAUZETTEL_FELD = WAISE_FELD + 1;
+const SYNC_FELD = BAUZETTEL_FELD + 1;
 
 /** Ab so vielen Proben traut sich eine Kachel eine Aussage zu. */
 const PROBEN_FUER_AUSSAGE = 5;
@@ -87,6 +89,7 @@ type Parkplatz = {
   mangel: Block;
   waise: number;
   bauzettel: boolean;
+  sync: boolean;
 };
 
 const zahl = (s: string | undefined) => {
@@ -388,6 +391,15 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
             <div><Satz teile={mangel} zielId={platz.mangel.zielId} /></div>
           </div>
         )}
+        {platz.sync && platz.waise !== 1 && platz.waise !== 2 && (
+          <div className={styles.listeSyncZeile}>
+            <TooltipKnopf text={t.tooltipSync}
+              className={styles.listeTextknopf}
+              onClick={() => parkplatzSynchronisieren(platz.id)}>
+              {t.syncEinzeln}
+            </TooltipKnopf>
+          </div>
+        )}
         {(platz.waise === 1 || platz.waise === 2) && <Schleier platz={platz} />}
       </div>
     </div>
@@ -437,6 +449,8 @@ export const ListeTab = () => {
   const rohInfos = useValue(parkplatzInfos$);
   const rohRunde = useValue(parkplatzRunde$);
   const auto = useValue(waisenAuto$);
+  const syncAuto = useValue(syncAuto$);
+  const syncOffen = useValue(syncOffen$);
   const [slot, setSlot] = useState(0);
   const [pause, setPause] = useState(false);
   const [hover, setHover] = useState(false);
@@ -457,6 +471,7 @@ export const ListeTab = () => {
     alterTage: f[9] === undefined ? -1 : zahl(f[9]), ergebnis: zahl(f[10]),
     geschaetzt: zahl(f[11]) === 1, mangel: blockAus(f, MANGEL_AB_FELD),
     waise: zahl(f[WAISE_FELD]), bauzettel: zahl(f[BAUZETTEL_FELD]) === 1,
+    sync: zahl(f[SYNC_FELD]) === 1,
   })), [rohListe]);
   const bloecke = useMemo(() => {
     const result = new Map<string, Block[]>();
@@ -519,6 +534,16 @@ export const ListeTab = () => {
             className={`${styles.listeTextknopf} ${auto ? styles.listeAktiv : ""}`}
             aria-pressed={auto} onClick={() => setWaisenAuto(!auto)}>{t.waisenAuto}</TooltipKnopf>
         </div>}
+        <div className={styles.listeFilter}>
+          {syncOffen > 0 && <TooltipKnopf text={t.tooltipSyncAlle}
+            className={styles.listeTextknopf}
+            onClick={parkplaetzeSynchronisieren}>{t.syncAlle(syncOffen)}</TooltipKnopf>}
+          <TooltipKnopf text={t.tooltipSyncAuto}
+            className={`${styles.listeTextknopf} ${syncAuto ? styles.listeAktiv : ""}`}
+            aria-pressed={syncAuto} onClick={() => setSyncAuto(!syncAuto)}>
+            {t.syncAutomatisch}
+          </TooltipKnopf>
+        </div>
         <label className={styles.listeSuchfeld}>
           <span>{t.listeSuchen}</span>
           <input className={styles.listeSuche} aria-label={t.listeSuche}

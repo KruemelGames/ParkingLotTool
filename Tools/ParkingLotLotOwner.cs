@@ -615,8 +615,6 @@ namespace ParkingLotTool.Tools
 
             var lotsByCarrier = new Dictionary<Entity, Entity>();
             var invalidRelations = 0;
-            var nachgeruestet = 0;
-            var haltestellenFrei = 0;
             for (var i = 0; i < parts.Length; i++)
             {
                 var relation = EntityManager
@@ -628,37 +626,13 @@ namespace ParkingLotTool.Tools
                     invalidRelations++;
                     continue;
                 }
-                // Einmalige Save-Migration: native Neubewertung statt Overridden laufend zu entfernen.
-                if (EntityManager.HasComponent<PrefabRef>(parts[i]) &&
-                    EntityManager.HasComponent<PlantData>(EntityManager.GetComponentData<PrefabRef>(parts[i]).m_Prefab) &&
-                    (!EntityManager.HasComponent<Owner>(parts[i]) || !EntityManager.HasComponent<Owner>(relation.Carrier)))
-                {
-                    SetVegetationOwner(parts[i],relation.Carrier,relation.Lot);
-                    if (!EntityManager.HasComponent<Updated>(parts[i])) EntityManager.AddComponent<Updated>(parts[i]);
-                }
-                // Dasselbe fuer Aufkleber, Pfeile und Saeulen aus Spielstaenden
-                // vor dem 2026-09-24: ohne Besitzer loescht sie der
-                // Vegetationspinsel. Ohne `Updated` - der Pinsel liest den
-                // Besitzer erst beim Pinseln, und 400 Aufkleber neu bewerten
-                // zu lassen, braucht es dafuer nicht.
-                // Bushaltestellen AUSGENOMMEN: mit Besitzer sind sie im
-                // Linienwerkzeug nicht anwaehlbar (siehe AuditBuiltBusStops).
-                // Wer am 2026-09-24 kurz mit Traeger gebaut wurde, verliert
-                // ihn hier wieder.
-                else if (EntityManager.HasComponent<Game.Routes.TransportStop>(parts[i]))
-                {
-                    if (EntityManager.HasComponent<Owner>(parts[i]))
-                    {
-                        EntityManager.RemoveComponent<Owner>(parts[i]);
-                        haltestellenFrei++;
-                    }
-                }
-                else if (EntityManager.HasComponent<Game.Objects.Object>(parts[i])
-                    && !EntityManager.HasComponent<Owner>(parts[i]))
-                {
-                    SetVegetationOwner(parts[i], relation.Carrier, relation.Lot);
-                    nachgeruestet++;
-                }
+                // Die einmaligen Nachruestungen (Pflanzen und Aufkleber an den
+                // Traeger, Haltestellen ohne Besitzer) standen bis 2026-09-25
+                // hier und liefen bei jedem Laden fuer alle Parkplaetze. Sie
+                // sind jetzt Schritte 1-3 der Synchronisation
+                // (ParkingLotSync.Schritte.cs) und laufen je Parkplatz,
+                // gedrosselt und - bei ausgeschalteter Automatik - erst auf
+                // Wunsch des Nutzers.
                 if (lotsByCarrier.TryGetValue(relation.Carrier, out var knownLot))
                 {
                     if (knownLot != relation.Lot) invalidRelations++;
@@ -701,11 +675,7 @@ namespace ParkingLotTool.Tools
                 + $"mit {restoredEdges} Netzkanten aus {parts.Length} "
                 + "gespeicherten Teilrelationen gefuellt; "
                 + $"{invalidRelations} ungueltige Relation(en), "
-                + $"{missingSources} Flaeche(n) ohne SubNet-Quelle; "
-                + $"{nachgeruestet} Objekt(e) ohne Besitzer an ihren Traeger "
-                + "gehaengt (sonst loescht sie der Vegetationspinsel); "
-                + $"{haltestellenFrei} Bushaltestelle(n) vom Besitzer geloest "
-                + "(sonst im Linienwerkzeug nicht anwaehlbar).");
+                + $"{missingSources} Flaeche(n) ohne SubNet-Quelle.");
 
             RestoreOwnerSubAreasAfterLoad(lotsByCarrier);
         }

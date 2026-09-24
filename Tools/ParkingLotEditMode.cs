@@ -46,7 +46,7 @@ namespace ParkingLotTool.Tools
         private bool _editBuildingEconomyEnabled;
         private bool _replacementEconomyTransferred;
 
-        private bool IsEditing => _editLot != Entity.Null;
+        internal bool IsEditing => _editLot != Entity.Null;
 
         private void InitializeEditing()
         {

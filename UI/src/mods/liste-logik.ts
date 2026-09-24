@@ -9,7 +9,7 @@ export const gebuehrAmBalken = (x: number, links: number, breite: number) =>
 export const anteilBelegt = (belegt: number, kapazitaet: number) =>
   kapazitaet > 0 ? Math.max(0, Math.min(1, belegt / kapazitaet)) : 0;
 export type Listenwert = { id: string; name: string; kapazitaet: number;
-  belegt: number; mangel: { art: number }; waise?: number };
+  belegt: number; mangel: { art: number }; waise?: number; sync?: boolean };
 export type Listenfilter = "alle" | "probleme" | "voll" | "frei";
 export type Listensortierung = "name" | "belegung" | "frei" | "groesse";
 export function waehlePlaetze<T extends Listenwert>(plaetze: T[], suche: string,
@@ -17,7 +17,7 @@ export function waehlePlaetze<T extends Listenwert>(plaetze: T[], suche: string,
   const text = suche.trim().toLocaleLowerCase();
   const frei = (p: T) => Math.max(0, p.kapazitaet - p.belegt);
   return plaetze.filter(p => p.name.toLocaleLowerCase().includes(text)
-    && (filter === "alle" || (filter === "probleme" && (p.mangel.art !== 0 || (p.waise ?? 0) > 0))
+    && (filter === "alle" || (filter === "probleme" && (p.mangel.art !== 0 || (p.waise ?? 0) > 0 || p.sync === true))
       || (filter === "voll" && p.kapazitaet > 0 && anteilBelegt(p.belegt, p.kapazitaet) >= .9)
       || (filter === "frei" && frei(p) > 0)))
     .sort((a, b) => (sortierung === "belegung"

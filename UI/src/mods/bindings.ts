@@ -485,6 +485,16 @@ export const icon = (name: string) => `coui://uil/Standard/${name}.svg`;
 /** Grunddaten je Parkplatz. Laeuft mit, etwa im Sekundentakt. */
 export const parkplatzListe$ = bindValue<string>(MOD, "ParkplatzListe", "");
 
+/** Synchronisation bestehender Parkplaetze mit der aktuellen Modversion. */
+export const syncOffen$ = bindValue<number>(MOD, "SyncOffen", 0);
+export const syncLaeuft$ = bindValue<string>(MOD, "SyncLaeuft", "");
+export const syncAuto$ = bindValue<boolean>(MOD, "SyncAuto", false);
+export const setSyncAuto = (an: boolean) => trigger(MOD, "SetSyncAuto", an);
+export const parkplatzSynchronisieren = (schluessel: string) =>
+  trigger(MOD, "ParkplatzSynchronisieren", schluessel);
+export const parkplaetzeSynchronisieren = () =>
+  trigger(MOD, "ParkplaetzeSynchronisieren");
+
 /** Die Infobloecke der laufenden Runde. Stehen eine ganze Runde still. */
 export const parkplatzInfos$ = bindValue<string>(MOD, "ParkplatzInfos", "");
 

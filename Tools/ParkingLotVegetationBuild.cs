@@ -101,7 +101,7 @@ namespace ParkingLotTool.Tools
         // OverrideSystem folgt Owner, nicht Attached/PLT-Relation. Der nackte
         // Traeger besitzt weder Object noch Transform/Area: keine Streu-Umverteilung.
         // Baum -> Traeger -> Lot laesst den nativen AreaIterator das eigene Lot ausnehmen.
-        private void SetVegetationOwner(Entity plant, Entity carrier, Entity lot)
+        internal void SetVegetationOwner(Entity plant, Entity carrier, Entity lot)
         {
             var carrierOwner = new Owner { m_Owner=lot };
             if(EntityManager.HasComponent<Owner>(carrier)) EntityManager.SetComponentData(carrier,carrierOwner);

@@ -440,6 +440,17 @@ const en = {
   listeGebuehrFehler: "Fee not saved. Enter a whole number from 0 to 50 and try again.",
   listeSchaetzung: "Estimate / month",
   listeBearbeiten: "Edit",
+  syncHinweis: (n: number) => n === 1
+    ? "1 parking lot needs an update" : `${n} parking lots need an update`,
+  syncFortschritt: (fertig: number, gesamt: number) =>
+    `Updating parking lots … ${fertig} / ${gesamt}`,
+  syncEinzeln: "Synchronize",
+  syncAlle: (n: number) => `Synchronize all (${n})`,
+  syncAutomatisch: "Synchronize automatically",
+  tooltipSync: "Updates this parking lot to the current version. Its shape and settings remain.",
+  tooltipSyncAlle: "Updates all listed parking lots one after another. Shapes and settings remain.",
+  tooltipSyncHinweis: "Opens the parking lot list, where you can update one lot or all of them.",
+  tooltipSyncAuto: "Same switch as in the mod settings. Updates existing parking lots one at a time after loading.",
   waiseTitel: "Orphaned parking lot",
   waiseErklaerung:
     "This save was stored while Parking Lot Tool was off or missing, so the "
@@ -1019,6 +1030,17 @@ const de: Texte = {
   listeGebuehrFehler: "Gebühr nicht gespeichert. Ganze Zahl von 0 bis 50 eingeben und erneut versuchen.",
   listeSchaetzung: "Schätzung / Monat",
   listeBearbeiten: "Bearbeiten",
+  syncHinweis: (n: number) => n === 1
+    ? "1 Parkplatz braucht ein Update" : `${n} Parkplätze brauchen ein Update`,
+  syncFortschritt: (fertig: number, gesamt: number) =>
+    `Parkplätze werden aktualisiert … ${fertig} / ${gesamt}`,
+  syncEinzeln: "Synchronisieren",
+  syncAlle: (n: number) => `Alle synchronisieren (${n})`,
+  syncAutomatisch: "Automatisch synchronisieren",
+  tooltipSync: "Rüstet den Parkplatz auf den Stand dieser Version nach. Form und Einstellungen bleiben.",
+  tooltipSyncAlle: "Rüstet alle betroffenen Parkplätze nacheinander nach. Formen und Einstellungen bleiben.",
+  tooltipSyncHinweis: "Öffnet die Parkplatzliste; dort lässt sich jeder Parkplatz einzeln oder alle auf einmal nachrüsten.",
+  tooltipSyncAuto: "Derselbe Schalter wie in den Mod-Einstellungen. Aktualisiert bestehende Parkplätze nach dem Laden nacheinander.",
   waiseTitel: "Verwaister Parkplatz",
   waiseErklaerung:
     "Der Spielstand wurde gespeichert, während Parking Lot Tool aus war oder "

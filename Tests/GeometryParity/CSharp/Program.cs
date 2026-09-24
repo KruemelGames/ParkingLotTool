@@ -133,6 +133,8 @@ internal static partial class Program
             return PruefeZettelvollstaendigkeit();
         if (args.Length == 1 && args[0] == "--bushaltestellen")
             return PruefeBushaltestellen();
+        if (args.Length == 1 && args[0] == "--migrationen")
+            return PruefeMigrationen();
         if (args.Length == 1 && args[0] == "--formate")
             return PruefeFormate(false);
         if (args.Length == 1 && args[0] == "--formate-aufnehmen")

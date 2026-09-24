@@ -51,6 +51,7 @@ namespace ParkingLotTool.Tools
         private ValueBinding<bool> _hatVorrunde;
         private ValueBinding<bool> _waisenAuto;
         private ParkingLotWaisenSystem _waisen;
+        private ParkingLotSyncSystem _sync;
         private bool _zeigtVorrunde;
 
         private readonly List<Entity> _lots = new List<Entity>();
@@ -90,6 +91,7 @@ namespace ParkingLotTool.Tools
             _zeit = World.GetOrCreateSystemManaged<Game.Simulation.TimeSystem>();
             _stadtwerte = new CityStatistikQuelle(World);
             _waisen = World.GetOrCreateSystemManaged<ParkingLotWaisenSystem>();
+            _sync = World.GetOrCreateSystemManaged<ParkingLotSyncSystem>();
 
             /*
              * DIE KAPAZITAET IST KEINE BEDINGUNG.
@@ -274,7 +276,7 @@ namespace ParkingLotTool.Tools
                     .Append("\t0\t0");
                 // Leerer Mangelblock (7 Felder).
                 _bau.Append("\t0\t0\t0\t0\t0\t\t");
-                _bau.Append('\t').Append(_waisen.Zustand(lot)).Append("\t0");
+                _bau.Append('\t').Append(_waisen.Zustand(lot)).Append("\t0\t0");
             }
         }
 
@@ -429,7 +431,9 @@ namespace ParkingLotTool.Tools
                 // Feld 19: Waisenzustand, Feld 20: Bauzettel vorhanden.
                 _bau.Append('\t').Append(_waisen?.Zustand(lot) ?? 0).Append('\t')
                     .Append(EntityManager.HasComponent<ParkingLotBuildReceipt>(lot)
-                        ? 1 : 0);
+                        ? 1 : 0)
+                    // Feld 21: braucht eine Synchronisation.
+                    .Append('\t').Append(_sync != null && _sync.BrauchtSync(lot) ? 1 : 0);
             }
             SchreibeWaisen();
             Setze(_liste, _bau.ToString());
