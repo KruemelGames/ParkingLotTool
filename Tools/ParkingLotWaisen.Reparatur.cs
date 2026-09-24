@@ -17,21 +17,20 @@ namespace ParkingLotTool.Tools
      * Besitzern.
      *
      * WAS DIE REPARATUR TUT: nur Verweise und Relationen wiederherstellen.
-     * Keine Geometrie, kein Loeschen. Die einzige Verbindung, die ueber den
-     * Ort hergestellt wird, ist Traeger -> Flaeche, und die nur, wenn ALLE
-     * Objekte des Traegers im Umriss GENAU EINER Waise liegen und diese Waise
-     * genau einen solchen Traeger hat. Sonst bleibt der Parkplatz verwaist
-     * und wird als nicht reparierbar gezeigt - lieber nicht reparieren als
-     * falsch verbinden.
+     * Keine Geometrie, kein Loeschen, kein Raten ueber den Ort: Traeger ->
+     * Flaeche kommt aus dem Owner des Traegers, Begleiter -> Traeger aus
+     * Attached. Nennen zwei Traeger dieselbe Flaeche, bleibt sie verwaist
+     * und wird als nicht reparierbar gezeigt.
+     *
+     * NICHT ZU RETTEN: die Zuordnung der Strom- und Wasserleitungen. Sie
+     * haben absichtlich keinen Owner (Unterhalt), ihre Marke ist mit dem
+     * Speichern weg - beim Abriss bleiben sie stehen.
      *
      * Der Bauzettel kommt hier NICHT zurueck. Bearbeiten bleibt gesperrt,
      * bis er aus dem Bauprotokoll wiederhergestellt oder neu gebaut ist.
      */
     public sealed partial class ParkingLotWaisenSystem
     {
-        /** So weit darf ein Aufkleber ueber den Umriss ragen (Randaufkleber). */
-        private const float Randtoleranz = 3f;
-
         /** Waise -> eindeutig zugeordneter Traeger. */
         private readonly Dictionary<Entity, Entity> _traegerVon =
             new Dictionary<Entity, Entity>();
@@ -66,47 +65,40 @@ namespace ParkingLotTool.Tools
             _grund.Clear();
             if (Waisen.Count == 0) return;
 
-            var umrisse = new Dictionary<Entity, float2[]>();
-            foreach (var lot in Waisen)
-                umrisse[lot] = Umriss(lot);
-
-            // Traeger -> die Waisen, in deren Umriss ALLE seine Objekte liegen.
+            /*
+             * DER TRAEGER KENNT SEINE FLAECHE UEBER `Owner`.
+             *
+             * Gemessen am 2026-09-24: das eine "sonstige Kind" jeder Waise
+             * war ihr Traeger (Owner, PrefabRef, SubNet, SubObject,
+             * Simulate). Der Owner ist eine Vanilla-Komponente und ueberlebt
+             * das Speichern ohne PLT. Die erste Fassung ordnete stattdessen
+             * ueber den Ort zu (alle Aufkleber im Umriss, 3 m Rand) und
+             * scheiterte an drei von vier Waisen - Zufahrts- und
+             * Randaufkleber ragen weiter hinaus. Der Besitzerverweis ist
+             * eindeutig und raet nichts.
+             */
+            var waisen = new HashSet<Entity>(Waisen);
             var kandidaten = new Dictionary<Entity, List<Entity>>();
             foreach (var traeger in HerrenloseTraeger)
             {
-                var positionen = ObjektpositionenVon(traeger);
-                if (positionen.Count == 0) continue;
-                foreach (var paar in umrisse)
-                {
-                    var alle = true;
-                    foreach (var p in positionen)
-                        if (!ImUmriss(p, paar.Value)) { alle = false; break; }
-                    if (!alle) continue;
-                    if (!kandidaten.TryGetValue(paar.Key, out var liste))
-                        kandidaten[paar.Key] = liste = new List<Entity>();
-                    liste.Add(traeger);
-                }
+                if (!EntityManager.HasComponent<Owner>(traeger)) continue;
+                var lot = EntityManager.GetComponentData<Owner>(traeger).m_Owner;
+                if (!waisen.Contains(lot)) continue;
+                if (!kandidaten.TryGetValue(lot, out var liste))
+                    kandidaten[lot] = liste = new List<Entity>();
+                liste.Add(traeger);
             }
-            var traegerTreffer = new Dictionary<Entity, int>();
-            foreach (var liste in kandidaten.Values)
-                foreach (var t in liste)
-                    traegerTreffer[t] = traegerTreffer.TryGetValue(t, out var n) ? n + 1 : 1;
 
             foreach (var lot in Waisen)
             {
                 if (!kandidaten.TryGetValue(lot, out var liste) || liste.Count == 0)
                 {
-                    _grund[lot] = "kein Traeger liegt vollstaendig in diesem Umriss";
+                    _grund[lot] = "kein Traeger nennt diese Flaeche als Besitzer";
                     continue;
                 }
                 if (liste.Count > 1)
                 {
-                    _grund[lot] = liste.Count + " Traeger passen - nicht eindeutig";
-                    continue;
-                }
-                if (traegerTreffer[liste[0]] > 1)
-                {
-                    _grund[lot] = "der Traeger passt auch zu einem anderen Parkplatz";
+                    _grund[lot] = liste.Count + " Traeger nennen diese Flaeche - nicht eindeutig";
                     continue;
                 }
                 _traegerVon[lot] = liste[0];
@@ -263,58 +255,6 @@ namespace ParkingLotTool.Tools
 
         /** Der Schalter wurde eingeschaltet - offene Waisen jetzt angehen. */
         internal void StarteAutomatik() => _autoOffen = Waisen.Count > 0;
-
-        private float2[] Umriss(Entity lot)
-        {
-            if (!EntityManager.HasBuffer<Game.Areas.Node>(lot)) return new float2[0];
-            var knoten = EntityManager.GetBuffer<Game.Areas.Node>(lot, true);
-            var umriss = new float2[knoten.Length];
-            for (var i = 0; i < knoten.Length; i++) umriss[i] = knoten[i].m_Position.xz;
-            return umriss;
-        }
-
-        private List<float2> ObjektpositionenVon(Entity traeger)
-        {
-            var positionen = new List<float2>();
-            if (!EntityManager.HasBuffer<Game.Objects.SubObject>(traeger)) return positionen;
-            var puffer = EntityManager.GetBuffer<Game.Objects.SubObject>(traeger, true);
-            for (var i = 0; i < puffer.Length; i++)
-            {
-                var o = puffer[i].m_SubObject;
-                if (!EntityManager.Exists(o)
-                    || !EntityManager.HasComponent<Game.Objects.Transform>(o)
-                    || !EntityManager.HasComponent<Owner>(o)
-                    || EntityManager.GetComponentData<Owner>(o).m_Owner != traeger)
-                    continue;
-                positionen.Add(EntityManager.GetComponentData<
-                    Game.Objects.Transform>(o).m_Position.xz);
-            }
-            return positionen;
-        }
-
-        private static bool ImUmriss(float2 p, float2[] umriss)
-        {
-            if (umriss.Length < 3) return false;
-            var innen = false;
-            for (int i = 0, j = umriss.Length - 1; i < umriss.Length; j = i++)
-            {
-                var a = umriss[i];
-                var b = umriss[j];
-                if ((a.y > p.y) != (b.y > p.y)
-                    && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x)
-                    innen = !innen;
-            }
-            if (innen) return true;
-            for (int i = 0, j = umriss.Length - 1; i < umriss.Length; j = i++)
-            {
-                var a = umriss[j];
-                var d = umriss[i] - a;
-                var l2 = math.lengthsq(d);
-                var t = l2 > 0f ? math.saturate(math.dot(p - a, d) / l2) : 0f;
-                if (math.distance(p, a + t * d) <= Randtoleranz) return true;
-            }
-            return false;
-        }
 
         private string PrefabName(Entity prefab)
         {
