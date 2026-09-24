@@ -2948,20 +2948,43 @@ $eck-reiter: 9rem;
 .listeSyncZeile .listeTextknopf { margin-bottom: 0; }
 
 /* 120 rem ueber dem unteren Bildrand halten die Spiel-Werkzeugleiste frei. */
+/*
+ * Hintergrund wie das PLT-Fenster (.fenster): derselbe Verlauf, dieselbe
+ * Unschaerfe, derselbe Rand - die Meldung soll wie ein kleines Stueck davon
+ * aussehen. Feste Breite, damit die Zahl beim Hochzaehlen nicht wackelt.
+ */
 .syncFortschritt {
   position: absolute;
   left: 50%;
   bottom: 120rem;
-  transform: translateX(-50%);
-  padding: $s3 $s4;
+  width: 340rem;
+  margin-left: -170rem;
+  padding: $s4 $s5;
+  border: 1rem solid $rand;
   border-radius: $eck-panel;
-  background-color: var(--panelColorNormal);
+  background-image: linear-gradient(var(--panelGradientStart),
+                                    var(--panelGradientEnd));
+  background-color: rgba(0, 0, 0, 0);
   backdrop-filter: var(--panelBlur);
   color: $text-1;
   font-family: var(--fontFamily);
-  font-size: $type-xs;
+  font-size: $type-marke;
   text-align: center;
+  box-sizing: border-box;
   pointer-events: none;
+}
+
+/* Die Abschlussmeldung laesst sich wegklicken - also faengt sie Klicks. */
+.syncFertig {
+  pointer-events: auto;
+  cursor: pointer;
+
+  &:hover { border-color: $fahrwege; }
+}
+.syncFertigHinweis {
+  margin-top: $s2;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: $type-xs;
 }
 .syncBalken {
   height: $s2;

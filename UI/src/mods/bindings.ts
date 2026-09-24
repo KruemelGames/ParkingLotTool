@@ -489,6 +489,8 @@ export const parkplatzListe$ = bindValue<string>(MOD, "ParkplatzListe", "");
 export const syncOffen$ = bindValue<number>(MOD, "SyncOffen", 0);
 export const syncLaeuft$ = bindValue<string>(MOD, "SyncLaeuft", "");
 export const syncAuto$ = bindValue<boolean>(MOD, "SyncAuto", false);
+/** "laufnummer\tanzahl" des zuletzt beendeten Durchgangs. */
+export const syncErgebnis$ = bindValue<string>(MOD, "SyncErgebnis", "");
 export const setSyncAuto = (an: boolean) => trigger(MOD, "SetSyncAuto", an);
 export const parkplatzSynchronisieren = (schluessel: string) =>
   trigger(MOD, "ParkplatzSynchronisieren", schluessel);

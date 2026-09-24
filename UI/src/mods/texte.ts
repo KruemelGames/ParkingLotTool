@@ -444,6 +444,9 @@ const en = {
     ? "1 parking lot needs an update" : `${n} parking lots need an update`,
   syncFortschritt: (fertig: number, gesamt: number) =>
     `Updating parking lots … ${fertig} / ${gesamt}`,
+  syncFertig: (n: number) => n === 1
+    ? "1 parking lot updated" : `${n} parking lots updated`,
+  syncSchliessen: "Click to close",
   syncEinzeln: "Synchronize",
   syncAlle: (n: number) => `Synchronize all (${n})`,
   syncAutomatisch: "Synchronize automatically",
@@ -1034,6 +1037,9 @@ const de: Texte = {
     ? "1 Parkplatz braucht ein Update" : `${n} Parkplätze brauchen ein Update`,
   syncFortschritt: (fertig: number, gesamt: number) =>
     `Parkplätze werden aktualisiert … ${fertig} / ${gesamt}`,
+  syncFertig: (n: number) => n === 1
+    ? "1 Parkplatz aktualisiert" : `${n} Parkplätze aktualisiert`,
+  syncSchliessen: "Klicken zum Schließen",
   syncEinzeln: "Synchronisieren",
   syncAlle: (n: number) => `Alle synchronisieren (${n})`,
   syncAutomatisch: "Automatisch synchronisieren",

@@ -75,6 +75,15 @@ namespace ParkingLotTool.Tools
         private ValueBinding<string> _syncLaeuft;
         private ValueBinding<bool> _syncAuto;
 
+        /**
+         * "laufnummer\tanzahl" des zuletzt BEENDETEN Durchgangs. Ein kleiner
+         * Durchgang ist im selben Bild fertig, in dem er beginnt - `SyncLaeuft`
+         * wird dann nie sichtbar (gemessen 2026-09-25, 1 Parkplatz in 1,9 ms).
+         * Die Oberflaeche zeigt deshalb auch das Ende, 10 s lang.
+         */
+        private ValueBinding<string> _syncErgebnis;
+        private int _laufnummer;
+
         /** Fuer die Liste: braucht dieser Parkplatz eine Synchronisation? */
         internal bool BrauchtSync(Entity lot) => _offenMenge.Contains(lot);
 
@@ -106,6 +115,8 @@ namespace ParkingLotTool.Tools
             AddBinding(_syncOffen = new ValueBinding<int>(Group, "SyncOffen", 0));
             AddBinding(_syncLaeuft = new ValueBinding<string>(Group, "SyncLaeuft",
                 string.Empty));
+            AddBinding(_syncErgebnis = new ValueBinding<string>(Group,
+                "SyncErgebnis", string.Empty));
             AddBinding(_syncAuto = new ValueBinding<bool>(Group, "SyncAuto",
                 Mod.Optionen?.AutomatischSynchronisieren ?? false));
             AddBinding(new TriggerBinding<bool>(Group, "SetSyncAuto", wert =>
@@ -296,7 +307,12 @@ namespace ParkingLotTool.Tools
                 _erledigt++;
             }
             while (_warteschlange.Count > 0 && uhr.Elapsed.TotalMilliseconds < BudgetMs);
-            if (_warteschlange.Count == 0) _index = null;
+            if (_warteschlange.Count == 0)
+            {
+                _index = null;
+                _laufnummer++;
+                _syncErgebnis.Update(_laufnummer + "\t" + _erledigt);
+            }
         }
 
         private void Synchronisiere(Entity lot, Dictionary<Entity, List<Entity>> index)
