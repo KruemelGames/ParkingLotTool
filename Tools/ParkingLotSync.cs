@@ -76,13 +76,20 @@ namespace ParkingLotTool.Tools
         private ValueBinding<bool> _syncAuto;
 
         /**
-         * "laufnummer\tanzahl" des zuletzt BEENDETEN Durchgangs. Ein kleiner
-         * Durchgang ist im selben Bild fertig, in dem er beginnt - `SyncLaeuft`
-         * wird dann nie sichtbar (gemessen 2026-09-25, 1 Parkplatz in 1,9 ms).
-         * Die Oberflaeche zeigt deshalb auch das Ende, 10 s lang.
+         * Anzahl des zuletzt BEENDETEN Durchgangs, als Text; "" = nichts
+         * zeigen. Ein kleiner Durchgang ist im selben Bild fertig, in dem er
+         * beginnt - `SyncLaeuft` wird dann nie sichtbar (gemessen
+         * 2026-09-25, 1 Parkplatz in 1,9 ms).
+         *
+         * DIE ANZEIGEDAUER ENTSCHEIDET C#, NICHT DIE OBERFLAECHE. Die erste
+         * Fassung liess die Oberflaeche den Wechsel erkennen und alles
+         * verwerfen, was beim Einhaengen schon da war - und die Oberflaeche
+         * im Spiel haengt sich genau dann ein, wenn der Ladeabschluss die
+         * Synchronisation ausloest. Die Meldung wurde verschluckt.
          */
         private ValueBinding<string> _syncErgebnis;
-        private int _laufnummer;
+        private readonly Stopwatch _ergebnisUhr = new Stopwatch();
+        private const double ErgebnisSekunden = 10.0;
 
         /** Fuer die Liste: braucht dieser Parkplatz eine Synchronisation? */
         internal bool BrauchtSync(Entity lot) => _offenMenge.Contains(lot);
@@ -117,6 +124,11 @@ namespace ParkingLotTool.Tools
                 string.Empty));
             AddBinding(_syncErgebnis = new ValueBinding<string>(Group,
                 "SyncErgebnis", string.Empty));
+            AddBinding(new TriggerBinding(Group, "SyncErgebnisSchliessen", () =>
+            {
+                _ergebnisUhr.Reset();
+                _syncErgebnis.Update(string.Empty);
+            }));
             AddBinding(_syncAuto = new ValueBinding<bool>(Group, "SyncAuto",
                 Mod.Optionen?.AutomatischSynchronisieren ?? false));
             AddBinding(new TriggerBinding<bool>(Group, "SetSyncAuto", wert =>
@@ -160,6 +172,8 @@ namespace ParkingLotTool.Tools
             base.OnGamePreload(purpose, mode);
             _spielGeladen = false;
             _warteschlange.Clear();
+            _ergebnisUhr.Reset();
+            _syncErgebnis.Update(string.Empty);
             _offen.Clear();
             _offenMenge.Clear();
             _index = null;
@@ -310,8 +324,8 @@ namespace ParkingLotTool.Tools
             if (_warteschlange.Count == 0)
             {
                 _index = null;
-                _laufnummer++;
-                _syncErgebnis.Update(_laufnummer + "\t" + _erledigt);
+                _syncErgebnis.Update(_erledigt.ToString());
+                _ergebnisUhr.Restart();
             }
         }
 
@@ -387,6 +401,12 @@ namespace ParkingLotTool.Tools
 
         private void Melde()
         {
+            if (_ergebnisUhr.IsRunning
+                && _ergebnisUhr.Elapsed.TotalSeconds >= ErgebnisSekunden)
+            {
+                _ergebnisUhr.Reset();
+                _syncErgebnis.Update(string.Empty);
+            }
             if (_syncOffen.value != _offen.Count) _syncOffen.Update(_offen.Count);
             var laeuft = _warteschlange.Count > 0
                 ? _erledigt + "\t" + _gesamt

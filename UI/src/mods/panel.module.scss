@@ -2974,12 +2974,28 @@ $eck-reiter: 9rem;
   pointer-events: none;
 }
 
-/* Die Abschlussmeldung laesst sich wegklicken - also faengt sie Klicks. */
+/*
+ * Die Abschlussmeldung laesst sich wegklicken - also faengt sie Klicks.
+ * Farbiger Rand: der Nutzer hat die erste Fassung "nicht offensichtlich
+ * genug" genannt.
+ */
 .syncFertig {
+  border: 2rem solid $fahrwege;
   pointer-events: auto;
   cursor: pointer;
 
-  &:hover { border-color: $fahrwege; }
+  &:hover { background-color: rgba(79, 195, 247, 0.12); }
+}
+.syncTitel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+.syncHaken {
+  width: 20rem;
+  height: 20rem;
+  margin-right: $s2;
 }
 .syncFertigHinweis {
   margin-top: $s2;

@@ -1,41 +1,25 @@
-import { useEffect, useRef, useState } from "react";
 import { useValue } from "cs2/api";
-import { syncAuto$, syncErgebnis$, syncLaeuft$ } from "./bindings";
+import {
+  icon, syncAuto$, syncErgebnis$, syncErgebnisSchliessen, syncLaeuft$,
+} from "./bindings";
 import { useTexte } from "./texte";
 import styles from "./panel.module.scss";
-
-/** So lange bleibt die Abschlussmeldung stehen (Nutzer, 2026-09-25). */
-const FERTIG_MILLISEKUNDEN = 10000;
 
 /**
  * Kleine Meldung unten mittig, nur bei eingeschalteter Automatik.
  *
  * Bleibt an `Game` montiert, auch wenn das Parkplatz-Panel geschlossen ist.
  * Waehrend des Laufs Fortschritt und Balken, klickdurchlaessig. Danach
- * 10 s "N Parkplaetze aktualisiert"; ein Klick schliesst sie. Die
- * Abschlussmeldung ist noetig, weil ein kleiner Durchgang im selben Bild
- * fertig ist, in dem er beginnt - der Fortschritt waere nie zu sehen.
+ * "N Parkplaetze aktualisiert", bis C# sie nach 10 s wegnimmt oder ein Klick
+ * sie schliesst. Die Oberflaeche merkt sich hier bewusst NICHTS: ob die
+ * Meldung steht, sagt allein die Bindung - so haengt es nicht davon ab, wann
+ * diese Komponente eingehaengt wurde.
  */
 export const SyncFortschritt = () => {
   const auto = useValue(syncAuto$);
   const lauf = useValue(syncLaeuft$);
   const ergebnis = useValue(syncErgebnis$);
   const t = useTexte();
-  const [fertig, setFertig] = useState<number | null>(null);
-  const gesehen = useRef<string | null>(null);
-
-  useEffect(() => {
-    // Der Stand beim Einhaengen ist ein alter Durchgang - nicht zeigen.
-    if (gesehen.current === null) { gesehen.current = ergebnis; return; }
-    if (ergebnis === gesehen.current || ergebnis === "") return;
-    gesehen.current = ergebnis;
-    const anzahl = Number(ergebnis.split("\t")[1]);
-    if (!auto || !Number.isInteger(anzahl) || anzahl <= 0) return;
-    setFertig(anzahl);
-    const uhr = setTimeout(() => setFertig(null), FERTIG_MILLISEKUNDEN);
-    return () => clearTimeout(uhr);
-  }, [ergebnis]);
-
   if (!auto) return null;
 
   if (lauf) {
@@ -46,7 +30,7 @@ export const SyncFortschritt = () => {
         || !Number.isInteger(gesamt) || gesamt <= 0) return null;
     const anteil = Math.min(1, Math.max(0, erledigt / gesamt));
     return <div className={styles.syncFortschritt} role="status">
-      <div>{t.syncFortschritt(erledigt, gesamt)}</div>
+      <div className={styles.syncTitel}>{t.syncFortschritt(erledigt, gesamt)}</div>
       <div className={styles.syncBalken}>
         <div className={styles.syncBalkenFuellung}
           style={{ width: `${Math.round(anteil * 100)}%` }} />
@@ -54,11 +38,15 @@ export const SyncFortschritt = () => {
     </div>;
   }
 
-  if (fertig === null) return null;
+  const anzahl = Number(ergebnis);
+  if (!ergebnis || !Number.isInteger(anzahl) || anzahl <= 0) return null;
   return <button className={`${styles.syncFortschritt} ${styles.syncFertig}`}
     role="status" aria-label={t.syncSchliessen}
-    onClick={() => setFertig(null)}>
-    <div>{t.syncFertig(fertig)}</div>
+    onClick={syncErgebnisSchliessen}>
+    <div className={styles.syncTitel}>
+      <img className={styles.syncHaken} src={icon("Checkmark")} />
+      {t.syncFertig(anzahl)}
+    </div>
     <div className={styles.syncFertigHinweis}>{t.syncSchliessen}</div>
   </button>;
 };
