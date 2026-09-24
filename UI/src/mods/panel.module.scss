@@ -2957,9 +2957,15 @@ $eck-reiter: 9rem;
   position: absolute;
   left: 50%;
   bottom: 120rem;
-  width: 340rem;
-  margin-left: -170rem;
-  padding: $s4 $s5;
+  /* Breite nach dem Inhalt, mittig ueber translateX (steht so auch in der
+     index.css des Spiels). Die Zeilen UNTEREINANDER: als Knopf legte Cohtml
+     Kopf und Text sonst nebeneinander (Screenshot 2026-09-25). */
+  transform: translateX(-50%);
+  min-width: 300rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: $s4 $s6;
   border: 1rem solid $rand;
   border-radius: $eck-panel;
   background-image: linear-gradient(var(--panelGradientStart),
@@ -2968,8 +2974,9 @@ $eck-reiter: 9rem;
   backdrop-filter: var(--panelBlur);
   color: $text-1;
   font-family: var(--fontFamily);
-  font-size: $type-marke;
+  font-size: var(--fontSizeM);
   text-align: center;
+  white-space: nowrap;
   box-sizing: border-box;
   pointer-events: none;
 }
@@ -2987,24 +2994,19 @@ $eck-reiter: 9rem;
   &:hover { background-color: rgba(79, 195, 247, 0.12); }
 }
 .syncTitel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
+  color: $text-1;
 }
 
-/* "Parking Lot Tool:" - klein und in der Akzentfarbe, damit die Zeilen
-   darunter die Hauptsache bleiben. */
+/* "Parking Lot Tool:" - gleiche Groesse wie die Meldung, fett und in der
+   Akzentfarbe: eine Kopfzeile, kein Kleingedrucktes. */
 .syncMod {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   margin-bottom: $s2;
   color: $fahrwege;
-  font-size: $type-xs;
   font-weight: bold;
 }
 .syncBalken {
+  /* Im Spaltenlayout zentriert - ohne das schrumpft der Balken auf 0. */
+  align-self: stretch;
   height: $s2;
   margin-top: $s2;
   border-radius: $s2;
