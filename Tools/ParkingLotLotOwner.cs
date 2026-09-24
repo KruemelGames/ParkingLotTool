@@ -454,11 +454,28 @@ namespace ParkingLotTool.Tools
                 if (!EntityManager.Exists(entity)) continue;
                 var prefab = EntityManager.GetComponentData<PrefabRef>(entity).m_Prefab;
                 if (!IsOwnObjectPrefab(prefab)) continue;
-                if (ApplyVegetationAge(entity, prefab))
-                {
-                    SetVegetationOwner(entity,_lotCarrier,_lotOwner);
-                    vegetation++;
-                }
+                if (ApplyVegetationAge(entity, prefab)) vegetation++;
+                /*
+                 * JEDES EIGENE OBJEKT BEKOMMT DEN TRAEGER ALS BESITZER.
+                 *
+                 * Nutzer, 2026-09-24: *"Ich kann unsere Parkplatzbuchten-
+                 * Decals und evtl. auch die Pfeildecals einfach mit dem
+                 * Vegetationstool loeschen, womit man eigentlich Terrainbaeume
+                 * loescht."*
+                 *
+                 * Der Loeschpinsel (Game.dll, ObjectToolBaseSystem, Iterator
+                 * der Pinselentfernung) nimmt jedes Objekt OHNE `Owner`,
+                 * dessen Prefab `Brushable` traegt. Die Aufkleber hatten seit
+                 * dem 2026-08-12 absichtlich keinen Besitzer - als Kinder der
+                 * FLAECHE hatte CS2 sie beim Strassenbau nebenan verstreut.
+                 * Fuer den Pinsel waren sie damit freie Deko.
+                 *
+                 * Der nackte Traeger loest beides: er hat weder Transform
+                 * noch Flaeche, `SubObjectSystem` verteilt seine Kinder also
+                 * nicht um, und sein `Owner` am Kind ueberlebt das Laden. Die
+                 * Pflanzen haengen seit dem 2026-09-14 genauso daran.
+                 */
+                SetVegetationOwner(entity, _lotCarrier, _lotOwner);
                 EntityManager.AddComponentData(entity,
                     new Game.Objects.Attached(_lotCarrier, Entity.Null, 0f));
                 EntityManager.AddComponentData(entity, new ParkingLotPartRelation
@@ -598,6 +615,7 @@ namespace ParkingLotTool.Tools
 
             var lotsByCarrier = new Dictionary<Entity, Entity>();
             var invalidRelations = 0;
+            var nachgeruestet = 0;
             for (var i = 0; i < parts.Length; i++)
             {
                 var relation = EntityManager
@@ -616,6 +634,17 @@ namespace ParkingLotTool.Tools
                 {
                     SetVegetationOwner(parts[i],relation.Carrier,relation.Lot);
                     if (!EntityManager.HasComponent<Updated>(parts[i])) EntityManager.AddComponent<Updated>(parts[i]);
+                }
+                // Dasselbe fuer Aufkleber, Pfeile und Saeulen aus Spielstaenden
+                // vor dem 2026-09-24: ohne Besitzer loescht sie der
+                // Vegetationspinsel. Ohne `Updated` - der Pinsel liest den
+                // Besitzer erst beim Pinseln, und 400 Aufkleber neu bewerten
+                // zu lassen, braucht es dafuer nicht.
+                else if (EntityManager.HasComponent<Game.Objects.Object>(parts[i])
+                    && !EntityManager.HasComponent<Owner>(parts[i]))
+                {
+                    SetVegetationOwner(parts[i], relation.Carrier, relation.Lot);
+                    nachgeruestet++;
                 }
                 if (lotsByCarrier.TryGetValue(relation.Carrier, out var knownLot))
                 {
@@ -659,7 +688,9 @@ namespace ParkingLotTool.Tools
                 + $"mit {restoredEdges} Netzkanten aus {parts.Length} "
                 + "gespeicherten Teilrelationen gefuellt; "
                 + $"{invalidRelations} ungueltige Relation(en), "
-                + $"{missingSources} Flaeche(n) ohne SubNet-Quelle.");
+                + $"{missingSources} Flaeche(n) ohne SubNet-Quelle; "
+                + $"{nachgeruestet} Objekt(e) ohne Besitzer an ihren Traeger "
+                + "gehaengt (sonst loescht sie der Vegetationspinsel).");
 
             RestoreOwnerSubAreasAfterLoad(lotsByCarrier);
         }

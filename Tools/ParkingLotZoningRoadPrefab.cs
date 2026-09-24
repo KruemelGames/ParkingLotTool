@@ -313,6 +313,8 @@ namespace ParkingLotTool.Tools
                     EntferneTerraineingriff(eintrag);
                     eintrag.Bereit = true;
                     EntferneKompositionsobjekteUndMesse(eintrag);
+                    MesseVanillaAlley("Klon bereit " + eintrag.Name);
+                    MesseAlleyKlonMeshes(eintrag, "Klon bereit");
                     Mod.log.Info("PLT-Zoningstrasse: '" + eintrag.Name
                         + "' ist nach " + eintrag.Pruefungen
                         + " Zyklus/Zyklen benutzbar. " + zustand);
@@ -339,6 +341,7 @@ namespace ParkingLotTool.Tools
                     Fehlschlag(eintrag, "Das Original ist verschwunden.");
                     return;
                 }
+                MesseVanillaAlley("vor " + eintrag.Name, original);
 
                 /*
                  * FRISCHES PREFAB, KEIN Object.Instantiate - dieselbe Regel
@@ -374,6 +377,8 @@ namespace ParkingLotTool.Tools
                     klon.AddComponentFrom(bauteil);
                 }
 
+                MesseKlonabstand(original, klon, "nach Bauteilkopie");
+
                 LeereDirekteSubObjects(eintrag, klon);
 
                 /*
@@ -391,6 +396,8 @@ namespace ParkingLotTool.Tools
                     UnityEngine.Object.Destroy(klon);
                     return;
                 }
+                MesseKlonabstand(original, klon, "vor Anmeldung");
+                MesseVanillaAlley("vor Anmeldung " + eintrag.Name, original);
 
                 if (!_prefabSystem.AddPrefab(klon))
                 {
@@ -398,6 +405,7 @@ namespace ParkingLotTool.Tools
                     UnityEngine.Object.Destroy(klon);
                     return;
                 }
+                MesseVanillaAlley("nach Anmeldung " + eintrag.Name, original);
 
                 eintrag.Klon = klon;
                 eintrag.KlonEntity = _prefabSystem.GetEntity(klon);
@@ -734,14 +742,11 @@ namespace ParkingLotTool.Tools
          * hat das am 2026-09-22 ausdruecklich so entschieden, nachdem der
          * Befund klar war.
          *
-         * DER BEFUND: die Alley bringt an ihren Enden eigene
-         * Intersection-Flaechen mit. `ClipTerrain` schneidet darunter einen
-         * Terrainkeil heraus - und weil die Kappen ueber diesem Keil liegen,
-         * fehlt ihnen der Untergrund. Sichtbar als helle, durchscheinende
-         * Viertelkreise an beiden Enden. Fuer UNSEREN Klon hat Codex die
-         * Flagge am 2026-09-20 entfernt (`EntferneTerraineingriff`); die
-         * Vanilla-Gasse behielt sie und zeigt den Fehler weiter, auch ohne
-         * dass ein Parkplatz in der Naehe ist.
+         * Die fruehere Deutung als fehlender Terrainuntergrund ist nicht
+         * belegt: der Log vom 2026-09-24 nennt an der Zufahrtsgasse 56
+         * Kompositions-Pieces, darunter `Alley Intersection Piece 0` mit
+         * `HasMesh`. Das Vanilla-Prefab darf hier nicht auf Verdacht
+         * geaendert werden; der Schalter unten steht deshalb auf false.
          *
          * WAS ES KOSTET: jede Gasse in dieser Stadt schneidet sich nicht
          * mehr ins Gelaende. An einer Steigung kann sie dadurch eher
@@ -916,18 +921,23 @@ namespace ParkingLotTool.Tools
             if (IstGasse(eintrag.Art))
             {
                 /*
-                 * DIE GASSE SCHNEIDET WIEDER WIE JEDE VANILLA-STRASSE.
+                 * DIE GASSE PLANIERT UND SCHNEIDET WIE JEDE VANILLA-STRASSE.
                  *
-                 * Vom 2026-09-20 bis 24 wurde ihr `ClipTerrain` genommen, um
-                 * durchsichtige Dreiecke an den Enden loszuwerden. Die Folge
-                 * meldete der Nutzer am 2026-09-24: Gelaende drueckt durch den
-                 * Belag, sichtbar als Luecken und Hoehenlinien auf der Gasse.
-                 * Dasselbe Bild hatte die handgesetzte Vanilla-Gasse, der wir
-                 * denselben Schnitt genommen hatten (Riss mit Gras).
+                 * Dreimal umgeschaltet, deshalb die Belege:
                  *
-                 * Kommen die Dreiecke zurueck, wird ihre Ursache gesucht -
-                 * nicht wieder der Schnitt genommen. Moeglich ist, dass sie am
-                 * ungenauen Andocken hingen, das seit demselben Tag behoben ist.
+                 * - OHNE Schnitt drueckte Gelaende durch die Gasse
+                 *   (Nutzerbild 67). MIT Schnitt, zusammen mit dem Andocken
+                 *   ueber Kante+Teilung und den behaltenen Edit-Hoehen, war es
+                 *   weg: *"Viel besser"* (2026-09-24).
+                 * - Die durchsichtigen Enden (Nutzerbilder 66 und 70) treten
+                 *   MIT und OHNE Schnitt auf - Bild 70 vom 2026-09-19 zeigt sie
+                 *   an einer Vanilla-Alley mit Schnitt, Bild 66 an unserer
+                 *   ohne. Der Schnitt ist also nicht ihre Ursache.
+                 * - Die Begruendung "die Einmuendung der Alley ist eine
+                 *   Gelaendeflaeche" ist widerlegt: `Alley Intersection Piece 0`
+                 *   traegt `HasMesh` (ANTWORT-ALLEY-ENDEN.md).
+                 *
+                 * Die Enden sind weiter offen; `PLT-Alley-*` im Log misst sie.
                  */
                 var soll = Game.Net.GeometryFlags.FlattenTerrain
                     | Game.Net.GeometryFlags.ClipTerrain;
