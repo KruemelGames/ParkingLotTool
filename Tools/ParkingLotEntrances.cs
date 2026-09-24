@@ -237,6 +237,7 @@ namespace ParkingLotTool.Tools
 
         private void BeginEntrancePlacement(bool showMissingPrompt)
         {
+            SetBusStopModeFromPanel(false);
             // Entweder oder: der Zugangsmodus und das Zoning wollen denselben
             // Linksklick. Zoning schaltete diesen hier schon aus; jetzt auch
             // andersherum.

@@ -345,6 +345,10 @@ namespace ParkingLotTool.Geometry
          */
         public string Zoningstrasse { get; set; } = "Alley";
 
+        /** Haltestellenlagen sind Entwurfsdaten und keine Entity-Verweise. */
+        public BusStopPlacement[] BusStops { get; set; }
+            = Array.Empty<BusStopPlacement>();
+
         public Teilflaechenschnitt[] Teilflaechenschnitte { get; set; }
             = Array.Empty<Teilflaechenschnitt>();
         public Entrance[] Entrances { get; set; } = Array.Empty<Entrance>();
@@ -461,6 +465,7 @@ namespace ParkingLotTool.Geometry
                     .Where(x => x != null).Select(x => x.Clone()).ToArray()
                     ?? Array.Empty<ParkingGeometry.RandzoningLinie>(),
                 Zoningstrasse = Zoningstrasse,
+                BusStops = BusStops?.ToArray() ?? Array.Empty<BusStopPlacement>(),
                 Entrances = Entrances?.Select(x => x?.Clone()).ToArray() ?? Array.Empty<Entrance>(),
                 AutomaticEntrances = AutomaticEntrances,
                 KantenVersatz = KantenVersatz,

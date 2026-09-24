@@ -26,6 +26,7 @@ namespace ParkingLotTool.Tools
                                            ISerializable
     {
         /*
+         * VERSION 6: ein Bushalt-Zaehler folgt auf alle Felder der Fassung 5.
          * VERSION 5: auf die drei bestehenden Fassungen folgten die
          * gemessene Gassenbreite und vier Zoning-Vorwahlen. Die Felder
          * stehen am Ende; Fassung 3 endet nach Randstrassen, 4 nach
@@ -37,7 +38,7 @@ namespace ParkingLotTool.Tools
          * folgenden Datensaetze. Mit der Version davor weiss der Leser, wie
          * weit er lesen darf - Fassung 1 endet nach `BayIcons`.
          */
-        public const int CurrentVersion = 5;
+        public const int CurrentVersion = 6;
 
         public int Version;
         /** Bezugsrichtung in Grad; `NaN` heisst "keine Linie gewaehlt". */
@@ -84,6 +85,7 @@ namespace ParkingLotTool.Tools
         public double ZoningReglerwinkel;
         public int ZoningAussentiefeVorwahl;
         public double ZoningAusrichtwinkel;
+        public int BusStopCount;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -125,6 +127,7 @@ namespace ParkingLotTool.Tools
             writer.Write(ZoningReglerwinkel);
             writer.Write(ZoningAussentiefeVorwahl);
             writer.Write(ZoningAusrichtwinkel);
+            writer.Write(BusStopCount);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -181,6 +184,8 @@ namespace ParkingLotTool.Tools
                 reader.Read(out ZoningAussentiefeVorwahl);
                 reader.Read(out ZoningAusrichtwinkel);
             }
+            BusStopCount = 0;
+            if (Version >= 6) reader.Read(out BusStopCount);
         }
 
         internal LayoutSettings ToLayoutSettings(Entrance[] entrances)
@@ -421,6 +426,35 @@ namespace ParkingLotTool.Tools
      * Strassenseiten und den Ausrichtungen: die Nummerierung des Umrisses
      * ueberlebt keine Bearbeitung.
      */
+    /** Ein geplanter Bushalt: Linienenden, Laengsanteil und Strassenseite. */
+    public struct ParkingLotBuildBusStop : IBufferElementData, ISerializable
+    {
+        public const int CurrentVersion = 1;
+        public int Version;
+        public float2 A;
+        public float2 B;
+        public float Along;
+        public bool Left;
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(CurrentVersion);
+            writer.Write(A);
+            writer.Write(B);
+            writer.Write(Along);
+            writer.Write(Left);
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out Version);
+            reader.Read(out A);
+            reader.Read(out B);
+            reader.Read(out Along);
+            reader.Read(out Left);
+        }
+    }
+
     public struct ParkingLotBuildRandzoning : IBufferElementData, ISerializable
     {
         public const int CurrentVersion = 1;

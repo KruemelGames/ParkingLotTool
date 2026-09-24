@@ -262,6 +262,7 @@ namespace ParkingLotTool.Tools
              * Hier, 24 Frames spaeter, ist die Neubildung durch.
              */
             BenenneZoningstrassen(traeger);
+            BuildBusStopsOnRoads(traeger);
             if (traeger == Entity.Null || !EntityManager.Exists(traeger)) return;
             if (!EntityManager.HasBuffer<Game.Net.SubNet>(traeger)) return;
 

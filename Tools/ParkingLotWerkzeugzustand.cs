@@ -43,6 +43,7 @@ namespace ParkingLotTool.Tools
                 if (ZoningModus) return Werkzeugmodus.Zoningflaeche;
                 if (AusrichtWahlAktiv) return Werkzeugmodus.Ausrichten;
                 if (EntranceModeAktiv) return Werkzeugmodus.Zugang;
+                if (_busStopMode) return Werkzeugmodus.Bushaltestelle;
                 return Werkzeugmodus.Grund;
             }
         }
@@ -88,6 +89,9 @@ namespace ParkingLotTool.Tools
             if (EntranceModeAktiv
                 && !Werkzeugzustand.ReiterErlaubt(reiter, Weltarbeit.Zugang))
                 SetEntranceModeFromPanel(false);
+            if (_busStopMode
+                && !Werkzeugzustand.ReiterErlaubt(reiter, Weltarbeit.Bushaltestelle))
+                SetBusStopModeFromPanel(false);
 
             // Der Zoning-Reiter bringt sein Werkzeug mit; jeder andere legt
             // beide ab. Das tat bisher `SetTab` selbst - jetzt an einer

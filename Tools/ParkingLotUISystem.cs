@@ -263,6 +263,7 @@ namespace ParkingLotTool.Tools
         private double? _ausrichtwinkel;
         private ValueBinding<bool> _redoAvailable;
         private ValueBinding<bool> _entranceMode;
+        private ValueBinding<bool> _busStopMode;
         private ValueBinding<int> _entranceCount;
         private ValueBinding<int> _entranceKind;
         private ValueBinding<int> _entranceMax;
@@ -635,6 +636,8 @@ namespace ParkingLotTool.Tools
                 new ValueBinding<bool>(Group, "RedoAvailable", false));
             AddBinding(_entranceMode =
                 new ValueBinding<bool>(Group, "EntranceMode", false));
+            AddBinding(_busStopMode =
+                new ValueBinding<bool>(Group, "BusStopMode", false));
             AddBinding(_entranceKind =
                 new ValueBinding<int>(Group, "EntranceKind", 0));
             /*
@@ -858,6 +861,8 @@ namespace ParkingLotTool.Tools
                 SetPanelPosition));
             AddBinding(new TriggerBinding<bool>(Group, "SetEntranceMode",
                 value => Tool()?.SetEntranceModeFromPanel(value)));
+            AddBinding(new TriggerBinding<bool>(Group, "SetBusStopMode",
+                value => Tool()?.SetBusStopModeFromPanel(value)));
             AddBinding(new TriggerBinding<int>(Group, "SetEntranceKind",
                 value => Tool()?.SetZufahrtsartFromPanel(value)));
             AddBinding(new TriggerBinding(Group, "BuildNow",
@@ -1481,6 +1486,12 @@ namespace ParkingLotTool.Tools
                 _entranceMode.Update(entranceMode);
             if (_entranceCount != null && _entranceCount.value != entranceCount)
                 _entranceCount.Update(entranceCount);
+        }
+
+        internal void SetBusStopMode(bool on)
+        {
+            if (_busStopMode != null && _busStopMode.value != on)
+                _busStopMode.Update(on);
         }
 
         private void Bind(ValueBinding<float> binding, string trigger)

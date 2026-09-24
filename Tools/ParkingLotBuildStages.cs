@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System;
 using static ParkingLotTool.Tools.ParkingLotTexte;
 using Game.Tools;
@@ -64,6 +65,37 @@ namespace ParkingLotTool.Tools
 
         internal void RequestBuildFromPanel() => _panelBuildRequest = true;
 
+        /*
+         * WIE LANGE WARTET EIN KLICK AUF "BAUEN" - UND WORAUF.
+         *
+         * Nutzer, 2026-09-24: *"beim normalen ersten Mal bauen hat das auch
+         * lange gebraucht."* Der Bau selbst lief in 0,4 s, die Leitungen in
+         * 1 s - der Log hatte aber keinen Zeitpunkt des KLICKS. Die knapp
+         * 5 s davor waren damit nicht zuzuordnen. Jetzt steht der Klick drin,
+         * jeder Wartegrund (nur wenn er wechselt) und der Start mit Dauer.
+         */
+        private long _bauwunschSeit;
+        private string _bauwunschGrund;
+
+        private void BauwunschWartet(string grund)
+        {
+            if (_bauwunschSeit == 0 || grund == _bauwunschGrund) return;
+            _bauwunschGrund = grund;
+            Mod.log.Info("PLT-Bauwunsch wartet (" + BauwunschMs() + " ms): " + grund);
+        }
+
+        private long BauwunschMs() => _bauwunschSeit == 0 ? 0
+            : (long)((Stopwatch.GetTimestamp() - _bauwunschSeit) * 1000.0
+                / Stopwatch.Frequency);
+
+        private void BauwunschEnde(string wie)
+        {
+            if (_bauwunschSeit == 0) return;
+            Mod.log.Info("PLT-Bauwunsch " + wie + " nach " + BauwunschMs() + " ms.");
+            _bauwunschSeit = 0;
+            _bauwunschGrund = null;
+        }
+
         /**
          * Ein Schritt je Frame. Rueckgabe `true` heisst: dieser Frame gehoert
          * dem Bauvorgang, der Aufrufer bricht seine restliche Arbeit ab.
@@ -92,6 +124,13 @@ namespace ParkingLotTool.Tools
                             return false;
                         }
                         _buildRequestedWhenReady = true;
+                        if (_bauwunschSeit == 0)
+                        {
+                            _bauwunschSeit = Stopwatch.GetTimestamp();
+                            _bauwunschGrund = null;
+                            Mod.log.Info("PLT-Bauwunsch angenommen ("
+                                + (IsEditing ? "Umbau" : "Neubau") + ").");
+                        }
                     }
 
                     // Ein Klick setzt die Zufahrt sofort, die Geometrie laeuft
@@ -111,10 +150,23 @@ namespace ParkingLotTool.Tools
                         || _areaPreviewLayout.Entrances == null
                         || _areaPreviewLayout.Entrances.Length == 0)
                     {
+                        BauwunschWartet(_dragPoint >= 0 || _dragEntrance >= 0
+                            ? "es wird gezogen"
+                            : _buildTask != null ? "Vorschau rechnet"
+                            : _layoutDirty ? "Vorschau muss neu rechnen"
+                            : _areaPreviewLayout == null ? "keine Vorschau"
+                            : _editBaselinePending ? "Edit-Ausgangsstand fehlt"
+                            : _lastPreviewRevision != _geometryRevision
+                                ? "Vorschau gehoert zu altem Stand"
+                            : "Vorschau ohne Zufahrt");
                         _uiSystem?.SetStatus(T("Vorschau wird berechnet.", "Calculating preview."));
                         return false;
                     }
-                    if (TryFinishUnchangedEdit()) return true;
+                    if (TryFinishUnchangedEdit())
+                    {
+                        BauwunschEnde("ohne Aenderung beendet");
+                        return true;
+                    }
                     if (IsEditing)
                     {
                         // Im Log vom 24.09. wurden zweimal je 54 Wegteile
@@ -141,9 +193,12 @@ namespace ParkingLotTool.Tools
                                     + "nicht benutzbar. Alte Wege bleiben.");
                             }
                             else
+                            {
+                                BauwunschWartet("Flaechenprefabs werden vorbereitet");
                                 _uiSystem?.SetStatus(T(
                                     "Flächenprefabs werden vorbereitet.",
                                     "Preparing surface prefabs."));
+                            }
                             return false;
                         }
                     }
@@ -188,6 +243,7 @@ namespace ParkingLotTool.Tools
                     }
                     if (_vorflaechenPrefabAusstehend)
                     {
+                        BauwunschWartet("Vorflaechen-Prefab wird initialisiert");
                         _uiSystem?.SetStatus(T(
                             "Vorflächen-Prefab wird initialisiert.",
                             "Initializing apron prefab."));
@@ -273,6 +329,7 @@ namespace ParkingLotTool.Tools
             try
             {
                 built = TryApplyAreaPreview();
+                BauwunschEnde(built ? "gebaut" : "ohne Bau beendet");
             }
             catch (Exception exception) when (IsEditing)
             {

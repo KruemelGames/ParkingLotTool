@@ -101,6 +101,9 @@ export const rowAngleDefault$ = bindValue<number>(MOD, "RowAngleDefault", 0);
 export const polygonClosed$ = bindValue<boolean>(MOD, "PolygonClosed", false);
 export const undoAvailable$ = bindValue<boolean>(MOD, "UndoAvailable", false);
 export const entranceMode$ = bindValue<boolean>(MOD, "EntranceMode", false);
+export const busStopMode$ = bindValue<boolean>(MOD, "BusStopMode", false);
+export const setBusStopMode = (on: boolean) =>
+  trigger(MOD, "SetBusStopMode", on);
 export const entranceCount$ = bindValue<number>(MOD, "EntranceCount", 0);
 /*
  * Welche Art der naechste Klick setzt - 0 Zufahrt, 1 Einfahrt, 2 Ausfahrt,

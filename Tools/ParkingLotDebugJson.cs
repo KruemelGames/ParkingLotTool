@@ -51,6 +51,18 @@ namespace ParkingLotTool.Tools
                     B = new[] { seite.B.x, seite.B.y },
                     seite.Links, seite.Aus,
                 }).ToArray();
+            document.Bushaltestellen = _busStops.Select(stop => (object)new
+            {
+                A = new[] { stop.A.x, stop.A.y },
+                B = new[] { stop.B.x, stop.B.y },
+                stop.Along, stop.Left,
+            }).ToArray();
+            if (document.Input?.Layoutwerte != null)
+                document.Input.Layoutwerte["BusStops"] =
+                    ParkingSettingsInventory.SichererWert(_busStops.ToArray());
+            if (document.Input?.LayoutSettings?.AlleWerte != null)
+                document.Input.LayoutSettings.AlleWerte["BusStops"] =
+                    ParkingSettingsInventory.SichererWert(_busStops.ToArray());
             var quelle = document.Input?.PolygonSource;
             const string prefix = "gebauter Parkplatz ";
             if (quelle == null || !quelle.StartsWith(prefix,
@@ -113,6 +125,12 @@ namespace ParkingLotTool.Tools
                     }).ToArray();
                 values["Randzoning"] = ParkingSettingsInventory.SichererWert(
                     _randzoningAusZettel?.ToArray());
+                values["BusStops"] = ParkingSettingsInventory.SichererWert(
+                    _busStopsAusZettel?.ToArray());
+                if (document.Input.Layoutwerte != null)
+                    document.Input.Layoutwerte["BusStops"] =
+                        ParkingSettingsInventory.SichererWert(
+                            _busStopsAusZettel?.ToArray());
                 document.Input.LayoutSettings.Randzoning =
                     _randzoningAusZettel?.Select(r => new DebugStrecke
                     {
@@ -143,6 +161,17 @@ namespace ParkingLotTool.Tools
                         };
                     }
                     document.Zoningseiten = seiten;
+                }
+                if (EntityManager.HasBuffer<ParkingLotBuildBusStop>(lot))
+                {
+                    var buffer = EntityManager.GetBuffer<ParkingLotBuildBusStop>(
+                        lot, true);
+                    document.Bushaltestellen = buffer.Select(stop => (object)new
+                    {
+                        A = new[] { stop.A.x, stop.A.y },
+                        B = new[] { stop.B.x, stop.B.y },
+                        stop.Along, stop.Left,
+                    }).ToArray();
                 }
                 return;
             }

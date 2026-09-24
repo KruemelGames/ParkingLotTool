@@ -663,12 +663,18 @@ namespace ParkingLotTool.Tools
              */
             _teile.CompleteDependency();
             traeger = _teile.CalculateEntityCount();
+            var bushalte = 0;
+            using (var teile = _teile.ToEntityArray(Allocator.Temp))
+                for (var i = 0; i < teile.Length; i++)
+                    if (EntityManager.HasComponent<Game.Routes.TransportStop>(
+                        teile[i])) bushalte++;
 
             var summe = flaechen + strassen + traeger + lots;
             var text = "PLT-Schlusspruefung: " + lots + " Parkplatzflaeche(n), "
                 + flaechen + " Belagflaeche(n), " + strassen
                 + " Zoningstrasse/Zufahrtsgasse(n), " + traeger
-                + " lebende(s) Teil(e) noch in der Stadt. Zonierte "
+                + " lebende(s) Teil(e), davon " + bushalte
+                + " Bushaltestelle(n), noch in der Stadt. Zonierte "
                 + "Kacheln und gewachsene Haeuser sind NICHT mitgezaehlt - "
                 + "die gehoeren dem Spieler und bleiben mit Absicht.";
             if (summe == 0) Mod.log.Info(text + " Es ist nichts uebrig.");

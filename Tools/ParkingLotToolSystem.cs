@@ -96,6 +96,7 @@ namespace ParkingLotTool.Tools
             InitializeNetBuilder();
             InitializeBayObjects();
             InitializeEntranceArrows();
+            InitializeBusStops();
             InitializeLotOwner();
             InitializeTerrainDiagnostics();
             InitializeLotArea();
@@ -109,9 +110,31 @@ namespace ParkingLotTool.Tools
         }
 
         [Preserve]
+        /** Laeuft das Werkzeug gerade? Siehe `PflegeNachbauOhneWerkzeug`. */
+        private bool _werkzeugLaeuft;
+
+        /*
+         * DIE NACHPFLEGE EINES BAUS HAENGT NICHT AM OFFENEN WERKZEUG.
+         *
+         * Zoning-Seiten (12 Bilder nach dem Bau), zweite Strassenbenennung
+         * und die Bushaltestellen (24 Bilder) liefen nur in `OnUpdate` des
+         * Werkzeugs. Am 2026-09-24 schloss der Nutzer das Werkzeug gut eine
+         * Sekunde nach dem Bau (Log: "tool closed" um 20:43:48) - die Seiten
+         * kamen noch durch, die Schilder nie, und das ohne jede Warnung.
+         * `ParkingLotComfortSystem` laeuft immer und ruft das hier auf,
+         * solange das Werkzeug zu ist.
+         */
+        internal void PflegeNachbauOhneWerkzeug()
+        {
+            if (_werkzeugLaeuft) return;
+            PflegeZoningBlockmessung();
+            AuditBuiltBusStops();
+        }
+
         protected override void OnStartRunning()
         {
             base.OnStartRunning();
+            _werkzeugLaeuft = true;
             // Muss VOR allem anderen kommen: erst danach darf eine Aenderung
             // der Fangauswahl gespeichert werden.
             LadeFangauswahl();
@@ -179,6 +202,7 @@ namespace ParkingLotTool.Tools
             // Ab hier schreibt nicht mehr der Nutzer am Magnet-Panel, sondern
             // hoechstens noch das Spiel. Was jetzt kommt, wird nicht gemerkt.
             SperreFangauswahl();
+            _werkzeugLaeuft = false;
             base.OnStopRunning();
         }
 
@@ -274,6 +298,7 @@ namespace ParkingLotTool.Tools
             if (TryBeginPendingEdit()) return RenderOverlay(deps);
             if (ProcessEditLifecycle()) return RenderOverlay(deps);
             PollCompletedBuild();
+            AuditBuiltBusStops();
             if (PflegeAutoVersorgung()) return RenderOverlay(deps);
 
             PollSettingsRevision();
@@ -379,6 +404,27 @@ namespace ParkingLotTool.Tools
             // Zoning-Strasse, weil das Prefab noch einen Zyklus braucht.
             if (_zoningflaechen.Count != 0 || _randzoning.Count != 0)
                 WaermeZoningstrasseVor(_buildSettings?.Zoningstrasse ?? "Alley");
+
+            /*
+             * "BAUEN" BEENDET DEN HALTESTELLEN-MODUS.
+             *
+             * Nutzer, 2026-09-24: *"Ich klicke auf Bauen, waehrend der
+             * Bushaltestellen-Button an ist, und es passiert nix. Klicke ich
+             * dann auf Esc, baut es ploetzlich."* Der Modus beendete jedes
+             * Bild vor `ProcessBuild`; der Panelklick blieb als
+             * `_panelBuildRequest` liegen und wurde erst nach Esc abgeholt.
+             */
+            if (_busStopMode && (_panelBuildRequest || BuildRequested()))
+                SetBusStopModeFromPanel(false);
+
+            if (DarfArbeiten(Weltarbeit.Bushaltestelle)
+                && HandleBusStopInput(
+                    applyAction != null && applyAction.WasPressedThisFrame(),
+                    secondaryPressed, escapePressed))
+            {
+                StartBuildIfNeeded();
+                return RenderOverlay(deps);
+            }
 
             /*
              * DER SEITENSCHALTER GEHT VOR - er verbraucht denselben
@@ -987,6 +1033,7 @@ namespace ParkingLotTool.Tools
             AktualisiereAusrichtungen();
             _buildSettings = WithManualEntrances(_uiSystem != null
                 ? _uiSystem.CurrentSettings() : LayoutSettings.Cs2);
+            _buildSettings.BusStops = _busStops.ToArray();
             _buildSettings.Teilflaechenschnitte = _trennschnitte
                 .Select(schnitt => new Teilflaechenschnitt
                 {
@@ -1519,6 +1566,7 @@ namespace ParkingLotTool.Tools
                         out var randZustand)
                     ? (randA, randB, randZustand)
                     : ((float2, float2, int)?)null);
+            DrawBusStops(new ParkingLotPreviewBuffer(buffer));
             ParkingLotMessung.Ende(
                 ParkingLotMessung.Punkt.Zeichnen, uhrZeichnen);
             return deps;
@@ -1784,6 +1832,7 @@ namespace ParkingLotTool.Tools
                 parts.Nets, parts.Objects, grass, asphalt);
             RequestDebugDump("Enter");
             BeginReplacementCommit(_lotOwner, _lotCarrier);
+            PlanBusStopBuild(_lotOwner, _lotCarrier);
 
             // Zuruecksetzen OHNE ClearAreaPreviewLayout - dessen
             // ApplyMode.Clear wuerde das eben Gebaute verwerfen.
@@ -1793,6 +1842,7 @@ namespace ParkingLotTool.Tools
             ClearSnapFeedback();
             _closed = false;
             ResetEntranceEditing(clearEntrances: true);
+            ResetBusStopEditing(clear: true);
             _hasHover = false;
             _hoverPoint = -1;
             _dragPoint = -1;
@@ -1841,6 +1891,7 @@ namespace ParkingLotTool.Tools
             ClearSnapFeedback();
             _closed = false;
             ResetEntranceEditing(clearEntrances: true);
+            ResetBusStopEditing(clear: true);
             _hasHover = false;
             _hoverPoint = -1;
             _dragPoint = -1;

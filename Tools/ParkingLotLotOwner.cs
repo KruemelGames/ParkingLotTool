@@ -616,6 +616,7 @@ namespace ParkingLotTool.Tools
             var lotsByCarrier = new Dictionary<Entity, Entity>();
             var invalidRelations = 0;
             var nachgeruestet = 0;
+            var haltestellenFrei = 0;
             for (var i = 0; i < parts.Length; i++)
             {
                 var relation = EntityManager
@@ -640,6 +641,18 @@ namespace ParkingLotTool.Tools
                 // Vegetationspinsel. Ohne `Updated` - der Pinsel liest den
                 // Besitzer erst beim Pinseln, und 400 Aufkleber neu bewerten
                 // zu lassen, braucht es dafuer nicht.
+                // Bushaltestellen AUSGENOMMEN: mit Besitzer sind sie im
+                // Linienwerkzeug nicht anwaehlbar (siehe AuditBuiltBusStops).
+                // Wer am 2026-09-24 kurz mit Traeger gebaut wurde, verliert
+                // ihn hier wieder.
+                else if (EntityManager.HasComponent<Game.Routes.TransportStop>(parts[i]))
+                {
+                    if (EntityManager.HasComponent<Owner>(parts[i]))
+                    {
+                        EntityManager.RemoveComponent<Owner>(parts[i]);
+                        haltestellenFrei++;
+                    }
+                }
                 else if (EntityManager.HasComponent<Game.Objects.Object>(parts[i])
                     && !EntityManager.HasComponent<Owner>(parts[i]))
                 {
@@ -690,7 +703,9 @@ namespace ParkingLotTool.Tools
                 + $"{invalidRelations} ungueltige Relation(en), "
                 + $"{missingSources} Flaeche(n) ohne SubNet-Quelle; "
                 + $"{nachgeruestet} Objekt(e) ohne Besitzer an ihren Traeger "
-                + "gehaengt (sonst loescht sie der Vegetationspinsel).");
+                + "gehaengt (sonst loescht sie der Vegetationspinsel); "
+                + $"{haltestellenFrei} Bushaltestelle(n) vom Besitzer geloest "
+                + "(sonst im Linienwerkzeug nicht anwaehlbar).");
 
             RestoreOwnerSubAreasAfterLoad(lotsByCarrier);
         }

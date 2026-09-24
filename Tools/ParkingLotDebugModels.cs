@@ -60,6 +60,7 @@ namespace ParkingLotTool.Tools
         public int SchemaVersion { get; set; }
         public Dictionary<string, object> ZettelUIWerte { get; set; }
         public object[] Zoningseiten { get; set; }
+        public object[] Bushaltestellen { get; set; }
         public ParkingLotTool.Geometry.VegetationOptions Vegetation { get; set; }
         public Dictionary<string, object> Vegetationswerte { get; set; }
         public DebugFramework Framework { get; set; }

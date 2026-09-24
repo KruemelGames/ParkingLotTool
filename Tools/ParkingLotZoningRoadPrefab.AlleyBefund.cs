@@ -62,6 +62,9 @@ namespace ParkingLotTool.Tools
                             komposition).m_Mesh : Entity.Null;
                     if (details.Count < 12)
                         details.Add(komposition + "/" + flags + "/Mesh=" + mesh);
+                    if (zeitpunkt == "Laden abgeschlossen"
+                        && (flags & CompositionFlags.General.DeadEnd) != 0)
+                        MesseAlleyMeshPieces(komposition, eintrag.Name);
                 }
                 Mod.log.Info("PLT-Alley-Klonmeshes " + zeitpunkt + " '"
                     + eintrag.Name + "': Endkompositionen=" + enden
@@ -198,7 +201,9 @@ namespace ParkingLotTool.Tools
                         if (!piece.name.Contains("Intersection")
                             && !piece.name.Contains("Middle")
                             && !piece.name.Contains("Ending")) continue;
-                        var e = _prefabSystem.GetEntity(piece);
+                        /* 21:39:03: 9 fruehe GetEntity-Aufrufe warfen vor der
+                         * Piece-Anmeldung; TryGetEntity laesst die Messung laufen. */
+                        _prefabSystem.TryGetEntity(piece, out var e);
                         if (teile.Length != 0) teile.Append(" | ");
                         teile.Append(piece.name).Append(':').Append(e);
                         if (e == Entity.Null || !EntityManager.Exists(e)) continue;
@@ -273,6 +278,8 @@ namespace ParkingLotTool.Tools
                     if (endDetails.Count < 12)
                         endDetails.Add(komposition + "/" + flags
                             + "/Mesh=" + mesh + "/sichtbar=" + sichtbar);
+                    if (zeitpunkt == "Laden abgeschlossen" && sackgasse)
+                        MesseAlleyMeshPieces(komposition, "Vanilla Alley");
                 }
             }
             Mod.log.Info("PLT-Alley-Endkompositionen " + zeitpunkt
@@ -281,6 +288,48 @@ namespace ParkingLotTool.Tools
                 + endMeshTeile + ", Hidden=" + endVersteckt
                 + ", ohne Mesh-Ref=" + endOhneMesh
                 + " [" + string.Join(" | ", endDetails) + "].");
+        }
+
+        private void MesseAlleyMeshPieces(Entity komposition, string herkunft)
+        {
+            /*
+             * Im kaputten Lauf teilten 2 Vanilla-DeadEnds und 7 Klon-DeadEnds
+             * Mesh 400077; die bisherigen 6 sichtbaren Pieces hatten keine
+             * Namen und Flags. Beide Puffer muessen getrennt ins Protokoll.
+             */
+            var referenz = EntityManager.HasComponent<NetCompositionMeshRef>(
+                komposition)
+                ? EntityManager.GetComponentData<NetCompositionMeshRef>(
+                    komposition) : default;
+            var mesh = referenz.m_Mesh;
+            Mod.log.Info("PLT-Alley-Meshpieces '" + herkunft + "' " + komposition
+                + ": Mesh=" + mesh + ", Rotate=" + referenz.m_Rotate
+                + ", Komposition=" + BeschreibeAlleyMeshPieces(komposition)
+                + ", Modell=" + BeschreibeAlleyMeshPieces(mesh) + ".");
+        }
+
+        private string BeschreibeAlleyMeshPieces(Entity entity)
+        {
+            if (entity == Entity.Null || !EntityManager.Exists(entity)
+                || !EntityManager.HasBuffer<NetCompositionPiece>(entity))
+                return "kein Puffer";
+            var puffer = EntityManager.GetBuffer<NetCompositionPiece>(entity,
+                true);
+            var details = new List<string>();
+            foreach (var piece in puffer)
+            {
+                if ((piece.m_PieceFlags & NetPieceFlags.HasMesh) == 0
+                    || (piece.m_SectionFlags & NetSectionFlags.Hidden) != 0)
+                    continue;
+                var name = _prefabSystem.TryGetPrefab<NetPiecePrefab>(
+                    piece.m_Piece, out var prefab)
+                    ? prefab.name : piece.m_Piece.ToString();
+                details.Add(name + "/" + piece.m_Piece
+                    + "/Sektion=" + piece.m_SectionFlags
+                    + "/Piece=" + piece.m_PieceFlags
+                    + "/Offset=" + piece.m_Offset);
+            }
+            return details.Count + " [" + string.Join(" | ", details) + "]";
         }
     }
 }

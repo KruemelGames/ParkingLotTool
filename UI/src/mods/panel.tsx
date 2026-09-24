@@ -17,6 +17,7 @@ import {
   areaPerStall$, buildNow, crossBays$, crossBaysDefault$, crossCaps$,
   crossCapsDefault$, crossWidth$, crossWidthDefault$, discardDefaults,
   edgeSetback$, edgeSetbackDefault$, entranceCount$, entranceMode$,
+  busStopMode$, setBusStopMode,
   entranceKind$, entranceMax$, entranceMissing$, setEntranceKind,
   greenMedian$, greenMedianDefault$, icon, medianWidth$, medianWidthDefault$,
   panelOpen$, panelX$, panelY$, perimeterStalls$, placeEntrance, polygonClosed$,
@@ -342,6 +343,7 @@ export const ParkingLotPanel = () => {
   const trennmodus = useValue(trennmodus$);
   const altbestand = useValue(altbestand$);
   const entranceMode = useValue(entranceMode$);
+  const busStopMode = useValue(busStopMode$);
   const entranceKind = useValue(entranceKind$);
   const entranceMax = useValue(entranceMax$);
   /*
@@ -1323,6 +1325,17 @@ export const ParkingLotPanel = () => {
               </div>
             );
           })}
+          <div className={styles.artZelle}>
+            <TooltipKnopf text={t.tooltipBushaltestelle}
+              className={`${styles.artKnopf} ${styles.artZufahrt}
+                ${busStopMode ? styles.artAktiv : ""}
+                ${polygonClosed ? "" : styles.aktionAus}`}
+              aria-disabled={!polygonClosed}
+              onClick={() => { if (polygonClosed) setBusStopMode(!busStopMode); }}>
+              <img src={icon("Road")} />
+              <span className={styles.artName}>{t.bushaltestelle}</span>
+            </TooltipKnopf>
+          </div>
           </div>
         <div className={styles.artZaehler}>
           {`${entranceCount} / ${entranceMax}`}

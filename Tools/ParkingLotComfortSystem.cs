@@ -192,6 +192,7 @@ namespace ParkingLotTool.Tools
             // Auftrag und liest im folgenden Zyklus den abgeschlossenen
             // Terrain-Readback. Keine geratenen Warteframes.
             _tool.PollTerrainAfterApply();
+            _tool.PflegeNachbauOhneWerkzeug();
             PruefeBewegung(objektPrefabs);
 
             if (++_frames >= BerichtAlleFrames)
@@ -335,6 +336,18 @@ namespace ParkingLotTool.Tools
                     for (var k = 0; k < objektPrefabs.Length; k++)
                         if (objektPrefabs[k] == prefab) { unser = true; break; }
                     if (!unser) continue;
+                    /*
+                     * NUR OBJEKTE UNSERER PARKPLAETZE.
+                     *
+                     * Das Prefab allein reicht nicht: Buchtaufkleber und
+                     * Pfeile sind Vanilla-Prefabs, die auch Vanilla-
+                     * Parkplaetze und Gebaeude tragen. Am 2026-09-24 meldete
+                     * der Waechter "45 Objekte versetzt, groesster Weg 97,84 m"
+                     * in einem Spielstand OHNE aelteren PLT-Parkplatz - die
+                     * Bewegten lagen ausserhalb des neuen Parkplatzes und
+                     * gehoerten also dem Spiel.
+                     */
+                    if (!EntityManager.HasComponent<ParkingLotPartRelation>(e)) continue;
 
                     var pos = EntityManager
                         .GetComponentData<Game.Objects.Transform>(e).m_Position;

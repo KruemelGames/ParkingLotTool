@@ -131,6 +131,8 @@ internal static partial class Program
     {
         if (args.Length == 1 && args[0] == "--zettelvollstaendig")
             return PruefeZettelvollstaendigkeit();
+        if (args.Length == 1 && args[0] == "--bushaltestellen")
+            return PruefeBushaltestellen();
         if (args.Length == 1 && args[0] == "--klonnamen")
             return PruefeKlonnamen();
         /*

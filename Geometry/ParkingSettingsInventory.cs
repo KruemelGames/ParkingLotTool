@@ -8,7 +8,7 @@ namespace ParkingLotTool.Geometry
 {
     /**
      * Gemeinsame Feldliste fuer Baujournal und beide JSON-Abzuege.
-     * Gemessen: LayoutSettings hat 21 oeffentliche und 6 interne Werte;
+     * Gemessen: LayoutSettings hat 22 oeffentliche und 6 interne Werte;
      * VegetationOptions hat 6 oeffentliche Felder. Der Geometrietest
      * zaehlt die Typen unabhaengig nach.
      */
@@ -19,7 +19,7 @@ namespace ParkingLotTool.Geometry
             "Es", "Ai", "Cw", "Sl", "Sw", "Md", "Gassenbreite", "Cr",
             "Qk", "Randstrassen", "Auto", "Angle", "AngleMode",
             "Ausrichtwinkel", "TeilflaechenAusrichtungen", "Zoningflaechen",
-            "Randzoning", "Zoningstrasse", "Teilflaechenschnitte",
+            "Randzoning", "Zoningstrasse", "BusStops", "Teilflaechenschnitte",
             "Entrances", "AutomaticEntrances", "KantenVersatz", "Zellen",
             "EineFlaeche", "NoNotch", "Single", "NoHalf",
         };
@@ -38,7 +38,7 @@ namespace ParkingLotTool.Geometry
             "ZoningAusrichtwinkel",
         };
 
-        // Die 35 Set-Trigger aus bindings.ts sind bewusst eingeteilt:
+        // Die Set-Trigger aus bindings.ts sind bewusst eingeteilt:
         // ein neuer Trigger muss im Geometrietest neu zugeordnet werden.
         public static readonly string[] BauTrigger =
         {
@@ -54,7 +54,7 @@ namespace ParkingLotTool.Geometry
         public static readonly string[] AndereTrigger =
         {
             "SetAltEngineOhneWarnung", "SetAsDefault", "SetAutoEntryMode",
-            "SetEntranceKind", "SetEntranceMode", "SetMarkerMode",
+            "SetEntranceKind", "SetEntranceMode", "SetBusStopMode", "SetMarkerMode",
             "SetPanelOpen", "SetPanelPosition", "SetPanelStil",
             "SetSelectedParkingFee", "SetTab", "SetZoningLinienwahl",
             "SetZoningModus", "SetZoningSeitenModus",

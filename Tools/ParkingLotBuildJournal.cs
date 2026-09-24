@@ -174,6 +174,14 @@ namespace ParkingLotTool.Tools
                         B = new[] { seite.B.x, seite.B.y },
                         seite.Links, seite.Aus,
                     }).ToArray()))
+                    .Append(",\"bushaltestellen\":")
+                    .Append(JsonConvert.SerializeObject((settings.BusStops
+                        ?? Array.Empty<BusStopPlacement>()).Select(stop => new
+                    {
+                        A = new[] { stop.A.x, stop.A.y },
+                        B = new[] { stop.B.x, stop.B.y },
+                        stop.Along, stop.Left,
+                    }).ToArray()))
                     .Append(",\"zoning\":").Append(Zoningfelder(settings))
                     .Append(",\"randzoning\":").Append(Randzoningfelder(settings))
                     .Append(",\"einstellungen\":\"").Append(Escape(Describe(settings)))

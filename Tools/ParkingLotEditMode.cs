@@ -126,6 +126,7 @@ namespace ParkingLotTool.Tools
         private List<(float2 A, float2 B, bool Links, bool Aus)>
             _zoningSeitenplanAusZettel;
         private List<ParkingGeometry.RandzoningLinie> _randzoningAusZettel;
+        private List<BusStopPlacement> _busStopsAusZettel;
 
         /** Wird im ersten Werkzeugframe nach dem UI-Klick ausgefuehrt. */
         private bool TryBeginPendingEdit()
@@ -170,6 +171,7 @@ namespace ParkingLotTool.Tools
             // Der Seitenplan gehoert zu diesen Flaechen und muss NACH
             // `ResetSelection` kommen - das raeumt ihn sonst gleich wieder weg.
             LadeZoningSeitenplan(_zoningSeitenplanAusZettel);
+            _busStops.AddRange(_busStopsAusZettel ?? new List<BusStopPlacement>());
             SetzeRandzoning(_randzoningAusZettel);
             _uiSystem?.SetZoningZahlen(_zoningflaechen.Count,
                 _zoningflaechen.Sum(f => f.Parzellen));
@@ -983,6 +985,7 @@ namespace ParkingLotTool.Tools
                     ZoningReglerwinkel = ZoningReglerwinkel,
                     ZoningAussentiefeVorwahl = ZoningTiefeVorwahl,
                     ZoningAusrichtwinkel = ZoningAusrichtwinkel ?? double.NaN,
+                    BusStopCount = settings.BusStops?.Length ?? 0,
                     // NaN heisst "keine Bezugslinie" - so bleibt der Wert
                     // auch ohne Ausrichtung eindeutig.
                     Ausrichtwinkel = Ausrichtwinkel ?? double.NaN,
@@ -1161,6 +1164,19 @@ namespace ParkingLotTool.Tools
                     ? EntityManager.GetBuffer<ParkingLotBuildZoningSeite>(lot)
                     : EntityManager.AddBuffer<ParkingLotBuildZoningSeite>(lot);
                 SchreibeZoningSeitenplan(seitenPuffer);
+                var busPuffer = EntityManager.HasBuffer<ParkingLotBuildBusStop>(lot)
+                    ? EntityManager.GetBuffer<ParkingLotBuildBusStop>(lot)
+                    : EntityManager.AddBuffer<ParkingLotBuildBusStop>(lot);
+                busPuffer.Clear();
+                foreach (var stop in settings.BusStops ?? Array.Empty<BusStopPlacement>())
+                    busPuffer.Add(new ParkingLotBuildBusStop
+                    {
+                        Version = ParkingLotBuildBusStop.CurrentVersion,
+                        A = stop.A, B = stop.B, Along = stop.Along,
+                        Left = stop.Left,
+                    });
+                Mod.log.Info("PLT-Bauzettel Bushalte GESCHRIEBEN: "
+                    + busPuffer.Length + " Platzierung(en).");
                 /*
                  * ZAEHLER AN DIE ZWEITE HAELFTE DER KETTE.
                  *
@@ -1478,6 +1494,28 @@ namespace ParkingLotTool.Tools
                 + ". Panelwahl steht auf " + ZoningSeite
                 + " und kommt NICHT aus dem Zettel.");
             _zoningSeitenplanAusZettel = seitenplan;
+            _busStopsAusZettel = new List<BusStopPlacement>();
+            if (EntityManager.HasBuffer<ParkingLotBuildBusStop>(lot))
+            {
+                var busPuffer = EntityManager.GetBuffer<ParkingLotBuildBusStop>(lot,
+                    true);
+                for (var i = 0; i < busPuffer.Length; i++)
+                {
+                    var stop = busPuffer[i];
+                    if (stop.Version != ParkingLotBuildBusStop.CurrentVersion
+                        || !math.all(math.isfinite(stop.A))
+                        || !math.all(math.isfinite(stop.B))
+                        || !math.isfinite(stop.Along)
+                        || stop.Along < 0f || stop.Along > 1f) continue;
+                    _busStopsAusZettel.Add(new BusStopPlacement
+                    {
+                        A = stop.A, B = stop.B, Along = stop.Along,
+                        Left = stop.Left,
+                    });
+                }
+            }
+            Mod.log.Info("PLT-Bauzettel Bushalte GELESEN: "
+                + _busStopsAusZettel.Count + " von " + receipt.BusStopCount);
 
             // Das Randzoning aus demselben Zettel, mit derselben Nachsicht:
             // ein unbrauchbarer Eintrag wird uebergangen, nicht abgelehnt.

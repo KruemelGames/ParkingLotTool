@@ -7,6 +7,8 @@ namespace ParkingLotTool.Tools
     internal static class ParkingLotPreviewStyle
     {
         internal static readonly Color VegetationColor = new Color(.49f,.83f,.33f,.75f);
+        internal static readonly Color BusStopColor = new Color(.18f,.73f,.95f,.9f);
+        internal static readonly Color BusStopHoverColor = new Color(.95f,.96f,.25f,1f);
         /**
          * Baeume und Buesche unterscheiden sich seit dem 2026-09-17 in der
          * Farbe - Wunsch des Nutzers, und seit die Pflanzen als Instanzen

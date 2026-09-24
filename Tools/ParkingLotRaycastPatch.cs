@@ -142,6 +142,12 @@ namespace ParkingLotTool.Tools
             if (!entityManager.Exists(teil)
                 || !entityManager.HasComponent<ParkingLotPartRelation>(teil))
                 return;
+            // Bushaltestellen bleiben SIE SELBST: das Linienwerkzeug fragt
+            // StaticObjects ohne SubElements ab und braucht den Halt als
+            // Treffer. Umgelenkt auf die Lot-Flaeche war er nicht anwaehlbar
+            // (Nutzer, 2026-09-24).
+            if (entityManager.HasComponent<Game.Routes.TransportStop>(teil))
+                return;
 
             var relation = entityManager
                 .GetComponentData<ParkingLotPartRelation>(teil);

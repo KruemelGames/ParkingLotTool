@@ -21,6 +21,7 @@ namespace ParkingLotTool.Geometry
         Grund,
         /** Zugaenge setzen, ziehen, entfernen. */
         Zugang,
+        Bushaltestelle,
         /** Bezugslinie, Teilflaeche oder Trennschnitt waehlen. */
         Ausrichten,
         Zoningflaeche,
@@ -51,6 +52,7 @@ namespace ParkingLotTool.Geometry
         Umriss,
         /** Zugaenge setzen, ziehen, entfernen - alle vier Arten. */
         Zugang,
+        Bushaltestelle,
         Zoningflaeche,
         Zoningseite,
         Ausrichtwahl,
@@ -201,6 +203,9 @@ namespace ParkingLotTool.Geometry
                 case Werkzeugmodus.Zugang:
                     return arbeit == Weltarbeit.Zugang;
 
+                case Werkzeugmodus.Bushaltestelle:
+                    return arbeit == Weltarbeit.Bushaltestelle;
+
                 case Werkzeugmodus.Ausrichten:
                     return arbeit == Weltarbeit.Ausrichtwahl;
 
@@ -241,6 +246,7 @@ namespace ParkingLotTool.Geometry
             switch (modus)
             {
                 case Werkzeugmodus.Zugang: return Weltarbeit.Zugang;
+                case Werkzeugmodus.Bushaltestelle: return Weltarbeit.Bushaltestelle;
                 case Werkzeugmodus.Ausrichten: return Weltarbeit.Ausrichtwahl;
                 case Werkzeugmodus.Zoningflaeche: return Weltarbeit.Zoningflaeche;
                 case Werkzeugmodus.Zoningseite: return Weltarbeit.Zoningseite;

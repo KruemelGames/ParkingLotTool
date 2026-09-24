@@ -29,18 +29,18 @@ internal static partial class Program
          * DIE TABELLE, ZEILE FUER ZEILE.
          *
          * Spalten in der Reihenfolge der Aufzaehlung `Weltarbeit`:
-         *   Umriss Zugang Zoningflaeche Zoningseite Ausrichtwahl
+         *   Umriss Zugang Bushaltestelle Zoningflaeche Zoningseite Ausrichtwahl
          *   Marke Zurueck Rueckgaengig Bauen Abzug
          *
          * '.' erlaubt, '-' gesperrt.
          */
         var reiterZeilen = new (Werkzeugreiter Reiter, string Muster)[]
         {
-            (Werkzeugreiter.Entwurf, "..--.-...."),
-            (Werkzeugreiter.Zoning,  "--..---..."),
-            (Werkzeugreiter.Liste,   "---------."),
-            (Werkzeugreiter.Debug,   "-------.-."),
-            (Werkzeugreiter.Melden,  "-----.---."),
+            (Werkzeugreiter.Entwurf, "...--.-...."),
+            (Werkzeugreiter.Zoning,  "---..---..."),
+            (Werkzeugreiter.Liste,   "----------."),
+            (Werkzeugreiter.Debug,   "--------.-."),
+            (Werkzeugreiter.Melden,  "------.---."),
         };
 
         var arbeiten = (Weltarbeit[])Enum.GetValues(typeof(Weltarbeit));
@@ -183,7 +183,7 @@ internal static partial class Program
          */
         var erwarteteKategorien = new[]
         {
-            "Umriss", "Zugang", "Zoningflaeche", "Zoningseite", "Ausrichtwahl",
+            "Umriss", "Zugang", "Bushaltestelle", "Zoningflaeche", "Zoningseite", "Ausrichtwahl",
             "Meldemarke", "SchrittZurueck", "Rueckgaengig", "Bauen", "Abzug",
         };
         var kategorien = Enum.GetNames(typeof(Weltarbeit));

@@ -22,6 +22,10 @@ const en = {
   parkgebuehrJeVorgang: "Parking fee per stay",
   bestimmungen: "Policies",
   artNameZufahrt: "Entrance",
+  bushaltestelle: "Bus stop",
+  tooltipBushaltestelle:
+    "Place a working bus stop on either side of a zoning road. "
+    + "The cursor chooses the side; right click removes a stop.",
   fensterSchliessen: "Close window",
   leistungTitel: "Slow game?",
   leistungErklaerung:
@@ -561,6 +565,10 @@ const de: Texte = {
   parkgebuehrJeVorgang: "Parkgebuehr je Vorgang",
   bestimmungen: "Bestimmungen",
   artNameZufahrt: "Zufahrt",
+  bushaltestelle: "Bushaltestelle",
+  tooltipBushaltestelle:
+    "Eine echte Bushaltestelle auf eine Zoning-Straße setzen. "
+    + "Der Cursor wählt die Seite; Rechtsklick entfernt einen Halt.",
   fensterSchliessen: "Fenster schließen",
   leistungTitel: "Spiel ruckelt?",
   leistungErklaerung:

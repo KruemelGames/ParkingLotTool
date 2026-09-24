@@ -1127,6 +1127,26 @@ namespace ParkingLotTool.Tools
                     signature = signature * 31 + (seite.Links ? 1 : 0);
                     signature = signature * 31 + (seite.Aus ? 1 : 0);
                 }
+                /*
+                 * DIE BUSHALTESTELLEN GEHOEREN DAZU.
+                 *
+                 * Nutzer, 2026-09-24: im Edit Haltestellen gesetzt, "Bauen"
+                 * geklickt - "da passiert nix". Der Log dreimal:
+                 * "Ausstieg durch Uebernehmen ohne Aenderungen". Die
+                 * Signatur kannte sie nicht, und ein Edit, der NUR
+                 * Haltestellen setzt, sah damit unveraendert aus. Derselbe
+                 * Fehler wie am 23.09. bei den Zoning-Seitenschaltern.
+                 */
+                signature = signature * 31 + _busStops.Count;
+                foreach (var halt in _busStops)
+                {
+                    signature = AppendDouble(signature, halt.A.x);
+                    signature = AppendDouble(signature, halt.A.y);
+                    signature = AppendDouble(signature, halt.B.x);
+                    signature = AppendDouble(signature, halt.B.y);
+                    signature = AppendDouble(signature, halt.Along);
+                    signature = signature * 31 + (halt.Left ? 1 : 0);
+                }
                 signature = AppendPolygonGroup(signature, _vorflaechen);
                 signature = signature * 31 + ((_uiSystem?.VorflaecheAn ?? true) ? 1 : 0);
                 signature = AppendText(signature, GrassSurfaceName);
