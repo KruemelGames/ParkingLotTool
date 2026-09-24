@@ -1,6 +1,6 @@
 import { useValue } from "cs2/api";
 import {
-  icon, syncAuto$, syncErgebnis$, syncErgebnisSchliessen, syncLaeuft$,
+  syncAuto$, syncErgebnis$, syncErgebnisSchliessen, syncLaeuft$,
 } from "./bindings";
 import { TooltipKnopf } from "./controls";
 import { useTexte } from "./texte";
@@ -54,7 +54,6 @@ export const SyncFortschritt = () => {
     className={`${styles.syncFortschritt} ${styles.syncFertig}`}
     role="status" onClick={syncErgebnisSchliessen}>
     <div className={styles.syncMod}>
-      <img className={styles.syncHaken} src={icon("Checkmark")} />
       {`${MODNAME}:`}
     </div>
     {zeilen.map((zeile, i) =>
