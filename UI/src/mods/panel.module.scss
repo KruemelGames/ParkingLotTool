@@ -2997,10 +2997,16 @@ $eck-reiter: 9rem;
   height: 20rem;
   margin-right: $s2;
 }
-.syncFertigHinweis {
-  margin-top: $s2;
-  color: rgba(255, 255, 255, 0.55);
+/* "Parking Lot Tool:" - klein und in der Akzentfarbe, damit die Zeilen
+   darunter die Hauptsache bleiben. */
+.syncMod {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: $s2;
+  color: $fahrwege;
   font-size: $type-xs;
+  font-weight: bold;
 }
 .syncBalken {
   height: $s2;

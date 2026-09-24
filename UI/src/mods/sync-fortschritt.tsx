@@ -2,27 +2,31 @@ import { useValue } from "cs2/api";
 import {
   icon, syncAuto$, syncErgebnis$, syncErgebnisSchliessen, syncLaeuft$,
 } from "./bindings";
+import { TooltipKnopf } from "./controls";
 import { useTexte } from "./texte";
 import styles from "./panel.module.scss";
 
+/** Steht in jeder Meldung vorn: der Nutzer soll sehen, von welcher Mod sie kommt. */
+const MODNAME = "Parking Lot Tool";
+
 /**
- * Kleine Meldung unten mittig, nur bei eingeschalteter Automatik.
+ * Kleine Meldung unten mittig.
  *
  * Bleibt an `Game` montiert, auch wenn das Parkplatz-Panel geschlossen ist.
- * Waehrend des Laufs Fortschritt und Balken, klickdurchlaessig. Danach
- * "N Parkplaetze aktualisiert", bis C# sie nach 10 s wegnimmt oder ein Klick
- * sie schliesst. Die Oberflaeche merkt sich hier bewusst NICHTS: ob die
- * Meldung steht, sagt allein die Bindung - so haengt es nicht davon ab, wann
- * diese Komponente eingehaengt wurde.
+ * Waehrend einer automatischen Synchronisation Fortschritt und Balken,
+ * klickdurchlaessig. Danach EINE Meldung mit allem, was von selbst passiert
+ * ist (synchronisiert, Waisen repariert, Bauplaene wiederhergestellt), bis
+ * C# sie nach 10 s wegnimmt oder ein Klick sie schliesst. Die Oberflaeche
+ * merkt sich bewusst nichts - so haengt nichts davon ab, wann diese
+ * Komponente eingehaengt wurde.
  */
 export const SyncFortschritt = () => {
   const auto = useValue(syncAuto$);
   const lauf = useValue(syncLaeuft$);
   const ergebnis = useValue(syncErgebnis$);
   const t = useTexte();
-  if (!auto) return null;
 
-  if (lauf) {
+  if (auto && lauf) {
     const felder = lauf.split("\t");
     const erledigt = Number(felder[0]);
     const gesamt = Number(felder[1]);
@@ -30,6 +34,7 @@ export const SyncFortschritt = () => {
         || !Number.isInteger(gesamt) || gesamt <= 0) return null;
     const anteil = Math.min(1, Math.max(0, erledigt / gesamt));
     return <div className={styles.syncFortschritt} role="status">
+      <div className={styles.syncMod}>{`${MODNAME}:`}</div>
       <div className={styles.syncTitel}>{t.syncFortschritt(erledigt, gesamt)}</div>
       <div className={styles.syncBalken}>
         <div className={styles.syncBalkenFuellung}
@@ -38,15 +43,21 @@ export const SyncFortschritt = () => {
     </div>;
   }
 
-  const anzahl = Number(ergebnis);
-  if (!ergebnis || !Number.isInteger(anzahl) || anzahl <= 0) return null;
-  return <button className={`${styles.syncFortschritt} ${styles.syncFertig}`}
-    role="status" aria-label={t.syncSchliessen}
-    onClick={syncErgebnisSchliessen}>
-    <div className={styles.syncTitel}>
+  if (!ergebnis) return null;
+  const [sync, waisen, bauplaene] = ergebnis.split("\t").map(Number);
+  const zeilen: string[] = [];
+  if (waisen > 0) zeilen.push(t.waisenRepariertMeldung(waisen));
+  if (bauplaene > 0) zeilen.push(t.bauplaeneMeldung(bauplaene));
+  if (sync > 0) zeilen.push(t.syncFertig(sync));
+  if (zeilen.length === 0) return null;
+  return <TooltipKnopf text={t.syncSchliessen}
+    className={`${styles.syncFortschritt} ${styles.syncFertig}`}
+    role="status" onClick={syncErgebnisSchliessen}>
+    <div className={styles.syncMod}>
       <img className={styles.syncHaken} src={icon("Checkmark")} />
-      {t.syncFertig(anzahl)}
+      {`${MODNAME}:`}
     </div>
-    <div className={styles.syncFertigHinweis}>{t.syncSchliessen}</div>
-  </button>;
+    {zeilen.map((zeile, i) =>
+      <div key={i} className={styles.syncTitel}>{zeile}</div>)}
+  </TooltipKnopf>;
 };

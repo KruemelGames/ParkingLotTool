@@ -91,6 +91,40 @@ namespace ParkingLotTool.Tools
         private readonly Stopwatch _ergebnisUhr = new Stopwatch();
         private const double ErgebnisSekunden = 10.0;
 
+        /*
+         * EINE MELDUNG FUER ALLES, WAS VON SELBST PASSIERT (Nutzer,
+         * 2026-09-25): synchronisierte Parkplaetze, reparierte Waisen und
+         * wiederhergestellte Bauplaene stehen zusammen darin, nicht in zwei
+         * Meldungen hintereinander. Jeder neue Beitrag verlaengert die
+         * 10 Sekunden - die Waisen werden einzeln je Bild repariert, die
+         * Synchronisation folgt danach.
+         */
+        private int _meldungSync;
+        private int _meldungWaisen;
+        private int _meldungBauplaene;
+
+        /** Die Waisen-Automatik meldet hier, was sie getan hat. */
+        internal void MeldeWaisenreparatur(bool verbunden, bool bauplan)
+        {
+            if (verbunden) _meldungWaisen++;
+            if (bauplan) _meldungBauplaene++;
+            if (verbunden || bauplan) VeroeffentlicheMeldung();
+        }
+
+        private void VeroeffentlicheMeldung()
+        {
+            _ergebnisUhr.Restart();
+            _syncErgebnis.Update(_meldungSync + "\t" + _meldungWaisen + "\t"
+                + _meldungBauplaene);
+        }
+
+        private void LeereMeldung()
+        {
+            _ergebnisUhr.Reset();
+            _meldungSync = _meldungWaisen = _meldungBauplaene = 0;
+            if (_syncErgebnis.value != string.Empty) _syncErgebnis.Update(string.Empty);
+        }
+
         /** Fuer die Liste: braucht dieser Parkplatz eine Synchronisation? */
         internal bool BrauchtSync(Entity lot) => _offenMenge.Contains(lot);
 
@@ -124,11 +158,7 @@ namespace ParkingLotTool.Tools
                 string.Empty));
             AddBinding(_syncErgebnis = new ValueBinding<string>(Group,
                 "SyncErgebnis", string.Empty));
-            AddBinding(new TriggerBinding(Group, "SyncErgebnisSchliessen", () =>
-            {
-                _ergebnisUhr.Reset();
-                _syncErgebnis.Update(string.Empty);
-            }));
+            AddBinding(new TriggerBinding(Group, "SyncErgebnisSchliessen", LeereMeldung));
             AddBinding(_syncAuto = new ValueBinding<bool>(Group, "SyncAuto",
                 Mod.Optionen?.AutomatischSynchronisieren ?? false));
             AddBinding(new TriggerBinding<bool>(Group, "SetSyncAuto", wert =>
@@ -172,8 +202,7 @@ namespace ParkingLotTool.Tools
             base.OnGamePreload(purpose, mode);
             _spielGeladen = false;
             _warteschlange.Clear();
-            _ergebnisUhr.Reset();
-            _syncErgebnis.Update(string.Empty);
+            LeereMeldung();
             _offen.Clear();
             _offenMenge.Clear();
             _index = null;
@@ -324,8 +353,13 @@ namespace ParkingLotTool.Tools
             if (_warteschlange.Count == 0)
             {
                 _index = null;
-                _syncErgebnis.Update(_erledigt.ToString());
-                _ergebnisUhr.Restart();
+                // In die Meldung nur, was von selbst lief - ein Klick in der
+                // Liste hat seine Rueckmeldung schon in der Liste.
+                if (Mod.Optionen?.AutomatischSynchronisieren ?? false)
+                {
+                    _meldungSync += _erledigt;
+                    VeroeffentlicheMeldung();
+                }
             }
         }
 
@@ -403,10 +437,7 @@ namespace ParkingLotTool.Tools
         {
             if (_ergebnisUhr.IsRunning
                 && _ergebnisUhr.Elapsed.TotalSeconds >= ErgebnisSekunden)
-            {
-                _ergebnisUhr.Reset();
-                _syncErgebnis.Update(string.Empty);
-            }
+                LeereMeldung();
             if (_syncOffen.value != _offen.Count) _syncOffen.Update(_offen.Count);
             var laeuft = _warteschlange.Count > 0
                 ? _erledigt + "\t" + _gesamt

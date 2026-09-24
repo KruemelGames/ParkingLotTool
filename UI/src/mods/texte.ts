@@ -446,7 +446,12 @@ const en = {
     `Updating parking lots … ${fertig} / ${gesamt}`,
   syncFertig: (n: number) => n === 1
     ? "1 parking lot updated" : `${n} parking lots updated`,
-  syncSchliessen: "Click to close",
+  waisenRepariertMeldung: (n: number) => n === 1
+    ? "1 orphaned parking lot repaired" : `${n} orphaned parking lots repaired`,
+  bauplaeneMeldung: (n: number) => n === 1
+    ? "Build plan of 1 parking lot restored"
+    : `Build plans of ${n} parking lots restored`,
+  syncSchliessen: "Click to close this message.",
   syncEinzeln: "Synchronize",
   syncAlle: (n: number) => `Synchronize all (${n})`,
   syncAutomatisch: "Synchronize automatically",
@@ -1039,7 +1044,12 @@ const de: Texte = {
     `Parkplätze werden aktualisiert … ${fertig} / ${gesamt}`,
   syncFertig: (n: number) => n === 1
     ? "1 Parkplatz aktualisiert" : `${n} Parkplätze aktualisiert`,
-  syncSchliessen: "Klicken zum Schließen",
+  waisenRepariertMeldung: (n: number) => n === 1
+    ? "1 verwaister Parkplatz repariert" : `${n} verwaiste Parkplätze repariert`,
+  bauplaeneMeldung: (n: number) => n === 1
+    ? "Bauplan von 1 Parkplatz wiederhergestellt"
+    : `Baupläne von ${n} Parkplätzen wiederhergestellt`,
+  syncSchliessen: "Klicken, um die Meldung zu schließen.",
   syncEinzeln: "Synchronisieren",
   syncAlle: (n: number) => `Alle synchronisieren (${n})`,
   syncAutomatisch: "Automatisch synchronisieren",

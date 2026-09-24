@@ -320,16 +320,29 @@ namespace ParkingLotTool.Tools
             foreach (var lot in Waisen)
             {
                 if (!_traegerVon.ContainsKey(lot)) continue;
-                Reparieren(lot);
+                AutomatischReparieren(lot);
                 return;
             }
             foreach (var lot in OhneBauzettel)
             {
                 if (_gescheitert.Contains(lot)) continue;
-                Reparieren(lot);
+                AutomatischReparieren(lot);
                 return;
             }
             _autoOffen = false;
+        }
+
+        /** Repariert und meldet das Ergebnis fuer die gemeinsame Meldung unten. */
+        private void AutomatischReparieren(Entity lot)
+        {
+            var warWaise = Waisen.Contains(lot);
+            var hatteZettel = EntityManager.HasComponent<ParkingLotBuildReceipt>(lot);
+            Reparieren(lot);
+            var verbunden = warWaise && !Waisen.Contains(lot);
+            var bauplan = !hatteZettel && EntityManager.Exists(lot)
+                && EntityManager.HasComponent<ParkingLotBuildReceipt>(lot);
+            World.GetOrCreateSystemManaged<ParkingLotSyncSystem>()
+                .MeldeWaisenreparatur(verbunden, bauplan);
         }
 
         /** Der Schalter wurde eingeschaltet - offene Waisen jetzt angehen. */

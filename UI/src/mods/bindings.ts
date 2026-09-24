@@ -489,7 +489,10 @@ export const parkplatzListe$ = bindValue<string>(MOD, "ParkplatzListe", "");
 export const syncOffen$ = bindValue<number>(MOD, "SyncOffen", 0);
 export const syncLaeuft$ = bindValue<string>(MOD, "SyncLaeuft", "");
 export const syncAuto$ = bindValue<boolean>(MOD, "SyncAuto", false);
-/** Anzahl des zuletzt beendeten Durchgangs; "" = nichts zeigen (C# nimmt es nach 10 s weg). */
+/**
+ * Was von selbst passiert ist: "synchronisiert\tWaisen repariert\tBauplaene
+ * wiederhergestellt"; "" = nichts zeigen (C# nimmt es nach 10 s weg).
+ */
 export const syncErgebnis$ = bindValue<string>(MOD, "SyncErgebnis", "");
 export const syncErgebnisSchliessen = () => trigger(MOD, "SyncErgebnisSchliessen");
 export const setSyncAuto = (an: boolean) => trigger(MOD, "SetSyncAuto", an);
