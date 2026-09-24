@@ -121,9 +121,21 @@ internal static partial class Program
         var kopf = new Regex(
             @"\bstruct\s+(\w+)\s*:[^{]*\bISerializable\b[^{]*\{",
             RegexOptions.Singleline);
+        // Leere Marken werden AUCH gespeichert: ohne Daten, aber als Typ im
+        // Spielstand. Umbenennen oder Entfernen verliert sie still.
+        var leer = new Regex(@"\bstruct\s+(\w+)\s*:[^{]*\bIEmptySerializable\b");
         foreach (var datei in dateien)
         {
             var text = OhneKommentare(File.ReadAllText(datei));
+            foreach (Match m in leer.Matches(text))
+                liste.Add(new Format
+                {
+                    Name = m.Groups[1].Value,
+                    Datei = Path.GetFileName(datei),
+                    Koerper = "leer",
+                    Versioniert = false,
+                    Fingerabdruck = "leer",
+                });
             foreach (Match m in kopf.Matches(text))
             {
                 var start = m.Index + m.Length - 1;

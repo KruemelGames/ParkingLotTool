@@ -80,6 +80,7 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            AutomatischWeiter();
         }
 
         [Preserve]
@@ -91,10 +92,16 @@ namespace ParkingLotTool.Tools
             Halbwaisen.Clear();
             HerrenloseTraeger.Clear();
             Bauplaene.Clear();
+            _traegerVon.Clear();
+            _begleiterVon.Clear();
+            _grund.Clear();
+            _autoOffen = false;
             if (mode != GameMode.Game) return;
             try
             {
                 Aufnehmen();
+                Zuordnen();
+                _autoOffen = Waisen.Count > 0;
             }
             catch (System.Exception e)
             {
@@ -195,7 +202,11 @@ namespace ParkingLotTool.Tools
                     else if (EntityManager.HasComponent<Game.Net.Edge>(kind)) z[1]++;
                     else if (EntityManager.HasComponent<Game.Net.Node>(kind)) z[2]++;
                     else if (EntityManager.HasComponent<Game.Objects.Object>(kind)) z[3]++;
-                    else z[4]++;
+                    else
+                    {
+                        if (z[4] == 0) BeschreibeSonstiges(besitzer, kind);
+                        z[4]++;
+                    }
                 }
             }
 
@@ -251,6 +262,17 @@ namespace ParkingLotTool.Tools
                 + " SubObject=" + Puffer<Game.Objects.SubObject>(lot)
                 + " Kinder[Flaechen/Kanten/Knoten/Objekte/sonst]=" + Zeile(z)
                 + "; Bauprotokoll: " + bauplan + ".");
+        }
+
+        /** Was ist das eine Kind, das weder Flaeche, Netz noch Objekt ist? */
+        private void BeschreibeSonstiges(Entity besitzer, Entity kind)
+        {
+            using var typen = EntityManager.GetComponentTypes(kind, Allocator.Temp);
+            var namen = new List<string>();
+            for (var i = 0; i < typen.Length; i++)
+                namen.Add(typen[i].GetManagedType()?.Name ?? typen[i].ToString());
+            Mod.log.Info("PLT-Waisen: sonstiges Kind " + kind.Index + " von "
+                + besitzer.Index + ": " + string.Join(", ", namen));
         }
 
         /** Laenge des Puffers, oder "fehlt" - das Fehlen ist der Befund. */

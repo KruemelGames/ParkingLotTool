@@ -26,11 +26,13 @@ namespace ParkingLotTool
      */
     [FileLocation("ModsSettings/ParkingLotTool/optionen")]
     [SettingsUIGroupOrder(GruppeUeber, GruppeSprache, GruppeTasten, GruppeZufahrt,
-        GruppeZoning, GruppeVegetation, GruppeWirtschaft, GruppeHinweise,
+        GruppeZoning, GruppeVegetation, GruppeWirtschaft, GruppeSpielstand,
+        GruppeHinweise,
         GruppeFenster, GruppeZuruecksetzen, GruppeEntwickler,
         GruppeDeinstallation)]
     [SettingsUIShowGroupName(GruppeUeber, GruppeSprache, GruppeTasten, GruppeZufahrt,
-        GruppeZoning, GruppeVegetation, GruppeWirtschaft, GruppeHinweise,
+        GruppeZoning, GruppeVegetation, GruppeWirtschaft, GruppeSpielstand,
+        GruppeHinweise,
         GruppeFenster, GruppeZuruecksetzen, GruppeEntwickler,
         GruppeDeinstallation)]
     [SettingsUIKeyboardAction(AktionWerkzeug, ActionType.Button, usages: new[] { "PLT" })]
@@ -45,6 +47,7 @@ namespace ParkingLotTool
         public const string GruppeUeber = "Ueber";
         public const string GruppeFenster = "Fenster";
         public const string GruppeHinweise = "Hinweise";
+        public const string GruppeSpielstand = "Spielstand";
         public const string GruppeWirtschaft = "Wirtschaft";
         public const string GruppeZufahrt = "Zufahrt";
         public const string GruppeSprache = "Sprache";
@@ -210,6 +213,18 @@ namespace ParkingLotTool
          */
         [SettingsUIHidden]
         public bool AltRechenwegOhneWarnung { get; set; } = false;
+
+        /**
+         * Verwaiste Parkplaetze beim Laden selbst wieder verbinden.
+         *
+         * Verwaist ist ein Parkplatz, wenn der Spielstand ohne PLT
+         * gespeichert wurde. Ansage des Nutzers am 2026-09-24: automatisch
+         * nur, wenn diese Einstellung an ist; sonst zeigen Liste und
+         * Infofenster einen Reparaturknopf. Standard AUS, wie das
+         * automatische Synchronisieren.
+         */
+        [SettingsUISection(ReiterAllgemein, GruppeSpielstand)]
+        public bool WaisenAutomatischReparieren { get; set; } = false;
 
         [SettingsUISection(ReiterAllgemein, GruppeHinweise)]
         public bool ParkplatzLoeschenBestaetigen { get; set; } = true;
@@ -699,6 +714,7 @@ namespace ParkingLotTool
             ParkplatzLoeschenBestaetigen = true;
             AutomatischZufahrtModus = true;
             AutomatischVersorgung = true;
+            WaisenAutomatischReparieren = false;
             VegetationsdichteFaktor = 1f;
             AltRechenwegOhneWarnung = false;
             // Ausdruecklich, nicht nur per Feldvorgabe: "Auf Standard
@@ -923,6 +939,32 @@ namespace ParkingLotTool
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeHinweise + "]",
                     _deutsch ? "Hinweise" : "Prompts"
+                },
+                {
+                    "Options.GROUP[" + seite + "." + Setting.GruppeSpielstand + "]",
+                    _deutsch ? "Spielstand" : "Saved games"
+                },
+                {
+                    "Options.OPTION[" + seite + "." + nameof(Setting) + "."
+                        + nameof(Setting.WaisenAutomatischReparieren) + "]",
+                    _deutsch ? "Verwaiste Parkplätze automatisch reparieren"
+                        : "Repair orphaned parking lots automatically"
+                },
+                {
+                    "Options.OPTION_DESCRIPTION[" + seite + "." + nameof(Setting) + "."
+                        + nameof(Setting.WaisenAutomatischReparieren) + "]",
+                    _deutsch
+                        ? "Wurde ein Spielstand ohne Parking Lot Tool gespeichert, "
+                          + "verlieren die Parkplätze darin ihre Verbindung zur Mod: "
+                          + "sie fehlen in der Liste und lassen sich nicht sauber "
+                          + "abreißen. Ist dieser Schalter an, verbindet die Mod sie "
+                          + "nach dem Laden selbst wieder, einen nach dem anderen. "
+                          + "Aus: Liste und Infofenster bieten dafür einen Knopf an."
+                        : "If a save was stored without Parking Lot Tool, its parking "
+                          + "lots lose their link to the mod: they are missing from "
+                          + "the list and cannot be removed cleanly. With this on, "
+                          + "the mod reconnects them after loading, one at a time. "
+                          + "Off: the list and the info panel offer a button instead."
                 },
                 {
                     "Options.GROUP[" + seite + "."

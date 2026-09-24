@@ -199,10 +199,12 @@ namespace ParkingLotTool
             // Rechenweg und bietet sie zum Loeschen an.
             updateSystem.UpdateAt<ParkingLotAltbestandSystem>(
                 SystemUpdatePhase.GameSimulation);
-            // Bestandsaufnahme verwaister Parkplaetze (ohne PLT gespeichert).
-            // Liest nur und schreibt ins Log.
+            // Verwaiste Parkplaetze (ohne PLT gespeichert): Bestandsaufnahme
+            // beim Laden, Reparatur auf Knopfdruck oder automatisch.
+            // ModificationEnd statt GameSimulation: die Simulation steht
+            // bei Pause still, und nach dem Laden ist das Spiel oft pausiert.
             updateSystem.UpdateAt<ParkingLotWaisenSystem>(
-                SystemUpdatePhase.GameSimulation);
+                SystemUpdatePhase.ModificationEnd);
             // Der Hinweis am Mauszeiger waehrend der Linienauswahl. Gleiche
             // Phase wie die Vanilla-Werkzeugtooltips.
             updateSystem.UpdateAt<ParkingLotAlignTooltipSystem>(

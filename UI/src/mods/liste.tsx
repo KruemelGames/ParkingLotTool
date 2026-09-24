@@ -9,6 +9,7 @@ import {
   icon, parkplatzBearbeiten, parkplatzInfos$,
   parkplatzListe$, parkplatzRunde$, parkplatzRundeVor,
   parkplatzUmbenennen, parkplatzWaehlen,
+  parkplatzReparieren, parkplaetzeReparieren, setWaisenAuto, waisenAuto$,
 } from "./bindings";
 
 /**
@@ -45,6 +46,13 @@ const FELDER_JE_BLOCK = 7;
 /** Wo der Mangelblock in der Grundzeile beginnt. */
 const MANGEL_AB_FELD = 12;
 
+/**
+ * Nach dem Mangelblock: Waisenzustand (0 = in Ordnung, 1 = verwaist und
+ * reparierbar, 2 = verwaist, nicht reparierbar) und ob ein Bauzettel da ist.
+ */
+const WAISE_FELD = MANGEL_AB_FELD + FELDER_JE_BLOCK;
+const BAUZETTEL_FELD = WAISE_FELD + 1;
+
 /** Ab so vielen Proben traut sich eine Kachel eine Aussage zu. */
 const PROBEN_FUER_AUSSAGE = 5;
 
@@ -77,6 +85,8 @@ type Parkplatz = {
   ergebnis: number;
   geschaetzt: boolean;
   mangel: Block;
+  waise: number;
+  bauzettel: boolean;
 };
 
 const zahl = (s: string | undefined) => {
@@ -302,9 +312,10 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
               <img src={icon("MapMarker")} />
             </button>
           </MitTooltip>
-          <MitTooltip text={t.tooltipBearbeitenListe}>
+          <MitTooltip text={platz.bauzettel ? t.tooltipBearbeitenListe : t.ohneBauzettel}>
             <button aria-label={t.tooltipBearbeitenListe}
               className={`${styles.listeSymbol} ${styles.listeBearbeiten}`}
+              disabled={!platz.bauzettel}
               onClick={() => parkplatzBearbeiten(platz.id)}
             >
               {t.listeBearbeiten}
@@ -368,7 +379,33 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
             <div><Satz teile={mangel} zielId={platz.mangel.zielId} /></div>
           </div>
         )}
+        {platz.waise > 0 && <Schleier platz={platz} />}
       </div>
+    </div>
+  );
+};
+
+/**
+ * DER SCHLEIER UEBER EINER VERWAISTEN KACHEL.
+ *
+ * Ansage des Nutzers am 2026-09-24: die Kachel sieht aus wie jede andere,
+ * aber ihr Text ist verschwommen - man soll sich fragen, warum, und direkt
+ * darueber die Antwort und den Knopf finden. Deshalb liegt der Schleier
+ * UEBER der vollen Kachel, statt eine eigene, andere Kachel zu bauen.
+ */
+const Schleier = ({ platz }: { platz: Parkplatz }) => {
+  const t = useTexte();
+  return (
+    <div className={styles.listeSchleier}>
+      <div className={styles.listeSchleierTitel}>{t.waiseTitel}</div>
+      <div className={styles.listeSchleierText}>{t.waiseErklaerung}</div>
+      {platz.waise === 1
+        ? <TooltipKnopf text={t.tooltipWaiseReparieren}
+            className={styles.listeSchleierKnopf}
+            onClick={() => parkplatzReparieren(platz.id)}>
+            {t.waiseReparieren}
+          </TooltipKnopf>
+        : <div className={styles.listeSchleierText}>{t.waiseNichtReparierbar}</div>}
     </div>
   );
 };
@@ -390,6 +427,7 @@ export const ListeTab = () => {
   const rohListe = useValue(parkplatzListe$);
   const rohInfos = useValue(parkplatzInfos$);
   const rohRunde = useValue(parkplatzRunde$);
+  const auto = useValue(waisenAuto$);
   const [slot, setSlot] = useState(0);
   const [pause, setPause] = useState(false);
   const [hover, setHover] = useState(false);
@@ -409,6 +447,7 @@ export const ListeTab = () => {
     proben: zahl(f[6]), breite: zahl(f[7]), tiefe: zahl(f[8]),
     alterTage: f[9] === undefined ? -1 : zahl(f[9]), ergebnis: zahl(f[10]),
     geschaetzt: zahl(f[11]) === 1, mangel: blockAus(f, MANGEL_AB_FELD),
+    waise: zahl(f[WAISE_FELD]), bauzettel: zahl(f[BAUZETTEL_FELD]) === 1,
   })), [rohListe]);
   const bloecke = useMemo(() => {
     const result = new Map<string, Block[]>();
@@ -444,6 +483,8 @@ export const ListeTab = () => {
   useEffect(() => { setSeite(0); }, [suche, filter, sortierung]);
   useEffect(() => { setSeite(s => Math.min(s, seiten - 1)); }, [seiten]);
   useEffect(() => { if (gitter.current) gitter.current.scrollTop = 0; }, [aktuelleSeite, suche, filter, sortierung]);
+  const waisen = plaetze.filter(p => p.waise > 0).length;
+  const reparierbar = plaetze.filter(p => p.waise === 1).length;
   const summePlaetze = plaetze.reduce((summe, p) => summe + p.kapazitaet, 0);
   const summeFrei = plaetze.reduce((summe, p) => summe + Math.max(0, p.kapazitaet - p.belegt), 0);
   const unterhalt = plaetze.reduce((summe, p) => summe + p.unterhalt, 0);
@@ -459,6 +500,14 @@ export const ListeTab = () => {
           <strong>{`${plaetze.length} ${t.reiterListe}`}</strong>
         </div>
         <div className={styles.listeKopfAktionen}>
+        {waisen > 0 && <div className={styles.listeFilter}>
+          {reparierbar > 0 && <TooltipKnopf text={t.tooltipWaiseReparieren}
+            className={styles.listeTextknopf}
+            onClick={parkplaetzeReparieren}>{t.waisenAlleReparieren(reparierbar)}</TooltipKnopf>}
+          <TooltipKnopf text={t.tooltipWaisenAuto}
+            className={`${styles.listeTextknopf} ${auto ? styles.listeAktiv : ""}`}
+            aria-pressed={auto} onClick={() => setWaisenAuto(!auto)}>{t.waisenAuto}</TooltipKnopf>
+        </div>}
         <label className={styles.listeSuchfeld}>
           <span>{t.listeSuchen}</span>
           <input className={styles.listeSuche} aria-label={t.listeSuche}

@@ -155,3 +155,16 @@
     background-color: rgba(255, 255, 255, 0.16);
   }
 }
+
+/* Hinweis fuer verwaiste Parkplaetze im Auswahlfenster. */
+.waiseTitel {
+  margin-bottom: 4rem;
+  color: rgb(242, 114, 92);
+  font-size: var(--fontSizeS);
+  font-weight: bold;
+}
+.waiseText {
+  margin-bottom: 6rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: var(--fontSizeXS);
+}

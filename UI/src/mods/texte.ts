@@ -440,6 +440,23 @@ const en = {
   listeGebuehrFehler: "Fee not saved. Enter a whole number from 0 to 50 and try again.",
   listeSchaetzung: "Estimate / month",
   listeBearbeiten: "Edit",
+  waiseTitel: "Orphaned parking lot",
+  waiseErklaerung:
+    "This save was stored while Parking Lot Tool was off or missing, so the "
+    + "lot lost its link to the mod.",
+  waiseReparieren: "Repair",
+  tooltipWaiseReparieren:
+    "Reconnects the lot to the mod. Shape, markings and roads stay exactly "
+    + "as they are.",
+  waiseNichtReparierbar:
+    "Its markings cannot be matched to it without doubt, so it is not "
+    + "repaired.",
+  waisenAlleReparieren: (n: number) => `Repair all (${n})`,
+  waisenAuto: "Repair automatically",
+  tooltipWaisenAuto:
+    "Same switch as in the mod settings. When on, orphaned lots are "
+    + "reconnected after loading, one at a time.",
+  ohneBauzettel: "Editing unavailable: the build plan was lost with the save.",
   listeNurKosten: "Upkeep / month",
   listeKeineTreffer: "No parking lots match these filters.",
   listeFilterZurueck: "Clear search and filters",
@@ -994,6 +1011,24 @@ const de: Texte = {
   listeGebuehrFehler: "Gebühr nicht gespeichert. Ganze Zahl von 0 bis 50 eingeben und erneut versuchen.",
   listeSchaetzung: "Schätzung / Monat",
   listeBearbeiten: "Bearbeiten",
+  waiseTitel: "Verwaister Parkplatz",
+  waiseErklaerung:
+    "Der Spielstand wurde gespeichert, während Parking Lot Tool aus war oder "
+    + "fehlte. Der Parkplatz hat dabei seine Verbindung zur Mod verloren.",
+  waiseReparieren: "Reparieren",
+  tooltipWaiseReparieren:
+    "Verbindet den Parkplatz wieder mit der Mod. Form, Markierungen und "
+    + "Straßen bleiben genau, wie sie sind.",
+  waiseNichtReparierbar:
+    "Seine Markierungen lassen sich ihm nicht zweifelsfrei zuordnen, "
+    + "deshalb wird er nicht repariert.",
+  waisenAlleReparieren: (n: number) => `Alle reparieren (${n})`,
+  waisenAuto: "Automatisch reparieren",
+  tooltipWaisenAuto:
+    "Derselbe Schalter wie in den Mod-Einstellungen. Ist er an, werden "
+    + "verwaiste Parkplätze nach dem Laden wieder verbunden, einer nach dem "
+    + "anderen.",
+  ohneBauzettel: "Bearbeiten nicht möglich: der Bauplan ging mit dem Spielstand verloren.",
   listeNurKosten: "Unterhalt / Monat",
   listeKeineTreffer: "Keine Parkplätze passen zu diesen Filtern.",
   listeFilterZurueck: "Suche und Filter zurücksetzen",

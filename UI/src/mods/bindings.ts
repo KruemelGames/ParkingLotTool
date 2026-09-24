@@ -509,3 +509,11 @@ export const parkplatzRundeZurueck = () =>
 /** Hinspringen UND oeffnen - in einem Zug, damit nichts dazwischenkommt. */
 export const parkplatzBearbeiten = (schluessel: string) =>
   trigger(MOD, "ParkplatzBearbeiten", schluessel);
+
+/** Verwaiste Parkplaetze: Schalter (= Einstellung) und Reparatur. */
+export const waisenAuto$ = bindValue<boolean>(MOD, "WaisenAuto", false);
+export const setWaisenAuto = (v: boolean) => trigger(MOD, "SetWaisenAuto", v);
+export const parkplatzReparieren = (schluessel: string) =>
+  trigger(MOD, "ParkplatzReparieren", schluessel);
+export const parkplaetzeReparieren = () => trigger(MOD, "ParkplaetzeReparieren");
+export const gewaehltenReparieren = () => trigger(MOD, "GewaehltenReparieren");

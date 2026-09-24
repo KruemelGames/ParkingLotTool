@@ -2885,3 +2885,48 @@ $eck-reiter: 9rem;
 
   .schalterWort { color: var(--menuTitleNormal); }
 }
+
+/* ============================================================ WAISEN */
+/*
+ * Schleier ueber einer verwaisten Kachel. `backdrop-filter` nutzt das Spiel
+ * selbst (--panelBlur: blur(5px)); kein `inset` in Cohtml, deshalb vier
+ * Kanten einzeln.
+ */
+.listeKachel { position: relative; }
+.listeSchleier {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $s4;
+  border-radius: $eck-innen;
+  background-color: rgba(16, 19, 29, 0.55);
+  backdrop-filter: blur(5px);
+  text-align: center;
+}
+.listeSchleierTitel {
+  margin-bottom: $s2;
+  color: $melden;
+  font-size: $type-marke;
+  font-weight: bold;
+}
+.listeSchleierText {
+  margin-bottom: $s3;
+  color: rgba(255, 255, 255, 0.85);
+}
+.listeSchleierKnopf {
+  padding: $s2 $s4;
+  border: 1rem solid $melden;
+  border-radius: $s2;
+  background-color: rgba(242, 114, 92, 0.2);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+
+  &:hover { background-color: rgba(242, 114, 92, 0.35); }
+}

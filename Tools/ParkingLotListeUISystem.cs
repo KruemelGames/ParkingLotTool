@@ -49,6 +49,8 @@ namespace ParkingLotTool.Tools
         private ValueBinding<string> _infos;
         private ValueBinding<string> _runde;
         private ValueBinding<bool> _hatVorrunde;
+        private ValueBinding<bool> _waisenAuto;
+        private ParkingLotWaisenSystem _waisen;
         private bool _zeigtVorrunde;
 
         private readonly List<Entity> _lots = new List<Entity>();
@@ -87,6 +89,7 @@ namespace ParkingLotTool.Tools
                 Game.Simulation.SimulationSystem>();
             _zeit = World.GetOrCreateSystemManaged<Game.Simulation.TimeSystem>();
             _stadtwerte = new CityStatistikQuelle(World);
+            _waisen = World.GetOrCreateSystemManaged<ParkingLotWaisenSystem>();
 
             /*
              * DIE KAPAZITAET IST KEINE BEDINGUNG.
@@ -130,6 +133,28 @@ namespace ParkingLotTool.Tools
                 Group, "ParkplatzUmbenennen", ParkplatzUmbenennen));
             AddBinding(new TriggerBinding<string>(
                 Group, "ParkplatzBearbeiten", ParkplatzBearbeiten));
+            /*
+             * VERWAISTE PARKPLAETZE. Der Schalter ist dieselbe Einstellung
+             * wie im Optionsmenue; der Abgleich in die andere Richtung steht
+             * in `PflegeWaisenSchalter`.
+             */
+            AddBinding(_waisenAuto = new ValueBinding<bool>(
+                Group, "WaisenAuto",
+                Mod.Optionen?.WaisenAutomatischReparieren ?? false));
+            AddBinding(new TriggerBinding<bool>(Group, "SetWaisenAuto", wert =>
+            {
+                if (Mod.Optionen != null)
+                {
+                    Mod.Optionen.WaisenAutomatischReparieren = wert;
+                    Mod.Optionen.ApplyAndSave();
+                }
+                _waisenAuto.Update(wert);
+                if (wert) _waisen?.StarteAutomatik();
+            }));
+            AddBinding(new TriggerBinding<string>(
+                Group, "ParkplatzReparieren", ParkplatzReparieren));
+            AddBinding(new TriggerBinding(
+                Group, "ParkplaetzeReparieren", ParkplaetzeReparieren));
             AddBinding(new TriggerBinding(
                 Group, "ParkplatzRundeVor", RundeVor));
             AddBinding(new TriggerBinding(
@@ -151,7 +176,11 @@ namespace ParkingLotTool.Tools
              * Zaehler ueber die Chunks der Abfrage und billig genug fuer
              * jedes Bild; nur bei einer Aenderung wird sofort neu gebaut.
              */
-            var bestand = _lotQuery.CalculateEntityCount();
+            PflegeWaisenSchalter();
+            // Waisen zaehlen mit: wird eine repariert oder abgerissen, soll
+            // die Liste das sofort zeigen, nicht erst im Takt.
+            var bestand = _lotQuery.CalculateEntityCount()
+                + (_waisen?.OffeneWaisen.Count ?? 0) * 100000;
             if (bestand != _zuletztGezaehlt)
             {
                 _zuletztGezaehlt = bestand;
@@ -161,7 +190,8 @@ namespace ParkingLotTool.Tools
             _frames = 0;
 
             SammleLots();
-            if (_lots.Count == 0)
+            SammleWaisen();
+            if (_lots.Count == 0 && _waisenListe.Count == 0)
             {
                 Setze(_liste, string.Empty);
                 Setze(_infos, string.Empty);
@@ -210,6 +240,61 @@ namespace ParkingLotTool.Tools
                 var vergleich = string.CompareOrdinal(na, nb);
                 return vergleich != 0 ? vergleich : a.Index.CompareTo(b.Index);
             });
+        }
+
+        private readonly List<Entity> _waisenListe = new List<Entity>();
+
+        private void SammleWaisen()
+        {
+            _waisenListe.Clear();
+            if (_waisen == null) return;
+            foreach (var lot in _waisen.OffeneWaisen)
+                if (EntityManager.Exists(lot)
+                    && !EntityManager.HasComponent<Deleted>(lot)
+                    && !EntityManager.HasComponent<ParkingLotCarrierReference>(lot))
+                    _waisenListe.Add(lot);
+        }
+
+        /**
+         * Waisen als Zeilen wie jeder andere Parkplatz - nur mit dem, was
+         * noch bekannt ist: Name und Alter. Belegung, Gebuehr und Groesse
+         * hingen an den verlorenen Daten und stehen als Null da; die
+         * Oberflaeche legt ohnehin den Schleier darueber.
+         */
+        private void SchreibeWaisen()
+        {
+            foreach (var lot in _waisenListe)
+            {
+                if (_bau.Length > 0) _bau.Append('\n');
+                _bau.Append(SchluesselVon(lot)).Append('\t')
+                    .Append(Saeubere(NameVon(lot)))
+                    .Append("\t0\t0\t0\t0\t0\t0\t0\t")
+                    .Append(AlterInTagen(lot))
+                    .Append("\t0\t0");
+                // Leerer Mangelblock (7 Felder).
+                _bau.Append("\t0\t0\t0\t0\t0\t\t");
+                _bau.Append('\t').Append(_waisen.Zustand(lot)).Append("\t0");
+            }
+        }
+
+        private void PflegeWaisenSchalter()
+        {
+            if (_waisenAuto == null || Mod.Optionen == null) return;
+            var jetzt = Mod.Optionen.WaisenAutomatischReparieren;
+            if (_waisenAuto.value != jetzt) _waisenAuto.Update(jetzt);
+        }
+
+        private void ParkplatzReparieren(string schluessel)
+        {
+            if (!VersucheSchluessel(schluessel, out var lot)) return;
+            _waisen?.Reparieren(lot);
+            _frames = AktualisierungFrames;
+        }
+
+        private void ParkplaetzeReparieren()
+        {
+            _waisen?.ReparierenAlle();
+            _frames = AktualisierungFrames;
         }
 
         private string NameVon(Entity lot)
@@ -340,7 +425,12 @@ namespace ParkingLotTool.Tools
                     .Append(geschaetzt ? 1 : 0);
 
                 SchreibeBlock(lot, Infoauswahl.WaehleMangel(werte), werte);
+                // Feld 19: Waisenzustand, Feld 20: Bauzettel vorhanden.
+                _bau.Append("\t0\t")
+                    .Append(EntityManager.HasComponent<ParkingLotBuildReceipt>(lot)
+                        ? 1 : 0);
             }
+            SchreibeWaisen();
             Setze(_liste, _bau.ToString());
         }
 
