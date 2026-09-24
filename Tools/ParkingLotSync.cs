@@ -55,6 +55,14 @@ namespace ParkingLotTool.Tools
         private int _letzterBestand = -1;
 
         /**
+         * Erst nach dem Ladeabschluss arbeiten. Gemessen am 2026-09-25: der
+         * Bestand aendert sich schon WAEHREND des Ladens (0 -> 1), und die
+         * Aufnahme lief, bevor die Traeger ihren SubNet-Puffer zurueck
+         * hatten - ein halb geladener Zustand.
+         */
+        private bool _spielGeladen;
+
+        /**
          * Parkplatz -> Teile, EINMAL je Durchgang. Vorher entstand er in
          * jedem Bild neu - bei zehntausenden Teilen teurer als das ganze
          * Budget. Verworfen, wenn sich der Bestand aendert oder die
@@ -131,6 +139,19 @@ namespace ParkingLotTool.Tools
             _gesamt = _erledigt = 0;
             _letzterBestand = -1;
             _neuAufnehmen = mode == GameMode.Game;
+            _spielGeladen = mode == GameMode.Game;
+        }
+
+        [Preserve]
+        protected override void OnGamePreload(
+            Colossal.Serialization.Entities.Purpose purpose, GameMode mode)
+        {
+            base.OnGamePreload(purpose, mode);
+            _spielGeladen = false;
+            _warteschlange.Clear();
+            _offen.Clear();
+            _offenMenge.Clear();
+            _index = null;
         }
 
         [Preserve]
@@ -138,6 +159,11 @@ namespace ParkingLotTool.Tools
         {
             base.OnUpdate();
             PflegeSchalter();
+            if (!_spielGeladen)
+            {
+                Melde();
+                return;
+            }
 
             // Ein neuer Parkplatz (gebaut, repariert) oder ein abgerissener
             // aendert den Bestand - dann neu aufnehmen. Gebaute tragen schon
