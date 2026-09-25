@@ -267,6 +267,26 @@ namespace ParkingLotTool.Tools
             // NACH dem Bau, und da ist unser Werkzeug oft nicht mehr aktiv.
             PruefeGassenbefund();
             PruefeFusswegBefund();
+            /*
+             * DIE NACHARBEIT NACH DEM BAU UND IHR AUFPASSER TICKEN HIER,
+             * GEMEINSAM, IN JEDEM BILD.
+             *
+             * Vorher stand die Nacharbeit (Zoning-Seiten, Namen,
+             * Bushaltestellen) weit unten hinter einem Dutzend vorzeitiger
+             * `return`s, der Aufpasser (90 Bilder) weiter oben. Beide zaehlten
+             * damit in verschiedenen Bildern. Am 2026-09-25 lief nach einem
+             * Umbau die Autoversorgung 5,4 s lang und beendete jedes Bild
+             * vorzeitig: der Aufpasser lief ab und verwarf zwei Bushalte, die
+             * Nacharbeit kam erst danach wieder dran. Und im Zweig "Werkzeug
+             * laeuft, ist aber nicht aktiv" (nach Uebernehmen) liefen beide
+             * gar nicht - `PflegeNachbauOhneWerkzeug` greift nur bei
+             * geschlossenem Werkzeug.
+             *
+             * Neben der Autoversorgung zu laufen ist erprobt: bei
+             * geschlossenem Werkzeug taten beide das schon immer.
+             */
+            PflegeZoningBlockmessung();
+            AuditBuiltBusStops();
             if (m_ToolSystem.activeTool != this)
             {
                 PflegeAutoVersorgung();
@@ -298,7 +318,6 @@ namespace ParkingLotTool.Tools
             if (TryBeginPendingEdit()) return RenderOverlay(deps);
             if (ProcessEditLifecycle()) return RenderOverlay(deps);
             PollCompletedBuild();
-            AuditBuiltBusStops();
             if (PflegeAutoVersorgung()) return RenderOverlay(deps);
 
             PollSettingsRevision();
@@ -395,7 +414,6 @@ namespace ParkingLotTool.Tools
             // Der Umriss kann sich seit dem letzten Bild geaendert haben -
             // durch Ziehen, Ausstuelpen oder Rueckgaengig. Erst pruefen,
             // dann die Klicks verteilen.
-            PflegeZoningBlockmessung();
             PflegeZoningStrassenplan();
             PflegeFangnachschau();
             ZoningFolgeDemUmriss();
