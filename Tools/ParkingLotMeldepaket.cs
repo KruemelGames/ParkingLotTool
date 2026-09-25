@@ -90,7 +90,8 @@ namespace ParkingLotTool.Tools
          */
         internal enum Anlass { Bau, Vorschau, Absturz, Leistung }
 
-        internal static string Schnuere(Anlass anlass, out string grund)
+        internal static string Schnuere(Anlass anlass, out string grund,
+            IReadOnlyList<string> frischeAbzuege = null)
         {
             var nurVorschau = anlass == Anlass.Vorschau;
             grund = null;
@@ -114,7 +115,14 @@ namespace ParkingLotTool.Tools
                  * Messung - und das ist genau der Fall, den wir sehen
                  * wollen.
                  */
-                if (anlass != Anlass.Leistung)
+                if (nurVorschau && frischeAbzuege != null)
+                {
+                    // Nur, was die Meldung gerade selbst geschrieben hat - ein
+                    // aelterer Bauabzug beschriebe einen anderen Stand.
+                    foreach (var pfad in frischeAbzuege)
+                        if (File.Exists(pfad)) teile.Add(new FileInfo(pfad));
+                }
+                else if (anlass != Anlass.Leistung)
                 {
                     if (!nurVorschau) Juengste(ordner, "debug", teile);
                     Juengste(ordner, "prebuild", teile);

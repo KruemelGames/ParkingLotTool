@@ -210,7 +210,43 @@ namespace ParkingLotTool.Tools
          * einem eigenen try/catch, und ein Fehler beim Schreiben wird nur
          * gemeldet.
          */
-        private void WriteVorbauDump()
+        private void WriteVorbauDump() => SchreibeVorbauAbzug();
+
+        /**
+         * DER VORSCHAU-BERICHT SCHREIBT SEINEN EIGENEN ABZUG.
+         *
+         * Bis 2026-09-25 packte "Vorschau melden" nur die juengsten
+         * VORHANDENEN Dateien ein - und die entstehen beim Bauen. Die
+         * Meldung vom 15:35 enthielt deshalb den Bau von 15:30 samt "No
+         * closed preview", die gemeldete Vorschau (Dekoflaeche verschwindet
+         * nach dem Setzen einer Zufahrt) fehlte ganz. Jetzt schreibt die
+         * Meldung den Vorab-Abzug des AKTUELLEN Stands und einen frischen
+         * Markierungsbericht, und nur diese beiden gehen ins Paket.
+         */
+        internal List<string> SchreibeVorschauAbzug()
+        {
+            var dateien = new List<string>();
+            var abzug = SchreibeVorbauAbzug();
+            if (abzug != null) dateien.Add(abzug);
+            try
+            {
+                var bericht = Path.Combine(Path.Combine(
+                        Application.persistentDataPath, "Logs"),
+                    "ParkingLotTool-summary-"
+                    + DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss-fff") + ".txt");
+                File.WriteAllText(bericht, BuildMarkerReport(),
+                    new System.Text.UTF8Encoding(false));
+                dateien.Add(bericht);
+            }
+            catch (Exception exception)
+            {
+                Mod.log.Error(exception,
+                    "PLT-Vorschaubericht: Markierungsbericht nicht geschrieben.");
+            }
+            return dateien;
+        }
+
+        private string SchreibeVorbauAbzug()
         {
             try
             {
@@ -252,12 +288,14 @@ namespace ParkingLotTool.Tools
                     + Path.GetFileName(outputPath)
                     + " (feste Kopie: " + Path.GetFileName(latestPath)
                     + "), im Logs-Ordner des Spiels.");
+                return outputPath;
             }
             catch (Exception exception)
             {
                 // Ein Abzug darf niemals einen Bau umbringen.
                 Mod.log.Error(exception,
                     "PLT-Vorab-Bauzettel konnte nicht geschrieben werden.");
+                return null;
             }
         }
 

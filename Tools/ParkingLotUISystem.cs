@@ -2006,7 +2006,12 @@ namespace ParkingLotTool.Tools
 
         private void SchnuereMeldung(ParkingLotMeldepaket.Anlass anlass)
         {
-            var pfad = ParkingLotMeldepaket.Schnuere(anlass, out var grund);
+            // Die Vorschau-Meldung haelt den AKTUELLEN Stand fest, statt die
+            // juengsten Bauabzuege einzupacken (Befund 2026-09-25).
+            var frisch = anlass == ParkingLotMeldepaket.Anlass.Vorschau
+                ? Tool()?.SchreibeVorschauAbzug()
+                : null;
+            var pfad = ParkingLotMeldepaket.Schnuere(anlass, out var grund, frisch);
             if (pfad == null)
             {
                 _meldungPfad?.Update(string.Empty);
