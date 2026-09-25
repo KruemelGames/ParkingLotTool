@@ -1382,6 +1382,18 @@ namespace ParkingLotTool.Geometry
                         ausgabe[k].Gesetzt = w.Zufahrt;
                     }
                 }
+                // Nur Netz: die Anschluesse geschnittener Fusswege an ihre
+                // Gasse (RinglosZufahrtsgassen). Kein Belag, siehe dort.
+                foreach (var w in bau.Ringlos.Fussanschluesse)
+                {
+                    var vorher = ausgabe.Count;
+                    Fuege("entrance", w.A, w.B, false, w.Breite);
+                    for (var k = vorher; k < ausgabe.Count; k++)
+                    {
+                        ausgabe[k].Art = Zufahrtsart.Fussweg;
+                        ausgabe[k].Gesetzt = false;
+                    }
+                }
             }
             else if (bau.InnereStrassen != null && bau.InnereStrassen.Count != 0)
             {

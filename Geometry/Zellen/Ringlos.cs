@@ -102,6 +102,13 @@ namespace ParkingLotTool.Geometry.Zellen
         internal readonly List<Weg> Gassen = new List<Weg>();
         internal readonly List<Weg> Fusswege = new List<Weg>();
         internal readonly List<Weg> Zufahrten = new List<Weg>();
+        /**
+         * Reine NETZ-Verbindungen, ohne Belag: vom abgeschnittenen Ende eines
+         * Fusswegs zum inneren Ende der Zufahrtsgasse, die ihn geschnitten
+         * hat. Stehen NICHT in `Korridore` - sonst laege ein Fussweg-Streifen
+         * quer ueber dem Asphalt.
+         */
+        internal readonly List<Weg> Fussanschluesse = new List<Weg>();
         internal readonly List<Querstrassenstueck> Querwege = new List<Querstrassenstueck>();
         internal readonly List<string> Warnungen = new List<string>();
         internal double Links;

@@ -52,14 +52,54 @@ namespace ParkingLotTool.Geometry.Zellen
                     neben.Add(fuss);
                     continue;
                 }
+                /*
+                 * DER GESCHNITTENE FUSSWEG BLEIBT ANGESCHLOSSEN.
+                 *
+                 * Bericht ALCU (2026-09-25): eine Gasse kreuzte den Endweg am
+                 * rechten Rand. Er wurde herausgeschnitten - richtig, unter
+                 * einer sichtbaren Strasse liegt kein Fussweg -, aber die
+                 * Enden hingen danach an nichts, und unten blieb ein 0,83 m
+                 * langer Rest. Nutzer: *"an sich soll schon gerne der Fussweg
+                 * an den Eingang angeschlossen werden."*
+                 *
+                 * Jetzt: Reste kuerzer als eine Fusswegbreite fallen weg, und
+                 * jedes abgeschnittene Ende bekommt eine Netzverbindung (ohne
+                 * Belag) zum INNEREN Ende der Gasse. Dort teilt sie den
+                 * Endpunkt mit Gasse und Fahrgasse - CS2 verbindet nur
+                 * identische Endpunkte zu einem Knoten.
+                 */
+                var weglaengeGesamt = Geometrie.Laenge(fuss.B - fuss.A);
                 foreach (var t in intervalle)
-                    neben.Add(new Weg { A = fuss.A + (fuss.B - fuss.A) * t.A,
-                        B = fuss.A + (fuss.B - fuss.A) * t.B, Breite = fuss.Breite,
+                {
+                    var stueckA = fuss.A + (fuss.B - fuss.A) * t.A;
+                    var stueckB = fuss.A + (fuss.B - fuss.A) * t.B;
+                    if ((t.B - t.A) * weglaengeGesamt < fuss.Breite) continue;
+                    neben.Add(new Weg { A = stueckA, B = stueckB, Breite = fuss.Breite,
                         Fuss = fuss.Fuss, Art = fuss.Art, Band = fuss.Band, Zufahrt = fuss.Zufahrt,
                         SchraegARechts = t.A == 0 ? fuss.SchraegARechts : 0,
                         SchraegALinks = t.A == 0 ? fuss.SchraegALinks : 0,
                         SchraegBRechts = t.B == 1 ? fuss.SchraegBRechts : 0,
                         SchraegBLinks = t.B == 1 ? fuss.SchraegBLinks : 0 });
+                    if (t.A > 0) SchliesseAn(stueckA);
+                    if (t.B < 1) SchliesseAn(stueckB);
+                }
+                void SchliesseAn(Punkt ende)
+                {
+                    // Die Gasse, deren Achse dem Schnittende am naechsten ist.
+                    Weg naechste = null;
+                    var bester = double.PositiveInfinity;
+                    foreach (var gasse in gassen)
+                    {
+                        var abstand = Geometrie.AbstandPunktStrecke(ende, gasse.A, gasse.B);
+                        if (abstand >= bester) continue;
+                        bester = abstand;
+                        naechste = gasse;
+                    }
+                    if (naechste == null
+                        || Geometrie.Laenge(naechste.B - ende) < 1e-6) return;
+                    Fussanschluesse.Add(new Weg { A = ende, B = naechste.B,
+                        Breite = fuss.Breite, Fuss = true, Art = Zufahrtsart.Fussweg });
+                }
             }
             Fusswege.Clear(); Fusswege.AddRange(neben);
         }

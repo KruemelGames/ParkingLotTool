@@ -48,6 +48,30 @@ internal static partial class Program
         Console.WriteLine($"Erreichbarkeit: {befund.Erreicht} von {befund.Autowege} Autowegen, "
             + $"{befund.Quellen} Quelle(n), vollstaendig {befund.Vollstaendig}");
         foreach (var w in layout.Warnings) Console.WriteLine("  Warnung: " + w);
-        return befund.Vollstaendig ? 0 : 1;
+
+        // Fusswege: keine Reste kuerzer als eine Fusswegbreite (2 m), und
+        // jedes Fusswegende beruehrt einen anderen Weg oder den Umriss -
+        // ein freies Ende mitten im Parkplatz ist ein abgetrennter Weg.
+        var fuss = layout.NetLine.Where(n => n.Art == Zufahrtsart.Fussweg).ToArray();
+        var reste = fuss.Count(n => math.distance(n.A, n.B) < 2f);
+        bool Beruehrt(float2 p) => layout.NetLine.Count(n =>
+            math.distance(n.A, p) < 0.01f || math.distance(n.B, p) < 0.01f) > 1
+            || Enumerable.Range(0, site.Length).Any(k => AbstandZuStrecke(p,
+                site[k], site[(k + 1) % site.Length]) < 0.05f);
+        var frei = fuss.Sum(n => (Beruehrt(n.A) ? 0 : 1) + (Beruehrt(n.B) ? 0 : 1));
+        foreach (var n in fuss)
+            foreach (var p in new[] { n.A, n.B })
+                if (!Beruehrt(p))
+                {
+                    var naechster = layout.NetLine.Where(m => !m.Equals(n))
+                        .Min(m => AbstandZuStrecke(p, m.A, m.B));
+                    Console.WriteLine($"  freies Fussweg-Ende ({p.x:F2}/{p.y:F2}), naechster Weg {naechster:F2} m");
+                }
+        Console.WriteLine($"Fusswege: {fuss.Length}, Reste unter 2 m: {reste}, freie Enden: {frei}");
+        // Freie Enden werden gezeigt, aber (noch) nicht gewertet: die
+        // Endwege ohne Randstrasse enden seit jeher 2,5-4 m neben dem Netz
+        // (Befund 2026-09-25) - das gehoert in die Neukonzeption.
+        return befund.Vollstaendig && reste == 0 ? 0 : 1;
     }
+
 }
