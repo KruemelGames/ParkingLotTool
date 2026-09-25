@@ -286,6 +286,25 @@ namespace ParkingLotTool.Tools
             return 0f;
         }
 
+        /**
+         * Liegt der Punkt auf dem gezeichneten Umriss? 5 cm Spiel fuer
+         * float-Koordinaten im Weltmassstab.
+         */
+        private bool AmUmriss(float2 p)
+        {
+            if (_points.Count < 3) return false;
+            for (var i = 0; i < _points.Count; i++)
+            {
+                var a = _points[i];
+                var b = _points[(i + 1) % _points.Count];
+                var d = b - a;
+                var l2 = math.lengthsq(d);
+                var t = l2 > 0f ? math.saturate(math.dot(p - a, d) / l2) : 0f;
+                if (math.distance(p, a + t * d) <= 0.05f) return true;
+            }
+            return false;
+        }
+
         private float2[] VorflaecheFuer(NetSegment segment, float breite,
             float aufweitung, float2[][] zufahrtsrechtecke,
             out float2[] aussenteil, out float2[] innenkante,
@@ -319,37 +338,51 @@ namespace ParkingLotTool.Tools
              * eine Strasse findet - bei zweien die naehere. Das Polygon ist
              * an der Entscheidung nicht mehr beteiligt.
              */
-            var achse = math.normalizesafe(segment.B - segment.A);
+            /*
+             * AUSSEN IST A - DAS LAYOUT LEGT JEDE ZUFAHRT SO AN.
+             *
+             * Beide Wege, auf denen eine Zufahrt entsteht (`ParkingGeometry
+             * .Zellen`: `zufahrt.Start` -> Ring; `Ringlos`: `z.Start` ->
+             * innen), setzen A auf den Umriss und B nach innen. Der Gassenbau
+             * verlaesst sich schon immer darauf (`CreateGassenstueck`: "nach
+             * aussen ist also A - B").
+             *
+             * Die Fassung vom 2026-08-31 mass stattdessen in BEIDE Richtungen
+             * und nahm die naehere Strasse. Am 2026-09-25 lag eine Zufahrt in
+             * einer Einbuchtung des Umrisses: quer durch den Parkplatz fand
+             * sich 19 m hinter B eine Strasse, vor A erst nach 25 m - und die
+             * Vorflaeche lief in die falsche Richtung, ueber den Bordstein
+             * hinweg. Eine Suche, die zwischen zwei Richtungen waehlt, kann
+             * genau das; eine, die die bekannte Richtung nimmt, nicht.
+             *
+             * Ein Stueck, dessen A NICHT am Umriss liegt, ist ein inneres
+             * Teilstueck einer geteilten Zufahrt: es bekommt keine Vorflaeche.
+             */
+            var achse = math.normalizesafe(segment.A - segment.B);
             if (math.lengthsq(achse) < 0.5f)
             {
                 meldung = $"{Art(segment.Art)}: Zufahrt ohne Richtung.";
                 return null;
             }
-
-            var nachB = MisseStrasse(segment.B, achse);
-            var nachA = MisseStrasse(segment.A, -achse);
-            var wegB = nachB.Gefunden
-                ? math.distance(segment.B, nachB.Asphaltpunkt)
-                : float.PositiveInfinity;
-            var wegA = nachA.Gefunden
-                ? math.distance(segment.A, nachA.Asphaltpunkt)
-                : float.PositiveInfinity;
-
-            if (!nachA.Gefunden && !nachB.Gefunden)
+            if (!AmUmriss(segment.A))
             {
-                meldung = $"{Art(segment.Art)}: keine Strasse gefunden - "
-                    + $"ab A ({nachA.Notiz}), ab B ({nachB.Notiz}).";
+                meldung = $"{Art(segment.Art)}: inneres Teilstueck "
+                    + "(A nicht am Umriss) - keine Vorflaeche.";
                 return null;
             }
 
-            var nachAussenB = wegB <= wegA;
-            var aussen = nachAussenB ? segment.B : segment.A;
-            var innen = nachAussenB ? segment.A : segment.B;
-            var richtung = nachAussenB ? achse : -achse;
-            var aufmass = nachAussenB ? nachB : nachA;
-            var seitenwahl = "aussen ist "
-                + (nachAussenB ? "B" : "A") + " (Weg zur Strasse "
-                + Weg(wegA) + " ab A, " + Weg(wegB) + " ab B)";
+            var aufmass = MisseStrasse(segment.A, achse);
+            if (!aufmass.Gefunden)
+            {
+                meldung = $"{Art(segment.Art)}: keine Strasse vor der "
+                    + $"Zufahrt ({aufmass.Notiz}).";
+                return null;
+            }
+            var aussen = segment.A;
+            var innen = segment.B;
+            var richtung = achse;
+            var seitenwahl = "aussen ist A (Weg zur Strasse "
+                + Weg(math.distance(segment.A, aufmass.Asphaltpunkt)) + ")";
 
             var quer = new float2(-richtung.y, richtung.x);
             /*
