@@ -84,7 +84,8 @@ namespace ParkingLotTool.Geometry
          * Grenze.
          */
         public static bool TryFind(ParkingLayout layout, float2 cursor,
-            float maxDistance, out BusStopPlacement result,
+            float maxDistance, double fahrbreite, double querbreite,
+            out BusStopPlacement result,
             System.Collections.Generic.IReadOnlyList<BusStopPlacement> vorhandene = null,
             bool fangAus = false)
         {
@@ -110,7 +111,8 @@ namespace ParkingLotTool.Geometry
                 if (math.abs(side) < 0.01f) continue;
                 var links = side > 0f;
 
-                var sperren = Sperrbereiche(layout, line, laenge);
+                var sperren = Sperrbereiche(layout, line, laenge, fahrbreite,
+                    querbreite);
                 if (!TryErlaubt(t0, sperren, out var t)) continue;
 
                 if (!fangAus && vorhandene != null
@@ -135,7 +137,8 @@ namespace ParkingLotTool.Geometry
          * Layouts sie kreuzt oder mit einem Ende beruehrt.
          */
         public static System.Collections.Generic.List<float2> Sperrbereiche(
-            ParkingLayout layout, NetSegment linie, float laenge)
+            ParkingLayout layout, NetSegment linie, float laenge,
+            double fahrbreite, double querbreite)
         {
             var sperren = new System.Collections.Generic.List<float2>();
             var rand = 6f / laenge;
@@ -156,9 +159,28 @@ namespace ParkingLotTool.Geometry
                 // Parallel laufende Linien kreuzen nicht; die Endreserve
                 // deckt ihre gemeinsamen Enden ab.
                 if (sinus < 0.2f) continue;
-                if (!TryBeruehrung(linie.A, d, andere.A, e, out var t)) continue;
-                var halb = (KreuzungHalbeBreite / sinus + KreuzungFreiraum) / laenge;
-                sperren.Add(new float2(t - halb, t + halb));
+                if (TryBeruehrung(linie.A, d, andere.A, e, out var t))
+                {
+                    var halb = (KreuzungHalbeBreite / sinus + KreuzungFreiraum) / laenge;
+                    sperren.Add(new float2(t - halb, t + halb));
+                    continue;
+                }
+                /*
+                 * DIE MUENDUNG ZAEHLT GENAUSO.
+                 *
+                 * Fahrgassen und Querwege beruehren die Zoning-Strasse nie:
+                 * ihr freies Ende liegt (Zoning-Breite + eigene Breite) / 2
+                 * vor der Achse, ihr Belag stoesst an den Strassenrand
+                 * (gemessen 2026-09-25: 7,50 m / 5,50 m). Die Beruehrung auf
+                 * 1 m fand deshalb keine einzige Einmuendung, und der Halt
+                 * blieb mitten in ihr stehen. Gesperrt wird die Breite der
+                 * Muendung plus der Freiraum.
+                 */
+                if (!ZoningMuendung.Muendet(layout.NetLine, andere, linie,
+                        fahrbreite, querbreite, out var tm)) continue;
+                var halbMuendung = ((float)ZoningMuendung.EigeneBreite(andere,
+                    fahrbreite, querbreite) / 2f / sinus + KreuzungFreiraum) / laenge;
+                sperren.Add(new float2(tm - halbMuendung, tm + halbMuendung));
             }
             return sperren;
         }

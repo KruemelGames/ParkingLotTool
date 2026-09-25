@@ -33,26 +33,11 @@ namespace ParkingLotTool.Geometry
                 new Punkt(p.x, p.y), new Punkt(a.x, a.y), new Punkt(b.x, b.y));
             bool Aussen(float2 p) => Enumerable.Range(0, areal.Count)
                 .Any(k => Abstand(p, areal[k], areal[(k + 1) % areal.Count]) <= 0.001);
+            // Die Regel steht in ZoningMuendung - dieselbe fragen auch die
+            // Bushaltestellen.
             bool Randanschluss(int wegIndex, int strassenIndex)
-            {
-                var w = auto[wegIndex]; var s = auto[strassenIndex];
-                var halb = (ParkingGeometry.ZoningStrassenbreite
-                    + (w.Kind == "cross" ? querbreite : fahrbreite)) / 2;
-                foreach (var p in new[] { w.A, w.B })
-                {
-                    // Auch ein Fussweg am selben Knoten hebt RequireDeadend auf.
-                    var grad = netz.Count(n => n.Kind != "zoning" && (Nah(p, n.A) || Nah(p, n.B)));
-                    if (grad != 1) continue;
-                    var d = s.B - s.A;
-                    var t = math.dot(p - s.A, d) / math.lengthsq(d);
-                    if (t < 0 || t > 1) continue;
-                    var abstand = Abstand(p, s.A, s.B);
-                    var anderes = Nah(p, w.A) ? w.B : w.A;
-                    if (Math.Abs(abstand - halb) <= 0.001
-                        && Abstand(anderes, s.A, s.B) > abstand + 0.001) return true;
-                }
-                return false;
-            }
+                => ZoningMuendung.Muendet(netz, auto[wegIndex], auto[strassenIndex],
+                    fahrbreite, querbreite, out _);
             for (var i = 0; i < auto.Length; i++)
             for (var j = i + 1; j < auto.Length; j++)
             {

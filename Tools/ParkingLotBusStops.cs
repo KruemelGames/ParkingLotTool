@@ -87,8 +87,12 @@ namespace ParkingLotTool.Tools
             }
             // Shift schaltet das Gegenueber-Einrasten ab, wie bei den
             // Zufahrten. Kreuzungen werden trotzdem uebersprungen.
+            // Die Breiten entscheiden, wo eine Fahrgasse in die Zoning-
+            // Strasse muendet (ZoningMuendung) - aus denselben Einstellungen
+            // wie das Layout, das hier gezeigt wird.
+            var breiten = _areaPreviewSettings ?? LayoutSettings.Cs2;
             _hasBusStopCandidate = _hasHover && BusStopSnap.TryFind(
-                _areaPreviewLayout, _hoverPosition.xz, 8f,
+                _areaPreviewLayout, _hoverPosition.xz, 8f, breiten.Ai, breiten.Cw,
                 out _busStopCandidate, _busStops, ShiftGehalten());
             _debugTooltipSystem?.SetEntranceHint(T(
                 _hasBusStopCandidate
