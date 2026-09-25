@@ -241,7 +241,7 @@ namespace ParkingLotTool.Tools
                 if (breite <= 0f) continue;
 
                 var ring = VorflaecheFuer(segment, breite, aufweitung,
-                    layout.EntranceQuad,
+                    layout.AsphaltSurface,
                     out var aussenteil, out var innenkante, out var meldung);
                 if (ring != null)
                 {
@@ -306,7 +306,7 @@ namespace ParkingLotTool.Tools
         }
 
         private float2[] VorflaecheFuer(NetSegment segment, float breite,
-            float aufweitung, float2[][] zufahrtsrechtecke,
+            float aufweitung, float2[][] belag,
             out float2[] aussenteil, out float2[] innenkante,
             out string meldung)
         {
@@ -462,52 +462,44 @@ namespace ParkingLotTool.Tools
              * und die Vorflaeche entfiel ersatzlos.
              */
             var laengenreserve = innenreserve;
-            var start = aussen - richtung * innenreserve;
             /*
-             * DIE BREITE WIRD GENOMMEN, NICHT GERECHNET.
-             *
-             * Bis zum 2026-08-31 entstanden die beiden Startpunkte aus
-             * `Entrance.Breite()`. Der Belag der Zufahrt entsteht aber im
-             * Zellenmodell aus `EntranceQuad`. Zwei getrennt gerechnete
-             * Breiten stimmen nie auf den Millimeter ueberein - und der
-             * Unterschied stand als ABSATZ im Bild, genau dort, wo die
-             * Vorflaeche beginnt. Der Nutzer hat ihn als "Einschneidung"
-             * gemeldet.
-             *
-             * Also werden die zwei aeusseren Ecken des vorhandenen
-             * Zufahrtsrechtecks uebernommen. Damit ist die Vorflaeche per
-             * Konstruktion genau so breit wie der Belag darueber, und beim
-             * Verschmelzen fallen ihre Innenpunkte mit vorhandenen Ringecken
-             * zusammen statt neue danebenzusetzen.
+             * DIE BREITE WIRD GENOMMEN, NICHT GERECHNET (seit 2026-08-31):
+             * zwei getrennt gerechnete Breiten stimmen nie auf den Millimeter,
+             * der Unterschied stand als Absatz im Bild. Die Ecken kamen danach
+             * aus `EntranceQuad` - im Zellenmodell aber Rasterstuecke, keine
+             * Zufahrtsrechtecke (siehe Dateikopf). Jetzt kommen sie vom
+             * Zufahrtsbelag selbst, dort wo er die Polygonkante trifft.
              */
             /*
-             * DIE GASSE RECHNET IHRE ECKEN SELBST.
+             * DIE INNENKANTE LIEGT AUF DER POLYGONKANTE, NICHT QUER ZUR ACHSE.
              *
-             * Die Uebernahme aus dem Zufahrtsrechteck ist fuer gewoehnliche
-             * Zufahrten richtig - sie verhindert den Absatz zwischen
-             * Zufahrtsbelag und Vorflaeche. Sie bindet die Flaeche aber an
-             * das Ende dieses Rechtecks, und genau darueber hinaus soll die
-             * Gasse reichen.
+             * Bis 2026-09-25 waren die beiden Innenecken die "aeusseren Ecken
+             * des Zufahrtsrechtecks" - rechtwinklig zur Achse um A gelegt.
+             * Das stimmt nur, wenn die Zufahrt senkrecht aus dem Umriss
+             * laeuft. Im Bau von 20:05 lief sie 24 Grad schraeg ueber eine
+             * senkrechte Kante (Achse = Reihenrichtung, Kante = Strasse): die
+             * Innenkante stand halb im Parkplatz, halb auf dem Gehweg, und
+             * zwischen ihr und dem Zufahrtsbelag blieb ein Dreieck Gehweg
+             * frei. Der Nutzer sah eine schiefe Flaeche, die nicht zum
+             * Zufahrtsstreifen passt.
              *
-             * Der Nutzer am 2026-09-18, nachdem ein groesserer Zuschlag
-             * nichts bewirkt hatte: *"es endet immer noch bei blau und das
-             * sehe ich an der Rundung der Flaeche an den Ecken."* Die
-             * Rundung IST das uebernommene Rechteck.
-             *
-             * Ein Absatz entsteht dabei nicht: Zufahrtsrechteck und
-             * Vorflaeche der Gasse rechnen beide mit `Breite()`, also mit
-             * derselben Zahl.
+             * Der Zufahrtsbelag endet an der Polygonkante, begrenzt von den
+             * beiden Seitenlinien der Zufahrt. Genau dort beginnt jetzt die
+             * Vorflaeche: Seitenlinie geschnitten mit der Kante, auf der A
+             * liegt. Bei senkrechter Zufahrt ist das dasselbe wie vorher;
+             * bei schraeger wird die Innenkante entsprechend laenger.
+             * Liegt dort eine Ecke des Belags, wird sie uebernommen - damit
+             * beim Verschmelzen keine Haarnaht entsteht.
              */
-            // Vorher deklariert, weil `&&` kurzschliesst: bei der Gasse laeuft
-            // `TryAeussereEcken` gar nicht, und dann saehe der Compiler die
-            // beiden `out`-Werte als nicht zugewiesen.
-            var uebernommen = TryAeussereEcken(zufahrtsrechtecke, start,
-                richtung, quer, breite, out var links, out var rechts);
-            if (!uebernommen)
+            if (!AnKante(segment.A, richtung, quer, breite * 0.5f, belag,
+                    out var links, out var rechts, out var kantenwinkel))
             {
-                links = start + quer * (breite * 0.5f);
-                rechts = start - quer * (breite * 0.5f);
+                meldung = $"{Art(segment.Art)}: Zufahrt laeuft (fast) entlang "
+                    + $"der Polygonkante ({kantenwinkel:F0} Grad) - keine Vorflaeche.";
+                return null;
             }
+            links -= richtung * innenreserve;
+            rechts -= richtung * innenreserve;
 
             // Regel 2: BEIDE Seiten treffen dieselbe Strassenlinie. Der
             // Laengenunterschied ist das Ergebnis, nicht der Zweck.
@@ -583,8 +575,8 @@ namespace ParkingLotTool.Tools
             tRechts = math.max(tRechts, VorflaecheMinSeite);
 
             meldung = $"{Art(segment.Art)}: {seitenwahl}, Breite "
-                + (uebernommen ? "aus dem Zufahrtsrechteck" : "GERECHNET (kein Rechteck gefunden)")
-                + $" {math.distance(links, rechts).ToString("F2", CultureInfo.InvariantCulture)} m, "
+                + $"an der Polygonkante {math.distance(links, rechts).ToString("F2", CultureInfo.InvariantCulture)} m "
+                + $"(Zufahrt {breite.ToString("F2", CultureInfo.InvariantCulture)} m, Kantenwinkel {kantenwinkel:F0} Grad), "
                 + $"Aufweitung {aufweitung.ToString("F2", CultureInfo.InvariantCulture)} m abgezogen, "
                 + $"{aufmass.Prefab}, "
                 + $"Fussgaengerweg {(aufmass.HatFussgaengerweg ? "ja" : "nein")}, "
@@ -633,82 +625,68 @@ namespace ParkingLotTool.Tools
         }
 
         /**
-         * Die zwei aeusseren Ecken des Zufahrtsrechtecks, das zu dieser
-         * Zufahrt gehoert.
+         * Wo die beiden Seitenlinien der Zufahrt die Polygonkante schneiden,
+         * auf der `a` liegt. `halb` ist die halbe Zufahrtsbreite quer zur
+         * Achse. `false`, wenn die Zufahrt fast entlang der Kante laeuft
+         * (unter 15 Grad) - dann laege der Schnittpunkt beliebig weit weg.
          *
-         * Gesucht wird ueber die Lage, nicht ueber einen Index: die Listen
-         * `NetLine` und `EntranceQuad` entstehen an verschiedenen Stellen,
-         * eine gemeinsame Reihenfolge ist nirgends zugesichert. Genommen wird
-         * das Rechteck, dessen Mittelpunkt der Zufahrtsachse am naechsten
-         * liegt; "aussen" sind darin die beiden Ecken mit der groessten
-         * Projektion auf die Fahrtrichtung.
-         *
-         * Die Breitenprobe ist die Schranke gegen einen Fehlgriff: weicht die
-         * gefundene Breite stark von der erwarteten ab, war es das falsche
-         * Rechteck, und der Aufrufer rechnet wie bisher.
+         * Liegt innerhalb 10 cm eine Ecke des Belags, gilt die: sie ist der
+         * wirkliche Endpunkt des Zufahrtsbelags, und die Vorflaeche soll
+         * beim Verschmelzen auf ihm aufsetzen statt eine Haarnaht daneben
+         * zu legen.
          */
-        private static bool TryAeussereEcken(float2[][] rechtecke,
-            float2 start, float2 richtung, float2 quer, float breite,
-            out float2 links, out float2 rechts)
+        private bool AnKante(float2 a, float2 richtung, float2 quer, float halb,
+            float2[][] belag, out float2 links, out float2 rechts, out float winkel)
         {
-            links = default;
-            rechts = default;
-            if (rechtecke == null || rechtecke.Length == 0) return false;
-
-            var bestes = -1;
-            var besterAbstand = float.PositiveInfinity;
-            for (var i = 0; i < rechtecke.Length; i++)
+            links = rechts = default;
+            winkel = 0f;
+            var kante = -1;
+            var besterAbstand = 0.05f;
+            for (var i = 0; i < _points.Count; i++)
             {
-                var quad = rechtecke[i];
-                if (quad == null || quad.Length < 4) continue;
-                var mitte = float2.zero;
-                for (var k = 0; k < quad.Length; k++) mitte += quad[k];
-                mitte /= quad.Length;
-                // Abstand des Rechteckmittelpunkts zur Zufahrtsachse.
-                var abstand = math.abs(math.dot(mitte - start, quer))
-                    + math.abs(math.min(0f, math.dot(mitte - start, richtung)));
-                if (abstand >= besterAbstand) continue;
+                var p = _points[i];
+                var q = _points[(i + 1) % _points.Count];
+                var d = q - p;
+                var l2 = math.lengthsq(d);
+                if (l2 < 1e-6f) continue;
+                var t = math.saturate(math.dot(a - p, d) / l2);
+                var abstand = math.distance(a, p + t * d);
+                if (abstand > besterAbstand) continue;
                 besterAbstand = abstand;
-                bestes = i;
+                kante = i;
             }
-
-            if (bestes < 0) return false;
-            var gewaehlt = rechtecke[bestes];
-
-            // Die zwei Ecken, die am weitesten in Fahrtrichtung liegen.
-            var ersteEcke = -1;
-            var zweiteEcke = -1;
-            var ersteProjektion = float.NegativeInfinity;
-            var zweiteProjektion = float.NegativeInfinity;
-            for (var k = 0; k < gewaehlt.Length; k++)
-            {
-                var projektion = math.dot(gewaehlt[k] - start, richtung);
-                if (projektion > ersteProjektion)
-                {
-                    zweiteProjektion = ersteProjektion;
-                    zweiteEcke = ersteEcke;
-                    ersteProjektion = projektion;
-                    ersteEcke = k;
-                }
-                else if (projektion > zweiteProjektion)
-                {
-                    zweiteProjektion = projektion;
-                    zweiteEcke = k;
-                }
-            }
-
-            if (ersteEcke < 0 || zweiteEcke < 0) return false;
-            var a = gewaehlt[ersteEcke];
-            var b = gewaehlt[zweiteEcke];
-            var gefunden = math.distance(a, b);
-            if (gefunden < breite * 0.5f || gefunden > breite * 2f)
+            if (kante < 0) return false;
+            var k0 = _points[kante];
+            var kr = math.normalize(_points[(kante + 1) % _points.Count] - k0);
+            winkel = math.degrees(math.acos(math.saturate(math.abs(math.dot(kr, richtung)))));
+            if (winkel < 15f) return false;
+            if (!TrifftLinie(a + quer * halb, richtung, k0, kr, out var tl)
+                || !TrifftLinie(a - quer * halb, richtung, k0, kr, out var tr))
                 return false;
-
-            // `links` liegt auf der +quer-Seite, wie beim gerechneten Weg.
-            if (math.dot(a - b, quer) >= 0f) { links = a; rechts = b; }
-            else { links = b; rechts = a; }
+            links = Einrasten(a + quer * halb + richtung * tl, belag);
+            rechts = Einrasten(a - quer * halb + richtung * tr, belag);
             return true;
         }
+
+        private static float2 Einrasten(float2 p, float2[][] belag)
+        {
+            var bester = p;
+            var besterAbstand = 0.10f;
+            if (belag == null) return p;
+            foreach (var ring in belag)
+            {
+                if (ring == null) continue;
+                foreach (var ecke in ring)
+                {
+                    var abstand = math.distance(ecke, p);
+                    if (abstand >= besterAbstand) continue;
+                    besterAbstand = abstand;
+                    bester = ecke;
+                }
+            }
+            return bester;
+        }
+
 
         private static string Weg(float wert)
             => float.IsInfinity(wert)
