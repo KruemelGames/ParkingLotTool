@@ -168,6 +168,7 @@ namespace ParkingLotTool
              * ihn einmal umlegt. Genau diese Sorte stiller Abweichung hat
              * uns schon zweimal Zeit gekostet.
              */
+            _setting.Geladen = true;
             Tools.ParkingLotSchrittmarke.Mitschreiben = _setting.Absturzspur;
             if (_setting.Absturzspur)
                 log.Info("PLT-Absturzspur ist AN (aus den Einstellungen). "

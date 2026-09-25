@@ -273,10 +273,23 @@ namespace ParkingLotTool
                         ? " - ab jetzt wird bei jedem Bild mitgeschrieben, "
                           + "das kostet Leistung."
                         : "."));
+                /*
+                 * SOFORT SPEICHERN. CS2 schreibt die Optionen erst beim
+                 * ordentlichen Beenden - und wer diesen Schalter braucht,
+                 * beendet nie ordentlich. Am 2026-09-25 war die Spur deshalb
+                 * nach jedem Absturz wieder aus, zweimal genau im Lauf, der
+                 * sie gebraucht haette. Waehrend `LoadSettings` (noch nicht
+                 * `Geladen`) wird nicht gespeichert.
+                 */
+                if (Geladen) ApplyAndSave();
             }
         }
 
         private bool _absturzspur;
+
+        /** Von `Mod.OnLoad` nach `LoadSettings` gesetzt. */
+        [SettingsUIHidden]
+        internal bool Geladen { get; set; }
 
 
         /**
