@@ -39,6 +39,13 @@ namespace ParkingLotTool.Tools
         private Entity _pendingBusLot = Entity.Null;
         private Entity _pendingBusCarrier = Entity.Null;
         private int _busStopAuditFrame = -1;
+        /**
+         * Restliche AUFRUFE des Aufpassers, nicht eine Bildnummer: ruht die
+         * Nacharbeit waehrend eines Abrisses (`PflegeNacharbeit`), ruht diese
+         * Frist mit. Mit `frameCount + 90` lief sie weiter und haette nach
+         * einem langen Abriss die Halte verworfen, bevor sie gebaut werden
+         * konnten (Codex, 2026-09-25). -1 = keine Frist.
+         */
         private int _busStopBuildDeadline = -1;
 
         private void InitializeBusStops()
@@ -320,7 +327,7 @@ namespace ParkingLotTool.Tools
             _pendingBusStops = _busStops.ToArray();
             _pendingBusLot = lot;
             _pendingBusCarrier = carrier;
-            _busStopBuildDeadline = UnityEngine.Time.frameCount + 90;
+            _busStopBuildDeadline = 90;
         }
 
         private void BuildBusStopsOnRoads(Entity carrier)
@@ -468,8 +475,8 @@ namespace ParkingLotTool.Tools
         private void AuditBuiltBusStops()
         {
             if (_pendingBusStops.Length > 0
-                && _busStopBuildDeadline >= 0
-                && UnityEngine.Time.frameCount >= _busStopBuildDeadline)
+                && _busStopBuildDeadline > 0
+                && --_busStopBuildDeadline == 0)
             {
                 Mod.log.Warn("PLT-Bushalt: " + _pendingBusStops.Length
                     + " Platzierung(en) ohne fertige Zoning-Kanten nach 90 Frames; "

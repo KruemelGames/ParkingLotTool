@@ -47,6 +47,20 @@ namespace ParkingLotTool.Tools
         // Der Besitzkinder-Befund einmal je Sitzung, nicht je Durchgang.
         private bool _besitzGemeldet;
         private readonly List<CleanupWork> _pending = new List<CleanupWork>();
+
+        /**
+         * Reisst der Aufraeumer gerade einen alten Parkplatz ab? Solange das
+         * so ist, wartet die Nacharbeit nach dem Bau
+         * (`ParkingLotToolSystem.PflegeNacharbeit`).
+         */
+        internal bool AbrissLaeuft => _pending.Count > 0 || _nachlauf > 0;
+
+        /**
+         * Der alte Traeger faellt erst an der Barrier NACH dem Durchgang, der
+         * den Auftrag abschliesst; CS2s Folgeschritte dazu noch ein Bild
+         * spaeter. So lange gilt der Abriss als laufend (Codex, 2026-09-25).
+         */
+        private int _nachlauf;
         private readonly HashSet<Entity> _knownLots = new HashSet<Entity>();
 
         /*
@@ -110,6 +124,7 @@ namespace ParkingLotTool.Tools
         {
             using var uhr = ParkingLotMessung.Miss(
                 ParkingLotMessung.Sys.Aufraeumen);
+            if (_nachlauf > 0) _nachlauf--;
             CollectDeletedLots();
             ProcessOnePass();
         }
@@ -253,6 +268,7 @@ namespace ParkingLotTool.Tools
 
             _pending.RemoveAt(0);
             _knownLots.Remove(work.Lot);
+            _nachlauf = 3;
             Mod.log.Info("PLT-Aufraeumer: relationsbasierter Abriss vollstaendig; "
                 + (carrierRemoved ? "technischer Traeger entfernt."
                                   : "technischer Traeger war bereits fort."));

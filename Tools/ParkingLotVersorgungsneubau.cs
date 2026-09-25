@@ -75,6 +75,12 @@ namespace ParkingLotTool.Tools
                 if (kante.m_End != Entity.Null
                     && !_avAbrissKnoten.Contains(kante.m_End))
                     _avAbrissKnoten.Add(kante.m_End);
+                // Auch die Seitenanschluesse - der Abriss merkt sie sich
+                // ebenso (`MerkeLeitungsknoten`) und raeumt sie mit ab.
+                if (EntityManager.HasBuffer<ConnectedNode>(e))
+                    foreach (var n in EntityManager.GetBuffer<ConnectedNode>(e, true))
+                        if (n.m_Node != Entity.Null && !_avAbrissKnoten.Contains(n.m_Node))
+                            _avAbrissKnoten.Add(n.m_Node);
             }
             Mod.log.Info($"PLT-Autoversorgung NEUBAU: {_avAbrissKanten.Count} alte eigene Leitungskanten "
                 + $"mit {_avAbrissKnoten.Count} Endknoten bleiben beim Abriss von Lot {lot}; "
@@ -175,9 +181,11 @@ namespace ParkingLotTool.Tools
          * markiert" liegt ein Fenster, in dem der Knoten voellig unauffaellig
          * aussieht und trotzdem sterben wird.
          *
-         * Ein Knoten mit Kanten dagegen ist der Knoten der Stadtstrasse. Der
-         * bleibt, und an den darf angeschlossen werden - genau dafuer ist er
-         * da.
+         * BERICHTIGT 2026-09-25: "ein Knoten mit Kanten ist der Knoten der
+         * Stadtstrasse" war falsch. Unser Anschlussknoten sitzt SEITLICH auf
+         * dem Stadtrohr und hat dessen Kante im Puffer, ohne ihr Ende zu
+         * sein - der Abriss loescht ihn trotzdem. Seitdem gilt hier dieselbe
+         * Regel wie dort: `ParkingLotLeitungsabrissSystem.TraegtNichtsMehr`.
          */
         private bool AvAbrissFertig()
         {
@@ -218,9 +226,12 @@ namespace ParkingLotTool.Tools
         /**
          * Zaehlt die gemerkten Knoten, die noch sterben werden.
          *
-         * `Deleted` ist der offensichtliche Fall. Der zweite - Knoten ohne
-         * jede Kante - faengt das Fenster ab, in dem CS2 die Kante schon
-         * entfernt, den Knoten aber noch nicht markiert hat.
+         * `Deleted` ist der offensichtliche Fall. Sonst zaehlt genau, was
+         * der Abriss als naechstes loescht - seine eigene Regel
+         * `TraegtNichtsMehr` (sie deckt "gar keine Kante" mit ab). Was er nie
+         * anfasst (`Temp`), zaehlt nicht: darauf zu warten hiesse, bis zur
+         * Frist zu haengen und den Neubau ausfallen zu lassen (Codex,
+         * 2026-09-25).
          */
         private int AvSterbendeKnoten()
         {
@@ -229,18 +240,11 @@ namespace ParkingLotTool.Tools
             {
                 if (!EntityManager.Exists(k)) continue;
                 if (EntityManager.HasComponent<Deleted>(k)) { zahl++; continue; }
-                if (!EntityManager.HasBuffer<ConnectedEdge>(k)) { zahl++; continue; }
-                // Per foreach statt ueber die Laenge: der Puffer heisst im
-                // Spiel `DynamicBuffer` und im Testprojekt `List`, und die
-                // beiden nennen ihre Groesse verschieden. Durchlaufen koennen
-                // beide.
-                var hatKante = false;
-                foreach (var _ in EntityManager.GetBuffer<ConnectedEdge>(k, true))
-                {
-                    hatKante = true;
-                    break;
-                }
-                if (!hatKante) zahl++;
+                if (EntityManager.HasComponent<Temp>(k)) continue;
+                // Dieselbe Regel wie der Abriss selbst - sonst gibt diese
+                // Sperre Knoten frei, die der Abriss gleich darauf loescht.
+                if (ParkingLotLeitungsabrissSystem.TraegtNichtsMehr(EntityManager, k))
+                    zahl++;
             }
             if (zahl > AvKnotenGewartet) AvKnotenGewartet = zahl;
             return zahl;

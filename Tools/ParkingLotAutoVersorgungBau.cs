@@ -387,6 +387,7 @@ namespace ParkingLotTool.Tools
                     + "inzwischen selbst mit uns verbunden); 0 Kurse angewandt");
                 return true;
             }
+            AvMeldeTempOhneOriginal("direkt vor dem Apply", null);
             // Die Identitaeten bleiben beim Vanilla-Create erhalten: ApplyNetSystem
             // entfernt Temp und setzt Created, Applied, Updated auf derselben Entity.
             applyMode = ApplyMode.Apply;
@@ -476,6 +477,50 @@ namespace ParkingLotTool.Tools
          * Zugehoerigkeit - eine halbe Auskunft ist immer noch mehr als eine
          * Zahl.
          */
+        /**
+         * WELCHE TEMP-ENTITY HAT IHR ORIGINAL VERLOREN?
+         *
+         * `GetAllowApply()` ist bei null Fehler-Entities falsch, wenn
+         * `OriginalDeletedSystem` IRGENDEINE Temp-Entity ohne `Deleted` findet,
+         * deren `Temp.m_Original` nicht mehr existiert - es nennt aber keine.
+         * Und `ApplyNetSystem` verarbeitet beim naechsten Apply alle Temp-Netze
+         * global. Ein solcher Rest ist der naechste Verdacht fuer die nativen
+         * Abstuerze beim Bearbeiten (Codex, 2026-09-25). Hier wird er benannt:
+         * bei der Ablehnung und unmittelbar vor jedem Apply.
+         */
+        private void AvMeldeTempOhneOriginal(string anlass, HashSet<Entity> unsere)
+        {
+            using var temp = GetEntityQuery(ComponentType.ReadOnly<Temp>(),
+                ComponentType.Exclude<Deleted>()).ToEntityArray(Allocator.Temp);
+            var zahl = 0;
+            var beispiele = new List<string>();
+            foreach (var e in temp)
+            {
+                var original = EntityManager.GetComponentData<Temp>(e).m_Original;
+                if (original == Entity.Null || EntityManager.Exists(original)) continue;
+                zahl++;
+                if (beispiele.Count >= 6) continue;
+                var art = EntityManager.HasComponent<Edge>(e) ? "Kante"
+                    : EntityManager.HasComponent<Game.Net.Node>(e) ? "Knoten"
+                    : EntityManager.HasComponent<Game.Areas.Area>(e) ? "Flaeche"
+                    : EntityManager.HasComponent<Game.Objects.Object>(e) ? "Objekt" : "sonst";
+                var prefab = "?";
+                if (EntityManager.HasComponent<PrefabRef>(e))
+                    try { prefab = _prefabSystem.GetPrefabName(
+                        EntityManager.GetComponentData<PrefabRef>(e).m_Prefab); }
+                    catch { }
+                beispiele.Add($"{e} {art} '{prefab}' Original {original}"
+                    + (unsere != null && unsere.Contains(e) ? " (unser Kurs)" : ""));
+            }
+            if (zahl == 0 && anlass == "direkt vor dem Apply") return;
+            var text = $"PLT-Autoversorgung TEMP OHNE ORIGINAL {anlass}: {zahl} von "
+                + $"{temp.Length} Temp-Entities"
+                + (beispiele.Count > 0 ? ": " + string.Join("; ", beispiele) : "");
+            if (zahl > 0) Mod.log.Warn(text); else Mod.log.Info(text);
+            if (zahl > 0)
+                ParkingLotSchrittmarke.Setze($"Versorgung: {zahl} Temp ohne Original {anlass}");
+        }
+
         private void AvMeldeBaufehler()
         {
             var typen = new Dictionary<Entity, ErrorType>();
@@ -501,6 +546,7 @@ namespace ParkingLotTool.Tools
                 Mod.log.Warn("PLT-Autoversorgung BAUFEHLER: kein Fehler-Entity, aber "
                     + "GetAllowApply() ist falsch - CS2 verweigert den Apply aus einem "
                     + "anderen Grund (geloeschtes Original).");
+                AvMeldeTempOhneOriginal("bei der Ablehnung", unsereKurse);
                 return;
             }
             foreach (var e in betroffene)

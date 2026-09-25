@@ -475,15 +475,31 @@ namespace ParkingLotTool.Tools
          * UNSERER eigenen Leitung gemerkt haben.
          */
         private bool TraegtNichtsMehr(Entity knoten)
+            => TraegtNichtsMehr(EntityManager, knoten);
+
+        /**
+         * DIE EINZIGE STELLE, DIE ENTSCHEIDET, OB EIN LEITUNGSKNOTEN STIRBT.
+         *
+         * Auch die Neubau-Sperre der Autoversorgung (`AvSterbendeKnoten`)
+         * fragt hier. Bis 2026-09-25 hatte sie eine eigene Regel - "hat der
+         * Knoten noch irgendeine Kante, bleibt er" - und die widersprach
+         * dieser: ein Anschlussknoten, der seitlich auf dem Stadtrohr sitzt,
+         * hat dessen Kante in `ConnectedEdge`, ist aber kein Ende davon. Die
+         * Sperre gab frei, dieses System loeschte ihn im SELBEN Bild, in dem
+         * der neue Kurs genau an dieser Stelle angelegt wurde. CS2 verwarf
+         * den Kurs ("geloeschtes Original"), und das naechste Uebernehmen
+         * stuerzte nativ ab - zweimal nachgestellt mit der Absturzspur.
+         */
+        internal static bool TraegtNichtsMehr(EntityManager em, Entity knoten)
         {
-            if (!EntityManager.HasBuffer<ConnectedEdge>(knoten)) return false;
-            foreach (var v in EntityManager.GetBuffer<ConnectedEdge>(knoten, true))
+            if (!em.HasBuffer<ConnectedEdge>(knoten)) return false;
+            foreach (var v in em.GetBuffer<ConnectedEdge>(knoten, true))
             {
                 var e = v.m_Edge;
-                if (!EntityManager.Exists(e)) continue;
-                if (EntityManager.HasComponent<Deleted>(e)) continue;
-                if (!EntityManager.HasComponent<Edge>(e)) continue;
-                var kante = EntityManager.GetComponentData<Edge>(e);
+                if (!em.Exists(e)) continue;
+                if (em.HasComponent<Deleted>(e)) continue;
+                if (!em.HasComponent<Edge>(e)) continue;
+                var kante = em.GetComponentData<Edge>(e);
                 if (kante.m_Start == knoten || kante.m_End == knoten)
                     return false;
             }

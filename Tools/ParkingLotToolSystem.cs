@@ -127,8 +127,7 @@ namespace ParkingLotTool.Tools
         internal void PflegeNachbauOhneWerkzeug()
         {
             if (_werkzeugLaeuft) return;
-            PflegeZoningBlockmessung();
-            AuditBuiltBusStops();
+            PflegeNacharbeit();
             /*
              * "REPORT THIS LOT" KOMMT GERADE BEI GESCHLOSSENEM WERKZEUG.
              *
@@ -141,6 +140,45 @@ namespace ParkingLotTool.Tools
              */
             ProcessDebugDumpRequest(toolIsActive: false);
         }
+
+        /**
+         * DIE NACHARBEIT NACH DEM BAU WARTET, BIS DER ALTE PARKPLATZ FORT IST.
+         *
+         * Zoning-Seiten (markieren die neuen Kanten `Updated`), Strassennamen
+         * und Bushaltestellen. Bis 2e99246 (2026-09-25, 14:29) standen sie
+         * hinter `ProcessEditLifecycle` und ruhten deshalb, solange ein Umbau
+         * lief - ein Nebeneffekt, den niemand als Regel aufgeschrieben hatte.
+         * Seit sie in jedem Bild oben ticken, feuerten sie MITTEN in den
+         * Abriss der alten Teile. Beim Bearbeiten eines Parkplatzes mit zwei
+         * Zoningstrassen stuerzte CS2 danach dreimal nativ ab; jedes Mal
+         * standen die Zoningseiten waehrend des Abrisses im Log, einmal als
+         * letzte Zeile vor dem Absturz.
+         *
+         * Jetzt ist es eine Regel: solange der Aufraeumer abreisst, ruhen
+         * Nacharbeit UND Aufpasser - gemeinsam, damit der Aufpasser nicht
+         * ablaeuft, waehrend die Nacharbeit wartet.
+         */
+        private void PflegeNacharbeit()
+        {
+            _aufraeumer ??= World.GetExistingSystemManaged<ParkingLotCleanupSystem>();
+            if (_aufraeumer != null && _aufraeumer.AbrissLaeuft)
+            {
+                if (!_nacharbeitWartetGemeldet)
+                {
+                    _nacharbeitWartetGemeldet = true;
+                    Mod.log.Info("PLT-Nacharbeit: wartet, bis der Aufraeumer den "
+                        + "alten Parkplatz abgerissen hat.");
+                    ParkingLotSchrittmarke.Setze("Nacharbeit: wartet auf den Abriss");
+                }
+                return;
+            }
+            _nacharbeitWartetGemeldet = false;
+            PflegeZoningBlockmessung();
+            AuditBuiltBusStops();
+        }
+
+        private ParkingLotCleanupSystem _aufraeumer;
+        private bool _nacharbeitWartetGemeldet;
 
         protected override void OnStartRunning()
         {
@@ -296,8 +334,7 @@ namespace ParkingLotTool.Tools
              * Neben der Autoversorgung zu laufen ist erprobt: bei
              * geschlossenem Werkzeug taten beide das schon immer.
              */
-            PflegeZoningBlockmessung();
-            AuditBuiltBusStops();
+            PflegeNacharbeit();
             if (m_ToolSystem.activeTool != this)
             {
                 PflegeAutoVersorgung();
