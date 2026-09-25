@@ -376,6 +376,9 @@ namespace ParkingLotTool.Tools
                     fremdeKnoten.Add(kante.m_End);
                     MerkeAltknotenhoehe(kante.m_Start);
                     MerkeAltknotenhoehe(kante.m_End);
+                    // Und ihre Kurve: unter ihr ist das Gelaende von ihr
+                    // selbst geformt (ParkingLotEditHeight.Altkanten.cs).
+                    MerkeAltkante(teil);
                 }
                 else MerkeAltknotenhoehe(teil);
 

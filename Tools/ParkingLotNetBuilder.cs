@@ -692,7 +692,7 @@ namespace ParkingLotTool.Tools
             var heights = new Dictionary<(long, long), float>();
             // Beim Edit: Hoehen der alten Knoten behalten, siehe
             // `BelegeHoehenAusAltbestand` in ParkingLotEditHeight.cs.
-            BelegeHoehenAusAltbestand(heights);
+            BelegeHoehenAusAltbestand(heights, ref heightData);
             var random = new Unity.Mathematics.Random(
                 (uint)Environment.TickCount | 1u);
             var created = 0;
@@ -1153,6 +1153,14 @@ namespace ParkingLotTool.Tools
             // Ecke garantiert dieselbe Hoehe bekommen.
             var key = ((long)math.round(point.x * 40f), (long)math.round(point.y * 40f));
             if (heights.TryGetValue(key, out var cached)) return cached;
+
+            // Unter einem alten eigenen Weg gilt SEINE Hoehe (geprueft), nicht
+            // das Gelaende, das er selbst geformt hat.
+            if (HoeheUnterAltbestand(point, ref heightData, out var alt))
+            {
+                heights[key] = alt;
+                return alt;
+            }
 
             var height = TerrainUtils.SampleHeight(
                 ref heightData, new float3(point.x, 0f, point.y));

@@ -57,11 +57,27 @@ namespace ParkingLotTool.Tools
          * Gassenanfang) gehen vor.
          */
         private void BelegeHoehenAusAltbestand(
-            System.Collections.Generic.Dictionary<(long, long), float> hoehen)
+            System.Collections.Generic.Dictionary<(long, long), float> hoehen,
+            ref TerrainHeightData gelaende)
         {
             if (_altknotenhoehen.Count == 0) return;
             var belegt = 0;
+            var verworfen = 0;
             foreach (var paar in _altknotenhoehen)
+            {
+                // Eine verdorbene Hoehe wird nicht weitervererbt - sonst
+                // bleibt ein einmal versunkener Knoten fuer immer versunken.
+                var lage = new Unity.Mathematics.float2(paar.Key.Item1 / 40f,
+                    paar.Key.Item2 / 40f);
+                if (!AlthoeheGlaubwuerdig(lage, paar.Value, ref gelaende, out var umgebung))
+                {
+                    verworfen++;
+                    Mod.log.Warn("PLT-Edithoehe: alte Knotenhoehe "
+                        + paar.Value.ToString("F2") + " m bei " + lage.x.ToString("F1")
+                        + "/" + lage.y.ToString("F1") + " verworfen - unberuehrtes "
+                        + "Gelaende daneben " + umgebung.ToString("F2") + " m.");
+                    continue;
+                }
                 for (var dx = -1; dx <= 1; dx++)
                     for (var dz = -1; dz <= 1; dz++)
                     {
@@ -70,9 +86,11 @@ namespace ParkingLotTool.Tools
                         hoehen[k] = paar.Value;
                         if (dx == 0 && dz == 0) belegt++;
                     }
+            }
             Mod.log.Info("PLT-Edithoehe: " + belegt + " Knotenhoehe(n) des "
                 + "alten Parkplatzes uebernommen - an unveraenderten Stellen "
-                + "wird nicht neu gemessen.");
+                + "wird nicht neu gemessen; " + verworfen + " verworfen, "
+                + _altkanten.Count + " alte Kante(n) als Hoehenquelle.");
         }
 
         private void ErfasseEdithoehenVorAbriss()
@@ -112,6 +130,8 @@ namespace ParkingLotTool.Tools
         private void VerwerfeEdithoehen()
         {
             _altknotenhoehen.Clear();
+            _altkanten.Clear();
+            _verworfeneAlthoehen = 0;
             _editHeightSnapshot = default;
             if (_editHeightCells.IsCreated) _editHeightCells.Dispose();
             if (_editHeightCellsDownscaled.IsCreated)
