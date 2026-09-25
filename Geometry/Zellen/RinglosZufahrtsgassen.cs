@@ -62,7 +62,8 @@ namespace ParkingLotTool.Geometry.Zellen
                  * langer Rest. Nutzer: *"an sich soll schon gerne der Fussweg
                  * an den Eingang angeschlossen werden."*
                  *
-                 * Jetzt: Reste kuerzer als eine Fusswegbreite fallen weg, und
+                 * Jetzt: Reste kuerzer als eine Fusswegbreite fallen aus dem
+                 * WEGENETZ (ihr Belag bleibt, siehe `Weg.OhneNetz`), und
                  * jedes abgeschnittene Ende bekommt eine Netzverbindung (ohne
                  * Belag) zum INNEREN Ende der Gasse. Dort teilt sie den
                  * Endpunkt mit Gasse und Fahrgasse - CS2 verbindet nur
@@ -73,13 +74,15 @@ namespace ParkingLotTool.Geometry.Zellen
                 {
                     var stueckA = fuss.A + (fuss.B - fuss.A) * t.A;
                     var stueckB = fuss.A + (fuss.B - fuss.A) * t.B;
-                    if ((t.B - t.A) * weglaengeGesamt < fuss.Breite) continue;
+                    var rest = (t.B - t.A) * weglaengeGesamt < fuss.Breite;
                     neben.Add(new Weg { A = stueckA, B = stueckB, Breite = fuss.Breite,
+                        OhneNetz = rest,
                         Fuss = fuss.Fuss, Art = fuss.Art, Band = fuss.Band, Zufahrt = fuss.Zufahrt,
                         SchraegARechts = t.A == 0 ? fuss.SchraegARechts : 0,
                         SchraegALinks = t.A == 0 ? fuss.SchraegALinks : 0,
                         SchraegBRechts = t.B == 1 ? fuss.SchraegBRechts : 0,
                         SchraegBLinks = t.B == 1 ? fuss.SchraegBLinks : 0 });
+                    if (rest) continue;
                     if (t.A > 0) SchliesseAn(stueckA);
                     if (t.B < 1) SchliesseAn(stueckB);
                 }

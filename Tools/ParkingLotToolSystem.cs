@@ -129,6 +129,17 @@ namespace ParkingLotTool.Tools
             if (_werkzeugLaeuft) return;
             PflegeZoningBlockmessung();
             AuditBuiltBusStops();
+            /*
+             * "REPORT THIS LOT" KOMMT GERADE BEI GESCHLOSSENEM WERKZEUG.
+             *
+             * Man klickt einen fertigen Parkplatz im Spiel an - das Werkzeug
+             * laeuft dann nicht, und nur sein Update arbeitete die
+             * Abzugsanforderung ab. Am 2026-09-25 um 16:43 blieb sie deshalb
+             * liegen: "angefordert (Info-Panel)", nie geschrieben, kein
+             * Paket. Die Zeitgrenze im Abzug half nicht - sie wird nur
+             * geprueft, wenn jemand nachsieht.
+             */
+            ProcessDebugDumpRequest(toolIsActive: false);
         }
 
         protected override void OnStartRunning()

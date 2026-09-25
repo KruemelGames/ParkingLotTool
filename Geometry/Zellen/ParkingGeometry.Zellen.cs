@@ -663,6 +663,15 @@ namespace ParkingLotTool.Geometry
                 var summe = 0.0;
                 foreach (var ring in unbaubareRinge)
                     summe += Math.Abs(RingFlaeche(ring));
+                // Die weggelassenen Ringe selbst ins Live-Log: ohne ihre
+                // Form laesst sich nicht sagen, WARUM CS2 sie verworfen haette.
+                if (LiveAn)
+                    foreach (var ring in unbaubareRinge)
+                        Live("  verworfener ring | " + ring.Length + " ecken | "
+                            + Math.Abs(RingFlaeche(ring)).ToString("F2") + " m2 | "
+                            + string.Join(" ", ring.Select(q => q.x.ToString("F3",
+                                System.Globalization.CultureInfo.InvariantCulture) + ","
+                                + q.y.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))));
                 // Die Meldung bleibt; ob sie dem Nutzer rot begegnet,
                 // entscheidet die Anzeige (siehe ParkingLotToolSystem).
                 warnungen.Add(
@@ -1372,6 +1381,8 @@ namespace ParkingLotTool.Geometry
                 foreach (var q in bau.Ringlos.Querwege) Fuege("cross", q.Anfang, q.Ende);
                 foreach (var w in bau.Ringlos.Fusswege.Concat(bau.Ringlos.Zufahrten))
                 {
+                    // Ein Fusswegrest traegt nur Belag, kein Wegenetz.
+                    if (w.OhneNetz) continue;
                     var vorher = ausgabe.Count;
                     Fuege("entrance", w.A, w.B, false, w.Breite);
                     for (var k = vorher; k < ausgabe.Count; k++)

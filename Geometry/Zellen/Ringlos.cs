@@ -65,6 +65,14 @@ namespace ParkingLotTool.Geometry.Zellen
             internal bool ZoningB;
             internal bool EndwegA;
             internal bool EndwegB;
+            /**
+             * Nur Belag, kein Wegenetz: ein Fusswegrest, zu kurz, um darauf
+             * zu gehen. Sein Belag bleibt - ihn wegzunehmen liess am
+             * 2026-09-25 (Bericht CCBP) ein Grasstueck entstehen, das den
+             * grossen Grasring nur haarfein beruehrte; CS2 haette den ganzen
+             * Ring (582 m2) verworfen.
+             */
+            internal bool OhneNetz;
 
             internal double SchraegARechts;
             internal double SchraegALinks;

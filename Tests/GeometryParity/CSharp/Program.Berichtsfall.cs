@@ -71,7 +71,18 @@ internal static partial class Program
         // Freie Enden werden gezeigt, aber (noch) nicht gewertet: die
         // Endwege ohne Randstrasse enden seit jeher 2,5-4 m neben dem Netz
         // (Befund 2026-09-25) - das gehoert in die Neukonzeption.
-        return befund.Vollstaendig && reste == 0 ? 0 : 1;
+        // Weggelassene Flaeche: mehr als 1 m2 ist ein sichtbares Loch.
+        // Bericht CCBP (2026-09-25): 582,25 m2 Gras fehlten, weil ein
+        // Fusswegrest samt Belag entfernt wurde.
+        var weggelassen = layout.Warnings.Sum(w =>
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(w,
+                @"surface ring\(s\) with ([0-9]+[,.][0-9]+) m2 left out");
+            return m.Success ? double.Parse(m.Groups[1].Value.Replace(',', '.'),
+                System.Globalization.CultureInfo.InvariantCulture) : 0.0;
+        });
+        Console.WriteLine($"Weggelassene Flaeche: {weggelassen:F2} m2");
+        return befund.Vollstaendig && reste == 0 && weggelassen <= 1.0 ? 0 : 1;
     }
 
 }
