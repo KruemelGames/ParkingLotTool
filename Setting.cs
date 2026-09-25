@@ -905,8 +905,8 @@ namespace ParkingLotTool
                     _deutsch ? "Alle mit diesem Mod gebauten Parkplätze in dieser Stadt abreißen? Das lässt sich im Werkzeug nicht rückgängig machen — sichere vorher deinen Spielstand."
                         : "Demolish every parking lot this mod built in this city? The tool's undo cannot take this back — back up your save first." },
                 { "Options.OPTION[" + pfadAbsturzspur + "]",
-                    _deutsch ? "Absturzspur mitschreiben"
-                        : "Record a crash trace" },
+                    _deutsch ? "Absturzspur mitschreiben (kann mit der Zeit ruckeln, nur bei Bedarf)"
+                        : "Record a crash trace (may become laggy after time, only use when needed)" },
                 { "Options.OPTION_DESCRIPTION[" + pfadAbsturzspur + "]",
                     _deutsch ? "Schreibt bei JEDEM Bild mit, welches System des Mods gerade läuft, und zwingt es sofort auf die Platte — damit nach einem Absturz dort steht, wo es passiert ist. Standard: aus, weil es spürbar Leistung kostet. Nur einschalten, wenn du einen Absturz wiederholen kannst."
                         : "Records which of the mod's systems is running on EVERY frame and forces it straight to disk, so after a crash the trace says where it happened. Default: off, because it costs noticeable performance. Only turn it on if you can reproduce a crash." },
