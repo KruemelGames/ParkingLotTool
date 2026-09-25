@@ -97,10 +97,12 @@ internal static partial class Program
             return math.abs(x - 30f) < sperre - 1e-2f || math.abs(x - 50f) < sperre - 1e-2f;
         }
         Check(BusStopSnap.TryFind(mitKreuzung, new float2(29, 5), 8, 7, 3, out var k1)
-            && !AufKreuzung(k1) && math.abs(k1.Position.x - 22f) < 0.05f,
+            && !AufKreuzung(k1) && math.abs(k1.Position.x
+                - (30f - BusStopSnap.KreuzungHalbeBreite - BusStopSnap.KreuzungFreiraum)) < 0.05f,
             "Kreuzung: Punkt springt vor die Querstrasse");
         Check(BusStopSnap.TryFind(mitKreuzung, new float2(33, -5), 8, 7, 3, out var k2)
-            && !AufKreuzung(k2) && math.abs(k2.Position.x - 38f) < 0.05f,
+            && !AufKreuzung(k2) && math.abs(k2.Position.x
+                - (30f + BusStopSnap.KreuzungHalbeBreite + BusStopSnap.KreuzungFreiraum)) < 0.05f,
             "Kreuzung: Punkt springt hinter die Querstrasse");
         Check(BusStopSnap.TryFind(mitKreuzung, new float2(51, 5), 8, 7, 3, out var k3)
             && !AufKreuzung(k3),
@@ -168,11 +170,11 @@ internal static partial class Program
             },
         };
         Check(BusStopSnap.TryFind(muendung, new float2(30, 5), 8, 7, 3, out var m1)
-            && math.abs(m1.Position.x - 30f) >= 3.5f + BusStopSnap.KreuzungFreiraum - 0.05f,
-            "Fahrgassen-Muendung (7,5 m vor der Achse) wird uebersprungen");
+            && math.abs(math.abs(m1.Position.x - 30f) - (3.5f + BusStopSnap.KreuzungFreiraum)) < 0.05f,
+            "Fahrgassen-Muendung wird uebersprungen, Halt 0,5 m vor ihrer Kante");
         Check(BusStopSnap.TryFind(muendung, new float2(70, -5), 8, 7, 3, out var m2)
-            && math.abs(m2.Position.x - 70f) >= 1.5f + BusStopSnap.KreuzungFreiraum - 0.05f,
-            "Querweg-Muendung (5,5 m vor der Achse) wird uebersprungen");
+            && math.abs(math.abs(m2.Position.x - 70f) - (1.5f + BusStopSnap.KreuzungFreiraum)) < 0.05f,
+            "Querweg-Muendung wird uebersprungen, Halt 0,5 m vor ihrer Kante");
         Check(BusStopSnap.TryFind(muendung, new float2(88, 5), 8, 7, 3, out var m3)
             && math.abs(m3.Position.x - 88f) < 1e-3f,
             "paralleler Weg im Muendungsabstand sperrt nichts");

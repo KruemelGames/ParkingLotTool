@@ -61,8 +61,13 @@ namespace ParkingLotTool.Geometry
         /** Halbe Breite einer kreuzenden Strasse, grosszuegig fuer alle Arten. */
         public const float KreuzungHalbeBreite = 4f;
 
-        /** Abstand der Haltestelle zur Kreuzungskante, damit der Bus dort haelt. */
-        public const float KreuzungFreiraum = 4f;
+        /**
+         * Abstand der Haltestelle zur Kreuzungs- bzw. Muendungskante.
+         * Nutzer, 2026-09-25: *"darf gerne noch etwas naeher an die Kreuzung
+         * nur nicht auf die Kreuzung ... 0.5m vor der Kreuzung ist Halt"*.
+         * Vorher 4 m.
+         */
+        public const float KreuzungFreiraum = 0.5f;
 
         /** So nah (in m entlang der Strasse) rastet ein Halt gegenueber ein. */
         public const float GegenueberFang = 8f;
