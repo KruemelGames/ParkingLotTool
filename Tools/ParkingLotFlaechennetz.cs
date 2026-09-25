@@ -330,6 +330,133 @@ namespace ParkingLotTool.Tools
             MeldePflanzen(vorher, "gezeichnet", pflanzen.Count);
         }
 
+        // ------------------------------------------------------------------
+        // BUCHTLINIEN - dieselbe Technik wie die Pflanzen.
+        // ------------------------------------------------------------------
+
+        /**
+         * Die weissen Buchtlinien der Vorschau als Instanzen EINES Rechtecks.
+         *
+         * Bis 2026-09-25 zeichnete das Overlay jede Linie einzeln: an einem
+         * Parkplatz mit 2098 Buchten 5152 `DrawLine` in JEDEM Bild ("calls
+         * 5156 (plants 0, bands 5152, other 4)" im Log). Jetzt ist es ein
+         * Aufruf; der Puffer wird nur neu gefuellt, wenn die Vorschau neu
+         * gerechnet wurde.
+         *
+         * Jede Linie ist ein eigenes, schmales Rechteck mit eigener Breite -
+         * nicht ein skalierter Rahmen um die Bucht, denn der wuerde die
+         * Strichstaerke mit der Buchtform verzerren. Das Rechteck liegt in
+         * Richtung der Linie, auch geneigt: am Hang folgt es der Hoehe seiner
+         * beiden Enden statt waagrecht in den Boden zu schneiden.
+         */
+        private readonly Netzgruppe _striche = new Netzgruppe();
+        private Mesh _rechteck;
+        private int _stricheAnzahl;
+        private const int MaxStriche = 60000;
+
+        internal void FuegeStriche(
+            IReadOnlyList<(float3 A, float3 B, float Breite, Color Farbe)> striche)
+        {
+            var vorher = _stricheAnzahl;
+            _stricheAnzahl = 0;
+            if (!HoleVorlage() || striche == null || striche.Count == 0)
+            {
+                MeldeStriche(vorher, striche?.Count ?? 0);
+                return;
+            }
+            BaueRechteck();
+            _striche.Netz = _rechteck;
+            _striche.Material ??= new Material(_vorlage)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                name = "PLT Buchtlinien",
+            };
+
+            var anzahl = math.min(striche.Count, MaxStriche);
+            var daten = new Game.Rendering.OverlayRenderSystem
+                .CustomMeshdData[anzahl];
+            var min = new float3(float.MaxValue);
+            var max = new float3(float.MinValue);
+            var gueltig = 0;
+            for (var i = 0; i < anzahl; i++)
+            {
+                var (a, b, breite, farbe) = striche[i];
+                var richtung = b - a;
+                var laenge = math.length(richtung);
+                if (laenge < 1e-3f) continue;
+                var mitte = (a + b) * 0.5f + new float3(0f, Schwebe, 0f);
+                // Laenge entlang Z, Breite entlang X - passend zum Rechteck.
+                var m = Matrix4x4.TRS(mitte,
+                    Quaternion.LookRotation(richtung / laenge, Vector3.up),
+                    new Vector3(breite, 1f, laenge));
+                daten[gueltig++] = new Game.Rendering.OverlayRenderSystem.CustomMeshdData
+                {
+                    m_Matrix = m,
+                    m_InverseMatrix = m.inverse,
+                    m_FillColor = farbe.linear,
+                    m_Size = new float2(1f, 1f),
+                    m_CustomMeshType = (int)Game.Rendering.OverlayRenderSystem
+                        .CustomMeshType.Plane,
+                };
+                min = math.min(min, math.min(a, b));
+                max = math.max(max, math.max(a, b));
+            }
+            if (gueltig == 0)
+            {
+                MeldeStriche(vorher, striche.Count);
+                return;
+            }
+            if (_striche.Puffer != null && _striche.Puffer.count != gueltig)
+            {
+                _striche.Puffer.Release();
+                _striche.Puffer = null;
+            }
+            _striche.Puffer ??= new ComputeBuffer(gueltig, System.Runtime
+                .InteropServices.Marshal.SizeOf(typeof(Game.Rendering
+                    .OverlayRenderSystem.CustomMeshdData)));
+            if (gueltig < anzahl)
+                System.Array.Resize(ref daten, gueltig);
+            _striche.Puffer.SetData(daten);
+            _striche.Material.SetBuffer(
+                Shader.PropertyToID("colossal_OverlayCustomMeshBuffer"),
+                _striche.Puffer);
+            // Ueber Belag, Gras und Pflanzen - die Linien sind die oberste
+            // Auskunft der Vorschau. Innerhalb der gueltigen Skala -100..-95.
+            _striche.Material.SetFloat("_TransparentSortPriority", -95f);
+            var mitteH = (min + max) * 0.5f;
+            _striche.Huelle = new Bounds(mitteH,
+                math.max(max - min, new float3(1f)) + new float3(8f));
+            _stricheAnzahl = gueltig;
+            MeldeStriche(vorher, striche.Count);
+        }
+
+        private void BaueRechteck()
+        {
+            if (_rechteck != null) return;
+            _rechteck = new Mesh { hideFlags = HideFlags.HideAndDontSave };
+            // Einheitsrechteck in der Bodenebene, Mitte im Ursprung.
+            _rechteck.SetVertices(new[]
+            {
+                new Vector3(-0.5f, 0f, -0.5f), new Vector3(0.5f, 0f, -0.5f),
+                new Vector3(0.5f, 0f, 0.5f), new Vector3(-0.5f, 0f, 0.5f),
+            });
+            // Dieselbe Wicklung wie die Pflanzenscheibe (gegen den Uhrzeigersinn
+            // von oben) - von der ist belegt, dass sie sichtbar ist.
+            _rechteck.SetTriangles(new[] { 0, 1, 2, 0, 2, 3 }, 0);
+            _rechteck.RecalculateBounds();
+        }
+
+        private int _letzteStricheMeldung = -1;
+
+        /** Eine Zeile je Aenderung der Anzahl - wie bei den Pflanzen. */
+        private void MeldeStriche(int vorher, int geplant)
+        {
+            if (_stricheAnzahl == _letzteStricheMeldung) return;
+            _letzteStricheMeldung = _stricheAnzahl;
+            Mod.log.Info("PLT-Buchtlinien: " + _stricheAnzahl + " von " + geplant
+                + " als Instanzen (ein Zeichenaufruf), vorher " + vorher + ".");
+        }
+
         private string _pflanzenStand;
 
         /**
@@ -429,6 +556,7 @@ namespace ParkingLotTool.Tools
             _flaechenAktiv = 0;
             _teilAktiv = 0;
             _pflanzenAnzahl = 0;
+            _stricheAnzahl = 0;
             _letzteDreiecke = -1;
         }
 
@@ -712,6 +840,9 @@ namespace ParkingLotTool.Tools
             // EIN Aufruf fuer alle Pflanzen.
             if (_pflanzenAnzahl > 0)
                 ZeichneIndirekt(_pflanzen, _pflanzenAnzahl);
+            // EIN Aufruf fuer alle Buchtlinien.
+            if (_stricheAnzahl > 0)
+                ZeichneIndirekt(_striche, _stricheAnzahl);
             ParkingLotMessung.Ende(
                 ParkingLotMessung.Punkt.Flaechennetz, uhr);
         }
@@ -754,6 +885,8 @@ namespace ParkingLotTool.Tools
             // Leck in Unitys Konsole.
             _pflanzen.Puffer?.Release();
             _pflanzen.Argumente?.Release();
+            _striche.Puffer?.Release();
+            _striche.Argumente?.Release();
             _flaechen.Clear();
             _teilnetze.Clear();
             base.OnDestroy();

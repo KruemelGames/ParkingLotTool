@@ -39,6 +39,19 @@ namespace ParkingLotTool.Tools
          */
         internal IReadOnlyList<(float3 Position, bool Tree)> Pflanzen
             => _vegetation;
+
+        /**
+         * Die Buchtlinien fuer das Flaechennetz - dieselbe Farbe, mit der das
+         * Overlay sie als Umriss zeichnete (Deckkraft 0,85).
+         */
+        internal List<(float3 A, float3 B, float Breite, Color Farbe)> Buchtlinien()
+        {
+            var liste = new List<(float3, float3, float, Color)>(_bays.Count);
+            foreach (var band in _bays)
+                liste.Add((band.Segment.a, band.Segment.b, band.Width,
+                    Alpha(band.Color, 0.85f)));
+            return liste;
+        }
         internal void SetVegetation(VegetationPlan plan, VegetationSpecies[] species, TerrainSystem terrain)
         {
             _vegetation.Clear();

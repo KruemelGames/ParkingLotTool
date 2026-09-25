@@ -101,11 +101,13 @@ namespace ParkingLotTool.Tools
              * E-Plaetze ueberhaupt erkennt.
              */
             var netzFuellt = Flaechennetz != null;
+            // Die Buchtlinien zeichnet ebenfalls das Netz, als Instanzen -
+            // 5152 Einzelaufrufe je Bild waren es an einem grossen Parkplatz.
             ParkingLotMessung.Zaehle(ParkingLotMessung.Zaehler.Baender,
-                _green.Count + _bays.Count + (netzFuellt ? 0 : _roads.Count));
+                _green.Count + (netzFuellt ? 0 : _roads.Count + _bays.Count));
             DrawBands(buffer, _green, false, netzFuellt);
             if (!netzFuellt) DrawBands(buffer, _roads, true);
-            DrawBands(buffer, _bays, true, netzFuellt);
+            if (!netzFuellt) DrawBands(buffer, _bays, true);
             ParkingLotMessung.Zaehle(ParkingLotMessung.Zaehler.Sonstige,
                 _chargers.Count);
             for (var i = 0; i < _chargers.Count; i++)

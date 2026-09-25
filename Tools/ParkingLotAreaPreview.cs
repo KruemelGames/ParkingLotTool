@@ -217,6 +217,9 @@ namespace ParkingLotTool.Tools
         private void FuettereFlaechennetz(ParkingLayout layout)
         {
             if (!FuellungAlsNetz) return;
+            // Die Buchtlinien gehen mit jedem Vorschaulauf mit - sie aendern
+            // sich nur, wenn das Layout neu gerechnet wurde.
+            Flaechennetz?.FuegeStriche(_overlay.Buchtlinien());
             // Das Overlay faerbt damit die Teilflaechen in ihrer echten Form
             // ein. Es holt sich das System nicht selbst - es ist kein System
             // und hat keine Welt.
