@@ -155,6 +155,9 @@ internal static partial class Program
             args = args.Where(a => a != "--live").ToArray();
         }
         // Mit `--dump <ordner>` nur den vollstaendigen Abzug schreiben.
+        // Nach `--live`, damit ein Berichtsfall mit Live-Log laufen kann.
+        if (args.Length == 2 && args[0] == "--bericht")
+            return RechneBerichtNach(args[1]);
         if (args.Length == 2 && args[0] == "--dump") { Dump.Write(args[1]); return 0; }
         // Nur die Flaechen unter den Einstellungen, mit denen der Mod
         // wirklich laeuft - Gegenstueck zu `parity-echt.cjs` im Prototyp.

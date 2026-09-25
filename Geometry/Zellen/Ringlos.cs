@@ -470,13 +470,7 @@ namespace ParkingLotTool.Geometry.Zellen
                 rRegel = Math.Min(rRegel, p.Rechts - rest);
                 if (rRegel < lRegel)
                 {
-                    ohneVerbindung++;
-                    if (ParkingGeometry.LiveAn)
-                        ParkingGeometry.Live("  querstrassen korridor"
-                            + " | band " + l.ToString("F2") + ".."
-                            + r.ToString("F2")
-                            + " | liegt ganz im Endabschnitt des Parkplatzes"
-                            + " - KEINE QUERSTRASSE");
+                    VerbindeNotwendig("liegt ganz im Endabschnitt des Parkplatzes");
                     continue;
                 }
 
@@ -540,6 +534,95 @@ namespace ParkingLotTool.Geometry.Zellen
                  * keine Gitterlinie zu holen. An der Treppe faellt das Band
                  * auf einen einzigen Punkt zusammen (lRegel = rRegel = 34,5).
                  */
+                /*
+                 * ERREICHBARKEIT SCHLAEGT FLUCHT.
+                 *
+                 * Bis 2026-09-25 hiess es hier "keine Gitterlinie, keine
+                 * Querstrasse" - der Korridor blieb unverbunden, gezaehlt als
+                 * "Preis der Flucht". Im Bericht ALCU (Randstrassen aus) lag
+                 * zwischen zwei Fahrgassen ein 19-m-Korridor ohne Gitterlinie:
+                 * die lange Gasse hing an nichts, ihre Buchten waren fuer
+                 * Autos unerreichbar. Ansage des Nutzers: *"Das muss
+                 * grundlegend gefixt werden."*
+                 *
+                 * Jetzt bekommt jeder Korridor seine NOTWENDIGE Verbindung.
+                 * Die Gitterlinie bleibt die erste Wahl; fehlt sie, gilt:
+                 *   1. am SACKGASSEN-ENDE - wo eine Gasse aufhoert und die
+                 *      andere weiterlaeuft, buendig an ihr Ende. Dort
+                 *      schliesst die Strasse die Sackgasse (Vorschlag des
+                 *      Nutzers fuer genau diesen Fall);
+                 *   2. sonst in der Korridormitte - groesster Abstand zu
+                 *      Rand und Endwegen (nicht die alte Klemme an den
+                 *      Bandrand, die am 2026-09-08 neben einem Fussweg lag);
+                 *   3. sonst an der naechsten frei baubaren Stelle.
+                 * Zusaetzliche Querstrassen bleiben reine Gitterlinien.
+                 */
+                void VerbindeNotwendig(string grund)
+                {
+                    var kandidaten = new List<(double X, string Wie)>();
+                    /*
+                     * ZUERST IM REGELBAND - DORT HAELT DIE N-REGEL.
+                     *
+                     * Erste Fassung (2026-09-25): Sackgassenende vor allem.
+                     * An der Treppe 180 x 120 lag es damit 1,5 m vor einer
+                     * Gassenstirn, obwohl ein 9-m-Regelband frei war - die
+                     * N-Regel (08.09.) war gebrochen, ohne dass es noetig war.
+                     * Beim Bericht ALCU lag das Sackgassenende IM Regelband
+                     * und bleibt deshalb die Wahl.
+                     */
+                    var ueberstandLinks = Math.Abs(a.A.X - b.A.X);
+                    var ueberstandRechts = Math.Abs(a.B.X - b.B.X);
+                    var enden = new List<(double X, double Ueberstand)>();
+                    if (ueberstandLinks > e.Querstrassenbreite) enden.Add((l, ueberstandLinks));
+                    if (ueberstandRechts > e.Querstrassenbreite) enden.Add((r, ueberstandRechts));
+                    var sackgassen = enden.OrderByDescending(t => t.Ueberstand)
+                        .Select(t => t.X).ToList();
+                    void Staffel(double von, double bis, string wo)
+                    {
+                        if (bis < von - 1e-9) return;
+                        foreach (var x0 in sackgassen)
+                        {
+                            // Das Sackgassenende, soweit es im Band liegt -
+                            // sonst der Bandrand, der ihm am naechsten ist.
+                            var xk = Math.Max(von, Math.Min(bis, x0));
+                            kandidaten.Add((xk, "Sackgassenende" + wo));
+                        }
+                        var mitte = (von + bis) / 2;
+                        kandidaten.Add((mitte, "Mitte" + wo));
+                        for (var d = 1.0; d <= (bis - von) / 2 + 1e-9; d += 1.0)
+                        {
+                            kandidaten.Add((mitte - d, "freie Stelle" + wo));
+                            kandidaten.Add((mitte + d, "freie Stelle" + wo));
+                        }
+                    }
+                    // Regelband nur, wenn es nicht leer ist (Endabschnitt).
+                    if (rRegel >= lRegel) Staffel(lRegel, rRegel, " im Regelband");
+                    // Zu kurz fuer die N-Regel: die Verbindung geht vor.
+                    Staffel(l, r, " (Korridor zu kurz fuer die N-Regel)");
+                    foreach (var (kx, wie) in kandidaten)
+                    {
+                        if (kx < l - 1e-6 || kx > r + 1e-6) continue;
+                        var w = new Weg { A = new Punkt(kx, a.A.Y), B = new Punkt(kx, b.A.Y),
+                            Breite = e.Querstrassenbreite };
+                        if (!Zulaessig(w)) continue;
+                        var q = Strasse(kx, true);
+                        p.Querwege.Add(new Querstrassenstueck { Querstrasse = q,
+                            Anfang = new Punkt(kx, a.A.Y), Ende = new Punkt(kx, b.A.Y) });
+                        if (ParkingGeometry.LiveAn)
+                            ParkingGeometry.Live("  querstrassen korridor"
+                                + " | band " + l.ToString("F2") + ".." + r.ToString("F2")
+                                + " | " + grund + " - NOTWENDIGE Verbindung am "
+                                + wie + " bei " + kx.ToString("F2"));
+                        return;
+                    }
+                    ohneVerbindung++;
+                    if (ParkingGeometry.LiveAn)
+                        ParkingGeometry.Live("  querstrassen korridor"
+                            + " | band " + l.ToString("F2") + ".." + r.ToString("F2")
+                            + " | " + grund + " - im ganzen Korridor keine baubare"
+                            + " Stelle, UNVERBUNDEN");
+                }
+
                 bool Zulaessig(Weg w) => Frei(w, innen, zoning)
                     && !Zoningkanten.ImDirektstreifen(w, zoning, e.Buchttiefe);
 
@@ -554,14 +637,8 @@ namespace ParkingLotTool.Geometry.Zellen
                  */
                 if (double.IsNaN(x))
                 {
-                    ohneVerbindung++;
-                    if (ParkingGeometry.LiveAn)
-                        ParkingGeometry.Live("  querstrassen korridor"
-                            + " | band " + l.ToString("F2") + ".."
-                            + r.ToString("F2")
-                            + " | regelband " + lRegel.ToString("F2") + ".."
-                            + rRegel.ToString("F2")
-                            + " | keine Gitterlinie - KEINE QUERSTRASSE");
+                    VerbindeNotwendig("regelband " + lRegel.ToString("F2")
+                        + ".." + rRegel.ToString("F2") + " ohne Gitterlinie");
                     continue;
                 }
                 var gitterwunsch = x;
@@ -599,13 +676,8 @@ namespace ParkingLotTool.Geometry.Zellen
                             Breite = e.Querstrassenbreite })).ToArray();
                     if (frei.Length == 0)
                     {
-                        ohneVerbindung++;
-                        if (ParkingGeometry.LiveAn)
-                            ParkingGeometry.Live("  querstrassen korridor"
-                                + " | band " + l.ToString("F2") + ".."
-                                + r.ToString("F2")
-                                + " | alle " + gitter.Count + " Gitterlinie(n)"
-                                + " blockiert - KEINE QUERSTRASSE");
+                        VerbindeNotwendig("alle " + gitter.Count
+                            + " Gitterlinie(n) blockiert");
                         continue;
                     }
                     x = frei[0];
@@ -658,10 +730,9 @@ namespace ParkingLotTool.Geometry.Zellen
             }
             if (ohneVerbindung > 0 && ParkingGeometry.LiveAn)
                 ParkingGeometry.Live("  querstrassen bilanz | " + ohneVerbindung
-                    + " Korridor(e) ohne Verbindung, weil keine Gitterlinie"
-                    + " passte. Das ist der Preis der Flucht - wenn es zu"
-                    + " viele werden, stimmt der Querstrassenabstand nicht"
-                    + " zur Form.");
+                    + " Korridor(e) UNVERBUNDEN - nirgends im Korridor liess"
+                    + " sich eine Querstrasse bauen. Das ist ein Mangel, kein"
+                    + " Preis der Flucht mehr (seit 2026-09-25).");
             var zoningN = Math.Max(1, (int)Math.Round(e.Querstrassenabstand / e.Buchtbreite
                 - (e.Querstrassenkappen ? 2 : 0), MidpointRounding.AwayFromZero));
             var zoningSchritt = (zoningN + (e.Querstrassenkappen ? 2 : 0)) * e.Buchtbreite + e.Querstrassenbreite;

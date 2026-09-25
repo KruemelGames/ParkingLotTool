@@ -14,6 +14,7 @@
     <Compile Include="Program.Formate.cs" />
     <Compile Include="Program.Migrationen.cs" />
     <Compile Include="Program.Kreuzungsmessung.cs" />
+    <Compile Include="Program.Berichtsfall.cs" />
     <Compile Include="Program.Gassenreichweite.cs" />
     <Compile Include="Program.Randgruen.cs" />
     <Compile Include="Program.Zoningkanten.cs" />
