@@ -54,6 +54,30 @@ namespace ParkingLotTool.Tools
                 _erhalteneZoningteile.Add(edge.m_Start);
                 _erhalteneZoningteile.Add(edge.m_End);
             }
+            /*
+             * ERHALTEN NUR, WENN AUCH DIE SEITEN STIMMEN.
+             *
+             * Die Seiten kommen seit 2026-09-25 ausschliesslich ueber die
+             * Baudefinition (`EntscheideZoningseiten`). Eine erhaltene Kante
+             * wird nicht neu definiert - hat der Nutzer eine Seite
+             * umgeschaltet, kaeme die Aenderung nie an. Dann wird neu gebaut.
+             */
+            MerkeZoningSeitenGrundlage();
+            foreach (var teil in _erhalteneZoningteile)
+            {
+                if (!EntityManager.HasComponent<Edge>(teil)
+                    || !EntityManager.HasComponent<Curve>(teil)) continue;
+                var kurve = EntityManager.GetComponentData<Curve>(teil).m_Bezier;
+                if (!EntscheideZoningseiten(kurve.a.xz, kurve.d.xz, false,
+                        out var linksAus, out var rechtsAus, out _)) continue;
+                if (LiestSeite(teil, true) == linksAus
+                    && LiestSeite(teil, false) == rechtsAus) continue;
+                Mod.log.Info("PLT-Vorbauzettel Zoningerhalt: Strassenplan gleich, "
+                    + "aber eine Seite wurde umgeschaltet - die Zoningstrassen "
+                    + "werden neu gebaut.");
+                _erhalteneZoningteile.Clear();
+                break;
+            }
             _zoningErhalten = _erhalteneZoningteile.Count > 0;
             Mod.log.Info("PLT-Vorbauzettel Zoningerhalt: unveraenderter Strassenplan; "
                 + _erhalteneZoningteile.Count + " bestehende Kanten/Knoten erhalten. "

@@ -783,8 +783,27 @@ namespace ParkingLotTool.Tools
                     // Alle bereits geteilten T-Arme gehoeren in denselben
                     // GenerateNodes-Durchlauf: 3 gleiche Kursenden -> 1 Knoten.
                     // Eine Temp-Kante ist kein Original fuer einen Folgekurs.
+                    /*
+                     * DIE ZONINGSEITEN KOMMEN MIT DER DEFINITION, wie beim
+                     * Vanilla-Werkzeug. Frueher schrieb die Nacharbeit sie
+                     * nach dem Bau direkt in die fertige Kante - das hat CS2
+                     * beim Bearbeiten sechsmal nativ abstuerzen lassen.
+                     */
+                    MerkeZoningSeitenGrundlage();
+                    Game.Net.Upgraded? seiten = null;
+                    if (EntscheideZoningseiten(piece.A, piece.B, true,
+                            out var linksAus, out var rechtsAus, out _)
+                        && (linksAus || rechtsAus))
+                        seiten = new Game.Net.Upgraded
+                        {
+                            m_Flags = new Game.Prefabs.CompositionFlags(
+                                default,
+                                linksAus ? Game.Prefabs.CompositionFlags.Side.ZonesDisabled : default,
+                                rechtsAus ? Game.Prefabs.CompositionFlags.Side.ZonesDisabled : default),
+                        };
                     if (CreateCourseDefinition(piece.Kind, i, piece.A, piece.B,
-                            zoningRoad, ref heightData, heights, ref random))
+                            zoningRoad, ref heightData, heights, ref random,
+                            upgraded: seiten))
                     {
                         created++;
                         zoningGebaut++;
@@ -1036,7 +1055,8 @@ namespace ParkingLotTool.Tools
             Dictionary<(long, long), float> heights,
             ref Unity.Mathematics.Random random,
             Anschluss anschlussAnfang = default,
-            Anschluss anschlussEnde = default)
+            Anschluss anschlussEnde = default,
+            Game.Net.Upgraded? upgraded = null)
         {
             if (!math.all(math.isfinite(from)) || !math.all(math.isfinite(to)))
                 throw new InvalidOperationException(
@@ -1098,6 +1118,8 @@ namespace ParkingLotTool.Tools
                         Game.Prefabs.CompositionFlags.Side.RemoveCrosswalk,
                         Game.Prefabs.CompositionFlags.Side.RemoveCrosswalk),
                 });
+            else if (upgraded.HasValue)
+                EntityManager.AddComponentData(definition, upgraded.Value);
             EntityManager.AddComponentData(definition, new NetCourse
             {
                 m_Curve = curve,

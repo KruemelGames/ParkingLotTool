@@ -24,9 +24,9 @@ namespace ParkingLotTool.Tools
      *
      * DER MECHANISMUS ist `CompositionFlags.Side.ZonesDisabled` in
      * `Game.Net.Upgraded`, wie das Vanilla-Zonenwerkzeug es benutzt.
-     * `Upgraded` wird gespeichert; `Composition` leitet CS2 nach dem Laden
-     * daraus neu ab. Danach muss die Kante `Updated` bekommen, sonst baut
-     * `BlockSystem` die Bloecke nicht neu.
+     * Seit 2026-09-25 haengt es an der BAUDEFINITION des Zoningkurses
+     * (`EntscheideZoningseiten`), nicht mehr nachtraeglich an der fertigen
+     * Kante - siehe dort, warum.
      *
      * WELCHE SEITE INNEN IST, wird nicht aus einer angenommenen
      * Ringkonvention abgeleitet, sondern gerechnet: das Kreuzprodukt aus
@@ -36,10 +36,6 @@ namespace ParkingLotTool.Tools
      */
     public sealed partial class ParkingLotToolSystem
     {
-        /**
-         * Setzt die Seitenschalter an allen Zoning-Kanten des Traegers.
-         * Rueckgabe: wieviele Kanten geaendert wurden.
-         */
         /**
          * Traegt die gemerkten Handschaltungen auf eine gebaute Kante auf.
          *
@@ -65,51 +61,227 @@ namespace ParkingLotTool.Tools
             }
         }
 
-        private int SetzeZoningSeiten(Unity.Entities.Entity traeger)
+        /**
+         * WELCHE SEITEN EINER ZONINGKANTE BLEIBEN OHNE ZONING?
+         *
+         * Fuer die gerichtete Strecke `a -> d`. Seit 2026-09-25 wird das VOR
+         * dem Bau entschieden und als `Upgraded` an die Baudefinition des
+         * Zoningkurses gehaengt (`ParkingLotNetBuilder`), so wie CS2s eigenes
+         * Werkzeug es tut - `GenerateEdgesSystem` legt die Kante damit an, und
+         * `CourseSplitSystem` gibt es an jedes Teilstueck weiter.
+         *
+         * WARUM NICHT MEHR NACHTRAEGLICH: hier stand `SetzeSeitenflaggen`, das
+         * `Upgraded` direkt in die fertige Kante schrieb und sie `Updated`
+         * markierte - am CS2-Upgradeweg (Temp + Apply, Knoten und Verweise
+         * mitgefuehrt) vorbei. Beim Bearbeiten eines Parkplatzes mit zwei
+         * Zoningstrassenzuegen stuerzte CS2 danach sechsmal nativ ab, jedes
+         * Mal im selben Bild; mit und ohne TownRoadLane, mit und ohne neue
+         * Leitungen.
+         *
+         * `false`: keine Entscheidung moeglich, die Kante zont beidseitig.
+         */
+        private bool EntscheideZoningseiten(float2 a, float2 d, bool melden,
+            out bool linksAus, out bool rechtsAus, out bool rand)
         {
-            if (traeger == Unity.Entities.Entity.Null
-                || !EntityManager.Exists(traeger)) return 0;
-            if (!EntityManager.HasBuffer<Game.Net.SubNet>(traeger)) return 0;
-
-            /*
-             * RANDZONING ALLEIN GENUEGT.
-             *
-             * Hier stieg die Seitenwahl aus, sobald es keine gezogene
-             * Zoningflaeche gab - und beim reinen Randzoning gibt es keine.
-             * Es wurde dann GAR KEINE Seite geschaltet, also zonte CS2 nach
-             * beiden, und die Kacheln liefen in den Parkplatz hinein. Genau
-             * das hat der Nutzer am 2026-09-04 gemeldet: *"Das Zoning der
-             * Randstrasse geht gerade in den Parkplatz hinein statt
-             * heraus."*
-             *
-             * Der Abbruch war richtig gemeint - eine Seitenwahl ohne Flaeche
-             * WAR ein Fehler, solange es nur innere Flaechen gab. Seit es
-             * Randzoning gibt, ist er es nicht mehr.
-             */
+            linksAus = false;
+            rechtsAus = false;
+            rand = false;
             var flaechen = _zoningSeitenFlaechen
                 ?? System.Array.Empty<ParkingGeometry.Zoningflaeche>();
             var randzoning = _zoningSeitenRandzoning
                 ?? System.Array.Empty<ParkingGeometry.RandzoningLinie>();
-            if (flaechen.Length == 0 && randzoning.Length == 0)
-            {
-                Mod.log.Warn("PLT-Zoningseiten: weder Zoning-Flaeche noch "
-                    + "Randzoning gemerkt - die Seitenwahl greift nicht. "
-                    + "Das ist ein Fehler, kein Normalfall.");
-                return 0;
-            }
-
-            var zoningPrefabs = SammleZoningPrefabs();
-            if (zoningPrefabs.Count == 0)
-            {
-                Mod.log.Warn("PLT-Zoningseiten: kein Zoning-Strassenprefab "
-                    + "gefunden - die Seitenwahl greift nicht.");
-                return 0;
-            }
-
+            if (flaechen.Length == 0 && randzoning.Length == 0) return false;
             var seite = _zoningSeitenWahl;
-            var geaendert = 0;
-            var randkanten = 0;
+            var mitte = (a + d) * 0.5f;
+            var richtung = d - a;
+            if (math.lengthsq(richtung) < 1e-6f) return false;
+
+            /*
+             * RANDZONING ZONT NUR NACH AUSSEN.
+             *
+             * Ansage des Nutzers: *"Nur nach aussen, denn der User kann
+             * innen ZF nutzen."* Eine Strasse im Randzoning-Abschnitt
+             * bekommt deshalb IMMER die Innenseite aus - unabhaengig von
+             * der Panelwahl, die nur fuer die inneren Flaechen gilt.
+             *
+             * "Innen" heisst hier: zur Mitte des Parkplatzes. Das ist
+             * dieselbe Rechnung wie unten, nur mit einem anderen
+             * Bezugspunkt - die Polygonmitte statt der Flaechenmitte.
+             */
+            /*
+             * ERKANNT WIRD AM PLAN, NICHT AN DER LAGE.
+             *
+             * `RandzoningEnthaelt` verlangt, dass der Kurs PARALLEL zur
+             * gewaehlten Kante liegt (auf ein Grad genau) und hoechstens
+             * 15 m von ihr entfernt. Solange die RZ-Strasse eigens
+             * erzeugt wurde, traf das immer zu - sie lief 10,4 m parallel
+             * zur Kante.
+             *
+             * Seit die naechstliegende Fahrgasse die RZ-Strasse ist,
+             * trifft es nicht mehr zu: an einer schraegen Kante steht sie
+             * rund 34 Grad zu ihr. Der Kurs fiel durch, galt nicht als
+             * Randzoning, und statt "Innenseite immer aus" entschied der
+             * Zweig fuer die inneren Zoningflaechen. Ohne eine solche
+             * Flaeche kam die Seite willkuerlich heraus. Der Nutzer:
+             * *"Auffaellig, dass die Tiles nach innen gehen statt
+             * aussen."*
+             *
+             * `_zoningSeitenRandachsen` sind die Achsen aus dem Bauplan
+             * (`ParkingLayout.RandzoningRoad`), gemerkt wie die Lotmitte.
+             * Der Lagetest bleibt als Rueckfall stehen: er ist fuer den
+             * Fall mit Randstrassen weiterhin richtig, und ein Kurs ohne
+             * Zuordnung waere schlimmer als eine Naeherung.
+             */
+            if (randzoning.Length > 0
+                && (IstGeplanteRandzoningachse(a, d)
+                    || ParkingGeometry.RandzoningEnthaelt(randzoning, a, d)))
+            {
+                /*
+                 * WO INNEN IST, SAGT DER PLAN.
+                 *
+                 * Hier entschied die Polygonmitte: *"liegt der Schwerpunkt
+                 * links oder rechts der Fahrtrichtung?"* Fuer EINE Strasse
+                 * entlang einer Kante ist das richtig. Fuer eine TREPPE
+                 * nicht - eine weit innen liegende Stufe hat den
+                 * Schwerpunkt auf ihrer anderen Seite und zonte dann in
+                 * den Parkplatz hinein. Der Nutzer: *"Nicht alle Tiles
+                 * gehen nach aussen, da findet keine ordentliche Pruefung
+                 * statt."*
+                 *
+                 * Die gemerkte Mitte bleibt als Rueckfall - fuer den Weg
+                 * mit Randstrassen, wo es keine Abschnitte gibt, und fuer
+                 * Parkplaetze aus aelteren Spielstaenden ohne gemerkte
+                 * Richtung.
+                 */
+                /*
+                 * EINE REGEL: WAS IM UMRISS LIEGT, IST INNEN.
+                 *
+                 * Hier standen drei Regeln uebereinander - die geplante
+                 * Achse, der Umriss, der Schwerpunkt -, und bei jeder Form
+                 * griff eine andere. Genau darin hat sich der Fehler
+                 * versteckt: eine Form nahm den Plan und lag richtig, die
+                 * naechste fiel auf den Schwerpunkt zurueck und lag falsch,
+                 * und von aussen sah beides gleich aus.
+                 *
+                 * Der Nutzer am 2026-09-16: *"Ich glaube du gehst das
+                 * ganze zu schwierig an. Es ist doch offensichtlich was
+                 * aussen und was innen ist."* Er hat recht. Der Nutzer
+                 * zeichnet ein Polygon; das IST der Parkplatz. Was darin
+                 * liegt, ist innen. Mehr braucht die Frage nicht, und jede
+                 * zusaetzliche Regel ist nur eine weitere Stelle, an der
+                 * es schiefgehen kann.
+                 */
+                var innenrichtung = InnenAusUmriss(mitte, richtung);
+                if (math.lengthsq(innenrichtung) < 1e-6f)
+                {
+                    /*
+                     * Beide Seiten im Umriss oder beide draussen - dann
+                     * ist es keine Randkante, sondern eine, die quer
+                     * hindurchlaeuft. Lieber melden als raten.
+                     */
+                    if (melden) Mod.log.Warn("PLT-Zoningseiten: Randzoning-Kante bei "
+                        + Ort(mitte) + " - der Umriss gibt keine Innenseite "
+                        + "her (beide Seiten gleich). Sie bleibt, wie CS2 "
+                        + "sie angelegt hat.");
+                    return false;
+                }
+                var innenLinks =
+                    richtung.x * innenrichtung.y
+                    - richtung.y * innenrichtung.x > 0f;
+                if (melden)
+                    MeldeKante("Randzoning", mitte, richtung, innenrichtung,
+                        innenLinks, innenLinks, !innenLinks);
+                linksAus = innenLinks;
+                rechtsAus = !innenLinks;
+                rand = true;
+                return true;
+            }
+
+            // Die naechstgelegene Zoning-Flaeche liefert den Innenpunkt.
+            var innenpunkt = NaechsteZoningmitte(flaechen, mitte);
+            var zurMitte = innenpunkt - mitte;
+
+            /*
+             * Kreuzprodukt in der XZ-Ebene. Positiv heisst: der
+             * Innenpunkt liegt LINKS der gerichteten Kante.
+             */
+            var kreuz = richtung.x * zurMitte.y - richtung.y * zurMitte.x;
+            if (math.abs(kreuz) < 1e-4f)
+            {
+                /*
+                 * KEIN STILLER AUSSTIEG MEHR.
+                 *
+                 * Liegt der Bezugspunkt fast auf der Geraden der Kante,
+                 * sagt das Kreuzprodukt nichts - und bisher blieb die
+                 * Kante dann unangetastet. Sie behaelt damit CS2s
+                 * Vorgabe: Zoning auf BEIDEN Seiten. Von aussen sieht
+                 * das aus, als zone sie nach innen.
+                 */
+                if (melden) Mod.log.Warn("PLT-Zoningseiten: Kante bei "
+                    + Ort(mitte) + " UNENTSCHIEDEN - der Bezugspunkt "
+                    + Ort(innenpunkt) + " liegt auf ihrer Geraden "
+                    + "(Kreuzprodukt " + kreuz.ToString("F6")
+                    + "). Sie bleibt, wie CS2 sie angelegt hat, also auf "
+                    + "beiden Seiten zonend.");
+                return false;
+            }
+            var innenIstLinks = kreuz > 0f;
+
+            /*
+             * JE KANTE, NICHT JE PARKPLATZ.
+             *
+             * Hier entschied bis zum 2026-09-21 die Panelwahl
+             * innen/aussen/beides fuer ALLE Kanten gleich. Seit der
+             * Nutzer die Tiefe je Seite einstellt, taugt das nicht mehr:
+             * haette EINE Seite ein Band, zonten alle vier nach aussen -
+             * und dort, wo kein Band ist, haelt der Parkplatz keinen
+             * Platz frei. Die Kacheln laegen auf Buchten. Genau das
+             * wollte er nicht: *"damit nicht die Tiles auf Strassen von
+             * uns liegen."*
+             *
+             * Also fragt jede Kante ihre eigene Seite: hat sie ein Band,
+             * zont sie nach beiden Seiten, sonst nur nach innen.
+             */
+            var aussenkacheln =
+                ParkingGeometry.ZoningAussenkachelnBei(flaechen, mitte);
+            linksAus = aussenkacheln > 0 ? false : !innenIstLinks;
+            rechtsAus = aussenkacheln > 0 ? false : innenIstLinks;
+
+            /*
+             * ZULETZT DIE HANDSCHALTUNG - sie ist die Abweichung von der
+             * Panelwahl und muss deshalb obenauf liegen.
+             *
+             * Dieselbe Reihenfolge wie in der Vorschau
+             * (`ZoningStrassenMitSeiten`). Randzoning-Kanten sind oben
+             * schon mit `continue` heraus: dort gibt es keine Wahl, nur
+             * aussen.
+             */
+            WendeHandschaltungAn(a, d, ref linksAus, ref rechtsAus);
+
+            if (melden)
+                MeldeKante("Panelwahl " + seite, mitte, richtung,
+                    zurMitte, innenIstLinks, linksAus, rechtsAus);
+            return true;
+        }
+
+        /**
+         * NACH DEM BAU NUR NOCH PRUEFEN, NIE SCHREIBEN.
+         *
+         * Liest an jeder gebauten Zoningkante, ob `Upgraded` so gekommen ist,
+         * wie `EntscheideZoningseiten` es vor dem Bau festgelegt hat. Eine
+         * Abweichung wird gemeldet, nicht repariert - eine Reparatur waere
+         * wieder das Direktschreiben, das den Absturz ausgeloest hat.
+         */
+        private int PruefeZoningSeiten(Unity.Entities.Entity traeger)
+        {
+            if (traeger == Unity.Entities.Entity.Null
+                || !EntityManager.Exists(traeger)) return 0;
+            if (!EntityManager.HasBuffer<Game.Net.SubNet>(traeger)) return 0;
+            var zoningPrefabs = SammleZoningPrefabs();
+            if (zoningPrefabs.Count == 0) return 0;
             var gesehen = 0;
+            var stimmt = 0;
+            var abweichungen = new List<string>();
             var subNets = EntityManager.GetBuffer<Game.Net.SubNet>(traeger, true);
             for (var i = 0; i < subNets.Length; i++)
             {
@@ -121,209 +293,36 @@ namespace ParkingLotTool.Tools
                     continue;
                 if (!EntityManager.HasComponent<Curve>(kante)) continue;
                 gesehen++;
-
                 var kurve = EntityManager.GetComponentData<Curve>(kante).m_Bezier;
                 var a = new float2(kurve.a.x, kurve.a.z);
                 var d = new float2(kurve.d.x, kurve.d.z);
-                var mitte = (a + d) * 0.5f;
-                var richtung = d - a;
-                if (math.lengthsq(richtung) < 1e-6f) continue;
-
-                /*
-                 * RANDZONING ZONT NUR NACH AUSSEN.
-                 *
-                 * Ansage des Nutzers: *"Nur nach aussen, denn der User kann
-                 * innen ZF nutzen."* Eine Strasse im Randzoning-Abschnitt
-                 * bekommt deshalb IMMER die Innenseite aus - unabhaengig von
-                 * der Panelwahl, die nur fuer die inneren Flaechen gilt.
-                 *
-                 * "Innen" heisst hier: zur Mitte des Parkplatzes. Das ist
-                 * dieselbe Rechnung wie unten, nur mit einem anderen
-                 * Bezugspunkt - die Polygonmitte statt der Flaechenmitte.
-                 */
-                /*
-                 * ERKANNT WIRD AM PLAN, NICHT AN DER LAGE.
-                 *
-                 * `RandzoningEnthaelt` verlangt, dass der Kurs PARALLEL zur
-                 * gewaehlten Kante liegt (auf ein Grad genau) und hoechstens
-                 * 15 m von ihr entfernt. Solange die RZ-Strasse eigens
-                 * erzeugt wurde, traf das immer zu - sie lief 10,4 m parallel
-                 * zur Kante.
-                 *
-                 * Seit die naechstliegende Fahrgasse die RZ-Strasse ist,
-                 * trifft es nicht mehr zu: an einer schraegen Kante steht sie
-                 * rund 34 Grad zu ihr. Der Kurs fiel durch, galt nicht als
-                 * Randzoning, und statt "Innenseite immer aus" entschied der
-                 * Zweig fuer die inneren Zoningflaechen. Ohne eine solche
-                 * Flaeche kam die Seite willkuerlich heraus. Der Nutzer:
-                 * *"Auffaellig, dass die Tiles nach innen gehen statt
-                 * aussen."*
-                 *
-                 * `_zoningSeitenRandachsen` sind die Achsen aus dem Bauplan
-                 * (`ParkingLayout.RandzoningRoad`), gemerkt wie die Lotmitte.
-                 * Der Lagetest bleibt als Rueckfall stehen: er ist fuer den
-                 * Fall mit Randstrassen weiterhin richtig, und ein Kurs ohne
-                 * Zuordnung waere schlimmer als eine Naeherung.
-                 */
-                if (randzoning.Length > 0
-                    && (IstGeplanteRandzoningachse(a, d)
-                        || ParkingGeometry.RandzoningEnthaelt(randzoning, a, d)))
+                if (!EntscheideZoningseiten(a, d, false, out var linksAus,
+                        out var rechtsAus, out _))
                 {
-                    /*
-                     * WO INNEN IST, SAGT DER PLAN.
-                     *
-                     * Hier entschied die Polygonmitte: *"liegt der Schwerpunkt
-                     * links oder rechts der Fahrtrichtung?"* Fuer EINE Strasse
-                     * entlang einer Kante ist das richtig. Fuer eine TREPPE
-                     * nicht - eine weit innen liegende Stufe hat den
-                     * Schwerpunkt auf ihrer anderen Seite und zonte dann in
-                     * den Parkplatz hinein. Der Nutzer: *"Nicht alle Tiles
-                     * gehen nach aussen, da findet keine ordentliche Pruefung
-                     * statt."*
-                     *
-                     * Die gemerkte Mitte bleibt als Rueckfall - fuer den Weg
-                     * mit Randstrassen, wo es keine Abschnitte gibt, und fuer
-                     * Parkplaetze aus aelteren Spielstaenden ohne gemerkte
-                     * Richtung.
-                     */
-                    /*
-                     * EINE REGEL: WAS IM UMRISS LIEGT, IST INNEN.
-                     *
-                     * Hier standen drei Regeln uebereinander - die geplante
-                     * Achse, der Umriss, der Schwerpunkt -, und bei jeder Form
-                     * griff eine andere. Genau darin hat sich der Fehler
-                     * versteckt: eine Form nahm den Plan und lag richtig, die
-                     * naechste fiel auf den Schwerpunkt zurueck und lag falsch,
-                     * und von aussen sah beides gleich aus.
-                     *
-                     * Der Nutzer am 2026-09-16: *"Ich glaube du gehst das
-                     * ganze zu schwierig an. Es ist doch offensichtlich was
-                     * aussen und was innen ist."* Er hat recht. Der Nutzer
-                     * zeichnet ein Polygon; das IST der Parkplatz. Was darin
-                     * liegt, ist innen. Mehr braucht die Frage nicht, und jede
-                     * zusaetzliche Regel ist nur eine weitere Stelle, an der
-                     * es schiefgehen kann.
-                     */
-                    var innenrichtung = InnenAusUmriss(mitte, richtung);
-                    if (math.lengthsq(innenrichtung) < 1e-6f)
-                    {
-                        /*
-                         * Beide Seiten im Umriss oder beide draussen - dann
-                         * ist es keine Randkante, sondern eine, die quer
-                         * hindurchlaeuft. Lieber melden als raten.
-                         */
-                        Mod.log.Warn("PLT-Zoningseiten: Randzoning-Kante bei "
-                            + Ort(mitte) + " - der Umriss gibt keine Innenseite "
-                            + "her (beide Seiten gleich). Sie bleibt, wie CS2 "
-                            + "sie angelegt hat.");
-                        continue;
-                    }
-                    var innenLinks =
-                        richtung.x * innenrichtung.y
-                        - richtung.y * innenrichtung.x > 0f;
-                    MeldeKante("Randzoning", mitte, richtung, innenrichtung,
-                        innenLinks, innenLinks, !innenLinks);
-                    if (SetzeSeitenflaggen(kante, innenLinks, !innenLinks))
-                    {
-                        geaendert++;
-                        randkanten++;
-                    }
+                    stimmt++;
                     continue;
                 }
-
-                // Die naechstgelegene Zoning-Flaeche liefert den Innenpunkt.
-                var innenpunkt = NaechsteZoningmitte(flaechen, mitte);
-                var zurMitte = innenpunkt - mitte;
-
-                /*
-                 * Kreuzprodukt in der XZ-Ebene. Positiv heisst: der
-                 * Innenpunkt liegt LINKS der gerichteten Kante.
-                 */
-                var kreuz = richtung.x * zurMitte.y - richtung.y * zurMitte.x;
-                if (math.abs(kreuz) < 1e-4f)
+                var istLinks = LiestSeite(kante, true);
+                var istRechts = LiestSeite(kante, false);
+                if (istLinks == linksAus && istRechts == rechtsAus)
                 {
-                    /*
-                     * KEIN STILLER AUSSTIEG MEHR.
-                     *
-                     * Liegt der Bezugspunkt fast auf der Geraden der Kante,
-                     * sagt das Kreuzprodukt nichts - und bisher blieb die
-                     * Kante dann unangetastet. Sie behaelt damit CS2s
-                     * Vorgabe: Zoning auf BEIDEN Seiten. Von aussen sieht
-                     * das aus, als zone sie nach innen.
-                     */
-                    Mod.log.Warn("PLT-Zoningseiten: Kante bei "
-                        + Ort(mitte) + " UNENTSCHIEDEN - der Bezugspunkt "
-                        + Ort(innenpunkt) + " liegt auf ihrer Geraden "
-                        + "(Kreuzprodukt " + kreuz.ToString("F6")
-                        + "). Sie bleibt, wie CS2 sie angelegt hat, also auf "
-                        + "beiden Seiten zonend.");
+                    stimmt++;
                     continue;
                 }
-                var innenIstLinks = kreuz > 0f;
-
-                /*
-                 * JE KANTE, NICHT JE PARKPLATZ.
-                 *
-                 * Hier entschied bis zum 2026-09-21 die Panelwahl
-                 * innen/aussen/beides fuer ALLE Kanten gleich. Seit der
-                 * Nutzer die Tiefe je Seite einstellt, taugt das nicht mehr:
-                 * haette EINE Seite ein Band, zonten alle vier nach aussen -
-                 * und dort, wo kein Band ist, haelt der Parkplatz keinen
-                 * Platz frei. Die Kacheln laegen auf Buchten. Genau das
-                 * wollte er nicht: *"damit nicht die Tiles auf Strassen von
-                 * uns liegen."*
-                 *
-                 * Also fragt jede Kante ihre eigene Seite: hat sie ein Band,
-                 * zont sie nach beiden Seiten, sonst nur nach innen.
-                 */
-                var aussenkacheln =
-                    ParkingGeometry.ZoningAussenkachelnBei(flaechen, mitte);
-                var linksAus = aussenkacheln > 0 ? false : !innenIstLinks;
-                var rechtsAus = aussenkacheln > 0 ? false : innenIstLinks;
-
-                /*
-                 * ZULETZT DIE HANDSCHALTUNG - sie ist die Abweichung von der
-                 * Panelwahl und muss deshalb obenauf liegen.
-                 *
-                 * Dieselbe Reihenfolge wie in der Vorschau
-                 * (`ZoningStrassenMitSeiten`). Randzoning-Kanten sind oben
-                 * schon mit `continue` heraus: dort gibt es keine Wahl, nur
-                 * aussen.
-                 */
-                WendeHandschaltungAn(a, d, ref linksAus, ref rechtsAus);
-
-                MeldeKante("Panelwahl " + seite, mitte, richtung,
-                    zurMitte, innenIstLinks, linksAus, rechtsAus);
-                if (SetzeSeitenflaggen(kante, linksAus, rechtsAus)) geaendert++;
+                if (abweichungen.Count < 6)
+                    abweichungen.Add(Ort((a + d) * 0.5f) + " soll aus "
+                        + (linksAus ? "links" : "-") + "/" + (rechtsAus ? "rechts" : "-")
+                        + ", ist aus " + (istLinks ? "links" : "-") + "/"
+                        + (istRechts ? "rechts" : "-"));
             }
-
-            // Auch der Nulllauf wird gemeldet. Eine Funktion, die stumm
-            // nichts tut, kostet beim Suchen mehr als jede Logzeile.
-            if (geaendert > 0)
-            {
-                /*
-                 * DIE RANDZONING-KANTEN GETRENNT NENNEN.
-                 *
-                 * Die Zeile meldete alle Kanten unter der Panelwahl, also
-                 * auch die des Randzonings - und die folgt ihr gar nicht,
-                 * sie ist immer nur aussen. Im Bauzettel vom 2026-09-04 stand
-                 * deshalb "5 von 5 Kante(n) auf 'Innen' gesetzt", obwohl eine
-                 * davon die RZ-Strasse war. Wer danach sucht, sucht am
-                 * falschen Ende.
-                 */
-                var hand = _zoningSeitenHandschaltungen?.Length ?? 0;
-                Mod.log.Info($"PLT-Zoningseiten: {geaendert} von {gesehen} "
-                    + $"Kante(n) gesetzt - {geaendert - randkanten} nach "
-                    + $"Panelwahl '{seite}', {randkanten} im Randzoning "
-                    + $"(immer nur aussen), {hand} Handschaltung(en) "
-                    + "aufgetragen.");
-            }
+            if (abweichungen.Count == 0)
+                Mod.log.Info($"PLT-Zoningseiten: {stimmt} von {gesehen} Kante(n) "
+                    + "wie geplant - beim Bau gesetzt, nachtraeglich nichts geschrieben.");
             else
-            {
-                Mod.log.Warn($"PLT-Zoningseiten: {gesehen} Zoning-Kante(n) "
-                    + $"gesehen, aber keine geaendert (Wahl '{seite}').");
-            }
-            return geaendert;
+                Mod.log.Warn($"PLT-Zoningseiten: {gesehen - stimmt} von {gesehen} "
+                    + "Kante(n) weichen vom Plan ab (NICHT nachgeschrieben): "
+                    + string.Join("; ", abweichungen));
+            return gesehen - stimmt;
         }
 
         /**
@@ -707,39 +706,5 @@ namespace ParkingLotTool.Tools
             return -1;
         }
 
-        /**
-         * Setzt oder loescht `ZonesDisabled` an beiden Seiten und erhaelt
-         * alle anderen Flaggen. Rueckgabe: wahr, wenn sich etwas geaendert
-         * hat - nur dann wird `Updated` gesetzt.
-         */
-        private bool SetzeSeitenflaggen(Unity.Entities.Entity kante,
-            bool linksAus, bool rechtsAus)
-        {
-            var hatte = EntityManager.HasComponent<Upgraded>(kante);
-            var upgraded = hatte
-                ? EntityManager.GetComponentData<Upgraded>(kante)
-                : default;
-            var vorherLinks = upgraded.m_Flags.m_Left;
-            var vorherRechts = upgraded.m_Flags.m_Right;
-
-            upgraded.m_Flags.m_Left = linksAus
-                ? upgraded.m_Flags.m_Left | CompositionFlags.Side.ZonesDisabled
-                : upgraded.m_Flags.m_Left & ~CompositionFlags.Side.ZonesDisabled;
-            upgraded.m_Flags.m_Right = rechtsAus
-                ? upgraded.m_Flags.m_Right | CompositionFlags.Side.ZonesDisabled
-                : upgraded.m_Flags.m_Right & ~CompositionFlags.Side.ZonesDisabled;
-
-            if (hatte && upgraded.m_Flags.m_Left == vorherLinks
-                && upgraded.m_Flags.m_Right == vorherRechts) return false;
-
-            if (hatte) EntityManager.SetComponentData(kante, upgraded);
-            else EntityManager.AddComponentData(kante, upgraded);
-
-            // Ohne Updated baut BlockSystem die Bloecke nicht neu; die
-            // Flagge laege dann richtig da und wirkte trotzdem nicht.
-            if (!EntityManager.HasComponent<Updated>(kante))
-                EntityManager.AddComponent<Updated>(kante);
-            return true;
-        }
     }
 }

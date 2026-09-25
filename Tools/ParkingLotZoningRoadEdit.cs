@@ -438,9 +438,11 @@ namespace ParkingLotTool.Tools
                 _zoningSeitenPunkt, out var aussen);
             var istAn = aussen ? tiefe > 0 : !warAn;
 
+            // Nur in den Plan. Die gebaute Kante bekommt die Seite beim
+            // Uebernehmen ueber die Baudefinition - direkt in eine fertige
+            // Kante zu schreiben hat CS2 nativ abstuerzen lassen
+            // (`EntscheideZoningseiten`).
             MerkeZoningSeitenplan(kante.A, kante.B, _zoningSeitenLinks, !istAn);
-            SchalteGebauteZoningSeite(kante.A, kante.B, _zoningSeitenLinks,
-                istAn);
 
             // Sofort neu rechnen, sonst zeigte der Zeigertext bis zum
             // naechsten Frame noch den alten Zustand an.
@@ -497,58 +499,11 @@ namespace ParkingLotTool.Tools
         }
 
         /**
-         * Schaltet die Flagge an einer schon gebauten Kante mit denselben
-         * Endpunkten. Gibt es sie nicht, passiert nichts - dann wirkt die
-         * Umschaltung erst beim Bauen, und das ist der Normalfall.
-         */
-        private void SchalteGebauteZoningSeite(float2 a, float2 b, bool links,
-            bool aus)
-        {
-            var lot = AktuellesZoningLot;
-            if (lot == Entity.Null
-                || !EntityManager.Exists(lot)) return;
-            if (!EntityManager.HasComponent<ParkingLotCarrierReference>(lot))
-                return;
-            var traeger = EntityManager
-                .GetComponentData<ParkingLotCarrierReference>(lot).Carrier;
-            if (traeger == Entity.Null || !EntityManager.Exists(traeger)) return;
-            if (!EntityManager.HasBuffer<Game.Net.SubNet>(traeger)) return;
-
-            var prefabs = SammleZoningPrefabs();
-            if (prefabs.Count == 0) return;
-
-            var subNets = EntityManager.GetBuffer<Game.Net.SubNet>(traeger, true);
-            for (var i = 0; i < subNets.Length; i++)
-            {
-                var kante = subNets[i].m_SubNet;
-                if (!EntityManager.Exists(kante)) continue;
-                if (!EntityManager.HasComponent<PrefabRef>(kante)) continue;
-                if (!prefabs.Contains(
-                        EntityManager.GetComponentData<PrefabRef>(kante).m_Prefab))
-                    continue;
-                if (!EntityManager.HasComponent<Curve>(kante)) continue;
-
-                var kurve = EntityManager.GetComponentData<Curve>(kante).m_Bezier;
-                var ka = new float2(kurve.a.x, kurve.a.z);
-                var kb = new float2(kurve.d.x, kurve.d.z);
-                // TEILSTUECK GENUEGT, und ALLE Teilstuecke werden geschaltet:
-                // CS2 teilt an jedem Knoten, aus einem geplanten Stueck
-                // koennen also mehrere Kanten geworden sein.
-                if (!ZoningTeilstueckVon(a, b, ka, kb, out var gedreht)) continue;
-
-                var echteSeite = gedreht ? !links : links;
-                var linksAus = echteSeite ? aus : LiestSeite(kante, true);
-                var rechtsAus = echteSeite ? LiestSeite(kante, false) : aus;
-                SetzeSeitenflaggen(kante, linksAus, rechtsAus);
-            }
-        }
-
-        /**
          * Traegt die gemerkten Umschaltungen beim Bauen in den Bauzettel.
          *
          * Der Zettel ist das, woraus derselbe Parkplatz wieder entsteht -
          * dort gehoeren sie hin, und von dort holt sie
-         * `WendeGemerkteZoningSeitenAn` nach dem Bau auf die echten Kanten.
+         * `EntscheideZoningseiten` beim Bau in die Baudefinition.
          */
         internal void SchreibeZoningSeitenplan(
             DynamicBuffer<ParkingLotBuildZoningSeite> puffer)

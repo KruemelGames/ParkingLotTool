@@ -162,6 +162,23 @@ namespace ParkingLotTool.Tools
         {
             if (traeger == Entity.Null) return;
             _zoningBlockTraeger = traeger;
+            MerkeZoningSeitenGrundlage();
+            _zoningSeitenFrames = ZoningSeitenWartezeit;
+            _zoningBlockFrames = ZoningSeitenWartezeit + ZoningBlockWartezeit;
+            _zoningNamenTraeger = traeger;
+            _zoningNamenRest = ZoningNamenDurchgaenge;
+            _zoningNamenRuhig = 0;
+            _zoningNamenFrames = ZoningSeitenWartezeit + ZoningNamenAbstand;
+        }
+
+        /**
+         * DIE GRUNDLAGE DER SEITENWAHL - Flaechen, Randzoning, Umriss,
+         * Handschaltungen, Panelwahl. Seit 2026-09-25 wird sie schon VOR dem
+         * Anlegen der Zoningkurse gebraucht (`EntscheideZoningseiten` im
+         * NetBuilder), nicht erst nach dem Bau; deshalb eine eigene Methode.
+         */
+        private void MerkeZoningSeitenGrundlage()
+        {
             /*
              * AUS DEN GEZEICHNETEN FLAECHEN, NICHT AUS DEN BAUEINSTELLUNGEN.
              *
@@ -222,12 +239,6 @@ namespace ParkingLotTool.Tools
              */
             _zoningSeitenHandschaltungen = _zoningSeitenPlan.ToArray();
             _zoningSeitenWahl = ZoningSeite;
-            _zoningSeitenFrames = ZoningSeitenWartezeit;
-            _zoningBlockFrames = ZoningSeitenWartezeit + ZoningBlockWartezeit;
-            _zoningNamenTraeger = traeger;
-            _zoningNamenRest = ZoningNamenDurchgaenge;
-            _zoningNamenRuhig = 0;
-            _zoningNamenFrames = ZoningSeitenWartezeit + ZoningNamenAbstand;
         }
 
         /** Je Frame aufrufen. */
@@ -237,10 +248,9 @@ namespace ParkingLotTool.Tools
 
             if (_zoningSeitenFrames > 0 && --_zoningSeitenFrames == 0)
             {
-                SetzeZoningSeiten(_zoningBlockTraeger);
-                // NACH der automatischen Wahl - sonst ueberschriebe diese die
-                // Handschaltung gleich wieder.
-                WendeGemerkteZoningSeitenAn(_zoningBlockTraeger);
+                // Die Seiten kamen beim Bau mit der Definition; hier wird
+                // nur noch nachgesehen (siehe `EntscheideZoningseiten`).
+                PruefeZoningSeiten(_zoningBlockTraeger);
                 BenenneZoningstrassen(_zoningBlockTraeger);
             }
 
