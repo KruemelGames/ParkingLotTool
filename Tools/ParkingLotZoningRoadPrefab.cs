@@ -296,6 +296,7 @@ namespace ParkingLotTool.Tools
                      * zweites Mal, ist genau dieser Fall eingetreten.
                      */
                     EntferneTerraineingriff(eintrag);
+                    EntferneModellspiegelung(eintrag);
                     continue;
                 }
 
@@ -311,6 +312,7 @@ namespace ParkingLotTool.Tools
                 if (Pruefe(eintrag, out var zustand))
                 {
                     EntferneTerraineingriff(eintrag);
+                    EntferneModellspiegelung(eintrag);
                     eintrag.Bereit = true;
                     EntferneKompositionsobjekteUndMesse(eintrag);
                     MesseVanillaAlley("Klon bereit " + eintrag.Name);
@@ -896,6 +898,53 @@ namespace ParkingLotTool.Tools
                 anzahl++;
             }
             return anzahl;
+        }
+
+        /**
+         * DIE EINBAHN-GASSE DREHT NUR DIE SPUR, NICHT DAS MODELL.
+         *
+         * BELEGT am 2026-09-25 (Logs Documents\ParkingLotTool-alley-heil.log
+         * und -alley-kaputt-2/-3.log, Sonde PLT-Alley-Meshpieces): Vanilla-
+         * Alley und alle unsere Gassenklone teilen EIN Mesh. CS2 baut es aus
+         * der Komposition, die es zuerst anfordert
+         * (`NetCompositionMeshRefJob.Execute`). `Equals` vergleicht
+         * `FlipMesh` nur bei `AsymmetricMeshZ`, und "Alley Drive Piece 3"
+         * hat das nicht - die gespiegelte Einbahn-Fassung gilt also als
+         * gleich. Kam sie zuerst, zeigten ALLE Gassen die durchsichtigen
+         * Enden, auch die Vanilla-Alley. Heil und kaputt unterschieden sich
+         * in genau diesem einen Piece: `Right, FlipLanes` gegen
+         * `Right, FlipMesh`.
+         *
+         * `m_Flip` setzt in `NetInitializeSystem.AddSections` immer BEIDES,
+         * `FlipLanes | FlipMesh`. Die Fahrtrichtung haengt aber nur an
+         * `Invert != FlipLanes` (`NetCompositionHelpers.AddCompositionLanes`);
+         * `FlipMesh` liest dort niemand. Also bleibt `FlipLanes`, und
+         * `FlipMesh` faellt weg - dann ist unsere Komposition fuer den
+         * Mesh-Bau dieselbe wie die der Vanilla-Alley, egal wer zuerst kommt.
+         *
+         * Nachschau wie beim Terraineingriff: `NetInitializeSystem` schreibt
+         * den Puffer beim Anlegen neu.
+         */
+        private void EntferneModellspiegelung(Eintrag eintrag)
+        {
+            if (eintrag.Art != Strassenklonart.ZufahrtsgasseEinbahn) return;
+            var entity = eintrag.KlonEntity;
+            if (!EntityManager.HasBuffer<NetGeometrySection>(entity)) return;
+            var sektionen = EntityManager.GetBuffer<NetGeometrySection>(entity);
+            var geaendert = 0;
+            for (var i = 0; i < sektionen.Length; i++)
+            {
+                var sektion = sektionen[i];
+                if ((sektion.m_Flags & NetSectionFlags.FlipMesh) == 0) continue;
+                sektion.m_Flags &= ~NetSectionFlags.FlipMesh;
+                sektionen[i] = sektion;
+                geaendert++;
+            }
+            if (geaendert == 0) return;
+            Mod.log.Info("PLT-Zufahrtsgasse Einbahn: FlipMesh an " + geaendert
+                + " Sektion(en) entfernt, FlipLanes bleibt - Spur einbahnig, "
+                + "Modell wie Vanilla (sonst teilt die Vanilla-Alley ein "
+                + "gespiegeltes Mesh).");
         }
 
         private void EntferneTerraineingriff(Eintrag eintrag)
