@@ -249,6 +249,14 @@ namespace ParkingLotTool
             if (!Aus("fussweg"))
             updateSystem.UpdateAfter<ParkingLotFusswegPrefabAbschlussSystem,
                 Game.Prefabs.NetInitializeSystem>(SystemUpdatePhase.PrefabUpdate);
+            // Die einebnenden Wegvarianten fuer Gassenenden: vor dem
+            // Initialisieren angelegt. Sie klonen auch den Fusswegklon; ist der
+            // noch nicht da, holt der naechste Durchlauf ihn nach (das System
+            // sucht, bis alle sechs stehen). Vollendet nach dem Fussweg-Abschluss.
+            updateSystem.UpdateBefore<ParkingLotEbenerWegPrefabSystem,
+                Game.Prefabs.PrefabInitializeSystem>(SystemUpdatePhase.PrefabUpdate);
+            updateSystem.UpdateAfter<ParkingLotEbenerWegAbschlussSystem,
+                ParkingLotFusswegPrefabAbschlussSystem>(SystemUpdatePhase.PrefabUpdate);
             if (!Aus("zoningstrasse"))
             updateSystem.UpdateAfter<ParkingLotVanillaGasseAbschlussSystem,
                 Game.Prefabs.NetInitializeSystem>(SystemUpdatePhase.PrefabUpdate);

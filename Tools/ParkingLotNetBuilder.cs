@@ -707,6 +707,7 @@ namespace ParkingLotTool.Tools
             // eine Kreuzung melden, die niemand gerade gebaut hat.
             VergissGassenplan();
             var zoningStuecke = new List<(float2 A, float2 B)>();
+            MerkeGassenenden(layout);
             // Nur anfordern, wenn das Layout ueberhaupt eine Zoning-Strasse
             // enthaelt - sonst bestellt jeder Parkplatz einen Prefabklon.
             var zoningRoad = Entity.Null;
@@ -867,6 +868,7 @@ namespace ParkingLotTool.Tools
                 Mod.log.Info($"PLT-Wege: {created} Kurse, Fahrgasse {wideCore:F0} m "
                     + $"(eingestellt {settings.Ai:F1} m), Querweg {narrowCore:F0} m "
                     + $"(eingestellt {settings.Cw:F1} m).");
+            MeldeGassenenden();
             return created;
         }
 
@@ -1045,6 +1047,67 @@ namespace ParkingLotTool.Tools
                     + $"   (erste bei {grund.First.x:F1}/{grund.First.y:F1})");
         }
 
+        /*
+         * AM INNEREN GASSENENDE NUR EINEBNENDE WEGE.
+         *
+         * Siehe `ParkingLotEbenerWegPrefabSystem`: der Knoten, an dem Gasse,
+         * Fahrgasse und Fusswege zusammentreffen, bekommt das Prefab des
+         * zuletzt verarbeiteten Kurses. Ebnet der nicht ein, legt CS2 den
+         * Knoten aufs Gelaende, das die Gasse wegschneidet - und er sinkt,
+         * immer weiter. Deshalb ebnet hier JEDER Kurs ein, der an einem
+         * inneren Gassenende beginnt oder endet.
+         */
+        private readonly List<float2> _gassenenden = new();
+        private int _ebeneKurse;
+        private int _ebeneFehlt;
+
+        private void MerkeGassenenden(ParkingLayout layout)
+        {
+            _gassenenden.Clear();
+            _ebeneKurse = 0;
+            _ebeneFehlt = 0;
+            foreach (var piece in layout.NetLine)
+                if (string.Equals(piece.Kind, "entrance", StringComparison.Ordinal)
+                    && Zufahrtsarten.IstGasse(piece.Art))
+                    // Nach aussen ist A, innen B (siehe `CreateGassenstueck`).
+                    _gassenenden.Add(piece.B);
+        }
+
+        private Entity EbenAmGassenende(string kind, float2 von, float2 nach, Entity prefab)
+        {
+            if (_gassenenden.Count == 0
+                || string.Equals(kind, "entrance-gasse", StringComparison.Ordinal))
+                return prefab;
+            var trifft = false;
+            foreach (var ende in _gassenenden)
+                if (math.distance(ende, von) < 0.05f || math.distance(ende, nach) < 0.05f)
+                {
+                    trifft = true;
+                    break;
+                }
+            if (!trifft) return prefab;
+            var eben = World.GetOrCreateSystemManaged<ParkingLotEbenerWegPrefabSystem>()
+                .EbeneVariante(prefab);
+            if (eben == Entity.Null)
+            {
+                _ebeneFehlt++;
+                return prefab;
+            }
+            _ebeneKurse++;
+            return eben;
+        }
+
+        private void MeldeGassenenden()
+        {
+            if (_gassenenden.Count == 0) return;
+            if (_ebeneFehlt > 0)
+                Mod.log.Warn($"PLT-Gassenknoten: {_ebeneFehlt} Kurs(e) an inneren "
+                    + "Gassenenden OHNE einebnende Variante gebaut (Klon nicht bereit) - "
+                    + "dort kann der Knoten nach dem Bau absinken.");
+            Mod.log.Info($"PLT-Gassenknoten: {_gassenenden.Count} innere Gassenende(n), "
+                + $"{_ebeneKurse} Kurs(e) daran mit einebnender Variante gebaut.");
+        }
+
         private bool CreateCourseDefinition(
             string kind,
             int index,
@@ -1061,6 +1124,7 @@ namespace ParkingLotTool.Tools
             if (!math.all(math.isfinite(from)) || !math.all(math.isfinite(to)))
                 throw new InvalidOperationException(
                     $"Der Fahrweg '{kind}' {index} enthält eine nicht-endliche Koordinate.");
+            prefab = EbenAmGassenende(kind, from, to, prefab);
 
             var a = new float3(from.x, SampleCourseHeight(from, ref heightData, heights),
                 from.y);
