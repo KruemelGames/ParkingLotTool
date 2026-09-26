@@ -91,7 +91,9 @@ namespace ParkingLotTool.Tools
                     if (bild - _nachbauSeit > NachbauFrist) BrichNachbauAb("Bearbeiten begann nicht");
                     return;
                 case NachbauPhase.WarteAufBau:
-                    if (!IsEditing)
+                    // Die Gassen kommen im zweiten Bauschritt - das Werkzeug
+                    // muss dafuer noch aktiv sein.
+                    if (!IsEditing && !GassenknotenLaeuft)
                     {
                         _nachbauFertig++;
                         Mod.log.Info($"PLT-Nachbau: Parkplatz {_nachbauLot} neu gebaut "

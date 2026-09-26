@@ -344,8 +344,8 @@ namespace ParkingLotTool.Tools
             // Erst jetzt gibt es ueberhaupt etwas nachzumessen. Die Messung
             // selbst folgt ein paar Bilder spaeter - eine Strassenteilung
             // braucht mehr als ein Bild.
-            if (built) MeldeGassenbefundAn();
-            if (built) PlaneGassenknoten();
+            // Mit Gassen folgt erst der zweite Bauschritt; der Befund danach.
+            if (built && !PlaneGassenbau()) MeldeGassenbefundAn();
             if (built) _fusswegBefundAb = UnityEngine.Time.frameCount + 30;
             return built;
         }
