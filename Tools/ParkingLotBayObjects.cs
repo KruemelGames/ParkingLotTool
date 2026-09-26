@@ -341,7 +341,9 @@ namespace ParkingLotTool.Tools
                 var kopiert = new List<string>();
                 foreach (var bauteil in original.components)
                 {
-                    if (bauteil == null) continue;
+                    // UIObject bleibt hier bewusst dabei (siehe oben); nur die
+                    // alten Kennungen nicht (`ParkingLotKlonregel`).
+                    if (!ParkingLotKlonregel.Erben(bauteil, mitUI: true)) continue;
                     klon.AddComponentFrom(bauteil);
                     kopiert.Add(bauteil.GetType().Name);
                 }

@@ -108,7 +108,11 @@ namespace ParkingLotTool.Tools
                  */
                 ["GassenknotenEben"] = new Ausfuehrung
                 {
-                    Braucht = (lot, traeger, teile) => HatSinkendesGassenende(teile),
+                    // AUSGESETZT 2026-09-26: der Neubau setzte einebnende Wege,
+                    // und die entstellen das Gelaende. Bis der Knotenschutz ohne
+                    // FlattenTerrain steht, braucht kein Parkplatz diesen Schritt;
+                    // der neue Schutz kommt als eigener Schritt.
+                    Braucht = (lot, traeger, teile) => false,
                     Ausfuehren = (lot, traeger, teile) => _werkzeug.PlaneNachbau(lot),
                 },
             };

@@ -868,7 +868,6 @@ namespace ParkingLotTool.Tools
                 Mod.log.Info($"PLT-Wege: {created} Kurse, Fahrgasse {wideCore:F0} m "
                     + $"(eingestellt {settings.Ai:F1} m), Querweg {narrowCore:F0} m "
                     + $"(eingestellt {settings.Cw:F1} m).");
-            MeldeGassenenden();
             return created;
         }
 
@@ -1124,7 +1123,6 @@ namespace ParkingLotTool.Tools
             if (!math.all(math.isfinite(from)) || !math.all(math.isfinite(to)))
                 throw new InvalidOperationException(
                     $"Der Fahrweg '{kind}' {index} enthält eine nicht-endliche Koordinate.");
-            prefab = EbenAmGassenende(kind, from, to, prefab);
 
             var a = new float3(from.x, SampleCourseHeight(from, ref heightData, heights),
                 from.y);

@@ -56,7 +56,7 @@ namespace ParkingLotTool.Tools
                         | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                         if (!feld.IsInitOnly && !feld.IsLiteral) feld.SetValue(klon, feld.GetValue(original));
                     foreach (var komponente in original.components)
-                        if (komponente != null && !(komponente is UIObject)) klon.AddComponentFrom(komponente);
+                        if (ParkingLotKlonregel.Erben(komponente)) klon.AddComponentFrom(komponente);
                     if (!_prefabs.AddPrefab(klon)) throw new InvalidOperationException("AddPrefab gab false zurueck");
                     _klon = _prefabs.GetEntity(klon);
                     var zugang = ScriptableObject.CreateInstance<PathwayPrefab>();
@@ -66,7 +66,7 @@ namespace ParkingLotTool.Tools
                         | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                         if (!feld.IsInitOnly && !feld.IsLiteral) feld.SetValue(zugang, feld.GetValue(original));
                     foreach (var komponente in original.components)
-                        if (komponente != null && !(komponente is UIObject)) zugang.AddComponentFrom(komponente);
+                        if (ParkingLotKlonregel.Erben(komponente)) zugang.AddComponentFrom(komponente);
                     if (!_prefabs.AddPrefab(zugang))
                     {
                         UnityEngine.Object.Destroy(zugang);

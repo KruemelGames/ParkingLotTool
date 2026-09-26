@@ -375,7 +375,7 @@ namespace ParkingLotTool.Tools
                      * Der Klon ist Innenausstattung: er wird von uns gebaut
                      * und soll nirgends auswaehlbar sein.
                      */
-                    if (bauteil is UIObject) continue;
+                    if (!ParkingLotKlonregel.Erben(bauteil)) continue;
                     klon.AddComponentFrom(bauteil);
                 }
 

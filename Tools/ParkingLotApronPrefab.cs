@@ -621,6 +621,7 @@ namespace ParkingLotTool.Tools
                         continue;
                     }
 
+                    if (!ParkingLotKlonregel.Erben(bauteil)) continue;
                     klon.AddComponentFrom(bauteil);
                 }
 

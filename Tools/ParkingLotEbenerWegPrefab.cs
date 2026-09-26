@@ -117,10 +117,9 @@ namespace ParkingLotTool.Tools
                         foreach (var komponente in quelle.components)
                         {
                             if (komponente == null) continue;
-                            namen.Add(komponente.GetType().Name
-                                + (komponente is UIObject ? " (ausgelassen)" : ""));
-                            if (!(komponente is UIObject))
-                                klon.AddComponentFrom(komponente);
+                            var erben = ParkingLotKlonregel.Erben(komponente);
+                            namen.Add(komponente.GetType().Name + (erben ? "" : " (ausgelassen)"));
+                            if (erben) klon.AddComponentFrom(komponente);
                         }
                         Mod.log.Info($"PLT-Ebener Weg: '{klonname}' erbt von '{quellname}': "
                             + string.Join(", ", namen) + ".");
@@ -159,10 +158,22 @@ namespace ParkingLotTool.Tools
                 var klon = paar.Value;
                 if (!EntityManager.Exists(klon)
                     || !EntityManager.HasComponent<NetGeometryData>(klon)) continue;
+                /*
+                 * KEIN FlattenTerrain MEHR (2026-09-26, Bilder des Nutzers):
+                 * einebnende UNSICHTBARE Wege ziehen das Gelaende sichtbar auf
+                 * ihre Linie - Ringe auf ebenem Boden, Rinnen und Mulden bis
+                 * 2,5 m am Hang. Der Knoten sank zwar nicht mehr, aber um
+                 * diesen Preis nicht. Die Klone bleiben angemeldet, weil
+                 * Spielstaende ihre Kanten schon enthalten (Klonnamen sind
+                 * Spielstandformat); sie verhalten sich jetzt wie ihr Vorbild.
+                 */
                 var geometrie = EntityManager.GetComponentData<NetGeometryData>(klon);
-                if ((geometrie.m_Flags & GeometryFlags.FlattenTerrain) == 0)
+                var vorbild = EntityManager.HasComponent<NetGeometryData>(quelle)
+                    ? EntityManager.GetComponentData<NetGeometryData>(quelle).m_Flags
+                    : geometrie.m_Flags & ~GeometryFlags.FlattenTerrain;
+                if (geometrie.m_Flags != vorbild)
                 {
-                    geometrie.m_Flags |= GeometryFlags.FlattenTerrain;
+                    geometrie.m_Flags = vorbild;
                     EntityManager.SetComponentData(klon, geometrie);
                 }
                 /*
@@ -184,8 +195,8 @@ namespace ParkingLotTool.Tools
                 if (!_bereit.ContainsKey(quelle))
                 {
                     _bereit[quelle] = klon;
-                    Mod.log.Info($"PLT-Ebener Weg: '{Name(klon)}' bereit (FlattenTerrain "
-                        + $"gesetzt, LocalConnect wie '{Name(quelle)}').");
+                    Mod.log.Info($"PLT-Ebener Weg: '{Name(klon)}' bereit (Flags und "
+                        + $"LocalConnect wie '{Name(quelle)}', kein FlattenTerrain).");
                 }
             }
         }
