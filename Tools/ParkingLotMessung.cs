@@ -338,8 +338,32 @@ namespace ParkingLotTool.Tools
                 + " | mesh groups " + BildStueck[(int)Zaehler.Netzgruppen]
                 + ", uploads " + BildStueck[(int)Zaehler.Uebertragungen]
                 + SystemeDiesesBild() + ".";
-            Mod.log.Info("PLT-Messung " + zeile);
+            InsLog("PLT-Messung " + zeile, _werkzeugLief);
             Notiere(zeile);
+        }
+
+        /*
+         * INS LOG NUR, WENN JEMAND HINSIEHT.
+         *
+         * Seit dem 2026-09-17 ging jede Sekunde eine Zeile ins Modlog, auch
+         * bei geschlossenem Werkzeug - gedacht als Diagnose fuer Haenger ohne
+         * Werkzeug. Bei einem Tester scheiterte am 2026-09-26 nach einer
+         * Stunde Spiel genau so ein Schreibvorgang IM Logger von CS2
+         * (`UnityLogger.Internal_WriteStream`, NullReference); die Ausnahme
+         * lief durch unser System, und CS2 zeigte ein Fehlerfenster - waehrend
+         * er am anderen Ende der Karte einen Hafen baute.
+         *
+         * Jetzt: ins Log bei offenem Werkzeug, mit Entwickler-Debug oder
+         * waehrend einer Leistungsaufzeichnung (die geht ohnehin zusaetzlich
+         * nach `performance.txt`). Und ein scheiternder Logger ist kein
+         * Grund fuer ein Fehlerfenster - eine Messzeile ist verzichtbar.
+         */
+        private static void InsLog(string zeile, bool werkzeugAktiv)
+        {
+            if (!werkzeugAktiv && !(Mod.Optionen?.EntwicklerDebug ?? false)
+                && !Zeichnetauf && _aufzeichnungBis == 0) return;
+            try { Mod.log.Info(zeile); }
+            catch (Exception) { }
         }
 
         /** Wie `Systeme`, aber fuer das eine lange Bild. */
@@ -380,7 +404,7 @@ namespace ParkingLotTool.Tools
                     + ", uploads "
                     + (Stueck[(int)Zaehler.Uebertragungen] / _bilder)
                     + Systeme() + ".";
-                Mod.log.Info("PLT-Messung: " + zeile);
+                InsLog("PLT-Messung: " + zeile, werkzeugAktiv);
                 Notiere(zeile);
             }
 
