@@ -100,6 +100,17 @@ namespace ParkingLotTool.Tools
                                 EntityManager.RemoveComponent<Owner>(t);
                     },
                 },
+                /*
+                 * Netze nachtraeglich umzuschreiben waere das Direktschreiben,
+                 * das CS2 zum Absturz bringt. Also Neubau ueber den
+                 * Bearbeiten-Weg (`ParkingLotToolSystem.PlaneNachbau`), der die
+                 * einebnenden Wege am Gassenende von selbst setzt.
+                 */
+                ["GassenknotenEben"] = new Ausfuehrung
+                {
+                    Braucht = (lot, traeger, teile) => HatSinkendesGassenende(teile),
+                    Ausfuehren = (lot, traeger, teile) => _werkzeug.PlaneNachbau(lot),
+                },
             };
 
             // Katalog und Ausfuehrung muessen sich decken - sonst bliebe ein
@@ -109,6 +120,50 @@ namespace ParkingLotTool.Tools
                     Mod.log.Error("PLT-Sync: Schritt " + schritt.Nummer + " '"
                         + schritt.Name + "' hat keine Ausfuehrung.");
         }
+
+        /**
+         * Haengt an einem Ende einer unserer Zufahrtsgassen einer unserer
+         * Wege, der NICHT einebnet? Genau dann kann CS2 den gemeinsamen
+         * Knoten aufs Gelaende legen, das die Gasse wegschneidet.
+         */
+        private bool HatSinkendesGassenende(List<Entity> teile)
+        {
+            var eigene = new HashSet<Entity>(teile);
+            foreach (var t in teile)
+            {
+                if (!EntityManager.HasComponent<Game.Net.Edge>(t)
+                    || !EntityManager.HasComponent<PrefabRef>(t)) continue;
+                var prefab = EntityManager.GetComponentData<PrefabRef>(t).m_Prefab;
+                if (!IstZufahrtsgasse(prefab)) continue;
+                var kante = EntityManager.GetComponentData<Game.Net.Edge>(t);
+                foreach (var knoten in new[] { kante.m_Start, kante.m_End })
+                {
+                    if (!EntityManager.HasBuffer<Game.Net.ConnectedEdge>(knoten)) continue;
+                    foreach (var v in EntityManager.GetBuffer<Game.Net.ConnectedEdge>(knoten, true))
+                    {
+                        var andere = v.m_Edge;
+                        if (andere == t || !eigene.Contains(andere)
+                            || !EntityManager.HasComponent<PrefabRef>(andere)) continue;
+                        var ap = EntityManager.GetComponentData<PrefabRef>(andere).m_Prefab;
+                        if (IstZufahrtsgasse(ap)) continue;
+                        if (!EntityManager.HasComponent<NetGeometryData>(ap)) continue;
+                        var flags = EntityManager.GetComponentData<NetGeometryData>(ap).m_Flags;
+                        if ((flags & Game.Net.GeometryFlags.FlattenTerrain) == 0) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private bool IstZufahrtsgasse(Entity prefab)
+        {
+            _prefabSystemFuerSync ??= World.GetOrCreateSystemManaged<PrefabSystem>();
+            return _prefabSystemFuerSync.TryGetPrefab<PrefabBase>(prefab, out var p)
+                   && p != null
+                   && p.name.StartsWith("PLT Zufahrtsgasse", System.StringComparison.Ordinal);
+        }
+
+        private PrefabSystem _prefabSystemFuerSync;
 
         private bool IstPflanze(Entity t)
             => EntityManager.HasComponent<PrefabRef>(t)

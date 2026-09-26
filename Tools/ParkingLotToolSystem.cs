@@ -175,6 +175,9 @@ namespace ParkingLotTool.Tools
             _nacharbeitWartetGemeldet = false;
             PflegeZoningBlockmessung();
             AuditBuiltBusStops();
+            // Erst wenn die Nacharbeit des letzten Baus durch ist, kommt der
+            // naechste Sync-Neubau dran (er wartet selbst auf den Abriss).
+            PflegeSyncNachbau();
         }
 
         private ParkingLotCleanupSystem _aufraeumer;

@@ -44,6 +44,12 @@ namespace ParkingLotTool.Geometry
                 "Bushaltestellen, die am 2026-09-24 kurz mit Besitzer gebaut "
                 + "wurden, verlieren ihn; sonst sind sie im Linienwerkzeug "
                 + "nicht anwaehlbar."),
+            new Schritt(4, "GassenknotenEben",
+                "Parkplaetze mit Zufahrtsgassen aus Staenden vor dem 2026-09-26 "
+                + "werden ueber den Bearbeiten-Weg neu gebaut: am inneren "
+                + "Gassenende hing ein nicht einebnender Weg, CS2 legte den "
+                + "gemeinsamen Knoten aufs weggeschnittene Gelaende, und die "
+                + "Gasse sank in den Boden."),
         };
 
         /** Der Stand, den ein heute gebauter Parkplatz hat. */
