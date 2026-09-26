@@ -8,7 +8,7 @@
 			dann behaupten drei Stellen im selben Paket zwei verschiedene
 			Versionen. Beim Fehlersuchen ist das die teure Sorte Verwirrung.
 		-->
-		<Version>0.1.4</Version>
+		<Version>0.1.5</Version>
 		<CS2ToolPath Condition="'$(CSII_TOOLPATH)' != ''">$(CSII_TOOLPATH)</CS2ToolPath>
 		<CS2ToolPath Condition="'$(CS2ToolPath)' == ''">$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))</CS2ToolPath>
 	
