@@ -690,6 +690,7 @@ namespace ParkingLotTool.Tools
                 return 0;
 
             var heights = new Dictionary<(long, long), float>();
+            SammleStrassenStreifen(_points);
             // Beim Edit: Hoehen der alten Knoten behalten, siehe
             // `BelegeHoehenAusAltbestand` in ParkingLotEditHeight.cs.
             BelegeHoehenAusAltbestand(heights, ref heightData);
@@ -867,6 +868,7 @@ namespace ParkingLotTool.Tools
                 Mod.log.Info($"PLT-Wege: {created} Kurse, Fahrgasse {wideCore:F0} m "
                     + $"(eingestellt {settings.Ai:F1} m), Querweg {narrowCore:F0} m "
                     + $"(eingestellt {settings.Cw:F1} m).");
+            MeldeStrassenhoehe();
             return created;
         }
 
@@ -1182,6 +1184,14 @@ namespace ParkingLotTool.Tools
             {
                 heights[key] = alt;
                 return alt;
+            }
+
+            // Im Querschnitt einer Stadtstrasse gilt deren Hoehe - das
+            // Gelaende darunter hat CS2 weggeschnitten (ParkingLotStrassenhoehe.cs).
+            if (HoeheUnterStrasse(point, ref heightData, out var strasse))
+            {
+                heights[key] = strasse;
+                return strasse;
             }
 
             var height = TerrainUtils.SampleHeight(
