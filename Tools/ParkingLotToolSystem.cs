@@ -160,6 +160,10 @@ namespace ParkingLotTool.Tools
          */
         private void PflegeNacharbeit()
         {
+            // Reine Messungen - sie laufen auch waehrend des Abrisses, denn
+            // genau dann passiert beim Edit das Interessante.
+            PruefeGassenhoehen();
+            PflegeGassenverlauf();
             _aufraeumer ??= World.GetExistingSystemManaged<ParkingLotCleanupSystem>();
             if (_aufraeumer != null && _aufraeumer.AbrissLaeuft)
             {
@@ -174,7 +178,6 @@ namespace ParkingLotTool.Tools
             }
             _nacharbeitWartetGemeldet = false;
             PruefeUeberwegProben();
-            PruefeGassenhoehen();
             PflegeZoningBlockmessung();
             AuditBuiltBusStops();
             // Erst wenn die Nacharbeit des letzten Baus durch ist, kommt der

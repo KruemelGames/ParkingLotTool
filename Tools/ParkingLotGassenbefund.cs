@@ -190,6 +190,7 @@ namespace ParkingLotTool.Tools
                 _gassenhoehenAb1 = UnityEngine.Time.frameCount + 60;
                 _gassenhoehenAb10 = UnityEngine.Time.frameCount + 600;
             }
+            StarteGassenverlauf();
             if (_gassenplan.Count == 0) return;
             _gassenrichtungStartFrame = UnityEngine.Time.frameCount;
             _gassenbefundAb = UnityEngine.Time.frameCount + GassenbefundFrames;
