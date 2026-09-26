@@ -153,6 +153,63 @@ namespace ParkingLotTool.Tools
                 + (berichtigt.Count > 0 ? ": " + string.Join("; ", berichtigt) : "."));
         }
 
+        /**
+         * DER NEUBAU WARTET, BIS CS2 DAS GELAENDE NACH DEM ABRISS NEU HAT.
+         *
+         * Live-Log 2026-09-26 (drei Edits): CS2 laesst Strassen und
+         * ebenerdige Wege beim Verarbeiten der Kurse dem AKTUELLEN Gelaende
+         * folgen - nur unsere Endpunkte bleiben fest. Beim Edit war die alte
+         * Gasse zwar schon `Deleted`, aber ihr Ausschnitt noch im Gelaende:
+         * die Mitte der neuen Gasse sackte 373,24 -> 373,11 -> 373,01 ->
+         * 372,93, die Wege am inneren Ende 373,13 -> 372,82 -> 372,64, und
+         * jeder Neubau schnitt tiefer als der vorige.
+         *
+         * `TerrainSystem` setzt nach dem Loeschen einebnender Netze erst
+         * `heightMapRenderRequired`, rendert, und liest die Hoehen dann
+         * asynchron zurueck (`m_HeightMapChanged` bis `WriteCPUHeights`).
+         * Erst wenn beides ruht, sieht `CourseSplitSystem` das Gelaende ohne
+         * die alten Wege. Mindestens drei Bilder, weil der Abriss selbst erst
+         * am Bildende wirkt und das Rendern danach kommt.
+         */
+        private static readonly System.Reflection.FieldInfo HoehenkarteZurueckgelesen =
+            typeof(TerrainSystem).GetField("m_HeightMapChanged",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        private int _abrissBild;
+        private int _gelaendeRuhig;
+        private const int GelaendeFrist = 90;
+
+        private void MerkeAbrissFuerGelaende()
+        {
+            _abrissBild = UnityEngine.Time.frameCount;
+            _gelaendeRuhig = 0;
+        }
+
+        /** `true`, sobald der Neubau Kurse anlegen darf. */
+        private bool GelaendeNachAbrissFertig()
+        {
+            if (_abrissBild == 0) return true;
+            var vergangen = UnityEngine.Time.frameCount - _abrissBild;
+            var offen = _terrainSystem.heightMapRenderRequired
+                || (HoehenkarteZurueckgelesen?.GetValue(_terrainSystem) is bool b && b);
+            _gelaendeRuhig = offen ? 0 : _gelaendeRuhig + 1;
+            if (vergangen >= 3 && _gelaendeRuhig >= 2)
+            {
+                Mod.log.Info($"PLT-Edithoehe: Gelaende nach dem Abriss der alten Wege neu gerechnet, "
+                    + $"{vergangen} Bilder gewartet; der Neubau folgt jetzt dem echten Gelaende.");
+                _abrissBild = 0;
+                return true;
+            }
+            if (vergangen > GelaendeFrist)
+            {
+                Mod.log.Warn($"PLT-Edithoehe: Gelaende nach {vergangen} Bildern noch nicht neu gerechnet "
+                    + "(Neurendern oder Zuruecklesen offen); der Neubau wird trotzdem angelegt.");
+                _abrissBild = 0;
+                return true;
+            }
+            return false;
+        }
+
         private void ErfasseEdithoehenVorAbriss()
         {
             VerwerfeEdithoehen();

@@ -221,6 +221,13 @@ namespace ParkingLotTool.Tools
                         _buildStage = BuildStage.Idle;
                         return false;
                     }
+                    // Beim Edit erst, wenn das Gelaende ohne die alten Wege
+                    // neu gerechnet ist (ParkingLotEditHeight.cs).
+                    if (IsEditing && !GelaendeNachAbrissFertig())
+                    {
+                        BauwunschWartet("Gelaende nach dem Abriss der alten Wege");
+                        return false;
+                    }
                     // Erzwingt das Anlegen, auch wenn die Signatur seit einem
                     // frueheren Versuch unveraendert ist.
                     _lastPreviewSig = long.MinValue;

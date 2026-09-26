@@ -390,6 +390,7 @@ namespace ParkingLotTool.Tools
             FrischeTeilungsknotenAuf(fremdeKnoten);
 
             _editNetRemovalTick = System.Diagnostics.Stopwatch.GetTimestamp();
+            MerkeAbrissFuerGelaende();
             MeldeAbriss(entfernt, besessen, teile.Length);
         }
 
