@@ -173,6 +173,7 @@ namespace ParkingLotTool.Tools
                 return;
             }
             _nacharbeitWartetGemeldet = false;
+            PruefeUeberwegProben();
             PflegeZoningBlockmessung();
             AuditBuiltBusStops();
             // Erst wenn die Nacharbeit des letzten Baus durch ist, kommt der

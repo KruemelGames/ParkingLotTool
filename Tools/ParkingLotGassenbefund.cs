@@ -207,7 +207,10 @@ namespace ParkingLotTool.Tools
                     EntityManager.AddComponent<Updated>(kante);
 
                 gesetzt.Add(kante.Index + (amAnfang ? " links" : " rechts"));
+                _ueberwegProben.Add((kante, knoten, amAnfang));
             }
+            if (_ueberwegProben.Count > 0 && _ueberwegProbeAb == 0)
+                _ueberwegProbeAb = UnityEngine.Time.frameCount + 60;
 
             if (gesetzt.Count > 0)
                 Mod.log.Info("PLT-Gassenueberwege: " + gesetzt.Count
@@ -216,6 +219,70 @@ namespace ParkingLotTool.Tools
                     + ". Seite aus Anfang/Ende der Kante abgeleitet; "
                     + "verschwinden die Streifen am falschen Ende, ist die "
                     + "Zuordnung zu tauschen.");
+        }
+
+        /**
+         * KOMMT DAS FLAG AN? Eine Sekunde nach dem Setzen, auch bei
+         * geschlossenem Werkzeug (`PflegeNacharbeit`).
+         *
+         * Am 2026-09-26 standen die Ueberwege an der Stadtstrasse nach dem
+         * Setzen weiter da (Bild des Nutzers). Laut Dekompilat
+         * (`CompositionSelectSystem.GetNodeFlags`) nimmt CS2 an einer
+         * Kreuzung den Ueberweg weg, wenn `Upgraded` an der Kante
+         * `RemoveCrosswalk` traegt - am Anfangsknoten links, am Endknoten
+         * rechts, so wie hier gesetzt. Diese Zeile sagt, welcher Schritt
+         * ausfaellt: Kante ersetzt, Flag wieder weg, oder Flag da und CS2
+         * fuehrt trotzdem einen Ueberweg am Knoten.
+         */
+        private readonly List<(Entity Kante, Entity Knoten, bool AmAnfang)> _ueberwegProben = new();
+        private int _ueberwegProbeAb;
+
+        private void PruefeUeberwegProben()
+        {
+            if (_ueberwegProbeAb == 0 || UnityEngine.Time.frameCount < _ueberwegProbeAb) return;
+            _ueberwegProbeAb = 0;
+            int weg = 0, ohneFlag = 0, trotzdem = 0, frei = 0;
+            var details = new List<string>();
+            foreach (var (kante, knoten, amAnfang) in _ueberwegProben)
+            {
+                if (!EntityManager.Exists(kante) || EntityManager.HasComponent<Deleted>(kante)
+                    || !EntityManager.HasComponent<Game.Net.Edge>(kante))
+                {
+                    weg++; details.Add(kante.Index + " ersetzt");
+                    continue;
+                }
+                var edge = EntityManager.GetComponentData<Game.Net.Edge>(kante);
+                var anfang = edge.m_Start == knoten;
+                var flaggen = EntityManager.HasComponent<Game.Net.Upgraded>(kante)
+                    ? EntityManager.GetComponentData<Game.Net.Upgraded>(kante).m_Flags
+                    : default;
+                var seite = anfang ? flaggen.m_Left : flaggen.m_Right;
+                var hatFlag = (seite & Game.Prefabs.CompositionFlags.Side.RemoveCrosswalk) != 0;
+                var knotenArt = "?";
+                if (EntityManager.HasComponent<Composition>(kante))
+                {
+                    var c = EntityManager.GetComponentData<Composition>(kante);
+                    var kk = anfang ? c.m_StartNode : c.m_EndNode;
+                    if (kk != Entity.Null && EntityManager.HasComponent<NetCompositionData>(kk))
+                    {
+                        var g = EntityManager.GetComponentData<NetCompositionData>(kk).m_Flags.m_General;
+                        var uw = (g & Game.Prefabs.CompositionFlags.General.Crosswalk) != 0;
+                        knotenArt = (uw ? "Ueberweg" : "frei")
+                            + ((g & Game.Prefabs.CompositionFlags.General.Intersection) != 0 ? "/Kreuzung" : "")
+                            + ((g & Game.Prefabs.CompositionFlags.General.Invert) != 0 ? "/Invert" : "");
+                        if (uw && hatFlag) trotzdem++;
+                        if (!uw) frei++;
+                    }
+                }
+                if (!hatFlag) ohneFlag++;
+                details.Add($"{kante.Index} {(anfang ? "Anfang" : "Ende")}"
+                    + $"{(anfang != amAnfang ? " (SEITE GEWECHSELT)" : "")}: Flag "
+                    + $"{(hatFlag ? "da" : "WEG")}, Knoten {knotenArt}, Upgraded L={flaggen.m_Left} R={flaggen.m_Right}");
+            }
+            Mod.log.Info($"PLT-Gassenueberwege PROBE: {_ueberwegProben.Count} Kanten eine Sekunde danach - "
+                + $"{frei} ohne Ueberweg, {weg} ersetzt, {ohneFlag} Flag verloren, {trotzdem} Flag da UND Ueberweg. "
+                + string.Join("; ", details));
+            _ueberwegProben.Clear();
         }
 
         private void MeldeEineGasse(Gassenplan plan)
