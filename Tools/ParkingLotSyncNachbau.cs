@@ -52,7 +52,8 @@ namespace ParkingLotTool.Tools
                 {
                     if (_nachbauAuftraege.Count == 0) return;
                     if (IsEditing || _pendingEditLot != Entity.Null || _buildTask != null
-                        || _buildStage != BuildStage.Idle || _avPhase != AvPhase.Idle) return;
+                        || _buildStage != BuildStage.Idle || _avPhase != AvPhase.Idle
+                        || GassenknotenLaeuft) return;
                     // Die Nacharbeit des vorigen Baus (Seiten, Namen, Haltestellen)
                     // muss durch sein - sonst trifft sie den naechsten Umbau.
                     if (_zoningSeitenFrames > 0 || _zoningBlockFrames > 0
