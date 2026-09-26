@@ -102,9 +102,28 @@ namespace ParkingLotTool.Tools
                                 | BindingFlags.DeclaredOnly))
                                 if (!feld.IsInitOnly && !feld.IsLiteral)
                                     feld.SetValue(klon, feld.GetValue(quelle));
+                        /*
+                         * WELCHE KOMPONENTEN ERBT DER KLON? Einmal ins Log.
+                         *
+                         * Zweimal ist ein Klon schon in einem Vanilla-Topf
+                         * gelandet (SpawnableArea an der Vorflaeche, Mesh der
+                         * Gasse). Welche Komponenten die Vanilla-Wege tragen,
+                         * steht nicht in der Game.dll, sondern in den
+                         * Spieldaten - Codex konnte es am 2026-09-26 deshalb
+                         * nicht ausschliessen. Diese Zeile beantwortet es beim
+                         * ersten Start.
+                         */
+                        var namen = new List<string>();
                         foreach (var komponente in quelle.components)
-                            if (komponente != null && !(komponente is UIObject))
+                        {
+                            if (komponente == null) continue;
+                            namen.Add(komponente.GetType().Name
+                                + (komponente is UIObject ? " (ausgelassen)" : ""));
+                            if (!(komponente is UIObject))
                                 klon.AddComponentFrom(komponente);
+                        }
+                        Mod.log.Info($"PLT-Ebener Weg: '{klonname}' erbt von '{quellname}': "
+                            + string.Join(", ", namen) + ".");
                         if (!_prefabs.AddPrefab(klon))
                         {
                             UnityEngine.Object.Destroy(klon);
