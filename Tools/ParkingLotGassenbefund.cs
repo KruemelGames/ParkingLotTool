@@ -212,6 +212,20 @@ namespace ParkingLotTool.Tools
             if (_ueberwegProben.Count > 0 && _ueberwegProbeAb == 0)
                 _ueberwegProbeAb = UnityEngine.Time.frameCount + 60;
 
+            /*
+             * DER KNOTEN MUSS MIT NEU AUFGEBAUT WERDEN.
+             *
+             * Probe 2026-09-26: an allen 22 Strassenkanten war das Flag da und
+             * CS2s Knotenkomposition schon OHNE Ueberweg - die Streifen standen
+             * trotzdem. Gezeichnet werden sie von den Spuren des KNOTENS
+             * (Zebra-Fussgaengerspuren in seinem SubLane-Puffer), und die baut
+             * CS2 nur neu, wenn der Knoten selbst `Updated` traegt. Die Kante
+             * allein aendert nur ihre Komposition.
+             */
+            if (gesetzt.Count > 0 && EntityManager.Exists(knoten)
+                && !EntityManager.HasComponent<Updated>(knoten))
+                EntityManager.AddComponent<Updated>(knoten);
+
             if (gesetzt.Count > 0)
                 Mod.log.Info("PLT-Gassenueberwege: " + gesetzt.Count
                     + " Strassenkante(n) am Knoten ohne Ueberweg - "
