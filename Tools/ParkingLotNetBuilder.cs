@@ -265,8 +265,7 @@ namespace ParkingLotTool.Tools
             ref TerrainHeightData heightData,
             Dictionary<(long, long), float> heights,
             ref Unity.Mathematics.Random random,
-            List<string> bericht,
-            Entity innenKnoten = default)
+            List<string> bericht)
         {
             if (!TryResolveZufahrtsgasse(piece.Art, out var gasse))
             {
@@ -364,11 +363,6 @@ namespace ParkingLotTool.Tools
              * anderen Knoten. Jetzt bekommt der Kurs die Kante und die
              * Teilungsstelle - oder den Knoten, wenn er dort schon steht.
              */
-            // Innen dockt die Gasse an den stehenden Wegknoten an - wie
-            // `NetToolSystem.GetCoursePos` bei einem getroffenen Knoten.
-            var innen = innenKnoten != Entity.Null
-                ? new Anschluss { Entity = innenKnoten, Teilung = 0f }
-                : default;
             var strassenpunkt = new float3(mitte.x, strassenhoehe, mitte.y);
             var anschluss = AnschlussAnStrasse(strasse, t, ref strassenpunkt);
             if (anschluss.Entity != Entity.Null
@@ -384,8 +378,8 @@ namespace ParkingLotTool.Tools
             }
             if (!CreateCourseDefinition("entrance-gasse", index, kursVon,
                     kursNach, gasse, ref heightData, heights, ref random,
-                    anschlussAnfang: hinaus ? innen : anschluss,
-                    anschlussEnde: hinaus ? anschluss : innen))
+                    anschlussAnfang: hinaus ? default : anschluss,
+                    anschlussEnde: hinaus ? anschluss : default))
             {
                 bericht.Add($"Zufahrt {index}: Gassenkurs abgelehnt "
                     + $"({laenge:F2} m)");
@@ -714,7 +708,7 @@ namespace ParkingLotTool.Tools
             VergissGassenplan();
             var zoningStuecke = new List<(float2 A, float2 B)>();
             MerkeGassenenden(layout);
-            _gassenauftraege.Clear();
+            SetzeGassenendhoehen(heights, ref heightData);
             // Nur anfordern, wenn das Layout ueberhaupt eine Zoning-Strasse
             // enthaelt - sonst bestellt jeder Parkplatz einen Prefabklon.
             var zoningRoad = Entity.Null;
@@ -769,10 +763,10 @@ namespace ParkingLotTool.Tools
                         gassenGeplant++;
                         var breite = (float)new ParkingLotTool.Geometry.Entrance { Art = piece.Art }
                             .Breite(settings.Ai, settings.Gassenbreite);
-                        // Die Gasse kommt im zweiten Bauschritt, an den dann
-                        // stehenden Wegknoten angedockt (ParkingLotGassenknoten.cs).
-                        MerkeGassenauftrag(piece, i, breite);
-                        gassenGebaut++;
+                        var gebaut = CreateGassenstueck(piece, i, breite,
+                            ref heightData, heights, ref random, gassenBericht);
+                        created += gebaut;
+                        if (gebaut > 0) gassenGebaut++;
                         continue;
                     }
                 }
@@ -1075,24 +1069,49 @@ namespace ParkingLotTool.Tools
          * Vanilla schuetzt den Knoten ueber die Reihenfolge: an einen
          * VORHANDENEN Knoten waehlt `FindNodePrefab` das Prefab mit der
          * hoechsten `m_NodePriority` - eine Strasse (+2000) schlaegt jeden
-         * Weg. Deshalb entstehen die Gassen erst im zweiten Bauschritt, an
-         * die dann stehenden Wegknoten angedockt (ParkingLotGassenknoten.cs).
+         * Weg. Genau das holt `ParkingLotGassenknoten` nach dem Apply nach.
          *
-         * Hier bleibt: die Enden merken, fuer Messung und zweiten Schritt.
+         * Hier bleibt: die Enden merken (fuer Messung und Nacharbeit) und
+         * beim Edit ihre Hoehe aus dem UNBERUEHRTEN Gelaende nehmen, nicht
+         * vom alten Knoten - der kann gesunken sein, und sonst bleibt er es.
          */
         private readonly List<float2> _gassenenden = new();
         private readonly HashSet<Entity> _gassenendPrefabs = new();
+        private int _gassenendhoehenNeu;
 
         private void MerkeGassenenden(ParkingLayout layout)
         {
             _gassenenden.Clear();
             _gassenhoehen.Clear();
             _gassenendPrefabs.Clear();
+            _gassenendhoehenNeu = 0;
             foreach (var piece in layout.NetLine)
                 if (string.Equals(piece.Kind, "entrance", StringComparison.Ordinal)
                     && Zufahrtsarten.IstGasse(piece.Art))
                     // Nach aussen ist A, innen B (siehe `CreateGassenstueck`).
                     _gassenenden.Add(piece.B);
+        }
+
+        /**
+         * Beim Edit: das innere Ende bekommt die Hoehe des unberuehrten
+         * Gelaendes neben dem alten Wegstreifen - dieselbe Quelle, die
+         * `AlthoeheGlaubwuerdig` als Massstab nimmt. Beim Neubau gibt es
+         * keinen alten Streifen, dann misst `SampleCourseHeight` wie immer.
+         */
+        private void SetzeGassenendhoehen(Dictionary<(long, long), float> heights,
+            ref TerrainHeightData heightData)
+        {
+            foreach (var ende in _gassenenden)
+            {
+                if (!AltkanteBei(ende, out _, out var richtung, out var halb)) continue;
+                var umgebung = UnberuehrtesGelaende(ende, richtung, halb, ref heightData);
+                if (!math.isfinite(umgebung)) continue;
+                var k = ((long)math.round(ende.x * 40f), (long)math.round(ende.y * 40f));
+                for (var dx = -1; dx <= 1; dx++)
+                    for (var dz = -1; dz <= 1; dz++)
+                        heights[(k.Item1 + dx, k.Item2 + dz)] = umgebung;
+                _gassenendhoehenNeu++;
+            }
         }
 
         private void MerkeGassenendeAm(float2 punkt, Entity prefab, float hoehe)
@@ -1118,6 +1137,7 @@ namespace ParkingLotTool.Tools
                 prioritaeten.Add($"'{name}' {EntityManager.GetComponentData<NetData>(prefab).m_NodePriority:F1}");
             }
             Mod.log.Info($"PLT-Gassenknoten: {_gassenenden.Count} innere Gassenende(n), "
+                + $"{_gassenendhoehenNeu} davon mit Hoehe aus dem unberuehrten Gelaende; "
                 + "Knotenprioritaet der Prefabs dort: " + string.Join(", ", prioritaeten) + ".");
         }
 
