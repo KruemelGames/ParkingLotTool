@@ -288,17 +288,23 @@ namespace ParkingLotTool.Tools
                 var dauer = jetzt - _letztesBild;
                 _bilder++;
                 if (dauer > _bildHoechstwert) _bildHoechstwert = dauer;
-                if (dauer * MsJeTick >= AusreisserMs) MeldeAusreisser(dauer);
+                // Die Zeile wird nur gebaut, wenn sie jemand liest - siehe
+                // `JemandSiehtHin`. Gezaehlt wird trotzdem, das kostet nichts.
+                if (dauer * MsJeTick >= AusreisserMs && JemandSiehtHin(_werkzeugLief))
+                    MeldeAusreisser(dauer);
             }
             _letztesBild = jetzt;
             if (_fensterStart == 0) _fensterStart = jetzt;
 
             /*
-             * JEDE SEKUNDE, AUCH OHNE WERKZEUG.
+             * JEDE SEKUNDE ABGERECHNET, GEMELDET NUR, WENN JEMAND HINSIEHT.
              *
-             * Bis zum 2026-09-17 wurde nur bei offenem Werkzeug gemeldet.
-             * Damit fehlte ausgerechnet der Fall, um den es geht: Mod
-             * installiert, Werkzeug zu, normal gespielt.
+             * Vom 2026-09-17 bis 2026-09-26 ging die Zeile auch ohne Werkzeug
+             * jede Sekunde ins Log - fuer den Fall "Werkzeug zu, normal
+             * gespielt". Diesen Fall deckt inzwischen der Leistungsbericht
+             * unter "Report a problem" ab (Aufzeichnung auf Knopfdruck), und
+             * das Dauerschreiben hat bei einem Tester ein Fehlerfenster aus
+             * CS2s Logger ausgeloest. Siehe `JemandSiehtHin`.
              */
             var fenster = (jetzt - _fensterStart) * MsJeTick;
             if (fenster >= 1000.0) Melde(fenster, werkzeugAktiv);
@@ -338,7 +344,7 @@ namespace ParkingLotTool.Tools
                 + " | mesh groups " + BildStueck[(int)Zaehler.Netzgruppen]
                 + ", uploads " + BildStueck[(int)Zaehler.Uebertragungen]
                 + SystemeDiesesBild() + ".";
-            InsLog("PLT-Messung " + zeile, _werkzeugLief);
+            InsLog("PLT-Messung " + zeile);
             Notiere(zeile);
         }
 
@@ -358,10 +364,12 @@ namespace ParkingLotTool.Tools
          * nach `performance.txt`). Und ein scheiternder Logger ist kein
          * Grund fuer ein Fehlerfenster - eine Messzeile ist verzichtbar.
          */
-        private static void InsLog(string zeile, bool werkzeugAktiv)
+        private static bool JemandSiehtHin(bool werkzeugAktiv)
+            => werkzeugAktiv || (Mod.Optionen?.EntwicklerDebug ?? false)
+               || Zeichnetauf || _aufzeichnungBis != 0;
+
+        private static void InsLog(string zeile)
         {
-            if (!werkzeugAktiv && !(Mod.Optionen?.EntwicklerDebug ?? false)
-                && !Zeichnetauf && _aufzeichnungBis == 0) return;
             try { Mod.log.Info(zeile); }
             catch (Exception) { }
         }
@@ -380,7 +388,7 @@ namespace ParkingLotTool.Tools
 
         private static void Melde(double fensterMs, bool werkzeugAktiv)
         {
-            if (_bilder > 0)
+            if (_bilder > 0 && JemandSiehtHin(werkzeugAktiv))
             {
                 // Englisch: diese Zeile landet in `performance.txt` im
                 // Meldepaket, genau wie die Ausreisserzeile.
@@ -404,7 +412,7 @@ namespace ParkingLotTool.Tools
                     + ", uploads "
                     + (Stueck[(int)Zaehler.Uebertragungen] / _bilder)
                     + Systeme() + ".";
-                InsLog("PLT-Messung: " + zeile, werkzeugAktiv);
+                InsLog("PLT-Messung: " + zeile);
                 Notiere(zeile);
             }
 
