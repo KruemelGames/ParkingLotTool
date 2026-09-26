@@ -868,7 +868,6 @@ namespace ParkingLotTool.Tools
                 Mod.log.Info($"PLT-Wege: {created} Kurse, Fahrgasse {wideCore:F0} m "
                     + $"(eingestellt {settings.Ai:F1} m), Querweg {narrowCore:F0} m "
                     + $"(eingestellt {settings.Cw:F1} m).");
-            MeldeGassenenden();
             return created;
         }
 
@@ -1048,40 +1047,39 @@ namespace ParkingLotTool.Tools
         }
 
         /*
-         * DER KNOTEN AM INNEREN GASSENENDE BEKOMMT EINE ELEVATION.
+         * DER INNERE GASSENKNOTEN WIRD NICHT AUFS GELAENDE GELEGT.
          *
-         * Gasse (FlattenTerrain + ClipTerrain) und unsichtbare Wege teilen dort
-         * einen Knoten. `GroundHeightSystem` legt ihn aufs Gelaende, sobald er
-         * das Prefab eines nicht einebnenden Wegs traegt - und das Gelaende
-         * dort hat die Gasse weggeschnitten: der Knoten sank, die Gasse folgte
-         * (Bericht UFS7). Einebnende Wegklone schuetzten den Knoten, verformten
-         * aber das Gelaende sichtbar (2026-09-26, Bilder des Nutzers).
+         * Befund 2026-09-26 (Messung "PLT-Gassenhoehe", Dekompilat, zwei
+         * Codex-Berichte in _codex-gassenknoten2): Gasse und unsichtbare Wege
+         * teilen am inneren Ende einen NEUEN Knoten; sein Prefab kommt vom
+         * zuletzt verarbeiteten Kurs (`GenerateNodesSystem.CollectUpdatesJob`).
+         * Traegt er einen Weg, legt `GroundHeightSystem` ihn aufs Gelaende,
+         * das die Gasse dort beschnitten hat: 0,3-0,5 m tiefer je Bau, und
+         * jeder Edit erbte es. Trug er zufaellig die Gasse, blieb er oben
+         * (5 von 5 beim ersten Bau).
          *
-         * Jetzt nur der Knoten: ein Kursende mit `m_Elevation != 0` gibt ihm in
-         * `GenerateNodesSystem.CreateNodesJob` eine `Elevation`-Komponente.
-         * `GroundHeightSystem.BoundsFindJob` ueberspringt solche Knoten, und bei
-         * den angeschlossenen Kanten haelt `UpdateHeightsJob` das Kurvenende an
-         * ihnen fest. Das Gelaende bleibt unberuehrt; `ClipTerrain` und das
-         * Einebnen haengen an Prefab-Flags, nicht an dieser Komponente.
+         * Gescheitert und zurueckgenommen:
+         *   - `CoursePos.m_Elevation` 1 mm: `CourseSplitSystem.
+         *     CalculateElevation` misst neu und setzt < 2 m auf null.
+         *   - Gasse nach dem Apply ueberbauen: Prefab stimmt dann, aber zu
+         *     spaet; CS2 behaelt die (schon gesunkene) Hoehe.
+         *   - Erst Wege, dann Gasse angedockt: der Wegknoten traegt
+         *     `Standalone` + Owner, CS2 behaelt sein Prefab - Gassen als Bruecke.
          *
-         * An JEDEM Kursende dieses Knotens, auch an der Gasse: beim
-         * Zusammenfuehren gleicher Positionen ersetzt der zuletzt verarbeitete
-         * Kurs den ganzen Datensatz samt Elevation (Codex, Dekompilat
-         * `CollectUpdatesJob`). 1 mm liegt weit unter jedem `m_ElevationLimit`,
-         * ab dem CS2 einen Weg als erhoeht einstuft - die echten Grenzwerte
-         * stehen nach dem Bau im Log.
+         * Jetzt: `Game.Net.Elevation(0)` an den Temp-Knoten VOR dem Apply,
+         * derselbe Zeitpunkt wie unser Owner an den Temps.
+         * `GroundHeightSystem.NetIterator.Iterate` laesst jeden Knoten mit
+         * einer `Elevation` aus, ohne den Wert zu pruefen;
+         * `ApplyNetSystem.Create` entfernt nur `Temp`; ein Nullwert erreicht in
+         * `NetCompositionHelpers.GetElevationFlags` keine Schwelle, also keine
+         * Bruecke. Vanilla-Knoten mit `m_ParentMesh` tragen genau das.
          */
-        private static readonly float2 Knotenschutz = new float2(0.001f, 0.001f);
         private readonly List<float2> _gassenenden = new();
-        private int _geschuetzteEnden;
-        private readonly HashSet<Entity> _knotenschutzPrefabs = new();
 
         private void MerkeGassenenden(ParkingLayout layout)
         {
             _gassenenden.Clear();
             _gassenhoehen.Clear();
-            _geschuetzteEnden = 0;
-            _knotenschutzPrefabs.Clear();
             foreach (var piece in layout.NetLine)
                 if (string.Equals(piece.Kind, "entrance", StringComparison.Ordinal)
                     && Zufahrtsarten.IstGasse(piece.Art))
@@ -1089,39 +1087,60 @@ namespace ParkingLotTool.Tools
                     _gassenenden.Add(piece.B);
         }
 
-        private float2 KnotenschutzAm(float2 punkt, Entity prefab, float hoehe)
+        private void MerkeGassenendeAm(float2 punkt, float hoehe)
         {
             foreach (var ende in _gassenenden)
                 if (math.distance(ende, punkt) < 0.05f)
                 {
                     MerkeGassenendeGeplant(ende, hoehe);
-                    _geschuetzteEnden++;
-                    _knotenschutzPrefabs.Add(prefab);
-                    return Knotenschutz;
+                    return;
                 }
-            return float2.zero;
         }
 
-        private void MeldeGassenenden()
+        /** Vor dem Apply, nach dem Besitzer: die Temp-Knoten an den inneren Gassenenden schuetzen. */
+        private void SchuetzeGassenknoten()
         {
             if (_gassenenden.Count == 0) return;
-            var grenzen = new List<string>();
-            foreach (var prefab in _knotenschutzPrefabs)
+            var query = GetEntityQuery(ComponentType.ReadOnly<Game.Net.Node>(),
+                ComponentType.ReadOnly<Temp>(), ComponentType.Exclude<Deleted>());
+            using var knoten = query.ToEntityArray(Allocator.Temp);
+            int geschuetzt = 0, mitOriginal = 0, gasse = 0;
+            var gefunden = new HashSet<int>();
+            foreach (var k in knoten)
             {
-                if (!EntityManager.HasComponent<NetGeometryData>(prefab)) continue;
-                var g = EntityManager.GetComponentData<NetGeometryData>(prefab);
-                var name = _prefabSystem.TryGetPrefab<PrefabBase>(prefab, out var pb)
-                    && pb != null ? pb.name : prefab.ToString();
-                grenzen.Add($"'{name}' Grenze {g.m_ElevationLimit:F2} m"
-                    + ((g.m_Flags & Game.Net.GeometryFlags.RaisedIsElevated) != 0
-                        ? " (RaisedIsElevated)" : "")
-                    + ((g.m_Flags & Game.Net.GeometryFlags.RequireElevated) != 0
-                        ? " (RequireElevated!)" : ""));
+                var lage = EntityManager.GetComponentData<Game.Net.Node>(k).m_Position.xz;
+                var ende = -1;
+                for (var i = 0; i < _gassenenden.Count && ende < 0; i++)
+                    if (math.distance(_gassenenden[i], lage) < 0.05f) ende = i;
+                if (ende < 0 || !HaengtAnGasse(k)) continue;
+                gefunden.Add(ende);
+                if (EntityManager.GetComponentData<Temp>(k).m_Original != Entity.Null)
+                {
+                    // Ein vorhandener Knoten wird beim Apply aktualisiert, und
+                    // dabei kopiert CS2 `Elevation` nicht mit.
+                    mitOriginal++;
+                    continue;
+                }
+                if (GassenPrefab.Ist(_prefabSystem, EntityManager.GetComponentData<PrefabRef>(k).m_Prefab)) gasse++;
+                if (!EntityManager.HasComponent<Game.Net.Elevation>(k))
+                    EntityManager.AddComponentData(k, new Game.Net.Elevation(float2.zero));
+                geschuetzt++;
             }
-            Mod.log.Info($"PLT-Gassenknoten: {_gassenenden.Count} innere Gassenende(n), "
-                + $"{_geschuetzteEnden} Kursende(n) daran mit Elevation "
-                + $"{Knotenschutz.x * 1000f:F0} mm; beteiligte Prefabs: "
-                + string.Join(", ", grenzen) + ".");
+            var text = $"PLT-Gassenknoten: {geschuetzt} von {_gassenenden.Count} inneren Gassenende(n) "
+                + $"vor dem Apply mit Elevation 0 geschuetzt ({gasse} davon tragen ohnehin das Gassen-Prefab); "
+                + $"{mitOriginal} mit vorhandenem Original, {_gassenenden.Count - gefunden.Count} ohne Temp-Knoten.";
+            if (geschuetzt < _gassenenden.Count) Mod.log.Warn(text); else Mod.log.Info(text);
+        }
+
+        private bool HaengtAnGasse(Entity knoten)
+        {
+            if (!EntityManager.HasBuffer<ConnectedEdge>(knoten)) return false;
+            var puffer = EntityManager.GetBuffer<ConnectedEdge>(knoten, true);
+            for (var i = 0; i < puffer.Length; i++)
+                if (EntityManager.HasComponent<PrefabRef>(puffer[i].m_Edge)
+                    && GassenPrefab.Ist(_prefabSystem, EntityManager.GetComponentData<PrefabRef>(puffer[i].m_Edge).m_Prefab))
+                    return true;
+            return false;
         }
 
         private bool CreateCourseDefinition(
@@ -1175,6 +1194,8 @@ namespace ParkingLotTool.Tools
             // lokalen Koordinaten - eine Komponente, die es laut ComponentMenu
             // nur fuer BuildingPrefab und BuildingExtensionPrefab gibt, fuer
             // unser LotPrefab also nicht.
+            MerkeGassenendeAm(from, a.y);
+            MerkeGassenendeAm(to, b.y);
             var curve = NetUtils.StraightCurve(a, b);
             var definition = EntityManager.CreateEntity();
             EntityManager.AddComponentData(definition, new CreationDefinition
@@ -1212,7 +1233,7 @@ namespace ParkingLotTool.Tools
                     m_Position = a,
                     m_Rotation = NetUtils.GetNodeRotation(MathUtils.StartTangent(curve)),
                     m_CourseDelta = 0f,
-                    m_Elevation = KnotenschutzAm(from, prefab, a.y),
+                    m_Elevation = float2.zero,
                     m_Flags = CoursePosFlags.IsFirst,
                     m_ParentMesh = -1,
                 },
@@ -1223,7 +1244,7 @@ namespace ParkingLotTool.Tools
                     m_Position = b,
                     m_Rotation = NetUtils.GetNodeRotation(MathUtils.EndTangent(curve)),
                     m_CourseDelta = 1f,
-                    m_Elevation = KnotenschutzAm(to, prefab, b.y),
+                    m_Elevation = float2.zero,
                     m_Flags = CoursePosFlags.IsLast,
                     m_ParentMesh = -1,
                 },

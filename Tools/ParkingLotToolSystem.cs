@@ -1752,6 +1752,8 @@ namespace ParkingLotTool.Tools
             }
             ProtokolliereBauschritt("AttachPartsToLotOwner");
             var parts = AttachPartsToLotOwner();
+            ProtokolliereBauschritt("SchuetzeGassenknoten");
+            SchuetzeGassenknoten();
             ProtokolliereBauschritt("NameLotOwner");
             NameLotOwner(_areaPreviewLayout.Stalls);
 
