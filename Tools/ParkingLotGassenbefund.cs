@@ -118,9 +118,78 @@ namespace ParkingLotTool.Tools
             });
         }
 
+        /**
+         * WANN SINKT DAS INNERE GASSENENDE?
+         *
+         * Nutzer 2026-09-26: das innere Ende rutscht bei jedem Edit tiefer.
+         * Im Log belegt (Gassenbefund, vier Umbauten): -0,17, -0,54, -0,54,
+         * -1,15 m gegen die Strasse. Beim Edit erbt der neue Knoten die Hoehe
+         * des alten (`_altknotenhoehen`) - ist der alte gesunken, erbt der
+         * neue das. Offen ist, WANN er sinkt: schon im Bau (geplante Hoehe
+         * gegen die ersten Bilder) oder spaeter (1 s gegen 10 s). Diese Zeilen
+         * trennen die drei Moeglichkeiten.
+         */
+        private sealed class Gassenhoehe
+        {
+            internal float2 Lage;
+            internal float Geplant = float.NaN;
+            internal float Alt = float.NaN;
+            internal float Nach1s = float.NaN;
+        }
+
+        private readonly List<Gassenhoehe> _gassenhoehen = new();
+        private int _gassenhoehenAb1, _gassenhoehenAb10;
+
+        private void MerkeGassenendeGeplant(float2 lage, float hoehe)
+        {
+            foreach (var g in _gassenhoehen)
+                if (math.distance(g.Lage, lage) < 0.05f) return;
+            var eintrag = new Gassenhoehe { Lage = lage, Geplant = hoehe };
+            var k = ((long)math.round(lage.x * 40f), (long)math.round(lage.y * 40f));
+            for (var dx = -1; dx <= 1 && float.IsNaN(eintrag.Alt); dx++)
+                for (var dz = -1; dz <= 1; dz++)
+                    if (_altknotenhoehen.TryGetValue((k.Item1 + dx, k.Item2 + dz), out var alt))
+                    { eintrag.Alt = alt; break; }
+            _gassenhoehen.Add(eintrag);
+        }
+
+        private void PruefeGassenhoehen()
+        {
+            var bild = UnityEngine.Time.frameCount;
+            var erste = _gassenhoehenAb1 != 0 && bild >= _gassenhoehenAb1;
+            var zweite = _gassenhoehenAb10 != 0 && bild >= _gassenhoehenAb10;
+            if (!erste && !zweite) return;
+            if (erste) _gassenhoehenAb1 = 0; else _gassenhoehenAb10 = 0;
+            var teile = new List<string>();
+            foreach (var g in _gassenhoehen)
+            {
+                KantenAmPunkt(g.Lage, out var knoten, out _);
+                var y = float.NaN;
+                var elev = "ohne Knoten";
+                if (knoten != Entity.Null)
+                {
+                    y = EntityManager.GetComponentData<Game.Net.Node>(knoten).m_Position.y;
+                    elev = EntityManager.HasComponent<Game.Net.Elevation>(knoten)
+                        ? "Elevation " + EntityManager.GetComponentData<Game.Net.Elevation>(knoten).m_Elevation.x.ToString("F3")
+                        : "OHNE Elevation";
+                }
+                if (erste) g.Nach1s = y;
+                teile.Add($"({g.Lage.x:F1}/{g.Lage.y:F1}) alt {g.Alt:F2}, geplant {g.Geplant:F2}, "
+                    + (erste ? $"nach 1 s {y:F2}" : $"nach 1 s {g.Nach1s:F2}, nach 10 s {y:F2}")
+                    + $", {elev}");
+            }
+            Mod.log.Info($"PLT-Gassenhoehe {(erste ? "1 s" : "10 s")}: {_gassenhoehen.Count} innere Ende(n) - "
+                + string.Join("; ", teile));
+        }
+
         /** Nach dem Apply gerufen; die Messung folgt ein paar Bilder spaeter. */
         internal void MeldeGassenbefundAn()
         {
+            if (_gassenhoehen.Count > 0)
+            {
+                _gassenhoehenAb1 = UnityEngine.Time.frameCount + 60;
+                _gassenhoehenAb10 = UnityEngine.Time.frameCount + 600;
+            }
             if (_gassenplan.Count == 0) return;
             _gassenrichtungStartFrame = UnityEngine.Time.frameCount;
             _gassenbefundAb = UnityEngine.Time.frameCount + GassenbefundFrames;

@@ -1079,6 +1079,7 @@ namespace ParkingLotTool.Tools
         private void MerkeGassenenden(ParkingLayout layout)
         {
             _gassenenden.Clear();
+            _gassenhoehen.Clear();
             _geschuetzteEnden = 0;
             _knotenschutzPrefabs.Clear();
             foreach (var piece in layout.NetLine)
@@ -1088,11 +1089,12 @@ namespace ParkingLotTool.Tools
                     _gassenenden.Add(piece.B);
         }
 
-        private float2 KnotenschutzAm(float2 punkt, Entity prefab)
+        private float2 KnotenschutzAm(float2 punkt, Entity prefab, float hoehe)
         {
             foreach (var ende in _gassenenden)
                 if (math.distance(ende, punkt) < 0.05f)
                 {
+                    MerkeGassenendeGeplant(ende, hoehe);
                     _geschuetzteEnden++;
                     _knotenschutzPrefabs.Add(prefab);
                     return Knotenschutz;
@@ -1210,7 +1212,7 @@ namespace ParkingLotTool.Tools
                     m_Position = a,
                     m_Rotation = NetUtils.GetNodeRotation(MathUtils.StartTangent(curve)),
                     m_CourseDelta = 0f,
-                    m_Elevation = KnotenschutzAm(from, prefab),
+                    m_Elevation = KnotenschutzAm(from, prefab, a.y),
                     m_Flags = CoursePosFlags.IsFirst,
                     m_ParentMesh = -1,
                 },
@@ -1221,7 +1223,7 @@ namespace ParkingLotTool.Tools
                     m_Position = b,
                     m_Rotation = NetUtils.GetNodeRotation(MathUtils.EndTangent(curve)),
                     m_CourseDelta = 1f,
-                    m_Elevation = KnotenschutzAm(to, prefab),
+                    m_Elevation = KnotenschutzAm(to, prefab, b.y),
                     m_Flags = CoursePosFlags.IsLast,
                     m_ParentMesh = -1,
                 },
