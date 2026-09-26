@@ -104,7 +104,8 @@ namespace ParkingLotTool.Tools
              */
             var teile = AvErmittleTeile(gruppen);
             Mod.log.Info($"PLT-Autoversorgung TEILE: {gruppen.Count} eigene(s) Netz(e), "
-                + $"{teile.OffeneTeile()} davon noch nicht an der Stadt. Verbunden wird "
+                + $"{teile.OffeneTeile()} davon noch nicht an der Stadt, "
+                + $"{_avPerKnotenAnStadt} per Knoten an einer Stadtstrasse. Verbunden wird "
                 + "immer nur zwischen zwei Teilen, die nicht zusammenhaengen - "
                 + "ein Teil ohne Stadtanschluss hat am Ende nur noch Stadtstrassen als Ziel.");
             _avNochOffeneNetze = 0;

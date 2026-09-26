@@ -215,12 +215,18 @@ namespace ParkingLotTool.Tools
             }
         }
 
+        private int _avPerKnotenAnStadt;
+
         private AvTeile AvErmittleTeile(List<List<Entity>> gruppen)
         {
             var teile = new AvTeile(gruppen);
+            _avPerKnotenAnStadt = 0;
             for (var i = 0; i < gruppen.Count; i++)
-                if (gruppen[i].TrueForAll(AvZielHatStadtpfad))
-                    teile.Verbinde(i, teile.Stadt);
+            {
+                if (AvHaengtAnStadtstrasse(gruppen[i])) _avPerKnotenAnStadt++;
+                else if (!gruppen[i].TrueForAll(AvZielHatStadtpfad)) continue;
+                teile.Verbinde(i, teile.Stadt);
+            }
             foreach (var v in _avVerbindungen)
             {
                 var a = AvGruppeAmPunkt(gruppen, v.Start);
@@ -230,6 +236,50 @@ namespace ParkingLotTool.Tools
                 teile.Verbinde(a, b);
             }
             return teile;
+        }
+
+        /**
+         * HAENGT DAS NETZ SCHON PER KNOTEN AN EINER STADTSTRASSE?
+         *
+         * Eine Gasse am Strassenknoten bekommt Strom und Wasser ueber die
+         * eingebauten Leitungen beider Strassen - so wie jede Vanilla-Strasse,
+         * ab dem Moment des Baus. CS2s Flussgraph kennt frische Kanten aber
+         * erst Sekunden spaeter. Nach einem Edit sind alle Gassen frisch: am
+         * 2026-09-26 hielt die Planung deshalb 10 von 10 Gassen fuer
+         * unangeschlossen und legte 23 s lang je Anlauf eine Vorschau-Leitung
+         * an die Stadtstrasse - die CS2 dafuer jedes Mal teilte, sichtbar als
+         * flackernde Ueberwege. Alle 30 Anlaeufe scheiterten.
+         *
+         * Dieselbe Regel wie `AvZielHatStadtpfad` fuer eine Stadtstrasse
+         * selbst: sie ist die Wurzel. Gefragt wird nach dem Aufbau, nicht nach
+         * dem Graphen; bestaetigt wird weiterhin in der Netzabdeckung.
+         */
+        private bool AvHaengtAnStadtstrasse(List<Entity> gruppe)
+        {
+            foreach (var e in gruppe)
+            {
+                if (!EntityManager.Exists(e) || !EntityManager.HasComponent<Edge>(e)
+                    || !KanteNimmtVersorgung(e)) continue;
+                var kante = EntityManager.GetComponentData<Edge>(e);
+                if (KnotenHatStadtstrasse(kante.m_Start) || KnotenHatStadtstrasse(kante.m_End))
+                    return true;
+            }
+            return false;
+        }
+
+        private bool KnotenHatStadtstrasse(Entity knoten)
+        {
+            if (!EntityManager.Exists(knoten) || !EntityManager.HasBuffer<ConnectedEdge>(knoten))
+                return false;
+            var angehaengt = EntityManager.GetBuffer<ConnectedEdge>(knoten, true);
+            for (var i = 0; i < angehaengt.Length; i++)
+            {
+                var k = angehaengt[i].m_Edge;
+                if (EntityManager.HasComponent<Owner>(k) || EntityManager.HasComponent<Temp>(k)
+                    || EntityManager.HasComponent<Deleted>(k)) continue;
+                if (KanteNimmtVersorgung(k)) return true;
+            }
+            return false;
         }
 
         /** Welches Netz laeuft durch diesen Punkt? -1, wenn keins. */
