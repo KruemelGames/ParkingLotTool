@@ -1274,13 +1274,18 @@ namespace ParkingLotTool.Tools
             // getrennt bleiben, grob genug, dass zwei Segmente an derselben
             // Ecke garantiert dieselbe Hoehe bekommen.
             var key = ((long)math.round(point.x * 40f), (long)math.round(point.y * 40f));
-            if (heights.TryGetValue(key, out var cached)) return cached;
+            if (heights.TryGetValue(key, out var cached))
+            {
+                MeldeKurshoehe(point, key, "speicher", cached);
+                return cached;
+            }
 
             // Unter einem alten eigenen Weg gilt SEINE Hoehe (geprueft), nicht
             // das Gelaende, das er selbst geformt hat.
             if (HoeheUnterAltbestand(point, ref heightData, out var alt))
             {
                 heights[key] = alt;
+                MeldeKurshoehe(point, key, "altweg", alt);
                 return alt;
             }
 
@@ -1290,7 +1295,28 @@ namespace ParkingLotTool.Tools
                 throw new InvalidOperationException(
                     "Die Terrain-Abtastung eines Fahrwegknotens ist nicht endlich.");
             heights[key] = height;
+            MeldeKurshoehe(point, key, "gelaende", height);
             return height;
+        }
+
+        /**
+         * Live-Log: woher die Hoehe eines Kursendes an einem inneren
+         * Gassenende kommt. 2026-09-26: Gasse und Wege bekamen dort
+         * verschiedene Hoehen (373,38 gegen 373,16) - diese Zeile zeigt, wo
+         * die beiden Wege auseinanderlaufen.
+         */
+        private void MeldeKurshoehe(float2 punkt, (long, long) schluessel, string quelle, float hoehe)
+        {
+            if (!ParkingLotLiveLog.Aktiv) return;
+            foreach (var ende in _gassenenden)
+                if (math.distance(ende, punkt) < 0.5f)
+                {
+                    ParkingLotLiveLog.Zeile($"kurshoehe | ende ({ParkingLotLiveLog.Zahl(ende.x, 3)}/{ParkingLotLiveLog.Zahl(ende.y, 3)}) "
+                        + $"punkt ({ParkingLotLiveLog.Zahl(punkt.x, 3)}/{ParkingLotLiveLog.Zahl(punkt.y, 3)}) "
+                        + $"abstand {ParkingLotLiveLog.Zahl(math.distance(ende, punkt), 3)} | schluessel {schluessel.Item1}/{schluessel.Item2} "
+                        + $"| {quelle} {ParkingLotLiveLog.Zahl(hoehe, 3)}");
+                    return;
+                }
         }
     }
 }
