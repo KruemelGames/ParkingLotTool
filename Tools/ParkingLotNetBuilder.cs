@@ -868,6 +868,7 @@ namespace ParkingLotTool.Tools
                 Mod.log.Info($"PLT-Wege: {created} Kurse, Fahrgasse {wideCore:F0} m "
                     + $"(eingestellt {settings.Ai:F1} m), Querweg {narrowCore:F0} m "
                     + $"(eingestellt {settings.Cw:F1} m).");
+            MeldeGassenenden();
             return created;
         }
 
@@ -1047,24 +1048,39 @@ namespace ParkingLotTool.Tools
         }
 
         /*
-         * AM INNEREN GASSENENDE NUR EINEBNENDE WEGE.
+         * DER KNOTEN AM INNEREN GASSENENDE BEKOMMT EINE ELEVATION.
          *
-         * Siehe `ParkingLotEbenerWegPrefabSystem`: der Knoten, an dem Gasse,
-         * Fahrgasse und Fusswege zusammentreffen, bekommt das Prefab des
-         * zuletzt verarbeiteten Kurses. Ebnet der nicht ein, legt CS2 den
-         * Knoten aufs Gelaende, das die Gasse wegschneidet - und er sinkt,
-         * immer weiter. Deshalb ebnet hier JEDER Kurs ein, der an einem
-         * inneren Gassenende beginnt oder endet.
+         * Gasse (FlattenTerrain + ClipTerrain) und unsichtbare Wege teilen dort
+         * einen Knoten. `GroundHeightSystem` legt ihn aufs Gelaende, sobald er
+         * das Prefab eines nicht einebnenden Wegs traegt - und das Gelaende
+         * dort hat die Gasse weggeschnitten: der Knoten sank, die Gasse folgte
+         * (Bericht UFS7). Einebnende Wegklone schuetzten den Knoten, verformten
+         * aber das Gelaende sichtbar (2026-09-26, Bilder des Nutzers).
+         *
+         * Jetzt nur der Knoten: ein Kursende mit `m_Elevation != 0` gibt ihm in
+         * `GenerateNodesSystem.CreateNodesJob` eine `Elevation`-Komponente.
+         * `GroundHeightSystem.BoundsFindJob` ueberspringt solche Knoten, und bei
+         * den angeschlossenen Kanten haelt `UpdateHeightsJob` das Kurvenende an
+         * ihnen fest. Das Gelaende bleibt unberuehrt; `ClipTerrain` und das
+         * Einebnen haengen an Prefab-Flags, nicht an dieser Komponente.
+         *
+         * An JEDEM Kursende dieses Knotens, auch an der Gasse: beim
+         * Zusammenfuehren gleicher Positionen ersetzt der zuletzt verarbeitete
+         * Kurs den ganzen Datensatz samt Elevation (Codex, Dekompilat
+         * `CollectUpdatesJob`). 1 mm liegt weit unter jedem `m_ElevationLimit`,
+         * ab dem CS2 einen Weg als erhoeht einstuft - die echten Grenzwerte
+         * stehen nach dem Bau im Log.
          */
+        private static readonly float2 Knotenschutz = new float2(0.001f, 0.001f);
         private readonly List<float2> _gassenenden = new();
-        private int _ebeneKurse;
-        private int _ebeneFehlt;
+        private int _geschuetzteEnden;
+        private readonly HashSet<Entity> _knotenschutzPrefabs = new();
 
         private void MerkeGassenenden(ParkingLayout layout)
         {
             _gassenenden.Clear();
-            _ebeneKurse = 0;
-            _ebeneFehlt = 0;
+            _geschuetzteEnden = 0;
+            _knotenschutzPrefabs.Clear();
             foreach (var piece in layout.NetLine)
                 if (string.Equals(piece.Kind, "entrance", StringComparison.Ordinal)
                     && Zufahrtsarten.IstGasse(piece.Art))
@@ -1072,39 +1088,38 @@ namespace ParkingLotTool.Tools
                     _gassenenden.Add(piece.B);
         }
 
-        private Entity EbenAmGassenende(string kind, float2 von, float2 nach, Entity prefab)
+        private float2 KnotenschutzAm(float2 punkt, Entity prefab)
         {
-            if (_gassenenden.Count == 0
-                || string.Equals(kind, "entrance-gasse", StringComparison.Ordinal))
-                return prefab;
-            var trifft = false;
             foreach (var ende in _gassenenden)
-                if (math.distance(ende, von) < 0.05f || math.distance(ende, nach) < 0.05f)
+                if (math.distance(ende, punkt) < 0.05f)
                 {
-                    trifft = true;
-                    break;
+                    _geschuetzteEnden++;
+                    _knotenschutzPrefabs.Add(prefab);
+                    return Knotenschutz;
                 }
-            if (!trifft) return prefab;
-            var eben = World.GetOrCreateSystemManaged<ParkingLotEbenerWegPrefabSystem>()
-                .EbeneVariante(prefab);
-            if (eben == Entity.Null)
-            {
-                _ebeneFehlt++;
-                return prefab;
-            }
-            _ebeneKurse++;
-            return eben;
+            return float2.zero;
         }
 
         private void MeldeGassenenden()
         {
             if (_gassenenden.Count == 0) return;
-            if (_ebeneFehlt > 0)
-                Mod.log.Warn($"PLT-Gassenknoten: {_ebeneFehlt} Kurs(e) an inneren "
-                    + "Gassenenden OHNE einebnende Variante gebaut (Klon nicht bereit) - "
-                    + "dort kann der Knoten nach dem Bau absinken.");
+            var grenzen = new List<string>();
+            foreach (var prefab in _knotenschutzPrefabs)
+            {
+                if (!EntityManager.HasComponent<NetGeometryData>(prefab)) continue;
+                var g = EntityManager.GetComponentData<NetGeometryData>(prefab);
+                var name = _prefabSystem.TryGetPrefab<PrefabBase>(prefab, out var pb)
+                    && pb != null ? pb.name : prefab.ToString();
+                grenzen.Add($"'{name}' Grenze {g.m_ElevationLimit:F2} m"
+                    + ((g.m_Flags & Game.Net.GeometryFlags.RaisedIsElevated) != 0
+                        ? " (RaisedIsElevated)" : "")
+                    + ((g.m_Flags & Game.Net.GeometryFlags.RequireElevated) != 0
+                        ? " (RequireElevated!)" : ""));
+            }
             Mod.log.Info($"PLT-Gassenknoten: {_gassenenden.Count} innere Gassenende(n), "
-                + $"{_ebeneKurse} Kurs(e) daran mit einebnender Variante gebaut.");
+                + $"{_geschuetzteEnden} Kursende(n) daran mit Elevation "
+                + $"{Knotenschutz.x * 1000f:F0} mm; beteiligte Prefabs: "
+                + string.Join(", ", grenzen) + ".");
         }
 
         private bool CreateCourseDefinition(
@@ -1195,7 +1210,7 @@ namespace ParkingLotTool.Tools
                     m_Position = a,
                     m_Rotation = NetUtils.GetNodeRotation(MathUtils.StartTangent(curve)),
                     m_CourseDelta = 0f,
-                    m_Elevation = float2.zero,
+                    m_Elevation = KnotenschutzAm(from, prefab),
                     m_Flags = CoursePosFlags.IsFirst,
                     m_ParentMesh = -1,
                 },
@@ -1206,7 +1221,7 @@ namespace ParkingLotTool.Tools
                     m_Position = b,
                     m_Rotation = NetUtils.GetNodeRotation(MathUtils.EndTangent(curve)),
                     m_CourseDelta = 1f,
-                    m_Elevation = float2.zero,
+                    m_Elevation = KnotenschutzAm(to, prefab),
                     m_Flags = CoursePosFlags.IsLast,
                     m_ParentMesh = -1,
                 },
