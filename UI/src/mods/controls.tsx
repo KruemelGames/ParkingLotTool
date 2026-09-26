@@ -665,7 +665,16 @@ export const Auswahl = ({ label, tooltip, value, options, ton, onChange, differs
                          onReset, onSetDefault,
                          kopfSchalter, ausLabel }: AuswahlProps) => {
   const [offen, setOffen] = useState(false);
+  const [suche, setSuche] = useState("");
+  const t = useTexte();
   const gewaehlt = options.find((f) => f.name === value);
+  const gesucht = suche.trim().toLowerCase();
+  const sichtbar = gesucht === ""
+    ? options
+    : options.filter((f) => f.name.toLowerCase().includes(gesucht));
+  useEffect(() => {
+    if (!offen) setSuche("");
+  }, [offen]);
   return (
     <div className={`${styles.control} ${styles.auswahl}`}>
       <div className={styles.flaechenFunktionsZeile}>
@@ -725,33 +734,54 @@ export const Auswahl = ({ label, tooltip, value, options, ton, onChange, differs
         </div>
       </div>
       {offen ? (
-        <div className={styles.flaechenGitter}>
-          {ausLabel ? (
-            <button
-              key="__aus"
-              className={`${styles.flaecheKachel} ${
-                value ? "" : styles[`flaecheAktiv${ton}`]}`}
-              title={ausLabel}
-              onClick={() => { onChange(""); setOffen(false); }}
-            >
-              <span className={styles.flaecheOhneBild} />
-              <span className={styles.flaecheName}>{ausLabel}</span>
-            </button>
-          ) : null}
-          {options.map((flaeche) => (
-            <button
-              key={flaeche.name}
-              className={`${styles.flaecheKachel} ${
-                flaeche.name === value ? styles[`flaecheAktiv${ton}`] : ""}`}
-              title={flaeche.name}
-              onClick={() => { onChange(flaeche.name); setOffen(false); }}
-            >
-              {flaeche.bild
-                ? <img className={styles.flaecheBild} src={flaeche.bild} />
-                : <span className={styles.flaecheOhneBild} />}
-              <span className={styles.flaecheName}>{flaeche.name}</span>
-            </button>
-          ))}
+        <div className={styles.flaechenFenster}>
+          <div className={styles.flaechenSucheZeile}>
+            <img
+              className={styles.flaechenSucheBild}
+              src={icon("MagnifierThin")}
+              alt=""
+            />
+            <input
+              className={styles.flaechenSuche}
+              type="text"
+              value={suche}
+              placeholder={t.flaechenSuche}
+              aria-label={t.flaechenSuche}
+              onChange={(e) => setSuche(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className={styles.flaechenGitter}>
+            {ausLabel ? (
+              <button
+                key="__aus"
+                className={`${styles.flaecheKachel} ${
+                  value ? "" : styles[`flaecheAktiv${ton}`]}`}
+                title={ausLabel}
+                onClick={() => { onChange(""); setOffen(false); }}
+              >
+                <span className={styles.flaecheOhneBild} />
+                <span className={styles.flaecheName}>{ausLabel}</span>
+              </button>
+            ) : null}
+            {sichtbar.map((flaeche) => (
+              <button
+                key={flaeche.name}
+                className={`${styles.flaecheKachel} ${
+                  flaeche.name === value ? styles[`flaecheAktiv${ton}`] : ""}`}
+                title={flaeche.name}
+                onClick={() => { onChange(flaeche.name); setOffen(false); }}
+              >
+                {flaeche.bild
+                  ? <img className={styles.flaecheBild} src={flaeche.bild} />
+                  : <span className={styles.flaecheOhneBild} />}
+                <span className={styles.flaecheName}>{flaeche.name}</span>
+              </button>
+            ))}
+            {sichtbar.length === 0 ? (
+              <div className={styles.flaechenLeer}>{t.flaechenKeineTreffer}</div>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

@@ -1873,15 +1873,12 @@ $eck-reiter: 9rem;
  * Stellen. Der Mechanismus ist damit belegt, nur diese Richtung braucht
  * CS2 selbst nirgends.
  */
-.flaechenGitter {
+.flaechenFenster {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 100%;
   z-index: 20;
-  display: flex;
-  flex-wrap: wrap;
-  max-height: 260rem;
   margin-bottom: $s2;
   padding: $s2;
   border: 1rem solid $rand;
@@ -1905,7 +1902,52 @@ $eck-reiter: 9rem;
    */
   background-color: rgba(16, 19, 29, 0.96);
   backdrop-filter: var(--menuBlur);
+}
+
+.flaechenSucheZeile {
+  display: flex;
+  align-items: center;
+  margin-bottom: $s2;
+  padding: $s2 $s3;
+  background-color: $schiene;
+  border-radius: $eck-innen;
+}
+
+.flaechenSucheBild {
+  width: $mass-symbol;
+  height: $mass-symbol;
+  margin-right: $s2;
+  opacity: 0.6;
+}
+
+.flaechenSuche {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  color: $text-1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: $type-xs;
+}
+
+.flaechenSuche::placeholder {
+  color: $text-4;
+}
+
+.flaechenGitter {
+  display: flex;
+  flex-wrap: wrap;
+  max-height: 260rem;
   overflow-y: auto;
+}
+
+.flaechenLeer {
+  width: 100%;
+  padding: $s3;
+  color: $text-3;
+  font-size: $type-xs;
+  text-align: center;
 }
 
 .flaecheKachel {
