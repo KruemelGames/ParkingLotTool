@@ -358,10 +358,6 @@ namespace ParkingLotTool.Tools
             // Unveränderte Temp-Areas bleiben stehen. Nur eine neue Signatur oder
             // das Verlassen der Vorschau setzt weiter unten ApplyMode.Clear.
             applyMode = ApplyMode.None;
-            // Das Ueberbauen der Gassen kommt vor allem anderen dran: je
-            // frueher der innere Knoten das Gassen-Prefab traegt, desto
-            // weniger Gelegenheit hat CS2, ihn aufs Gelaende zu legen.
-            if (GassenknotenLaeuft && PflegeGassenknoten()) return RenderOverlay(deps);
             // Apply darf nach der Versorgungspflege nicht auf None zurueckfallen.
             if ((_avPhase == AvPhase.TempWarten || _avPhase == AvPhase.ApplyWarten)
                 && PflegeAutoVersorgung())

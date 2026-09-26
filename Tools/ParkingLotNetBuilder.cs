@@ -708,7 +708,6 @@ namespace ParkingLotTool.Tools
             VergissGassenplan();
             var zoningStuecke = new List<(float2 A, float2 B)>();
             MerkeGassenenden(layout);
-            SetzeGassenendhoehen(heights, ref heightData);
             // Nur anfordern, wenn das Layout ueberhaupt eine Zoning-Strasse
             // enthaelt - sonst bestellt jeder Parkplatz einen Prefabklon.
             var zoningRoad = Entity.Null;
@@ -1049,42 +1048,40 @@ namespace ParkingLotTool.Tools
         }
 
         /*
-         * DAS INNERE GASSENENDE - Hoehe und Knotenprefab.
+         * DER KNOTEN AM INNEREN GASSENENDE BEKOMMT EINE ELEVATION.
          *
-         * Befund 2026-09-26 (Messung "PLT-Gassenhoehe", Dekompilat, Codex):
-         * der innere Knoten sank in der ersten Sekunde nach jedem Bau um
-         * 0,3-0,5 m, und jeder Edit erbte die gesunkene Hoehe.
+         * Gasse (FlattenTerrain + ClipTerrain) und unsichtbare Wege teilen dort
+         * einen Knoten. `GroundHeightSystem` legt ihn aufs Gelaende, sobald er
+         * das Prefab eines nicht einebnenden Wegs traegt - und das Gelaende
+         * dort hat die Gasse weggeschnitten: der Knoten sank, die Gasse folgte
+         * (Bericht UFS7). Einebnende Wegklone schuetzten den Knoten, verformten
+         * aber das Gelaende sichtbar (2026-09-26, Bilder des Nutzers).
          *
-         *   - Gasse und Wege entstehen im selben Bau. Fuer einen NEUEN Knoten
-         *     gewinnt in `GenerateNodesSystem.CollectUpdatesJob` der zuletzt
-         *     verarbeitete Kurs - mal die Gasse, mal ein unsichtbarer Weg.
-         *     Traegt er den Weg (kein FlattenTerrain), legt ihn
-         *     `GroundHeightSystem` aufs Gelaende, das die Gasse dort
-         *     weggeschnitten hat.
-         *   - Ein Kursende mit `m_Elevation` schuetzt NICHT:
-         *     `CourseSplitSystem.CalculateElevation` misst den Abstand zum
-         *     Gelaende neu und setzt alles unter `m_ElevationLimit` (2 m) auf
-         *     null. Der 1-mm-Schutz aus 2dd4bc4 kam deshalb nie an.
+         * Jetzt nur der Knoten: ein Kursende mit `m_Elevation != 0` gibt ihm in
+         * `GenerateNodesSystem.CreateNodesJob` eine `Elevation`-Komponente.
+         * `GroundHeightSystem.BoundsFindJob` ueberspringt solche Knoten, und bei
+         * den angeschlossenen Kanten haelt `UpdateHeightsJob` das Kurvenende an
+         * ihnen fest. Das Gelaende bleibt unberuehrt; `ClipTerrain` und das
+         * Einebnen haengen an Prefab-Flags, nicht an dieser Komponente.
          *
-         * Vanilla schuetzt den Knoten ueber die Reihenfolge: an einen
-         * VORHANDENEN Knoten waehlt `FindNodePrefab` das Prefab mit der
-         * hoechsten `m_NodePriority` - eine Strasse (+2000) schlaegt jeden
-         * Weg. Genau das holt `ParkingLotGassenknoten` nach dem Apply nach.
-         *
-         * Hier bleibt: die Enden merken (fuer Messung und Nacharbeit) und
-         * beim Edit ihre Hoehe aus dem UNBERUEHRTEN Gelaende nehmen, nicht
-         * vom alten Knoten - der kann gesunken sein, und sonst bleibt er es.
+         * An JEDEM Kursende dieses Knotens, auch an der Gasse: beim
+         * Zusammenfuehren gleicher Positionen ersetzt der zuletzt verarbeitete
+         * Kurs den ganzen Datensatz samt Elevation (Codex, Dekompilat
+         * `CollectUpdatesJob`). 1 mm liegt weit unter jedem `m_ElevationLimit`,
+         * ab dem CS2 einen Weg als erhoeht einstuft - die echten Grenzwerte
+         * stehen nach dem Bau im Log.
          */
+        private static readonly float2 Knotenschutz = new float2(0.001f, 0.001f);
         private readonly List<float2> _gassenenden = new();
-        private readonly HashSet<Entity> _gassenendPrefabs = new();
-        private int _gassenendhoehenNeu;
+        private int _geschuetzteEnden;
+        private readonly HashSet<Entity> _knotenschutzPrefabs = new();
 
         private void MerkeGassenenden(ParkingLayout layout)
         {
             _gassenenden.Clear();
             _gassenhoehen.Clear();
-            _gassenendPrefabs.Clear();
-            _gassenendhoehenNeu = 0;
+            _geschuetzteEnden = 0;
+            _knotenschutzPrefabs.Clear();
             foreach (var piece in layout.NetLine)
                 if (string.Equals(piece.Kind, "entrance", StringComparison.Ordinal)
                     && Zufahrtsarten.IstGasse(piece.Art))
@@ -1092,53 +1089,39 @@ namespace ParkingLotTool.Tools
                     _gassenenden.Add(piece.B);
         }
 
-        /**
-         * Beim Edit: das innere Ende bekommt die Hoehe des unberuehrten
-         * Gelaendes neben dem alten Wegstreifen - dieselbe Quelle, die
-         * `AlthoeheGlaubwuerdig` als Massstab nimmt. Beim Neubau gibt es
-         * keinen alten Streifen, dann misst `SampleCourseHeight` wie immer.
-         */
-        private void SetzeGassenendhoehen(Dictionary<(long, long), float> heights,
-            ref TerrainHeightData heightData)
-        {
-            foreach (var ende in _gassenenden)
-            {
-                if (!AltkanteBei(ende, out _, out var richtung, out var halb)) continue;
-                var umgebung = UnberuehrtesGelaende(ende, richtung, halb, ref heightData);
-                if (!math.isfinite(umgebung)) continue;
-                var k = ((long)math.round(ende.x * 40f), (long)math.round(ende.y * 40f));
-                for (var dx = -1; dx <= 1; dx++)
-                    for (var dz = -1; dz <= 1; dz++)
-                        heights[(k.Item1 + dx, k.Item2 + dz)] = umgebung;
-                _gassenendhoehenNeu++;
-            }
-        }
-
-        private void MerkeGassenendeAm(float2 punkt, Entity prefab, float hoehe)
+        private float2 KnotenschutzAm(float2 punkt, Entity prefab, float hoehe)
         {
             foreach (var ende in _gassenenden)
                 if (math.distance(ende, punkt) < 0.05f)
                 {
                     MerkeGassenendeGeplant(ende, hoehe);
-                    _gassenendPrefabs.Add(prefab);
-                    return;
+                    _geschuetzteEnden++;
+                    _knotenschutzPrefabs.Add(prefab);
+                    return Knotenschutz;
                 }
+            return float2.zero;
         }
 
         private void MeldeGassenenden()
         {
             if (_gassenenden.Count == 0) return;
-            var prioritaeten = new List<string>();
-            foreach (var prefab in _gassenendPrefabs)
+            var grenzen = new List<string>();
+            foreach (var prefab in _knotenschutzPrefabs)
             {
-                if (!EntityManager.HasComponent<NetData>(prefab)) continue;
+                if (!EntityManager.HasComponent<NetGeometryData>(prefab)) continue;
+                var g = EntityManager.GetComponentData<NetGeometryData>(prefab);
                 var name = _prefabSystem.TryGetPrefab<PrefabBase>(prefab, out var pb)
                     && pb != null ? pb.name : prefab.ToString();
-                prioritaeten.Add($"'{name}' {EntityManager.GetComponentData<NetData>(prefab).m_NodePriority:F1}");
+                grenzen.Add($"'{name}' Grenze {g.m_ElevationLimit:F2} m"
+                    + ((g.m_Flags & Game.Net.GeometryFlags.RaisedIsElevated) != 0
+                        ? " (RaisedIsElevated)" : "")
+                    + ((g.m_Flags & Game.Net.GeometryFlags.RequireElevated) != 0
+                        ? " (RequireElevated!)" : ""));
             }
             Mod.log.Info($"PLT-Gassenknoten: {_gassenenden.Count} innere Gassenende(n), "
-                + $"{_gassenendhoehenNeu} davon mit Hoehe aus dem unberuehrten Gelaende; "
-                + "Knotenprioritaet der Prefabs dort: " + string.Join(", ", prioritaeten) + ".");
+                + $"{_geschuetzteEnden} Kursende(n) daran mit Elevation "
+                + $"{Knotenschutz.x * 1000f:F0} mm; beteiligte Prefabs: "
+                + string.Join(", ", grenzen) + ".");
         }
 
         private bool CreateCourseDefinition(
@@ -1192,8 +1175,6 @@ namespace ParkingLotTool.Tools
             // lokalen Koordinaten - eine Komponente, die es laut ComponentMenu
             // nur fuer BuildingPrefab und BuildingExtensionPrefab gibt, fuer
             // unser LotPrefab also nicht.
-            MerkeGassenendeAm(from, prefab, a.y);
-            MerkeGassenendeAm(to, prefab, b.y);
             var curve = NetUtils.StraightCurve(a, b);
             var definition = EntityManager.CreateEntity();
             EntityManager.AddComponentData(definition, new CreationDefinition
@@ -1231,7 +1212,7 @@ namespace ParkingLotTool.Tools
                     m_Position = a,
                     m_Rotation = NetUtils.GetNodeRotation(MathUtils.StartTangent(curve)),
                     m_CourseDelta = 0f,
-                    m_Elevation = float2.zero,
+                    m_Elevation = KnotenschutzAm(from, prefab, a.y),
                     m_Flags = CoursePosFlags.IsFirst,
                     m_ParentMesh = -1,
                 },
@@ -1242,7 +1223,7 @@ namespace ParkingLotTool.Tools
                     m_Position = b,
                     m_Rotation = NetUtils.GetNodeRotation(MathUtils.EndTangent(curve)),
                     m_CourseDelta = 1f,
-                    m_Elevation = float2.zero,
+                    m_Elevation = KnotenschutzAm(to, prefab, b.y),
                     m_Flags = CoursePosFlags.IsLast,
                     m_ParentMesh = -1,
                 },

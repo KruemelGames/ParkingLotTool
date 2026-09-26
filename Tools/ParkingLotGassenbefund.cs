@@ -172,9 +172,6 @@ namespace ParkingLotTool.Tools
                     elev = EntityManager.HasComponent<Game.Net.Elevation>(knoten)
                         ? "Elevation " + EntityManager.GetComponentData<Game.Net.Elevation>(knoten).m_Elevation.x.ToString("F3")
                         : "OHNE Elevation";
-                    elev += GassenPrefab.Ist(_prefabSystem,
-                        EntityManager.GetComponentData<PrefabRef>(knoten).m_Prefab)
-                        ? ", Prefab Gasse" : ", Prefab WEG";
                 }
                 if (erste) g.Nach1s = y;
                 teile.Add($"({g.Lage.x:F1}/{g.Lage.y:F1}) alt {g.Alt:F2}, geplant {g.Geplant:F2}, "

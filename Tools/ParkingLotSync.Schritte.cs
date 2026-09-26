@@ -162,7 +162,9 @@ namespace ParkingLotTool.Tools
         private bool IstZufahrtsgasse(Entity prefab)
         {
             _prefabSystemFuerSync ??= World.GetOrCreateSystemManaged<PrefabSystem>();
-            return GassenPrefab.Ist(_prefabSystemFuerSync, prefab);
+            return _prefabSystemFuerSync.TryGetPrefab<PrefabBase>(prefab, out var p)
+                   && p != null
+                   && p.name.StartsWith("PLT Zufahrtsgasse", System.StringComparison.Ordinal);
         }
 
         private PrefabSystem _prefabSystemFuerSync;
