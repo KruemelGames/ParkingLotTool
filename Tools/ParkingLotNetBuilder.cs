@@ -708,6 +708,7 @@ namespace ParkingLotTool.Tools
             VergissGassenplan();
             var zoningStuecke = new List<(float2 A, float2 B)>();
             MerkeGassenenden(layout);
+            BelegeGassenendenAusAltgassen(heights, _gassenenden);
             // Nur anfordern, wenn das Layout ueberhaupt eine Zoning-Strasse
             // enthaelt - sonst bestellt jeder Parkplatz einen Prefabklon.
             var zoningRoad = Entity.Null;

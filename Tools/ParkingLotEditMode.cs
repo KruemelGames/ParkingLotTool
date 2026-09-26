@@ -379,6 +379,7 @@ namespace ParkingLotTool.Tools
                     // Und ihre Kurve: unter ihr ist das Gelaende von ihr
                     // selbst geformt (ParkingLotEditHeight.Altkanten.cs).
                     MerkeAltkante(teil);
+                    MerkeAltgassenende(teil);
                 }
                 else MerkeAltknotenhoehe(teil);
 

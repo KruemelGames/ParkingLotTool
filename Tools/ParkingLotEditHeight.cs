@@ -93,6 +93,66 @@ namespace ParkingLotTool.Tools
                 + _altkanten.Count + " alte Kante(n) als Hoehenquelle.");
         }
 
+        /**
+         * DIE ENDEN DER ALTEN GASSEN - die Hoehenquelle fuer das innere
+         * Gassenende beim Edit.
+         *
+         * Live-Log 2026-09-26: wir planen Gasse und Wege am inneren Ende auf
+         * dieselbe Hoehe, aber CS2 legt ebenerdige unsichtbare Wege selbst
+         * aufs Gelaende - und das hat die ALTE Gasse, die beim Edit noch
+         * steht, dort 0,23 m tief ausgeschnitten. Traegt der neue Knoten das
+         * Weg-Prefab, liegt er auf dieser Wegehoehe. Der naechste Edit erbte
+         * sie ueber `_altknotenhoehen` und begann schon tiefer: die Treppe.
+         *
+         * Das Kurvenende der alten Gasse bleibt dagegen richtig ("Gasse ende
+         * 373,38" bei einem Knoten auf 372,97). Deshalb erbt das innere
+         * Gassenende von dort, nicht vom Knoten.
+         */
+        private readonly System.Collections.Generic.List<Unity.Mathematics.float3> _altgassenenden = new();
+
+        private void MerkeAltgassenende(Unity.Entities.Entity kante)
+        {
+            if (!EntityManager.HasComponent<Game.Net.Curve>(kante)
+                || !EntityManager.HasComponent<Game.Prefabs.PrefabRef>(kante)
+                || !GassenPrefab.Ist(_prefabSystem,
+                    EntityManager.GetComponentData<Game.Prefabs.PrefabRef>(kante).m_Prefab)) return;
+            var kurve = EntityManager.GetComponentData<Game.Net.Curve>(kante).m_Bezier;
+            _altgassenenden.Add(kurve.a);
+            _altgassenenden.Add(kurve.d);
+        }
+
+        /** Nach `BelegeHoehenAusAltbestand`: innere Gassenenden auf die Hoehe der alten Gasse. */
+        private void BelegeGassenendenAusAltgassen(
+            System.Collections.Generic.Dictionary<(long, long), float> hoehen,
+            System.Collections.Generic.List<Unity.Mathematics.float2> gassenenden)
+        {
+            if (_altgassenenden.Count == 0 || gassenenden.Count == 0) return;
+            var gesetzt = 0;
+            var berichtigt = new System.Collections.Generic.List<string>();
+            foreach (var ende in gassenenden)
+            {
+                var bester = float.MaxValue;
+                var hoehe = float.NaN;
+                foreach (var alt in _altgassenenden)
+                {
+                    var d = Unity.Mathematics.math.distance(alt.xz, ende);
+                    if (d < 0.1f && d < bester) { bester = d; hoehe = alt.y; }
+                }
+                if (float.IsNaN(hoehe)) continue;
+                var k = ((long)Unity.Mathematics.math.round(ende.x * 40f),
+                         (long)Unity.Mathematics.math.round(ende.y * 40f));
+                if (hoehen.TryGetValue(k, out var vorher) && Unity.Mathematics.math.abs(vorher - hoehe) > 0.005f)
+                    berichtigt.Add($"{ende.x:F1}/{ende.y:F1}: Knoten {vorher:F2} -> Gasse {hoehe:F2}");
+                for (var dx = -1; dx <= 1; dx++)
+                    for (var dz = -1; dz <= 1; dz++)
+                        hoehen[(k.Item1 + dx, k.Item2 + dz)] = hoehe;
+                gesetzt++;
+            }
+            Mod.log.Info($"PLT-Edithoehe: {gesetzt} von {gassenenden.Count} inneren Gassenende(n) erben die Hoehe "
+                + $"der alten Gasse; {berichtigt.Count} davon wichen vom alten Knoten ab"
+                + (berichtigt.Count > 0 ? ": " + string.Join("; ", berichtigt) : "."));
+        }
+
         private void ErfasseEdithoehenVorAbriss()
         {
             VerwerfeEdithoehen();
@@ -131,6 +191,7 @@ namespace ParkingLotTool.Tools
         {
             _altknotenhoehen.Clear();
             _altkanten.Clear();
+            _altgassenenden.Clear();
             _verworfeneAlthoehen = 0;
             _editHeightSnapshot = default;
             if (_editHeightCells.IsCreated) _editHeightCells.Dispose();
