@@ -186,6 +186,7 @@ namespace ParkingLotTool.Tools
                 var counts = new Dictionary<string, int>(StringComparer.Ordinal);
                 var lots = new List<DebugAreaPrefab>();
                 var flaechen = new List<DebugAreaPrefab>();
+                int raeumen = 0, raeumenNicht = 0;
 
                 for (var i = 0; i < prefabs.Length; i++)
                 {
@@ -218,9 +219,8 @@ namespace ParkingLotTool.Tools
                     {
                         var raeumt = (geometryData.m_Flags
                             & Game.Areas.GeometryFlags.CanOverrideObjects) != 0;
-                        Mod.log.Info("PLT-Flaechenprefab '" + known.name + "': Typ "
-                            + type + ", Flags " + geometryData.m_Flags
-                            + " -> raeumt Objekte " + (raeumt ? "JA" : "NEIN"));
+                        // Bis 2026-09-26 eine Zeile je Prefab - 680 Zeilen je Bau.
+                        if (raeumt) raeumen++; else raeumenNicht++;
                     }
                     /**
                      * FLAECHEN MITSCHREIBEN, NICHT NUR LOTS.
@@ -270,6 +270,8 @@ namespace ParkingLotTool.Tools
                     lots.Add(record);
                 }
 
+                Mod.log.Info($"PLT-Flaechenprefab: {raeumen + raeumenNicht} eigene/Vanilla-Belaege "
+                    + $"geprueft, {raeumen} raeumen Objekte (CanOverrideObjects), {raeumenNicht} nicht.");
                 return new DebugAreaPrefabs
                 {
                     Total = prefabs.Length,

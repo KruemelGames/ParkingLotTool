@@ -712,9 +712,6 @@ namespace ParkingLotTool.Tools
 
         /**
          * Der Prefabname ist das Merkmal, nicht die Komponenten.
-         *
-         * Dieselbe Frage stellt `ParkingLotBuildingTerrainDiagnostics`
-         * (`IsOwnLot`) - wer sie hier aendert, muss dort mitziehen.
          */
         private bool IstUnserLot(Entity lot)
         {

@@ -85,7 +85,6 @@ namespace ParkingLotTool.Tools
          * eine halbe Sekunde.
          */
         private int _gassenbefundAb;
-        private int _gassenrichtungStartFrame;
 
         private const int GassenbefundFrames = 30;
 
@@ -122,7 +121,6 @@ namespace ParkingLotTool.Tools
         internal void MeldeGassenbefundAn()
         {
             if (_gassenplan.Count == 0) return;
-            _gassenrichtungStartFrame = UnityEngine.Time.frameCount;
             _gassenbefundAb = UnityEngine.Time.frameCount + GassenbefundFrames;
         }
 
@@ -130,7 +128,6 @@ namespace ParkingLotTool.Tools
         private void PruefeGassenbefund()
         {
             if (_gassenbefundAb == 0) return;
-            MeldeGassenrichtungImFrame();
             if (UnityEngine.Time.frameCount < _gassenbefundAb) return;
             _gassenbefundAb = 0;
             if (_gassenplan.Count == 0) return;

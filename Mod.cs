@@ -430,15 +430,6 @@ namespace ParkingLotTool
             updateSystem.UpdateAfter<ParkingLotStatistikSystem,
                 ParkingLotComfortSystem>(
                     SystemUpdatePhase.ModificationEnd);
-            // Reine Leser um die dritte Terrain-Query. Sie protokollieren den
-            // Ist-Archetyp und dieselben Heightmapzellen vor/nach dem Lauf;
-            // weder Terrain noch Entities werden veraendert.
-            updateSystem.UpdateBefore<ParkingLotBuildingTerrainBeforeSystem,
-                Game.Simulation.TerrainSystem>(
-                    SystemUpdatePhase.ModificationEnd);
-            updateSystem.UpdateAfter<ParkingLotBuildingTerrainAfterSystem,
-                Game.Simulation.TerrainSystem>(
-                    SystemUpdatePhase.ModificationEnd);
             // Der Raycast-Hook greift vor Hover, Auswahl und Bulldozer zu.
             // Das fruehere PostTool-System war erst nach diesen Verbrauchern
             // dran und suchte ausserdem raeumlich im Polygon.

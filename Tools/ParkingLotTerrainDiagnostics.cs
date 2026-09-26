@@ -294,7 +294,7 @@ namespace ParkingLotTool.Tools
             {
                 var active = IsTerrainActive(summary.Flags);
                 if (active) terrainActive++;
-                Mod.log.Info("PLT-Terrainprefab Netz: "
+                ParkingLotLiveLog.Zeile("PLT-Terrainprefab Netz: "
                     + $"'{summary.Name}', {summary.Courses} Kurse "
                     + $"[{string.Join(", ", summary.Kinds)}], Flags "
                     + $"{summary.Flags} -> FlattenTerrain "
@@ -371,7 +371,7 @@ namespace ParkingLotTool.Tools
                 var source = actor.ConnectionProven
                     ? "ConnectedNode belegt"
                     : "nur raeumlich naechster Kurs";
-                Mod.log.Info("PLT-Terrainakteur VOR Apply: Temp-Kante "
+                ParkingLotLiveLog.Zeile("PLT-Terrainakteur VOR Apply: Temp-Kante "
                     + $"{Show(actor.TempEntity)} -> bestehendes Original "
                     + $"{Show(actor.Original)}, Prefab '{actor.PrefabName}', "
                     + $"Flags {actor.GeometryFlags}, TempFlags "
@@ -642,7 +642,7 @@ namespace ParkingLotTool.Tools
                     && EntityManager.HasComponent<Updated>(actor.Original);
                 var applied = exists
                     && EntityManager.HasComponent<Applied>(actor.Original);
-                Mod.log.Info("PLT-Terrainakteur NACH Apply: Original "
+                ParkingLotLiveLog.Zeile("PLT-Terrainakteur NACH Apply: Original "
                     + $"{Show(actor.Original)} '{actor.PrefabName}', Flags "
                     + $"{actor.GeometryFlags}, Updated {JaNein(updated)}, "
                     + $"Applied {JaNein(applied)}; Terrain auf "
@@ -673,7 +673,7 @@ namespace ParkingLotTool.Tools
                             sample.ObjectEntity).m_Position;
                 var actor = NearestTerrainActor(trace, sample.Point,
                     out var actorDistance);
-                Mod.log.Info("PLT-Terrainstelle Objekt: "
+                ParkingLotLiveLog.Zeile("PLT-Terrainstelle Objekt: "
                     + $"{sample.Kind} #{sample.Index} "
                     + $"{Show(sample.ObjectEntity)} bei "
                     + $"{sample.Point.x:F2}/{sample.Point.y:F2}; Terrain "

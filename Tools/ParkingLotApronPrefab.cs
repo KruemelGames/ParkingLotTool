@@ -151,7 +151,7 @@ namespace ParkingLotTool.Tools
                 // die Liste zu schreiben hiesse, bei jedem Start die
                 // Einstellungen neu zu speichern.
                 if (merken) MerkeKlon(vorbild.name, prioritaetsaufschlag, raeumt);
-                Mod.log.Info($"PLT-Vorflaeche: '{eintrag.Name}' fuer den "
+                ParkingLotLiveLog.Zeile($"PLT-Vorflaeche: '{eintrag.Name}' fuer den "
                     + "naechsten PrefabUpdate-Zyklus angefordert.");
             }
 
@@ -488,7 +488,7 @@ namespace ParkingLotTool.Tools
                     // 2026-09-14 der Vergleich "Pavement 01 gegen 02" moeglich
                     // wurde; der Befund steht. Der Waechter darunter bleibt.
                     MeldePlatzhalter();
-                    Mod.log.Info($"PLT-Vorflaechenprefab FERTIG: {zustand}");
+                    ParkingLotLiveLog.Zeile($"PLT-Vorflaechenprefab FERTIG: {zustand}");
                 }
                 else if (eintrag.Pruefungen >= AufgabenNachZyklen)
                 {
@@ -591,7 +591,7 @@ namespace ParkingLotTool.Tools
                      */
                     if (bauteil is SpawnableArea)
                     {
-                        Mod.log.Info($"PLT-Vorflaeche: '{eintrag.Name}' "
+                        ParkingLotLiveLog.Zeile($"PLT-Vorflaeche: '{eintrag.Name}' "
                             + "bekommt KEIN SpawnableArea - sonst stuende der "
                             + "Klon in CS2s Kandidatenliste und Haeuser "
                             + "bekaemen unseren Belag.");
@@ -615,7 +615,7 @@ namespace ParkingLotTool.Tools
                      */
                     if (bauteil is UIObject)
                     {
-                        Mod.log.Info($"PLT-Vorflaeche: '{eintrag.Name}' "
+                        ParkingLotLiveLog.Zeile($"PLT-Vorflaeche: '{eintrag.Name}' "
                             + "bekommt KEIN UIObject - sonst stuende der Klon "
                             + "in CS2s Flaechenliste zum Selbersetzen.");
                         continue;
@@ -710,7 +710,7 @@ namespace ParkingLotTool.Tools
                  * Prefab-Klasse selbst bei GetPrefabComponents einbezogen.
                  */
                 var entity = eintrag.KlonEntity;
-                Mod.log.Info($"PLT-Vorflaeche: '{eintrag.Name}' in "
+                ParkingLotLiveLog.Zeile($"PLT-Vorflaeche: '{eintrag.Name}' in "
                     + "PrefabUpdate vor PrefabInitializeSystem angemeldet. "
                     + $"Decal-Ebenen {eintrag.OriginalMaske} -> "
                     + $"{klonGerendert.m_DecalLayerMask}, Zeichenprioritaet "

@@ -121,7 +121,7 @@ namespace ParkingLotTool.Tools
                             namen.Add(komponente.GetType().Name + (erben ? "" : " (ausgelassen)"));
                             if (erben) klon.AddComponentFrom(komponente);
                         }
-                        Mod.log.Info($"PLT-Ebener Weg: '{klonname}' erbt von '{quellname}': "
+                        ParkingLotLiveLog.Zeile($"PLT-Ebener Weg: '{klonname}' erbt von '{quellname}': "
                             + string.Join(", ", namen) + ".");
                         if (!_prefabs.AddPrefab(klon))
                         {
@@ -195,7 +195,7 @@ namespace ParkingLotTool.Tools
                 if (!_bereit.ContainsKey(quelle))
                 {
                     _bereit[quelle] = klon;
-                    Mod.log.Info($"PLT-Ebener Weg: '{Name(klon)}' bereit (Flags und "
+                    ParkingLotLiveLog.Zeile($"PLT-Ebener Weg: '{Name(klon)}' bereit (Flags und "
                         + $"LocalConnect wie '{Name(quelle)}', kein FlattenTerrain).");
                 }
             }

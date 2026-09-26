@@ -315,8 +315,6 @@ namespace ParkingLotTool.Tools
                     EntferneModellspiegelung(eintrag);
                     eintrag.Bereit = true;
                     EntferneKompositionsobjekteUndMesse(eintrag);
-                    MesseVanillaAlley("Klon bereit " + eintrag.Name);
-                    MesseAlleyKlonMeshes(eintrag, "Klon bereit");
                     Mod.log.Info("PLT-Zoningstrasse: '" + eintrag.Name
                         + "' ist nach " + eintrag.Pruefungen
                         + " Zyklus/Zyklen benutzbar. " + zustand);
@@ -343,7 +341,6 @@ namespace ParkingLotTool.Tools
                     Fehlschlag(eintrag, "Das Original ist verschwunden.");
                     return;
                 }
-                MesseVanillaAlley("vor " + eintrag.Name, original);
 
                 /*
                  * FRISCHES PREFAB, KEIN Object.Instantiate - dieselbe Regel
@@ -379,7 +376,6 @@ namespace ParkingLotTool.Tools
                     klon.AddComponentFrom(bauteil);
                 }
 
-                MesseKlonabstand(original, klon, "nach Bauteilkopie");
 
                 LeereDirekteSubObjects(eintrag, klon);
 
@@ -398,8 +394,6 @@ namespace ParkingLotTool.Tools
                     UnityEngine.Object.Destroy(klon);
                     return;
                 }
-                MesseKlonabstand(original, klon, "vor Anmeldung");
-                MesseVanillaAlley("vor Anmeldung " + eintrag.Name, original);
 
                 if (!_prefabSystem.AddPrefab(klon))
                 {
@@ -407,7 +401,6 @@ namespace ParkingLotTool.Tools
                     UnityEngine.Object.Destroy(klon);
                     return;
                 }
-                MesseVanillaAlley("nach Anmeldung " + eintrag.Name, original);
 
                 eintrag.Klon = klon;
                 eintrag.KlonEntity = _prefabSystem.GetEntity(klon);

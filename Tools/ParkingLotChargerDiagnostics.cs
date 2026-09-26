@@ -288,6 +288,9 @@ namespace ParkingLotTool.Tools
                 }
 
                 var overridden = EntityManager.HasComponent<Overridden>(charger);
+                // Einzelheiten nur, wenn CS2 die Saeule wirklich verdraengt
+                // hat - im Normalfall genuegt die Summenzeile oben.
+                if (!overridden) continue;
                 var owner = EntityManager.HasComponent<Owner>(charger)
                     ? EntityManager.GetComponentData<Owner>(charger).m_Owner
                     : Entity.Null;
