@@ -118,79 +118,9 @@ namespace ParkingLotTool.Tools
             });
         }
 
-        /**
-         * WANN SINKT DAS INNERE GASSENENDE?
-         *
-         * Nutzer 2026-09-26: das innere Ende rutscht bei jedem Edit tiefer.
-         * Im Log belegt (Gassenbefund, vier Umbauten): -0,17, -0,54, -0,54,
-         * -1,15 m gegen die Strasse. Beim Edit erbt der neue Knoten die Hoehe
-         * des alten (`_altknotenhoehen`) - ist der alte gesunken, erbt der
-         * neue das. Offen ist, WANN er sinkt: schon im Bau (geplante Hoehe
-         * gegen die ersten Bilder) oder spaeter (1 s gegen 10 s). Diese Zeilen
-         * trennen die drei Moeglichkeiten.
-         */
-        private sealed class Gassenhoehe
-        {
-            internal float2 Lage;
-            internal float Geplant = float.NaN;
-            internal float Alt = float.NaN;
-            internal float Nach1s = float.NaN;
-        }
-
-        private readonly List<Gassenhoehe> _gassenhoehen = new();
-        private int _gassenhoehenAb1, _gassenhoehenAb10;
-
-        private void MerkeGassenendeGeplant(float2 lage, float hoehe)
-        {
-            foreach (var g in _gassenhoehen)
-                if (math.distance(g.Lage, lage) < 0.05f) return;
-            var eintrag = new Gassenhoehe { Lage = lage, Geplant = hoehe };
-            var k = ((long)math.round(lage.x * 40f), (long)math.round(lage.y * 40f));
-            for (var dx = -1; dx <= 1 && float.IsNaN(eintrag.Alt); dx++)
-                for (var dz = -1; dz <= 1; dz++)
-                    if (_altknotenhoehen.TryGetValue((k.Item1 + dx, k.Item2 + dz), out var alt))
-                    { eintrag.Alt = alt; break; }
-            _gassenhoehen.Add(eintrag);
-        }
-
-        private void PruefeGassenhoehen()
-        {
-            var bild = UnityEngine.Time.frameCount;
-            var erste = _gassenhoehenAb1 != 0 && bild >= _gassenhoehenAb1;
-            var zweite = _gassenhoehenAb10 != 0 && bild >= _gassenhoehenAb10;
-            if (!erste && !zweite) return;
-            if (erste) _gassenhoehenAb1 = 0; else _gassenhoehenAb10 = 0;
-            var teile = new List<string>();
-            foreach (var g in _gassenhoehen)
-            {
-                KantenAmPunkt(g.Lage, out var knoten, out _);
-                var y = float.NaN;
-                var elev = "ohne Knoten";
-                if (knoten != Entity.Null)
-                {
-                    y = EntityManager.GetComponentData<Game.Net.Node>(knoten).m_Position.y;
-                    elev = EntityManager.HasComponent<Game.Net.Elevation>(knoten)
-                        ? "Elevation " + EntityManager.GetComponentData<Game.Net.Elevation>(knoten).m_Elevation.x.ToString("F3")
-                        : "OHNE Elevation";
-                }
-                if (erste) g.Nach1s = y;
-                teile.Add($"({g.Lage.x:F1}/{g.Lage.y:F1}) alt {g.Alt:F2}, geplant {g.Geplant:F2}, "
-                    + (erste ? $"nach 1 s {y:F2}" : $"nach 1 s {g.Nach1s:F2}, nach 10 s {y:F2}")
-                    + $", {elev}");
-            }
-            Mod.log.Info($"PLT-Gassenhoehe {(erste ? "1 s" : "10 s")}: {_gassenhoehen.Count} innere Ende(n) - "
-                + string.Join("; ", teile));
-        }
-
         /** Nach dem Apply gerufen; die Messung folgt ein paar Bilder spaeter. */
         internal void MeldeGassenbefundAn()
         {
-            if (_gassenhoehen.Count > 0)
-            {
-                _gassenhoehenAb1 = UnityEngine.Time.frameCount + 60;
-                _gassenhoehenAb10 = UnityEngine.Time.frameCount + 600;
-            }
-            StarteGassenverlauf();
             if (_gassenplan.Count == 0) return;
             _gassenrichtungStartFrame = UnityEngine.Time.frameCount;
             _gassenbefundAb = UnityEngine.Time.frameCount + GassenbefundFrames;
@@ -205,11 +135,14 @@ namespace ParkingLotTool.Tools
             _gassenbefundAb = 0;
             if (_gassenplan.Count == 0) return;
 
+            var ohneUeberweg = 0;
             for (var i = 0; i < _gassenplan.Count; i++)
             {
                 MeldeEineGasse(_gassenplan[i]);
-                NimmUeberwegeAmKnoten(_gassenplan[i]);
+                ohneUeberweg += NimmUeberwegeAmKnoten(_gassenplan[i]);
             }
+            Mod.log.Info($"PLT-Gassenueberwege: {ohneUeberweg} Strassenkante(n) an "
+                + $"{_gassenplan.Count} Gassenknoten ohne Ueberweg.");
             _gassenplan.Clear();
         }
 
@@ -222,11 +155,11 @@ namespace ParkingLotTool.Tools
          * dieselbe, das Ergebnis dasselbe - ein zweiter Sucher waere eine
          * zweite Gelegenheit, den Knoten zu verfehlen.
          */
-        private void NimmUeberwegeAmKnoten(Gassenplan plan)
+        private int NimmUeberwegeAmKnoten(Gassenplan plan)
         {
-            if (KantenAmPunkt(plan.Mitte, out var knoten, out _) == 0) return;
+            if (KantenAmPunkt(plan.Mitte, out var knoten, out _) == 0) return 0;
             if (knoten == Entity.Null
-                || !EntityManager.HasBuffer<ConnectedEdge>(knoten)) return;
+                || !EntityManager.HasBuffer<ConnectedEdge>(knoten)) return 0;
 
             // Abschreiben, bevor angefasst wird: `AddComponent` ist eine
             // strukturelle Aenderung und macht den Puffer ungueltig.
@@ -277,10 +210,7 @@ namespace ParkingLotTool.Tools
                     EntityManager.AddComponent<Updated>(kante);
 
                 gesetzt.Add(kante.Index + (amAnfang ? " links" : " rechts"));
-                _ueberwegProben.Add((kante, knoten, amAnfang));
             }
-            if (_ueberwegProben.Count > 0 && _ueberwegProbeAb == 0)
-                _ueberwegProbeAb = UnityEngine.Time.frameCount + 60;
 
             /*
              * DER KNOTEN MUSS MIT NEU AUFGEBAUT WERDEN.
@@ -296,77 +226,7 @@ namespace ParkingLotTool.Tools
                 && !EntityManager.HasComponent<Updated>(knoten))
                 EntityManager.AddComponent<Updated>(knoten);
 
-            if (gesetzt.Count > 0)
-                Mod.log.Info("PLT-Gassenueberwege: " + gesetzt.Count
-                    + " Strassenkante(n) am Knoten ohne Ueberweg - "
-                    + string.Join(", ", gesetzt)
-                    + ". Seite aus Anfang/Ende der Kante abgeleitet; "
-                    + "verschwinden die Streifen am falschen Ende, ist die "
-                    + "Zuordnung zu tauschen.");
-        }
-
-        /**
-         * KOMMT DAS FLAG AN? Eine Sekunde nach dem Setzen, auch bei
-         * geschlossenem Werkzeug (`PflegeNacharbeit`).
-         *
-         * Am 2026-09-26 standen die Ueberwege an der Stadtstrasse nach dem
-         * Setzen weiter da (Bild des Nutzers). Laut Dekompilat
-         * (`CompositionSelectSystem.GetNodeFlags`) nimmt CS2 an einer
-         * Kreuzung den Ueberweg weg, wenn `Upgraded` an der Kante
-         * `RemoveCrosswalk` traegt - am Anfangsknoten links, am Endknoten
-         * rechts, so wie hier gesetzt. Diese Zeile sagt, welcher Schritt
-         * ausfaellt: Kante ersetzt, Flag wieder weg, oder Flag da und CS2
-         * fuehrt trotzdem einen Ueberweg am Knoten.
-         */
-        private readonly List<(Entity Kante, Entity Knoten, bool AmAnfang)> _ueberwegProben = new();
-        private int _ueberwegProbeAb;
-
-        private void PruefeUeberwegProben()
-        {
-            if (_ueberwegProbeAb == 0 || UnityEngine.Time.frameCount < _ueberwegProbeAb) return;
-            _ueberwegProbeAb = 0;
-            int weg = 0, ohneFlag = 0, trotzdem = 0, frei = 0;
-            var details = new List<string>();
-            foreach (var (kante, knoten, amAnfang) in _ueberwegProben)
-            {
-                if (!EntityManager.Exists(kante) || EntityManager.HasComponent<Deleted>(kante)
-                    || !EntityManager.HasComponent<Game.Net.Edge>(kante))
-                {
-                    weg++; details.Add(kante.Index + " ersetzt");
-                    continue;
-                }
-                var edge = EntityManager.GetComponentData<Game.Net.Edge>(kante);
-                var anfang = edge.m_Start == knoten;
-                var flaggen = EntityManager.HasComponent<Game.Net.Upgraded>(kante)
-                    ? EntityManager.GetComponentData<Game.Net.Upgraded>(kante).m_Flags
-                    : default;
-                var seite = anfang ? flaggen.m_Left : flaggen.m_Right;
-                var hatFlag = (seite & Game.Prefabs.CompositionFlags.Side.RemoveCrosswalk) != 0;
-                var knotenArt = "?";
-                if (EntityManager.HasComponent<Composition>(kante))
-                {
-                    var c = EntityManager.GetComponentData<Composition>(kante);
-                    var kk = anfang ? c.m_StartNode : c.m_EndNode;
-                    if (kk != Entity.Null && EntityManager.HasComponent<NetCompositionData>(kk))
-                    {
-                        var g = EntityManager.GetComponentData<NetCompositionData>(kk).m_Flags.m_General;
-                        var uw = (g & Game.Prefabs.CompositionFlags.General.Crosswalk) != 0;
-                        knotenArt = (uw ? "Ueberweg" : "frei")
-                            + ((g & Game.Prefabs.CompositionFlags.General.Intersection) != 0 ? "/Kreuzung" : "")
-                            + ((g & Game.Prefabs.CompositionFlags.General.Invert) != 0 ? "/Invert" : "");
-                        if (uw && hatFlag) trotzdem++;
-                        if (!uw) frei++;
-                    }
-                }
-                if (!hatFlag) ohneFlag++;
-                details.Add($"{kante.Index} {(anfang ? "Anfang" : "Ende")}"
-                    + $"{(anfang != amAnfang ? " (SEITE GEWECHSELT)" : "")}: Flag "
-                    + $"{(hatFlag ? "da" : "WEG")}, Knoten {knotenArt}, Upgraded L={flaggen.m_Left} R={flaggen.m_Right}");
-            }
-            Mod.log.Info($"PLT-Gassenueberwege PROBE: {_ueberwegProben.Count} Kanten eine Sekunde danach - "
-                + $"{frei} ohne Ueberweg, {weg} ersetzt, {ohneFlag} Flag verloren, {trotzdem} Flag da UND Ueberweg. "
-                + string.Join("; ", details));
-            _ueberwegProben.Clear();
+            return gesetzt.Count;
         }
 
         private void MeldeEineGasse(Gassenplan plan)
