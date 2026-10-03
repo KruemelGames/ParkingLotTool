@@ -7,6 +7,190 @@ namespace ParkingLotTool.Geometry.Zellen
 {
     internal static class Layoutbauer
     {
+        private static Punkt NaechsterPunkt(Punkt p, Punkt a, Punkt b)
+        {
+            var kante = b - a;
+            var laengenquadrat = Geometrie.Skalar(kante, kante);
+            if (laengenquadrat == 0) return a;
+            var t = Geometrie.Skalar(p - a, kante) / laengenquadrat;
+            t = Math.Max(0, Math.Min(1, t));
+            return a + kante * t;
+        }
+
+        /**
+         * LIEGT DER PUNKT ZWISCHEN ZWEI ACHSEN DER RANDSTRASSE, DIE SICH
+         * UEBERDECKEN?
+         *
+         * Die Randstrasse ist ein geschlossener Ring. Ueberlappt sie sich
+         * selbst, liegen zwei Achsen einander gegenueber, und ihr Abstand ist
+         * kleiner als die Fahrbahnbreite - die beiden Fahrbahnen decken die
+         * Luecke dann zu. Der Abstand der ACHSEN wird gemessen, nicht der
+         * Abstand zur Innengrenze: letzterer waere fast doppelt so gross und
+         * traefe jeden schmalen Platz, an dem zwei getrennte Wege die Gasse
+         * saeumen. Gemeldet am 2026-10-02.
+         */
+        private static bool ImRandstrassenueberlapp(
+            Punkt p, IReadOnlyList<Punkt> mittellinie, double breite)
+        {
+            var n = mittellinie.Count;
+            if (n < 2) return false;
+            var nx = 0.0;
+            var ny = 0.0;
+            var naechster = double.PositiveInfinity;
+            for (var k = 0; k < n; k++)
+            {
+                var q = NaechsterPunkt(p, mittellinie[k], mittellinie[(k + 1) % n]);
+                var d = Geometrie.Laenge(q - p);
+                if (d > 1e-9 && d < naechster)
+                {
+                    naechster = d;
+                    nx = (q.X - p.X) / d;
+                    ny = (q.Y - p.Y) / d;
+                }
+            }
+            if (double.IsPositiveInfinity(naechster)) return false;
+            // Auf der Fahrbahn selbst: laeuft die Mittellinie mitten durch
+            // einen Grasschnitt, ist es kein Grasschnitt mehr.
+            if (naechster <= breite / 2) return true;
+            var gegenseite = double.PositiveInfinity;
+            for (var k = 0; k < n; k++)
+            {
+                var q = NaechsterPunkt(p, mittellinie[k], mittellinie[(k + 1) % n]);
+                var d = Geometrie.Laenge(q - p);
+                if (d < 1e-9) continue;
+                var rx = (q.X - p.X) / d;
+                var ry = (q.Y - p.Y) / d;
+                if (rx * nx + ry * ny < -0.2 && d < gegenseite) gegenseite = d;
+            }
+            return naechster + gegenseite <= breite;
+        }
+
+        /**
+         * GRAS AUF DER UEBERLAPPENDEN RANDSTRASSE WIRD BELAG.
+         *
+         * Zwei Faelle, ein Ziel:
+         *
+         * 1. KAPPENNUBBEL. Eine Kappe entsteht an zwei Stellen (Reihenrest
+         *    und Eckkeil am Innenrand) und wird vom Modulraster in mehrere
+         *    Zellen geschnitten. Eine zellweise Entscheidung faerbte an der
+         *    Nordzunge nur die Mitte um - Gras, Asphalt, Gras. Deshalb werden
+         *    zusammenhaengende Kappenzellen erst gruppiert und dann gemeinsam
+         *    umgesetzt; so gibt es nie einen halben Nubbel.
+         *
+         * 2. MITTELSTREIFEN. Ein Gruenstreifen laeuft durch die Mitte des
+         *    Platzes. Ueberdeckt die Randstrasse sich dort, liegt er unter
+         *    der Fahrbahn. Einzeln, nicht als Gruppe: ein Mittelstreifen ist
+         *    ein langer Streifen, und nur das Stueck ueber der Strasse gehoert
+         *    dazu. Gemeldet am 2026-10-02 (Gruenstreifen an der Nordzunge).
+         */
+        private static void GrasAufRandstrasseZuBelag(
+            List<Zelle> zellen, IReadOnlyList<Punkt> mittellinie, double breite)
+        {
+            var kappen = new List<int>();
+            for (var i = 0; i < zellen.Count; i++)
+                if (zellen[i].Art == Zellart.Kappe) kappen.Add(i);
+            var kanten = new Dictionary<(long, long, long, long), int>();
+            var eltern = new int[zellen.Count];
+            for (var i = 0; i < eltern.Length; i++) eltern[i] = i;
+            int Find(int x)
+            {
+                while (eltern[x] != x)
+                {
+                    eltern[x] = eltern[eltern[x]];
+                    x = eltern[x];
+                }
+                return x;
+            }
+            foreach (var i in kappen)
+            {
+                var p = zellen[i].Polygon;
+                for (var e = 0; e < p.Anzahl; e++)
+                {
+                    var a = p.Knoten(e).Punkt;
+                    var b = p.Knoten(e + 1).Punkt;
+                    var ax = (long)Math.Round(a.X * 10000);
+                    var ay = (long)Math.Round(a.Y * 10000);
+                    var bx = (long)Math.Round(b.X * 10000);
+                    var by = (long)Math.Round(b.Y * 10000);
+                    if (ax > bx || (ax == bx && ay > by))
+                    {
+                        var tx = ax;
+                        ax = bx;
+                        bx = tx;
+                        var ty = ay;
+                        ay = by;
+                        by = ty;
+                    }
+                    if (kanten.TryGetValue((ax, ay, bx, by), out var nachbar))
+                    {
+                        var ra = Find(i);
+                        var rb = Find(nachbar);
+                        if (ra != rb) eltern[ra] = rb;
+                    }
+                    else
+                    {
+                        kanten[(ax, ay, bx, by)] = i;
+                    }
+                }
+            }
+            var gruppen = new Dictionary<int, List<int>>();
+            foreach (var i in kappen)
+            {
+                var r = Find(i);
+                if (!gruppen.TryGetValue(r, out var liste))
+                    gruppen[r] = liste = new List<int>();
+                liste.Add(i);
+            }
+            foreach (var liste in gruppen.Values)
+            {
+                var imUeberlapp = false;
+                foreach (var i in liste)
+                {
+                    double sx = 0, sy = 0;
+                    var p = zellen[i].Polygon;
+                    for (var e = 0; e < p.Anzahl; e++)
+                    {
+                        var pt = p.Knoten(e).Punkt;
+                        sx += pt.X;
+                        sy += pt.Y;
+                    }
+                    if (ImRandstrassenueberlapp(
+                        new Punkt(sx / p.Anzahl, sy / p.Anzahl), mittellinie, breite))
+                    {
+                        imUeberlapp = true;
+                        break;
+                    }
+                }
+                if (!imUeberlapp) continue;
+                foreach (var i in liste)
+                {
+                    zellen[i].Art = Zellart.Restbelag;
+                    zellen[i].Material = Bandplan.MaterialVon(Zellart.Restbelag);
+                    zellen[i].Ursprungsart = Zellart.Restbelag;
+                    zellen[i].Ursprungsmaterial = Bandplan.MaterialVon(Zellart.Restbelag);
+                }
+            }
+            for (var i = 0; i < zellen.Count; i++)
+            {
+                if (zellen[i].Art != Zellart.Gruenstreifen) continue;
+                double sx = 0, sy = 0;
+                var p = zellen[i].Polygon;
+                for (var e = 0; e < p.Anzahl; e++)
+                {
+                    var pt = p.Knoten(e).Punkt;
+                    sx += pt.X;
+                    sy += pt.Y;
+                }
+                if (!ImRandstrassenueberlapp(
+                    new Punkt(sx / p.Anzahl, sy / p.Anzahl), mittellinie, breite))
+                    continue;
+                zellen[i].Art = Zellart.Restbelag;
+                zellen[i].Material = Bandplan.MaterialVon(Zellart.Restbelag);
+                zellen[i].Ursprungsart = Zellart.Restbelag;
+                zellen[i].Ursprungsmaterial = Bandplan.MaterialVon(Zellart.Restbelag);
+            }
+        }
+
         private sealed class Ringabschnittsplan
         {
             internal IReadOnlyList<Punkt>[] Abschnitte { get; set; }
@@ -1131,6 +1315,9 @@ namespace ParkingLotTool.Geometry.Zellen
                 linienregister,
                 teiler);
             zellen = zufahrtsbau.Zellen;
+            if (einstellungen.Randstrassen)
+                GrasAufRandstrasseZuBelag(zellen, randstrassenmittellinie,
+                    einstellungen.Fahrgassenbreite);
             Phase("zufahrt");
             var vereinigung = Vereinigung.Vereinige(zellen);
             var vorTrennung = vereinigung.Flaechen;
