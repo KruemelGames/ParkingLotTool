@@ -42,6 +42,13 @@ namespace ParkingLotTool
          */
         internal static bool WirtschaftAn => Optionen == null || Optionen.Wirtschaft;
 
+        /**
+         * Anteil des Unterhalts, den die Parkplaetze zahlen (1 = Vanilla-Niveau).
+         * Vor dem Laden der Optionen gilt der Standard, also voll.
+         */
+        internal static float UnterhaltFaktor
+            => Optionen == null ? 1f : (int)Optionen.Unterhalt / 100f;
+
         public void OnLoad(UpdateSystem updateSystem)
         {
             /*

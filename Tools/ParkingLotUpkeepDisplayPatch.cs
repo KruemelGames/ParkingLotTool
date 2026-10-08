@@ -149,8 +149,9 @@ namespace ParkingLotTool.Tools
              * Nutzer sah einen Betrag, den es nicht gab.
              */
             var soll = Mod.WirtschaftAn
-                ? em.GetComponentData<ParkingLotEconomyData>(
-                    buildingOwnerEntity).Upkeep
+                ? ParkingLotEconomySystem.WirksamerUnterhalt(
+                    em.GetComponentData<ParkingLotEconomyData>(
+                        buildingOwnerEntity).Upkeep)
                 : 0;
             if (soll < 0) return;
 

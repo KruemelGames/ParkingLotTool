@@ -548,13 +548,18 @@ namespace ParkingLotTool.Tools
         /**
          * Was CS2 im Auswahlfenster als monatlichen Unterhalt zeigt.
          *
-         * Das ist die HAELFTE des Prefabwerts - so rechnet CS2, und so steht
-         * es auch in `ParkingLotEconomySystem`. Die Liste muss dieselbe Zahl
-         * zeigen wie das Infofenster, sonst glaubt der Nutzer zu Recht keiner
-         * von beiden.
+         * Dieselbe Zahl wie Infofenster und Stadtkasse: wirksamer Unterhalt
+         * (Wahl "Unterhaltskosten") mal Budget-Prozent des Strassendienstes.
+         * Bis 1.0.7 stand hier fest "Unterhalt / 2" - das passte nur, solange
+         * der Budgetregler auf 50 % stand, und zeigte bei 100 % die Haelfte
+         * der echten Kosten. Die Liste muss dieselbe Zahl zeigen wie das
+         * Infofenster, sonst glaubt der Nutzer zu Recht keiner von beiden.
          */
-        private static int MonatlicherUnterhalt(ParkingLotEconomyData w)
-            => w.Upkeep / 2;
+        private int MonatlicherUnterhalt(ParkingLotEconomyData w)
+            => _wirtschaft != null ? _wirtschaft.MonatsUnterhalt(w.Upkeep) : w.Upkeep;
+
+        private ParkingLotEconomySystem _wirtschaft
+            => World.GetExistingSystemManaged<ParkingLotEconomySystem>();
 
         /**
          * Aussenmass des Parkplatzes in Metern.

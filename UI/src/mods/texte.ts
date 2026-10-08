@@ -79,6 +79,17 @@ const baue = (d: Record<string, string>) => {
     listeAnzahl: (n: number): string => tz("listeAnzahl", n),
     listeSortiertNach: (name: string): string => tf("listeSortiertNach", { name }),
     listeTakt: tx("listeTakt"),
+    reiterAnleitung: tx("reiterAnleitung"),
+    tooltipAnleitung: tx("tooltipAnleitung"),
+    anleitungTitel: tx("anleitung.titel"),
+    anleitungEinleitung: tx("anleitung.einleitung"),
+    /** Titel der Folgen, in der Reihenfolge von FOLGEN in anleitung.tsx. */
+    anleitungFolgen: [tx("anleitung.basics"), tx("anleitung.formUndLayout"),
+      tx("anleitung.vegetationUndLaternen"), tx("anleitung.zoning"), tx("anleitung.probleme")],
+    anleitungFolge: (nummer: number) => tf("anleitung.folge", { nummer }),
+    anleitungBald: tx("anleitung.bald"),
+    anleitungAnsehen: (titel: string) => tf("anleitung.ansehen", { titel }),
+    anleitungBaldTooltip: (titel: string) => tf("anleitung.baldTooltip", { titel }),
     einheitMeter: tx("einheit.meter"),
     einheitGradZeichen: tx("einheit.grad"),
     /** Dezimalzahl mit dem Trennzeichen der Sprache ("6.5" / "6,5"). */

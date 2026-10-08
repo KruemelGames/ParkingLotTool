@@ -498,6 +498,8 @@ namespace ParkingLotTool.Tools
                     ParkingLotMeldepaket.Anlass.Vorschau)));
             AddBinding(new TriggerBinding(Group, "MeldungBau",
                 () => SchnuereMeldung(ParkingLotMeldepaket.Anlass.Bau)));
+            // Reiter "How it works": oeffnet ein Anleitungsvideo im Browser.
+            AddBinding(new TriggerBinding<string>(Group, "OeffneVideo", OeffneVideo));
             AddBinding(new TriggerBinding(Group, "MeldungOrdner",
                 OeffneLogordner));
 
@@ -2083,6 +2085,34 @@ namespace ParkingLotTool.Tools
          * Prozessstart auskommt - CS2 laeuft im Vollbild, und ein eigener
          * Explorer-Aufruf hat sich dort schon als heikel erwiesen.
          */
+        /**
+         * DIE ANLEITUNGSVIDEOS - NUR DIESE ADRESSEN.
+         *
+         * Die Oberflaeche schickt eine Kennung, keine Adresse. So kann aus dem
+         * Panel heraus nie etwas anderes geoeffnet werden als die Videos, die
+         * hier stehen. Neue Folge: Zeile ergaenzen und in `anleitung.tsx` die
+         * Kachel vom Platzhalter zum Bild machen.
+         */
+        private static readonly System.Collections.Generic.Dictionary<string, string> Videos =
+            new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["basics"] = "https://www.youtube.com/watch?v=bITKYlYngp8",
+            };
+
+        private void OeffneVideo(string kennung)
+        {
+            if (kennung == null || !Videos.TryGetValue(kennung, out var adresse))
+            {
+                Mod.log.Warn("PLT: unbekanntes Video \"" + kennung + "\" - nichts geoeffnet.");
+                return;
+            }
+            try { UnityEngine.Application.OpenURL(adresse); }
+            catch (Exception ausnahme)
+            {
+                Mod.log.Warn("PLT: Video nicht zu oeffnen: " + ausnahme.Message);
+            }
+        }
+
         private void OeffneLogordner()
         {
             try

@@ -450,6 +450,8 @@ export const meldungAbsturz = () => trigger(MOD, "MeldungAbsturz");
 export const meldungVorschau = () => trigger(MOD, "MeldungVorschau");
 export const meldungBau = () => trigger(MOD, "MeldungBau");
 export const meldungOrdner = () => trigger(MOD, "MeldungOrdner");
+/** Oeffnet ein Anleitungsvideo im Browser; die Adressen stehen in C#. */
+export const oeffneVideo = (kennung: string) => trigger(MOD, "OeffneVideo", kennung);
 /** Was beim letzten Lauf auffiel - ungefiltert, eine Zeile je Hinweis. */
 export const baubefund$ = bindValue<string>(MOD, "Baubefund", "");
 /** Groesse, Zeit, Modfassung des letzten Laufs - fuer eine Meldung ohne Datei. */

@@ -409,6 +409,30 @@ namespace ParkingLotTool
         public int Parkgebuehr { get; set; } = 10;
 
         /**
+         * WIE TEUER DER UNTERHALT IST - ALS ANTEIL AM VANILLA-NIVEAU.
+         *
+         * Gerechnet wird weiter je Stellplatz (48 je Bucht plus 438, geeicht
+         * an den Vanilla-Parkplaetzen); diese Wahl skaliert nur das Ergebnis.
+         * Wunsch eines Spielers (Ghost0993, 204 Buchten = 10.000 im Monat),
+         * vom Nutzer am 2026-10-07 so beschlossen: Stufen statt Formel,
+         * Standard 100 %. Wirkt sofort auf alle Parkplaetze, weil der
+         * Wirtschaftslauf den Wert in jedem Durchgang neu setzt.
+         */
+        [SettingsUISection(ReiterAllgemein, GruppeWirtschaft)]
+        [SettingsUIDisableByCondition(typeof(Setting), nameof(WirtschaftAus))]
+        public Unterhaltwahl Unterhalt { get; set; } = Unterhaltwahl.Voll;
+
+        /** Der Wert ist der Prozentsatz - siehe `Mod.UnterhaltFaktor`. */
+        public enum Unterhaltwahl
+        {
+            Voll = 100,
+            DreiViertel = 75,
+            Haelfte = 50,
+            Viertel = 25,
+            Aus = 0,
+        }
+
+        /**
          * WIEVIELE PFLANZEN JE QUADRATMETER - RELATIV ZUR SICHTBARKEITSGRENZE.
          *
          * 1,0 ist der Abstand, ab dem CS2 selbst anfaengt, Pflanzen zu
@@ -757,6 +781,7 @@ namespace ParkingLotTool
             EntwicklerDebug = false;
             Wirtschaft = true;
             Parkgebuehr = 10;
+            Unterhalt = Unterhaltwahl.Voll;
             ZoningMaxBreiteText = ParkingGeometry.ZoningMaxStandard
                 .ToString(CultureInfo.InvariantCulture);
             ZoningMaxTiefeText = ParkingGeometry.ZoningMaxStandard
@@ -1012,6 +1037,19 @@ namespace ParkingLotTool
                 {
                     "Options.OPTION_DESCRIPTION[" + pfadGebuehr + "]",
                     S("settings.Gebuehr.desc")},
+                {
+                    "Options.OPTION[" + seite + "." + nameof(Setting) + "."
+                        + nameof(Setting.Unterhalt) + "]",
+                    S("settings.Unterhalt.label")},
+                {
+                    "Options.OPTION_DESCRIPTION[" + seite + "." + nameof(Setting) + "."
+                        + nameof(Setting.Unterhalt) + "]",
+                    S("settings.Unterhalt.desc")},
+                { _setting.GetEnumValueLocaleID(Setting.Unterhaltwahl.Voll), S("settings.enum.Unterhaltwahl.Voll") },
+                { _setting.GetEnumValueLocaleID(Setting.Unterhaltwahl.DreiViertel), S("settings.enum.Unterhaltwahl.DreiViertel") },
+                { _setting.GetEnumValueLocaleID(Setting.Unterhaltwahl.Haelfte), S("settings.enum.Unterhaltwahl.Haelfte") },
+                { _setting.GetEnumValueLocaleID(Setting.Unterhaltwahl.Viertel), S("settings.enum.Unterhaltwahl.Viertel") },
+                { _setting.GetEnumValueLocaleID(Setting.Unterhaltwahl.Aus), S("settings.enum.Unterhaltwahl.Aus") },
                 /**
                  * DEN SCHLUESSEL BAUT DAS SPIEL SELBST.
                  *

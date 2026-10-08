@@ -1,9 +1,12 @@
 # Changelog
 
-## 1.0.7 — October 6, 2026
+## 1.0.7 — October 8, 2026
 
+- Addition: "How it works" tab with the tutorial videos; the first one, "Basics", is out.
+- Addition: "Upkeep costs" in the mod settings scales the upkeep of all parking lots (100 %, 75 %, 50 %, 25 % or off).
 - Improvement: improved language system for further additions; all texts now live in language files in the mod folder.
 - Fix: some texts in the status bar, tooltips and panel stayed in the other language.
+- Fix: the parking lot list showed half the real upkeep when the road services budget was at 100 %.
 
 ## 1.0.6 — October 6, 2026
 

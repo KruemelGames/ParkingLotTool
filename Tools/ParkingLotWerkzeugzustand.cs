@@ -59,6 +59,9 @@ namespace ParkingLotTool.Tools
             {
                 case "zoning": return Werkzeugreiter.Zoning;
                 case "liste": return Werkzeugreiter.Liste;
+                // Die Anleitung ist wie die Liste reine Anzeige: waehrend man
+                // Videos ansieht, soll kein Klick in die Welt etwas bauen.
+                case "anleitung": return Werkzeugreiter.Liste;
                 case "debug": return Werkzeugreiter.Debug;
                 case "report": return Werkzeugreiter.Melden;
                 default: return Werkzeugreiter.Entwurf;

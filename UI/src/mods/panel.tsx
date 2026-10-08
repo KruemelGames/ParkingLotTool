@@ -43,6 +43,7 @@ import {
   syncOffen$, syncAuto$,
 } from "./bindings";
 import { useTexte } from "./texte";
+import { AnleitungTab } from "./anleitung";
 
 const numberDiffers = (value: number, standard: number) =>
   Math.abs(value - standard) > 0.000001;
@@ -681,6 +682,7 @@ export const ParkingLotPanel = () => {
      zurueck - sonst saehe er eine leere Seite ohne zu wissen warum. */
   const zoning = tab === "zoning" && polygonClosed;
   const liste = tab === "liste";
+  const anleitung = tab === "anleitung";
 
   /** Der Name des Mods - hochkant in einer Zeile mit den beiden Pfeilen. */
   const marke = (
@@ -775,7 +777,7 @@ export const ParkingLotPanel = () => {
           <div className={styles.reiterZeile}>
           <TooltipKnopf
             text={t.tooltipEntwurf}
-            className={`${styles.tab} ${melden || debug || zoning || liste ? "" : styles.tabAktiv}`}
+            className={`${styles.tab} ${melden || debug || zoning || liste || anleitung ? "" : styles.tabAktiv}`}
             onMouseDown={haltAn}
             onClick={() => setTab("layout")}
           >
@@ -817,6 +819,15 @@ export const ParkingLotPanel = () => {
           >
             {t.reiterListe}
             {arbeitOffen > 0 ? <span className={styles.tabZaehler}>{arbeitOffen}</span> : null}
+          </TooltipKnopf>
+          {/* DIE ANLEITUNG (Nutzer 2026-10-08): Videos zum Mod. Hilfe, kein
+              Bauwerkzeug - deshalb hinter der Liste und vor den Messwerkzeugen. */}
+          <TooltipKnopf text={t.tooltipAnleitung}
+            className={`${styles.tab} ${anleitung ? styles.tabAktiv : ""}`}
+            onMouseDown={haltAn}
+            onClick={() => setTab("anleitung")}
+          >
+            {t.reiterAnleitung}
           </TooltipKnopf>
           {/* MESSEN STATT BAUEN. Der Dev-Debug-Reiter fasst Werkzeuge
               zusammen, die CS2 etwas fragen, statt einen Parkplatz zu
@@ -973,6 +984,7 @@ export const ParkingLotPanel = () => {
             offen ist, soll nicht auf einem unsichtbaren Reiter sitzenbleiben. */}
         {melden ? <ReportTab /> : debug && entwicklerDebug ? <DebugTab />
           : liste ? <ListeTab />
+          : anleitung ? <AnleitungTab />
           : zoning ? <ZoningTab /> : <>
         <div className={styles.spaltenGruppe}>
         <Spalte title={t.zuschnitt} ton="Zuschnitt" {...abschnitt("Zuschnitt")} titleTooltip={t.tooltipZuschnitt}>

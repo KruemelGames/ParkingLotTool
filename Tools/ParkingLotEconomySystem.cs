@@ -211,7 +211,7 @@ namespace ParkingLotTool.Tools
             {
                 if (!EntityManager.HasComponent<ParkingLotEconomyData>(lot)
                     || !begleiter.TryGetValue(lot, out var b)) return; // noch nicht eingeschwungen
-                var s = EntityManager.GetComponentData<ParkingLotEconomyData>(lot).Upkeep;
+                var s = WirksamerUnterhalt(EntityManager.GetComponentData<ParkingLotEconomyData>(lot).Upkeep);
                 var i = KostenVon(b) + KostenVon(lot);
                 soll += s; ist += i; fertig++;
                 if (i != s) abweichend.Add("Lot " + lot.Index + " " + i + " statt " + s + " [Begleiter " + Befund(b) + "; Flaeche " + Befund(lot) + "]");
@@ -415,7 +415,7 @@ namespace ParkingLotTool.Tools
                 Mod.log.Info("PLT-Wirtschaft: Lot " + lot.Index + " aus "
                     + lanes + " echten Parkspuren gemessen: " + capacity
                     + " Plaetze, Prefab-Unterhalt " + economy.Upkeep
-                    + ", Auswahlfenster monatlich " + (economy.Upkeep / 2)
+                    + ", Auswahlfenster monatlich " + MonatsUnterhalt(economy.Upkeep)
                     + ".");
             }
 
@@ -753,7 +753,7 @@ namespace ParkingLotTool.Tools
             // doppelt zahlen, sobald der Begleiter uebernimmt.
             NullenFalls(lot);
 
-            var usage = (float)economy.Upkeep / UpkeepBasis;
+            var usage = (float)WirksamerUnterhalt(economy.Upkeep) / UpkeepBasis;
             if (!EntityManager.HasComponent<ServiceUsage>(begleiter))
             {
                 ParkingLotSchrittmarke.Aenderung("Wirtschaft: ServiceUsage an Begleiter " + begleiter.Index);
@@ -780,5 +780,33 @@ namespace ParkingLotTool.Tools
 
         internal static int CalculateUpkeep(int capacity)
             => 48 * capacity + 438;
+
+        /**
+         * Was der Parkplatz wirklich kostet: der gespeicherte Wert mal der
+         * Wahl "Unterhaltskosten" in den Optionen. Gespeichert bleibt immer der
+         * volle Wert - so kehrt er beim Zurueckstellen exakt zurueck, und der
+         * Bauzettel bleibt die Wahrheit. Ganzzahlig gerundet, damit Soll/Basis
+         * in float exakt bleibt (siehe `UpkeepBasis`).
+         */
+        internal static int WirksamerUnterhalt(int upkeep)
+            => (int)System.Math.Round(upkeep * (double)Mod.UnterhaltFaktor);
+
+        /**
+         * Der Monatsbetrag, wie ihn Auswahlfenster und Stadtkasse zeigen:
+         * wirksamer Unterhalt mal Budget-Prozent des Strassendienstes
+         * (`CityServiceBudgetSystem`, Standard 100 %). Die Liste rechnete
+         * bis 1.0.7 fest "Unterhalt / 2" - das stimmte nur bei 50 % Budget.
+         */
+        internal int MonatsUnterhalt(int upkeep)
+        {
+            var wirksam = WirksamerUnterhalt(upkeep);
+            var budget = 100;
+            if (_roadsService != Entity.Null)
+            {
+                var budgets = World.GetExistingSystemManaged<Game.Simulation.CityServiceBudgetSystem>();
+                if (budgets != null) budget = budgets.GetServiceBudget(_roadsService);
+            }
+            return (int)System.Math.Round(wirksam * budget / 100.0);
+        }
     }
 }

@@ -1,0 +1,198 @@
+/* Reiter "How it works": Kacheln der Anleitungsvideos.
+   Cohtml: kein grid, kein gap, kein hsl - Abstaende ueber margin, Farben
+   als feste Werte. Die fuenf Farben sind die des Panels (panel.module.scss):
+   Fahrwege cyan, Zuschnitt orange, Gruen, Zufahrt magenta, Melden koralle.
+
+   Fertige Folge und Platzhalter haben DIESELBE Groesse - Nutzerwunsch; beim
+   Erscheinen einer Folge springt nichts. */
+
+$fahrwege: #4fc3f7;
+$zuschnitt: #f0ad3e;
+$gruen: #7cd455;
+$zufahrt: #ff5fb0;
+$melden: #f2725c;
+
+/* Kachelmasse: 16:9. Waagerecht stehen alle fuenf in einer Reihe,
+   hochkant zwei nebeneinander. */
+$kachel-breit: 240rem;
+$kachel-hoch: 135rem;
+$kachel-breit-hochkant: 150rem;
+$kachel-hoch-hochkant: 84rem;
+$abstand: 12rem;
+
+.anleitung {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.kopf {
+  margin-bottom: $abstand;
+}
+
+.titel {
+  font-size: var(--fontSizeL);
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 4rem;
+}
+
+.einleitung {
+  font-size: var(--fontSizeXS);
+  color: var(--menuText2Normal);
+  max-width: 640rem;
+}
+
+.kacheln {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.kachel {
+  display: flex;
+  flex-direction: column;
+  width: $kachel-breit;
+  margin: 0 $abstand $abstand 0;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  text-align: left;
+}
+
+.hochkant .kachel {
+  width: $kachel-breit-hochkant;
+}
+
+.kachelFertig {
+  cursor: pointer;
+}
+
+.kachelBald {
+  cursor: default;
+}
+
+/* Rahmen in der Farbe der Folge. Der Rand traegt die Farbe, damit auch das
+   Vorschaubild zur Reihe gehoert. */
+.bildRahmen {
+  position: relative;
+  width: 100%;
+  height: $kachel-hoch;
+  border-radius: 10rem;
+  border: 2rem solid transparent;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+.hochkant .bildRahmen {
+  height: $kachel-hoch-hochkant;
+}
+
+.rahmenFahrwege { border-color: rgba(79, 195, 247, 0.55); }
+.rahmenZuschnitt { border-color: rgba(240, 173, 62, 0.45); }
+.rahmenGruen { border-color: rgba(124, 212, 85, 0.45); }
+.rahmenZufahrt { border-color: rgba(255, 95, 176, 0.45); }
+.rahmenMelden { border-color: rgba(242, 114, 92, 0.45); }
+
+.kachelFertig:hover .rahmenFahrwege { border-color: $fahrwege; }
+
+.bild {
+  width: 100%;
+  height: 100%;
+}
+
+/* Abspielknopf: Kreis mit Dreieck als SVG - kein Zeichen, kein Emoji, und
+   kein Dreieck aus transparenten Raendern (benutzt CS2 nirgends). */
+.abspielen {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44rem;
+  height: 44rem;
+  margin-left: -22rem;
+  margin-top: -22rem;
+  border-radius: 22rem;
+  background-color: rgba(0, 0, 0, 0.55);
+  border: 2rem solid rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Erst beim Drueberfahren sichtbar - sonst verdeckt er das Vorschaubild
+     (Nutzer 2026-10-08). Derselbe Weg wie das Favoritensymbol des Spiels. */
+  opacity: 0;
+}
+
+.kachelFertig:hover .abspielen {
+  opacity: 1;
+  background-color: rgba(79, 195, 247, 0.85);
+  border-color: #ffffff;
+}
+
+.abspielenSymbol {
+  width: 24rem;
+  height: 24rem;
+  margin-left: 2rem;
+}
+
+/* Platzhalter: die Farbe der Folge als zarter Grund, grosse Nummer, "bald". */
+.platzhalter {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.grundFahrwege { background-color: rgba(79, 195, 247, 0.14); }
+.grundZuschnitt { background-color: rgba(240, 173, 62, 0.14); }
+.grundGruen { background-color: rgba(124, 212, 85, 0.14); }
+.grundZufahrt { background-color: rgba(255, 95, 176, 0.14); }
+.grundMelden { background-color: rgba(242, 114, 92, 0.14); }
+
+.platzhalterNummer {
+  font-size: calc(var(--fontSizeXL) * 1.5);
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.hochkant .platzhalterNummer {
+  font-size: var(--fontSizeXL);
+}
+
+.bald {
+  margin-top: 2rem;
+  font-size: var(--fontSizeXS);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.unterzeile {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6rem;
+}
+
+.nummer {
+  font-size: var(--fontSizeXS);
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.textFahrwege { color: $fahrwege; }
+.textZuschnitt { color: $zuschnitt; }
+.textGruen { color: $gruen; }
+.textZufahrt { color: $zufahrt; }
+.textMelden { color: $melden; }
+
+.name {
+  margin-top: 2rem;
+  font-size: var(--fontSizeS);
+  color: var(--menuText1Normal);
+}
+
+.kachelBald .name {
+  color: var(--menuText2Normal);
+}
