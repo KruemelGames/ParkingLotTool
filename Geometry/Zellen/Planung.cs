@@ -149,15 +149,77 @@ namespace ParkingLotTool.Geometry.Zellen
         }
 
         /**
+         * DIE FAHRBAHN ENDET, WO DIE ACHSE ENDET (Issue #10, Nutzer 2026-10-09).
+         *
+         * In einem schmalen Arm klappt die Randstrassenachse (10,4 m) frueher
+         * zusammen als ihr Aussenrand (6,9 m): die Achse an der Spitze P,
+         * wo der Arm 20,8 m breit ist, der Aussenrand erst bei 13,8 m. Dazwischen
+         * lag Fahrbahn ohne Weg, und die Randreihen liefen daran entlang bis
+         * fast nach oben - 25 Buchten ohne Fahrweg, angebunden an P bis 36 m
+         * entfernt. Der Nutzer hat entschieden: oberhalb von P keine Buchten,
+         * dort Gruen.
+         *
+         * Deshalb wird der Aussenrand an jeder zusammengeklappten Stelle der
+         * Achse quer gekappt: die Kante vor der Stelle endet eine halbe
+         * Fahrbahnbreite neben P, die Kante danach beginnt dort, und eine
+         * Kante dazwischen verbindet beide. Die uebrigen Kanten der Stelle
+         * haben Laenge null - Kante i bleibt Kante i.
+         */
+        internal static IReadOnlyList<Punkt> KappeAnSpitzen(IReadOnlyList<Punkt> rand,
+            IReadOnlyList<Punkt> achse, double halbbreite)
+        {
+            var n = achse.Count;
+            if (rand == null || rand.Count != n || n < 4) return rand;
+            bool Null(int i) => Geometrie.Laenge(achse[(i + 1) % n] - achse[i]) < 1e-9;
+            if (Enumerable.Range(0, n).All(Null) || !Enumerable.Range(0, n).Any(Null)) return rand;
+            var ergebnis = rand.ToArray();
+            // Bei einer Kante mit Laenge beginnen, damit keine Stelle ueber den Ringanfang reicht.
+            var start = Enumerable.Range(0, n).First(i => !Null(i));
+            for (var k = 0; k < n; k++)
+            {
+                var a = (start + k) % n;
+                if (Null(a) || !Null((a + 1) % n)) continue;
+                // Kante a hat Laenge, danach folgt eine Stelle aus Nullkanten bis Kante b.
+                var b = (a + 1) % n;
+                var anzahl = 0;
+                while (Null(b)) { b = (b + 1) % n; anzahl++; }
+                var p = achse[(a + 1) % n];
+                // Eckiges Strassenende eine halbe Fahrbahnbreite hinter P, wie
+                // der Belag um eine Achse, die dort endet. Ein flacher Schnitt
+                // durch P liesse dahinter Flaeche naeher als die halbe Breite
+                // an der Achse - die Ueberlapp-Regel machte die ganze Armspitze
+                // dann zu Belag (gemessen am Bericht von kunred).
+                Punkt Aussen(int i, double laengs)
+                {
+                    var d = achse[(i + 1) % n] - achse[i];
+                    var l = Geometrie.Laenge(d);
+                    // Gegen den Uhrzeigersinn liegt das Innere links, der Umriss rechts.
+                    return p + new Punkt(d.Y / l, -d.X / l) * halbbreite + d * (laengs / l);
+                }
+                var pa = Aussen(a, halbbreite);
+                var pb = Aussen(b, -halbbreite);
+                // Reicht der alte Rand gar nicht so weit, ist dort nichts zu kappen.
+                Punkt Richtung(int i) => (achse[(i + 1) % n] - achse[i]) * (1 / Geometrie.Laenge(achse[(i + 1) % n] - achse[i]));
+                if (Geometrie.Skalar(rand[(a + 1) % n] - pa, Richtung(a)) <= 0
+                    || Geometrie.Skalar(rand[b] - pb, Richtung(b)) >= 0) continue;
+                ergebnis[(a + 1) % n] = pa;
+                for (var j = 2; j <= anzahl; j++) ergebnis[(a + j) % n] = pb;
+                ergebnis[b] = pb;
+            }
+            if (Geometrie.Vorzeichenflaeche(ergebnis) <= 0) return rand;
+            return ergebnis;
+        }
+
+        /**
          * EIN ARM, SCHMALER ALS ZWEIMAL DER VERSATZ, KLAPPT NICHT ZUSAMMEN.
          *
          * Issue #10 (2026-10-09): ein U-foermiger Parkplatz, dessen linker
          * Arm oben nur 10,5 m breit ist. Der Rueckwaertstest oben strich die
          * Kanten im Innenhof des U und verschnitt danach ihre Nachbarn - die
-         * aber lagen auf verschiedenen Seiten des Innenhofs. So entstanden
-         * Randstrassenkanten quer ueber die Luecke, sechs davon an einem
-         * Punkt, zwei bis zu 36 m ausserhalb des Parkplatzes. Die Buchten
-         * hingen sich an sie.
+         * aber lagen auf verschiedenen Seiten des Innenhofs. Beim 13,9-m-Ring
+         * lagen Stuecke so naeher am Umriss als erlaubt (Haarriss, verwaiste
+         * Bucht). Den Stern quer ueber den Innenhof machte dagegen das Teilen
+         * der Wege (siehe `ZellenSchneideStrassen`).
          *
          * Richtig ist der Rand des ERODIERTEN Umrisses: alle Punkte, die
          * mindestens `abstand` von jeder Umrisskante entfernt sind. Er

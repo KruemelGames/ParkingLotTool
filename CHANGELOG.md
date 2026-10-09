@@ -12,6 +12,7 @@
 - Fix: the parking lot list showed half the real upkeep when the road services budget was at 100 %.
 - Fix: some asphalt and grass surfaces were not built; "Synchronize" adds them to existing lots.
 - Fix: in a narrow arm of a lot, paths could run across the lot and far outside it; affected lots show "Repair" in the list (thanks kunred).
+- Fix: where a narrow arm is too tight for the road, parking spaces no longer line the end of the arm without a path; it stays green.
 - Fix: some parking decals pointed towards the median instead of the road; editing a lot applies it.
 - Fix: possible crash when splitting an area.
 - Fix: crash when resetting the alignment while a split had no line.

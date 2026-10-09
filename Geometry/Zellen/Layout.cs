@@ -348,6 +348,12 @@ namespace ParkingLotTool.Geometry.Zellen
             var randstrasseninnenrand = !einstellungen.Randstrassen
                 ? innenrand : Layoutplanung.Innenrand(
                     lokalpunkte, einstellungen.Randstrasseninnentiefe);
+            // Wo die Achse in einem schmalen Arm zusammenklappt, endet auch die
+            // Fahrbahn dort (Issue #10): keine Randreihe an Fahrbahn ohne Weg.
+            if (einstellungen.Randstrassen && randstrassenmittellinie != innenrand)
+                randstrassenrand = Layoutplanung.KappeAnSpitzen(randstrassenrand,
+                    randstrassenmittellinie, einstellungen.Randstrassenmittellinientiefe
+                        - einstellungen.Zufahrtstiefe);
 
             /*
              * DIE RZ-STRASSE IST BREITER ALS DIE RANDSTRASSE.

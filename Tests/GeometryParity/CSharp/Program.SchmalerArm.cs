@@ -84,6 +84,19 @@ internal static partial class Program
                 .GroupBy(p => (math.round(p.x * 100), math.round(p.y * 100)))
                 .Select(g => g.Count()).DefaultIfEmpty(0).Max();
             if (grad5 >= 5) probleme.Add($"{grad5} Wege an einem Knoten");
+            // Oberhalb der Spitze P lagen 25 Buchten an Fahrbahn ohne Weg, bis
+            // 36 m vom naechsten Fahrweg (Nutzerentscheidung 2026-10-09: dort Gruen).
+            var weitesteBucht = layout.Bay.Select(b =>
+            {
+                var m = b.Aggregate(float2.zero, (s2, q) => s2 + q) / b.Length;
+                return layout.NetLine.Where(l => l.Kind != "zoning").Select(l =>
+                {
+                    var ab = l.B - l.A;
+                    var t = math.clamp(math.dot(m - l.A, ab) / math.max(math.lengthsq(ab), 1e-9f), 0f, 1f);
+                    return math.distance(m, l.A + ab * t);
+                }).DefaultIfEmpty(float.MaxValue).Min();
+            }).DefaultIfEmpty(0f).Max();
+            if (weitesteBucht > 12f) probleme.Add($"Bucht {weitesteBucht:F1} m vom naechsten Fahrweg");
             var befund = RandstrassenErreichbarkeit.Pruefe(layout.NetLine, umriss, settings.Ai, settings.Cw);
             if (!befund.Vollstaendig) probleme.Add($"erreicht {befund.Erreicht} von {befund.Autowege} Autowegen");
             var verworfen = (layout.AsphaltSurface ?? Array.Empty<float2[]>())
