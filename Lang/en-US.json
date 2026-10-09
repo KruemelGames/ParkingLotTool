@@ -277,6 +277,7 @@
   "settings.enum.Sprachwahl.Automatic": "Automatic",
   "settings.enum.Sprachwahl.Deutsch": "Deutsch",
   "settings.enum.Sprachwahl.English": "English",
+  "settings.enum.Sprachwahl.Portugues": "Português (Brasil)",
   "settings.group.Deinstallation": "Uninstall",
   "settings.group.Entwickler": "Development",
   "settings.group.Fenster": "Window",

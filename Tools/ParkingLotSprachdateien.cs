@@ -24,8 +24,8 @@ namespace ParkingLotTool.Tools
      *      dass PLT von ihnen weiss. Steht die Sprache auf "Automatisch",
      *      liest `Sprachtexte` zuerst dort nach.
      *
-     * Bei "English" oder "Deutsch" gilt nur die Datei: wer die Sprache im
-     * Mod ausdruecklich waehlt, soll genau die bekommen.
+     * Bei einer ausdruecklich gewaehlten Sprache gilt nur die Datei: wer
+     * "English", "Deutsch" oder "Portugues" waehlt, soll genau die bekommen.
      */
     internal static class ParkingLotSprachdateien
     {

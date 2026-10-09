@@ -13,7 +13,7 @@ using ParkingLotTool.Geometry;
  * sich ohne Spiel pruefen laesst:
  *
  *   1. Jede Sprachdatei hat nur Schluessel, die es auf Englisch gibt;
- *      Deutsch hat ALLE. Platzhalter sind je Schluessel in allen Sprachen
+ *      Deutsch und Portugiesisch (pt-BR) haben ALLE. Platzhalter sind je Schluessel in allen Sprachen
  *      dieselben, Klammern sind geschlossen, Mehrzahl hat .one UND .other.
  *   2. Jeder Schluessel, den der Code benutzt, steht in en-US.json - und
  *      jeder Schluessel in en-US.json wird benutzt.
@@ -62,6 +62,11 @@ internal static partial class Program
             foreach (var k in en.Keys) if (!de.ContainsKey(k)) Fehler($"de-DE: '{k}' fehlt");
         }
         else Fehler("de-DE.json fehlt");
+        if (Sprachtexte.Sprachen.TryGetValue("pt-BR", out var pt))
+        {
+            foreach (var k in en.Keys) if (!pt.ContainsKey(k)) Fehler($"pt-BR: '{k}' fehlt");
+        }
+        else Fehler("pt-BR.json fehlt");
         foreach (var k in en.Keys)
         {
             if (k.EndsWith(".one") && !en.ContainsKey(k.Substring(0, k.Length - 4) + ".other"))

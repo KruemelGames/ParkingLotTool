@@ -441,6 +441,7 @@ namespace ParkingLotTool
             Automatic,
             English,
             Deutsch,
+            Portugues,
         }
 
         /**
@@ -477,15 +478,16 @@ namespace ParkingLotTool
         public Sprachwahl Sprache { get; set; } = Sprachwahl.English;
 
         /**
-         * Die Sprachdatei, aus der angezeigt wird ("en-US", "de-DE", ...).
+         * Die Sprachdatei, aus der angezeigt wird ("en-US", "de-DE", "pt-BR", ...).
          *
          * "Automatisch" folgt der Spielsprache, sofern es dafuer eine Datei
          * gibt - sonst Englisch. Die Spielsprache kommt als Kennung des
-         * Spiels ("zh-HANS"), und genau so heissen die Dateien in `Lang/`.
+         * Spiels ("zh-HANS", "pt-BR"), und genau so heissen die Dateien in `Lang/`.
          */
         internal string SprachId()
         {
             if (Sprache == Sprachwahl.Deutsch) return "de-DE";
+            if (Sprache == Sprachwahl.Portugues) return "pt-BR";
             if (Sprache == Sprachwahl.English) return Geometry.Sprachtexte.Rueckfall;
             try
             {
@@ -1030,6 +1032,9 @@ namespace ParkingLotTool
                 {
                     _setting.GetEnumValueLocaleID(Setting.Sprachwahl.Deutsch),
                     S("settings.enum.Sprachwahl.Deutsch")},
+                {
+                    _setting.GetEnumValueLocaleID(Setting.Sprachwahl.Portugues),
+                    S("settings.enum.Sprachwahl.Portugues")},
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeTasten + "]",
                     S("settings.group.Tasten")},
