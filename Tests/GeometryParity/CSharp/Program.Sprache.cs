@@ -67,7 +67,7 @@ internal static partial class Program
         else Fehler("de-DE.json fehlt");
         // Neue Sprachen sind optional; eine vorhandene Datei darf aber
         // keinen englischen Rueckfall wegen fehlender Schluessel brauchen.
-        foreach (var sprache in new[] { "ja-JP", "zh-HANS" })
+        foreach (var sprache in new[] { "ja-JP", "zh-HANS", "pt-BR" })
             if (Sprachtexte.Sprachen.TryGetValue(sprache, out var uebersetzung))
                 foreach (var k in en.Keys)
                     if (!uebersetzung.ContainsKey(k)) Fehler($"{sprache}: '{k}' fehlt");

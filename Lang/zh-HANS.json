@@ -281,6 +281,7 @@
   "settings.enum.Sprachwahl.Deutsch": "Deutsch",
   "settings.enum.Sprachwahl.Japanisch": "日本語",
   "settings.enum.Sprachwahl.Chinesisch": "简体中文",
+  "settings.enum.Sprachwahl.Portugues": "Português (Brasil)",
   "settings.enum.Sprachwahl.English": "English",
   "settings.enum.Unterhaltwahl.Aus": "免费",
   "settings.enum.Unterhaltwahl.DreiViertel": "75 %",

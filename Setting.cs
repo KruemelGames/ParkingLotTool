@@ -468,6 +468,7 @@ namespace ParkingLotTool
             // Hinten angehaengt (2026-10-11), damit gespeicherte Werte gueltig bleiben.
             Japanisch,
             Chinesisch,
+            Portugues,
         }
 
         /**
@@ -515,6 +516,7 @@ namespace ParkingLotTool
             if (Sprache == Sprachwahl.Deutsch) return "de-DE";
             if (Sprache == Sprachwahl.Japanisch) return "ja-JP";
             if (Sprache == Sprachwahl.Chinesisch) return "zh-HANS";
+            if (Sprache == Sprachwahl.Portugues) return "pt-BR";
             if (Sprache == Sprachwahl.English) return Geometry.Sprachtexte.Rueckfall;
             try
             {
@@ -1079,6 +1081,9 @@ namespace ParkingLotTool
                 {
                     _setting.GetEnumValueLocaleID(Setting.Sprachwahl.Chinesisch),
                     S("settings.enum.Sprachwahl.Chinesisch")},
+                {
+                    _setting.GetEnumValueLocaleID(Setting.Sprachwahl.Portugues),
+                    S("settings.enum.Sprachwahl.Portugues")},
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeTasten + "]",
                     S("settings.group.Tasten")},
