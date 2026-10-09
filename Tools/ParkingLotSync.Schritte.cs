@@ -155,6 +155,17 @@ namespace ParkingLotTool.Tools
                     Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Laternen),
                     Tausch = true,
                 },
+                /*
+                 * Verworfene Flaechen (Schritt 13): nur die Flaeche selbst wird
+                 * ersetzt, siehe ParkingLotFlaechenSyncSystem. Erfolg meldet
+                 * das System erst nach CS2s eigener Antwort (Dreiecke da).
+                 */
+                ["FlaechenFuerCs2"] = new Ausfuehrung
+                {
+                    Braucht = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Braucht(lot),
+                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Einreihen(lot),
+                    Tausch = true,
+                },
                 ["Fahrwege25MitKosten"] = new Ausfuehrung
                 {
                     // Stillgelegt 2026-10-02: der Neubau lief ueber das sichtbare

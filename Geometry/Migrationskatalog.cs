@@ -85,6 +85,11 @@ namespace ParkingLotTool.Geometry
                 + "bekommen sie nach diesem Zettel. Grund (2026-10-06): das Wiederherstellen des "
                 + "Bauplans schrieb bis 1.0.5 die Panelwahl als Zettel, ohne Laternen zu bauen - "
                 + "Schritt 11 hielt sich dann fuer erledigt."),
+            new Schritt(13, "FlaechenFuerCs2",
+                "Flaechen, die CS2 verworfen hat (Entity ohne Dreiecke, im Spiel nackter Boden), werden "
+                + "durch Stuecke aus ihren eigenen Ecken ersetzt, die CS2 annimmt (2026-10-08). Grund: "
+                + "CS2 rueckt jede Flaeche 0,1 m ein; ein Detail unter etwa 0,2 m liess die ganze Flaeche "
+                + "fallen. Kein Neubau; Prefab, Besitzer und Hoehen bleiben."),
         };
 
         /** Der Stand, den ein heute gebauter Parkplatz hat. */

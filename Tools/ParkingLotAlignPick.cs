@@ -191,6 +191,9 @@ namespace ParkingLotTool.Tools
                         LinieB = z.LinieB,
                         Winkel = z.Winkel,
                     });
+            // Wer Linien setzt (Bauzettel, Rueckgaengig), meint sie auch so.
+            // Rueckgaengig stellt den Schalter danach aus dem Schnappschuss her.
+            _ausrichtungAn = _ausrichtungen.Count != 0;
             _uiSystem?.SetAusrichtwinkel(Ausrichtwinkel);
         }
 
@@ -211,6 +214,7 @@ namespace ParkingLotTool.Tools
                     LinieB = linieB,
                     Winkel = grad.Value,
                 });
+            _ausrichtungAn = grad.HasValue;
             _uiSystem?.SetAusrichtwinkel(Ausrichtwinkel);
         }
 
@@ -219,8 +223,54 @@ namespace ParkingLotTool.Tools
          * ERSTE Zuweisung. So gewollt - "die anderen Teilflaechen orientieren
          * sich an der, ausser sie werden extra nochmal ausgewaehlt".
          */
+        /**
+         * AUSRICHTEN IST EIN MODUS, DER SICH MERKT, WAS ER WAR (Nutzer 2026-10-08).
+         *
+         * "Edge" (oder "Fixed") schaltet ihn aus: Linien und Teilung bleiben
+         * gespeichert, wirken aber nicht - bei Edge keine Teilung, keine
+         * Linie. Ein erneuter Klick auf "Align" holt den alten Stand zurueck.
+         * Gespeichert sind `_ausrichtungen` und `_trennschnitte`; ob sie
+         * gelten, sagt dieser Schalter. Alles, was baut oder anzeigt, liest
+         * die WIRKSAMEN Werte (`Ausrichtwinkel`, `TeilungWirkt`).
+         */
+        private bool _ausrichtungAn;
+
+        internal bool AusrichtungAn => _ausrichtungAn;
+
+        /** Gilt die Teilung gerade? Nur mit eingeschaltetem Ausrichten. */
+        internal bool TeilungWirkt => _ausrichtungAn && _trennschnitte.Count != 0;
+
+        /** Der wirksame Winkel: null, wenn das Ausrichten aus ist. */
         internal double? Ausrichtwinkel
-            => _ausrichtungen.Count == 0 ? (double?)null : _ausrichtungen[0].Winkel;
+            => !_ausrichtungAn || _ausrichtungen.Count == 0
+                ? (double?)null : _ausrichtungen[0].Winkel;
+
+        private void SetzeAusrichtungAn(bool an)
+        {
+            if (_ausrichtungAn == an) return;
+            _ausrichtungAn = an;
+            _uiSystem?.SetAusrichtwinkel(Ausrichtwinkel);
+            AktualisiereTeilflaechen();
+            _geometryRevision++;
+            _layoutDirty = _closed;
+        }
+
+        /**
+         * "Edge" oder "Fixed" gewaehlt: Ausrichten aus, Daten bleiben. Eine
+         * laufende Auswahl endet; im Teilmodus gelten die Schnitte von vorher.
+         */
+        internal bool SchalteAusrichtungAus(string grund)
+        {
+            var war = _ausrichtungAn || AusrichtWahlAktiv;
+            if (TrennmodusAktiv) BrecheTeilenAb(grund);
+            else if (AusrichtWahlAktiv) AbortAusrichtWahl(grund);
+            SetzeAusrichtungAn(false);
+            if (war)
+                Mod.log.Info("PLT-Ausrichten: aus (" + grund + "), "
+                    + _ausrichtungen.Count + " Linie(n) und "
+                    + _trennschnitte.Count + " Schnitt(e) bleiben gemerkt.");
+            return war;
+        }
 
         internal void BeginAusrichtWahl()
         {
@@ -241,31 +291,23 @@ namespace ParkingLotTool.Tools
                 return;
             }
             /*
-             * ZUERST DER TRENNMODUS, wenn die Form ihn zulaesst.
+             * KEIN TRENNMODUS MEHR VORWEG (Nutzer 2026-10-08).
              *
-             * Ansage des Nutzers vom 2026-09-01: der Ausrichtknopf wird zum
-             * "Trennung fertig", man KANN Schnitte ziehen, muss aber nicht.
-             * Erst danach beginnt das eigentliche Ausrichten.
-             *
-             * Zulassen heisst: es muss ueberhaupt ein Schnitt moeglich sein.
-             * Die beiden Punkte duerfen nicht benachbart sein, also braucht
-             * es mindestens vier. Der Nutzer nannte "mehr als 5", sagte aber
-             * im selben Atemzug, ein Viereck ginge auch und sein Beispiel
-             * hatte fuenf - deshalb die Grenze dort, wo ein Schnitt
-             * geometrisch moeglich wird, statt an einer gesetzten Zahl.
+             * Bis hier startete der Ausrichtknopf zuerst den Trennmodus, und
+             * der Knopf hiess dann "Done splitting" - wer das nicht wusste,
+             * wartete vergeblich auf die Linienwahl. Teilen ist jetzt ein
+             * eigener Knopf ("Split area", `BeginTeilen`), vorher oder
+             * nachher. Hier geht es direkt los: ohne Teilung zur Linie, mit
+             * Teilung erst zur Flaeche.
              */
             _trennAnfang = -1;
+            // Der gemerkte Stand - Linien und Teilung - gilt ab jetzt wieder.
+            // Wer gleich wieder abbricht, ohne eine Linie zu waehlen, bekommt
+            // den Stand von vorher zurueck (AbortAusrichtWahl).
+            _ausrichtungAnVorWahl = _ausrichtungAn;
+            _linieInDieserWahl = false;
+            SetzeAusrichtungAn(true);
             AktualisiereTeilflaechen();
-            if (TrennungMoeglich)
-            {
-                Ausrichtwahl = Ausrichtschritt.Trennen;
-                AusrichtFlaeche = -1;
-                _uiSystem?.SetStatus(T("alignPick.splitModeConnectTwoOutlinePoints"));
-                Mod.log.Info("PLT-Trennmodus: gestartet, " + _points.Count
-                    + " Punkte, " + _trennschnitte.Count
-                    + " vorhandene Schnitt(e).");
-                return;
-            }
             // Bei einer einzigen Teilflaeche gibt es nichts auszuwaehlen -
             // Rechteck, Dreieck, Raute. Dann geht es direkt zur Linie.
             AusrichtFlaeche = _teilflaechen.Count > 1 ? -1 : 0;
@@ -280,12 +322,18 @@ namespace ParkingLotTool.Tools
                     ? "erst Flaeche waehlen." : "direkt zur Linie."));
         }
 
+        /** Stand des Schalters beim Betreten der Wahl - fuer den Abbruch. */
+        private bool _ausrichtungAnVorWahl;
+        /** Wurde in dieser Wahl schon eine Linie genommen? Die gilt sofort. */
+        private bool _linieInDieserWahl;
+
         internal void AbortAusrichtWahl(string grund)
         {
             if (!AusrichtWahlAktiv) return;
             Ausrichtwahl = Ausrichtschritt.Aus;
             AusrichtFlaeche = -1;
             _trennAnfang = -1;
+            if (!_linieInDieserWahl) SetzeAusrichtungAn(_ausrichtungAnVorWahl && _ausrichtungen.Count != 0);
             /*
              * Abbrechen laesst den vorigen Zustand voellig unberuehrt - auch
              * eine frueher gewaehlte Linie bleibt. Der Nutzer: "Align wird
@@ -313,6 +361,7 @@ namespace ParkingLotTool.Tools
             var zuweisungen = _ausrichtungen.Count;
             Ausrichtwahl = Ausrichtschritt.Aus;
             AusrichtFlaeche = -1;
+            if (zuweisungen == 0) SetzeAusrichtungAn(false);
             _uiSystem?.SetStatus(zuweisungen == 0
                 ? T("alignPick.finishedNoLineWasPicked")
                 : T("alignPick.alignmentApplied", ("zuweisungen", zuweisungen)));
@@ -325,22 +374,29 @@ namespace ParkingLotTool.Tools
         {
             Ausrichtwahl = Ausrichtschritt.Aus;
             AusrichtFlaeche = -1;
-            // Die Handschnitte gehoeren zur Ausrichtung: wer sie zuruecksetzt,
-            // will wieder die Vorgabe - und die ist die automatische Zerlegung.
-            var hatteSchnitte = _trennschnitte.Count;
-            VergissTrennschnitte();
-            if (Ausrichtwinkel == null && hatteSchnitte == 0)
+            /*
+             * NUR DIE LINIEN, NICHT DIE TEILUNG (2026-10-08).
+             *
+             * Bis hier nahm das Zuruecksetzen die Schnitte mit - und stuerzte
+             * ab, wenn Schnitte da waren, aber keine Linie (`Ausrichtwinkel`
+             * war null, `.Value` warf). Die Teilung hat jetzt ihren eigenen
+             * Knopf "Remove split" (`EntferneTeilung`).
+             */
+            if (_ausrichtungen.Count == 0)
             {
+                SetzeAusrichtungAn(false);
                 _uiSystem?.SetStatus(T("alignPick.noLineWasPicked"));
                 _uiSystem?.SetAusrichtwinkel(null);
                 return;
             }
-            var vorher = Ausrichtwinkel.Value;
+            var vorher = _ausrichtungen[0].Winkel;
             // Auch das Verwerfen ist ein Schritt - sonst waere es der
             // einzige Bedienvorgang ohne Rueckgaengig.
             var before = CaptureUndoState();
             _ausrichtungen.Clear();
+            _ausrichtungAn = false;
             _uiSystem?.SetAusrichtwinkel(null);
+            AktualisiereTeilflaechen();
             _geometryRevision++;
             _layoutDirty = _closed;
             CommitUndoState(before, () => T("alignPick.alignmentReset"));
@@ -558,6 +614,8 @@ namespace ParkingLotTool.Tools
                 && math.abs(_ausrichtungen[vorhanden].Winkel - grad) < 0.001;
             if (vorhanden >= 0) _ausrichtungen[vorhanden] = neuerEintrag;
             else _ausrichtungen.Add(neuerEintrag);
+            _ausrichtungAn = true;
+            _linieInDieserWahl = true;
             _uiSystem?.SetAusrichtwinkel(Ausrichtwinkel);
             if (!unveraendert)
             {

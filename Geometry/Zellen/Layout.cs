@@ -588,8 +588,8 @@ namespace ParkingLotTool.Geometry.Zellen
                 && zoningLokal.Length == 0 && randzoningLokal.Length == 0
                 // Versuch: schraege Endstreifen zulassen
                 ;
-            var ringloseBandgrenzen = ringlos == null || teilflaechenlayout != null ? Array.Empty<double>()
-                : ringlos.Korridore.SelectMany(w => w.Ecken).Select(v => v.Y)
+            var ringloseBandgrenzenRoh = ringlos == null || teilflaechenlayout != null ? new List<double>()
+                : ringlos.Bandgrenzen
                     .Concat(ringloseAbschnittsgrenzen)
                     // Die Grenze des Randabstands trennt kein Material:
                     // Restgruen setzt das aeussere Gruen fort. Hier ergaben
@@ -597,7 +597,19 @@ namespace ParkingLotTool.Geometry.Zellen
                     .Concat(bandplan.Baender.Where(b => b.Art != Zellart.Restgruen)
                         .SelectMany(b => new[] { b.Anfang, b.Ende }))
                     .Concat(zoningLokal.SelectMany(z => z.Umriss()).Select(v => v.Y))
-                    .Distinct().OrderBy(y => y).ToArray();
+                    .Distinct().OrderBy(y => y).ToList();
+            /*
+             * FAST GLEICHE BANDGRENZEN SIND EINE (2026-10-08) - dieselbe
+             * 2-mm-Regel wie `rasterlinienEpsilon` und das Teilraster. Die
+             * Stirn eines Zufahrtskorridors darf schraeg stehen; ihre beiden
+             * Ecken liegen dann auf fast, aber nicht genau derselben Hoehe,
+             * und beide wurden zu Linien ueber die ganze Breite - knapp
+             * nebeneinander, mit Splittern dazwischen.
+             */
+            for (var i = ringloseBandgrenzenRoh.Count - 1; i > 0; i--)
+                if (ringloseBandgrenzenRoh[i] - ringloseBandgrenzenRoh[i - 1] <= 0.002)
+                    ringloseBandgrenzenRoh.RemoveAt(i);
+            var ringloseBandgrenzen = ringloseBandgrenzenRoh.ToArray();
             Phase("vorplanung");
             var teiler = new Polygonteiler(knotenfabrik);
             var fragmente = teile.ToList();

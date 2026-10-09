@@ -38,6 +38,7 @@ import {
   undo, undoAvailable$, redo, redoAvailable$,
   ausrichtWahl$, ausrichtAktiv$, ausrichtWaehlen, ausrichtZuruecksetzen,
   ausrichtBestaetigen, trennmodus$, trennungFertig,
+  teilen, teilenAbbrechen, teilungEntfernen, teilflaechenzahl$,
   altbestand$, altbestandLoeschen, altbestandBehalten,
   panelStil$, setPanelStil,
   syncOffen$, syncAuto$,
@@ -353,6 +354,7 @@ export const ParkingLotPanel = () => {
   const ausrichtWahl = useValue(ausrichtWahl$);
   const ausrichtAktiv = useValue(ausrichtAktiv$);
   const trennmodus = useValue(trennmodus$);
+  const teilflaechenzahl = useValue(teilflaechenzahl$);
   const altbestand = useValue(altbestand$);
   const entranceMode = useValue(entranceMode$);
   const busStopMode = useValue(busStopMode$);
@@ -1006,19 +1008,19 @@ export const ParkingLotPanel = () => {
                leuchten zwei Knoepfe gleichzeitig, und man sieht nicht, was
                gerade gilt. Der Nutzer: "enorm verwirrend, wenn mehrere Buttons
                highlighted sind". */
-            value={ausrichtWahl ? "" : angleMode}
+            value={ausrichtWahl || (ausrichtAktiv && angleMode === "edge") ? "" : angleMode}
             ton="Zuschnitt"
             options={[
               /* Mit gewaehlter Bezugslinie heisst "Kante" nicht mehr
                  "laengste Kante", sondern "entlang der Linie" - deshalb der
                  andere Name. "Fest" faellt dann weg: die beiden Modi sind
                  entweder/oder. */
-              {
-                id: "edge",
-                text: ausrichtAktiv ? t.winkelNormal : t.winkelKante,
-                tooltip: ausrichtAktiv
-                  ? t.tooltipWinkelNormal : t.tooltipWinkelKante,
-              },
+              /* EDGE HEISST IMMER EDGE (2026-10-08): es schaltet das
+                 Ausrichten aus, statt "entlang der Linie" zu bedeuten. Die
+                 Linie und eine Teilung bleiben gemerkt; "Align" holt sie
+                 zurueck. "Entlang der Linie" ist jetzt die Kachel "Align"
+                 selbst - sie leuchtet, solange es gilt. */
+              { id: "edge", text: t.winkelKante, tooltip: t.tooltipWinkelKante },
               /* "Meiste" probierte 36 Winkel durch. Ersetzt durch "Quer" -
                  senkrecht zur Bezugsrichtung, ohne den Regler zu bemuehen. */
               { id: "quer", text: t.winkelQuer, tooltip: t.tooltipWinkelQuer },
@@ -1046,7 +1048,7 @@ export const ParkingLotPanel = () => {
               <TooltipKnopf
                 text={trennmodus ? t.tooltipTrennungFertig : t.tooltipAusrichten}
                 className={`${styles.modeKachel}
-                  ${ausrichtWahl ? styles.modeAktivZuschnitt : ""}`}
+                  ${ausrichtWahl || ausrichtAktiv ? styles.modeAktivZuschnitt : ""}`}
                 onMouseDown={haltAn}
                 onClick={trennmodus ? trennungFertig : ausrichtWaehlen}
               >
@@ -1062,7 +1064,21 @@ export const ParkingLotPanel = () => {
                per Rechtsklick oder Esc heraus - das muss man erst einmal
                wissen. Steht nur einer da, nimmt er die ganze Breite; stehen
                beide, teilen sie sich die Zeile. */
-            unten={ausrichtAktiv || ausrichtWahl ? (
+            unten={<>
+              {/* IM TEILMODUS: nur der Rueckweg. Der laute Knopf
+                  "Done splitting" sitzt oben in der Kachel. */}
+              {trennmodus ? (
+              <div className={styles.ausrichtReihe}>
+                <TooltipKnopf text={t.tooltipTeilenAbbrechen}
+                  className={styles.ausrichtKnopf}
+                  onMouseDown={haltAn}
+                  onClick={teilenAbbrechen}
+                >
+                  {t.teilenAbbrechen}
+                </TooltipKnopf>
+              </div>
+              ) : null}
+              {!trennmodus && (ausrichtAktiv || ausrichtWahl) ? (
               <div className={styles.ausrichtReihe}>
                 {ausrichtAktiv ? (
                   <TooltipKnopf text={t.tooltipAusrichtenZurueck}
@@ -1083,7 +1099,40 @@ export const ParkingLotPanel = () => {
                   </TooltipKnopf>
                 ) : null}
               </div>
-            ) : null}
+              ) : null}
+              {/* TEILEN (2026-10-08). Dieselben Knoepfe wie "Reset alignment"
+                  darueber: neutrale Flaeche, gleiche Schrift und Hoehe - der
+                  Nutzer wollte richtige Knoepfe, keinen anklickbaren Text.
+                  Nachrangig bleibt es trotzdem: kein Akzent, nur die
+                  Kachel "Align" und "Done" tragen Farbe (Refactoring UI:
+                  "Emphasize by de-emphasizing"). Ist geteilt, steht der
+                  Zustand als Abzeichen links, die beiden Wege daneben. */}
+              {/* Nur bei eingeschaltetem Ausrichten (Nutzer 2026-10-08):
+                  ohne Ausrichten gibt es nichts, wofuer man teilen koennte. */}
+              {!trennmodus && polygonClosed && (ausrichtAktiv || ausrichtWahl) ? (
+              <div className={styles.ausrichtReihe}>
+                {teilflaechenzahl > 0 ? <>
+                  <span className={styles.teilungAbzeichen}>{t.teilungStand(teilflaechenzahl)}</span>
+                  <TooltipKnopf text={t.tooltipTeilungBearbeiten}
+                    className={`${styles.ausrichtKnopf} ${styles.teilungNeben}`}
+                    onMouseDown={haltAn} onClick={teilen}>
+                    {t.teilungBearbeiten}
+                  </TooltipKnopf>
+                  <TooltipKnopf text={t.tooltipTeilungEntfernen}
+                    className={`${styles.ausrichtKnopf} ${styles.teilungNeben}`}
+                    onMouseDown={haltAn} onClick={teilungEntfernen}>
+                    {t.teilungEntfernen}
+                  </TooltipKnopf>
+                </> : (
+                  <TooltipKnopf text={t.tooltipTeilen}
+                    className={styles.ausrichtKnopf}
+                    onMouseDown={haltAn} onClick={teilen}>
+                    {t.teilen}
+                  </TooltipKnopf>
+                )}
+              </div>
+              ) : null}
+            </>}
           />
           <Slider
             label={t.winkel}

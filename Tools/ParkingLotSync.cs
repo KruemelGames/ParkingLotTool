@@ -388,6 +388,8 @@ namespace ParkingLotTool.Tools
                 // offene Synchronisation (sonst "1 Parkplatz kann aktualisiert
                 // werden" nach jedem Reparieren, Nutzer 2026-10-05).
                 if (hintergrund.Gesperrt(lot) && ParkingLotFehlendeAssetsSystem.ErsatzFuer(lot) != null) continue;
+                // Dasselbe fuer den Neubau wegen falsch verlegter Wege (Issue #10).
+                if (hintergrund.Gesperrt(lot) && World.GetOrCreateSystemManaged<ParkingLotWegpruefungSystem>().InReparatur(lot)) continue;
                 if (hintergrund.Gesperrt(lot))
                 { _offen.Add(lot); _offenMenge.Add(lot); continue; }
                 var stand = StandVon(lot);
@@ -652,7 +654,8 @@ namespace ParkingLotTool.Tools
                 LeereMeldung();
             if (_syncOffen.value != _offen.Count) _syncOffen.Update(_offen.Count);
             var zuTun = _offen.Count + _ohneBauplan.Count + OffeneWaisen()
-                + World.GetOrCreateSystemManaged<ParkingLotFehlendeAssetsSystem>().Anzahl;
+                + World.GetOrCreateSystemManaged<ParkingLotFehlendeAssetsSystem>().Anzahl
+                + World.GetOrCreateSystemManaged<ParkingLotWegpruefungSystem>().Anzahl;
             if (_arbeitOffen.value != zuTun) _arbeitOffen.Update(zuTun);
             var arbeit = World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>();
             var hintergrund = arbeit.Offen

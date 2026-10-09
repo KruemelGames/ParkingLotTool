@@ -58,7 +58,7 @@ namespace ParkingLotTool.Tools
         private void AktualisiereTeilflaechen()
         {
             _teilflaechen.Clear();
-            if (!_closed || _points.Count < 3) return;
+            if (!_closed || _points.Count < 3) { _uiSystem?.SetTeilflaechenzahl(0); return; }
 
             var site = new double2[_points.Count];
             for (var i = 0; i < _points.Count; i++)
@@ -66,9 +66,13 @@ namespace ParkingLotTool.Tools
 
             // Handschnitte schlagen die Automatik - vollstaendig. Siehe
             // ParkingLotTrennmodus.
-            var teile = _trennschnitte.Count != 0
+            // Ohne Schnitt ist der ganze Umriss EINE Flaeche - dieselbe Regel
+            // wie im Kern (PlaneTeilflaechen). Die Automatik ist raus.
+            // Bei ausgeschaltetem Ausrichten wirkt keine Teilung (gemerkt
+            // bleibt sie trotzdem) - der Teilmodus selbst zeigt sie immer.
+            var teile = TeilungWirkt || TrennmodusAktiv
                 ? ParkingGeometry.TeilflaechenAusSchnitten(site, _trennschnitte)
-                : ParkingGeometry.Teilflaechen(site);
+                : new[] { site };
             foreach (var teil in teile)
             {
                 if (teil == null || teil.Length < 3) continue;
@@ -90,11 +94,46 @@ namespace ParkingLotTool.Tools
                     Umriss = umriss,
                     Min = min,
                     Max = max,
-                    // Der Schwerpunkt der Ecken liegt bei konvexen Teilen
-                    // immer innen - und konvex sind sie nach der Zerlegung.
-                    Anker = summe / teil.Length,
+                    Anker = InnererPunkt(umriss, summe / teil.Length),
                 });
             }
+            _uiSystem?.SetTeilflaechenzahl(TeilungWirkt ? _teilflaechen.Count : 0);
+        }
+
+        /**
+         * EIN PUNKT, DER SICHER INNEN LIEGT.
+         *
+         * Der Eckenschwerpunkt reichte, solange die Automatik nur konvexe
+         * Teile lieferte. Handschnitte und der ganze Umriss koennen konkav
+         * sein - dann liegt der Schwerpunkt womoeglich draussen, und die
+         * Zuweisung faende ihre Flaeche nicht wieder (der Kern sucht sie mit
+         * "Anker liegt in der Flaeche"). Rueckfall: der Mittelpunkt einer
+         * Diagonale von einer Ecke aus, die innen verlaeuft.
+         */
+        private static float2 InnererPunkt(float2[] umriss, float2 schwerpunkt)
+        {
+            if (PunktInnen(umriss, schwerpunkt)) return schwerpunkt;
+            for (var i = 0; i < umriss.Length; i++)
+                for (var j = i + 2; j < umriss.Length; j++)
+                {
+                    var mitte = (umriss[i] + umriss[j]) * 0.5f;
+                    if (PunktInnen(umriss, mitte)) return mitte;
+                }
+            return schwerpunkt;
+        }
+
+        private static bool PunktInnen(float2[] umriss, float2 p)
+        {
+            var innen = false;
+            for (int i = 0, j = umriss.Length - 1; i < umriss.Length; j = i++)
+            {
+                var a = umriss[i];
+                var b = umriss[j];
+                if ((a.y > p.y) != (b.y > p.y)
+                    && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x)
+                    innen = !innen;
+            }
+            return innen;
         }
 
         /**

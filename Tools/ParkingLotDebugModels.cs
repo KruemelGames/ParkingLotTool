@@ -69,6 +69,8 @@ namespace ParkingLotTool.Tools
         public DebugAreaTransfer Cs2AreaTransfer { get; set; }
         public DebugBuilt Built { get; set; }
         public DebugWorld ExistingWorld { get; set; }
+        /** So gebaut gegen so liegt es jetzt - nur bei einem gebauten Parkplatz. */
+        public ParkingLotToolSystem.DebugWegvergleich Wegvergleich { get; set; }
         public DebugAreaPrefabs AreaPrefabs { get; set; }
         public DebugDiagnostics Diagnostics { get; set; }
     }

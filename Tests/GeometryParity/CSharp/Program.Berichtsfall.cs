@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.IO;
 using System.Linq;
@@ -38,6 +39,8 @@ internal static partial class Program
                 p.GetProperty("Z").GetSingle())).ToArray();
 
         var layout = ParkingGeometry.Build(site, settings);
+        var svgZiel = Environment.GetEnvironmentVariable("PLT_BERICHT_SVG");
+        if (svgZiel != null) TeilenSvg(layout, site, svgZiel);
         Console.WriteLine(Path.GetFileName(pfad) + ": " + layout.Stalls + " Buchten, "
             + layout.NetLine.Length + " Netzlinien, Randstrassen "
             + (settings.Randstrassen ? "an" : "aus"));
@@ -48,6 +51,31 @@ internal static partial class Program
         Console.WriteLine($"Erreichbarkeit: {befund.Erreicht} von {befund.Autowege} Autowegen, "
             + $"{befund.Quellen} Quelle(n), vollstaendig {befund.Vollstaendig}");
         foreach (var w in layout.Warnings) Console.WriteLine("  Warnung: " + w);
+
+        // Was CS2 verwerfen wird - dieselbe Probe wie `LogSurfaceHealth` im Mod.
+        void Verworfen(string art, float2[][] ringe)
+        {
+            var weg = (ringe ?? Array.Empty<float2[]>())
+                .Where(r => r != null && r.Length >= 3 && Cs2Triangulierung.Dreiecke(r) == 0)
+                .ToArray();
+            Console.WriteLine($"CS2 verwirft {weg.Length} von {ringe?.Length ?? 0} {art}-Ringen");
+            foreach (var r in weg)
+                Console.WriteLine($"  {art}: {r.Length} Ecken | "
+                    + string.Join(" ", r.Select(p => $"{p.x:R}/{p.y:R}")));
+        }
+        Verworfen("Gras", layout.GrassSurface);
+        Verworfen("Belag", layout.AsphaltSurface);
+
+        // Netzlinien, die weit ausserhalb des Umrisses verlaufen (Issue #10:
+        // Randstrasse im schmalen Arm zu einem Punkt zusammengeklappt, von dort
+        // gerade Kanten quer ueber den Innenhof).
+        var draussen = Wegeausserhalb(layout, site);
+        Console.WriteLine($"Netzlinien mehr als 10 m ausserhalb des Umrisses: {draussen.Count}");
+        foreach (var d in draussen.Take(10)) Console.WriteLine("  " + d);
+
+        var (aufkleber, falsch, gemischt) = Aufkleberbefund(layout, settings);
+        Console.WriteLine($"Aufkleber: {aufkleber}, zur Seite ohne Fahrbahn {falsch}, "
+            + $"gegen den Reihennachbarn gedreht {gemischt}");
 
         // Fusswege: keine Reste kuerzer als eine Fusswegbreite (2 m), und
         // jedes Fusswegende beruehrt einen anderen Weg oder den Umriss -
@@ -134,4 +162,75 @@ internal static partial class Program
         return anzahl;
     }
 
+    /**
+     * AUFKLEBER-BEFUND: zeigt jeder Aufkleber zu einer Seite mit direkt
+     * angrenzender Fahrbahn, und zeigen Nachbarn derselben Reihe gleich?
+     * Anlass: Baubericht 2026-10-08 - eine Reihe zwischen zwei Gassen, beide
+     * 6,45 m entfernt, und die Rundung entschied je Bucht neu.
+     */
+    internal static (int Aufkleber, int Falsch, int Gemischt) Aufkleberbefund(
+        ParkingLayout layout, LayoutSettings settings)
+    {
+        var plan = ParkingBayDecals.Plan(layout, settings);
+        var strassen = layout.AisleQuad.Concat(layout.PerimeterQuad).Concat(layout.CrossQuad)
+            .Concat(layout.EntranceQuad).Select(q => q.ToArray()).ToArray();
+        var falsch = 0;
+        var gemischt = 0;
+        foreach (var p in plan.Placements)
+        {
+            var tiefe = p.Facing;
+            bool Strasse(double s) => strassen.Any(q => PointInRing(new float2(
+                (float)(p.Center.x + tiefe.x * s * (settings.Sl / 2 + 0.3)),
+                (float)(p.Center.y + tiefe.y * s * (settings.Sl / 2 + 0.3))), q));
+            if (!Strasse(1) && Strasse(-1))
+            {
+                falsch++;
+                if (Environment.GetEnvironmentVariable("PLT_AUFKLEBER") == "1")
+                    Console.WriteLine($"    AUFKLEBER Bucht {p.Bay} ({p.Center.x:F1}/{p.Center.y:F1}) zeigt ({p.Facing.x:F2}/{p.Facing.y:F2}) - dort keine Fahrbahn, dahinter schon");
+            }
+            var nachbar = plan.Placements.Where(o => o.Bay != p.Bay
+                    && Math.Abs(Math.Abs(math.dot(o.Facing, p.Facing)) - 1) < 1e-3
+                    && Math.Abs(math.dot(o.Center - p.Center, p.Facing)) < 0.1
+                    && math.distance(o.Center, p.Center) < settings.Sw * 1.6)
+                .FirstOrDefault();
+            if (nachbar != null && math.dot(nachbar.Facing, p.Facing) < 0
+                && nachbar.Kind == p.Kind)
+            {
+                gemischt++;
+                if (Environment.GetEnvironmentVariable("PLT_AUFKLEBER") == "1")
+                    Console.WriteLine($"    GEMISCHT Bucht {p.Bay} ({p.Center.x:F2}/{p.Center.y:F2}) zeigt ({p.Facing.x:F2}/{p.Facing.y:F2}), "
+                        + $"Nachbar {nachbar.Bay} ({nachbar.Center.x:F2}/{nachbar.Center.y:F2}) zeigt ({nachbar.Facing.x:F2}/{nachbar.Facing.y:F2})");
+            }
+        }
+        return (plan.Placements.Length, falsch, gemischt);
+    }
+    /** Netzlinien, die an Anfang, Ende oder dazwischen mehr als 10 m ausserhalb des Umrisses liegen. */
+    internal static List<string> Wegeausserhalb(ParkingLayout layout, float2[] site)
+    {
+        float Draussen(float2 p)
+        {
+            var innen = false;
+            var naechster = float.MaxValue;
+            for (int i = 0, j = site.Length - 1; i < site.Length; j = i++)
+            {
+                var a = site[i]; var b = site[j];
+                if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x)
+                    innen = !innen;
+                var ab = b - a;
+                var t = math.clamp(math.dot(p - a, ab) / math.max(math.lengthsq(ab), 1e-9f), 0f, 1f);
+                naechster = math.min(naechster, math.distance(p, a + ab * t));
+            }
+            return innen ? 0 : naechster;
+        }
+        var aus = new List<string>();
+        foreach (var n in layout.NetLine)
+        {
+            var groesster = 0f;
+            foreach (var t in new[] { 0f, 0.25f, 0.5f, 0.75f, 1f })
+                groesster = math.max(groesster, Draussen(math.lerp(n.A, n.B, t)));
+            if (groesster > 10f)
+                aus.Add($"{n.Kind} ({n.A.x:F1}/{n.A.y:F1}) -> ({n.B.x:F1}/{n.B.y:F1}), bis {groesster:F1} m draussen");
+        }
+        return aus;
+    }
 }

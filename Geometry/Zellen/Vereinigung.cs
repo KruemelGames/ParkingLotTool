@@ -248,7 +248,11 @@ namespace ParkingLotTool.Geometry.Zellen
                     if (kante.Nach.Id == startknoten) break;
                     List<int> kandidaten;
                     if (!ausgehend.TryGetValue(kante.Nach.Id, out kandidaten))
-                        throw new InvalidOperationException("Ein Materialrand ist offen.");
+                        throw new InvalidOperationException(
+                            "Ein Materialrand ist offen. Stelle "
+                            + $"({kante.Nach.Punkt.X:F3}/{kante.Nach.Punkt.Y:F3}), "
+                            + $"ankommend von ({kante.Von.Punkt.X:F3}/"
+                            + $"{kante.Von.Punkt.Y:F3}).");
                     var naechste = kandidaten.Where(unbenutzt.Contains).ToList();
                     /*
                      * MEHRERE FORTSETZUNGEN SIND EIN KNEIFPUNKT, KEIN FEHLER.

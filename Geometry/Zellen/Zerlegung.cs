@@ -226,6 +226,16 @@ namespace ParkingLotTool.Geometry.Zellen
                 var delta = q - b;
                 var strahlparameter = Geometrie.Kreuz(delta, kantenvektor) / nenner;
                 var kantenparameter = Geometrie.Kreuz(delta, strahl) / nenner;
+                // Trifft der Strahl eine Ecke, muss das als Ecke erkannt
+                // werden (Parameter genau 0 oder 1, siehe `Zerlege`). An der
+                // L-Form mit gestrecktem Punkt (0/60) traf die verlaengerte
+                // Innenkante diesen Punkt mit 1e-15 daneben; daraus wurde ein
+                // Knoten im Kanteninneren und ein entartetes Teil (2026-10-08).
+                var kantenlaenge = Geometrie.Laenge(kantenvektor);
+                if (Math.Abs(kantenparameter) * kantenlaenge <= 1e-7)
+                    kantenparameter = 0;
+                else if (Math.Abs(1 - kantenparameter) * kantenlaenge <= 1e-7)
+                    kantenparameter = 1;
                 if (strahlparameter <= 0 || kantenparameter < 0 || kantenparameter > 1)
                     continue;
                 if (strahlparameter >= besterStrahlparameter) continue;

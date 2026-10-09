@@ -199,7 +199,11 @@ namespace ParkingLotTool.Tools
                         + $"{grassPlaced} grass and "
                         + $"{asphaltPlaced} pavement surfaces, "
                         + $"{nets} net pieces, {objects} objects"))
-                    .Append("\"}");
+                    .Append('"')
+                    // So wurden die Wege gebaut - fuer den Vergleich im Bericht
+                    // (ParkingLotWegvergleich). Nur Datei, nie Spielstand.
+                    .Append(WegeFuersProtokoll(_lotCarrier))
+                    .Append('}');
                 File.AppendAllText(JournalPath(), line + Environment.NewLine,
                     new UTF8Encoding(false));
             }

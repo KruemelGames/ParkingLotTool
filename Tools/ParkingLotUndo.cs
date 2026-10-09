@@ -31,6 +31,8 @@ namespace ParkingLotTool.Tools
          * an genau diesen Punkten.
          */
         internal Teilflaechenschnitt[] Trennschnitte;
+        /** Ausrichten an oder aus - die Daten oben bleiben in beiden Faellen. */
+        internal bool AusrichtungAn;
         /*
          * Die Zoning-Flaechen aus demselben Grund wie die Handschnitte: sie
          * sind ein Bedienvorgang wie jeder andere, und ein Strg+Z darauf muss
@@ -101,6 +103,7 @@ namespace ParkingLotTool.Tools
                         LinieB = z.LinieB,
                         Winkel = z.Winkel,
                     }).ToArray(),
+                AusrichtungAn = _ausrichtungAn,
                 Trennschnitte = _trennschnitte
                     .Select(sch => new Teilflaechenschnitt
                     {
@@ -293,6 +296,8 @@ namespace ParkingLotTool.Tools
             _zufahrtsart = snapshot.EntranceKind;
             SetzeAusrichtungen(snapshot.Ausrichtungen);
             SetzeTrennschnitte(snapshot.Trennschnitte);
+            _ausrichtungAn = snapshot.AusrichtungAn && _ausrichtungen.Count != 0;
+            _uiSystem?.SetAusrichtwinkel(Ausrichtwinkel);
             SetzeZoningflaechen(snapshot.Zoningflaechen);
             SetzeRandzoning(snapshot.Randzoning);
             _uiSystem?.SetZoningZahlen(_zoningflaechen.Count,

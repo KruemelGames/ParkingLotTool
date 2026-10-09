@@ -95,74 +95,28 @@ namespace ParkingLotTool.Geometry
                     continue;
                 }
 
-                if (!PlaneZellenCs2Sehne(ring, out var erster, out var zweiter))
-                {
-                    /*
-                     * NICHT ABSCHICKEN, WAS CS2 NACHWEISLICH ABLEHNT.
-                     *
-                     * Hier stand `ausgabe.Add(floatRing)`. Der Ring ging also
-                     * an CS2, obwohl `Cs2Triangulierung` - die bitgenaue
-                     * Nachbildung von CS2s Ear-Clipping - schon feststand,
-                     * dass er null Dreiecke ergibt.
-                     *
-                     * Die Folge war nicht bloss eine Luecke im Belag: die
-                     * Flaeche wird nie zur Entity, und der Bau verlangt in
-                     * `AreaTransferMaterialized` `ready >= gesamt`. EIN
-                     * abgelehnter Ring hat deshalb den GANZEN Parkplatz
-                     * verhindert - der Nutzer sah nur "Nur 137 von 138
-                     * Flaechen wurden zu Entities" und konnte nicht bauen.
-                     * Gemeldet am 2026-09-08 mit Randstrassen aus.
-                     *
-                     * Weggelassen kostet ein Stueck nackten Boden. Nicht
-                     * bauen zu koennen kostet alles. `unbaubar` sammelt die
-                     * Faelle, damit sie im Bauzettel stehen statt still zu
-                     * verschwinden.
-                     *
-                     * NUR OHNE RANDSTRASSE, siehe `unbaubareWeglassen`. Mit
-                     * Randstrasse gemessen am 2026-09-08: das Weglassen
-                     * erzeugt im Paritaetslauf eine NEUE Abweichung
-                     * ("Nutzerpolygon ... ungedeckt 0,6 %"). Der Lauf misst
-                     * ideale Deckung und bildet CS2s Ablehnung nicht nach -
-                     * die Flaeche fehlt im Spiel so oder so. Der Ringpfad
-                     * bleibt deshalb, wie er seit Monaten laeuft; dort ist
-                     * dieser Abbruch auch nie aufgetreten.
-                     */
-                    unbaubar?.Add(floatRing);
-                    if (!unbaubareWeglassen) ausgabe.Add(floatRing);
-                    continue;
-                }
-
                 /*
-                 * AUCH DIE HAELFTEN DES SEHNENSCHNITTS.
+                 * DIE AUSGANGSGARANTIE (2026-10-08): ein Ring, den CS2
+                 * verwerfen wuerde, geht NIE hinaus - weder mit noch ohne
+                 * Randstrasse. Er laeuft durch `RetteFuerCs2` (Entwirren,
+                 * Sehne, Dreiecksverbund); was CS2 davon nimmt, geht hinaus,
+                 * der Rest wird gezaehlt (`unbaubar`).
                  *
-                 * HIER entsteht der Haarriss. GEMESSEN: in die Filterung
-                 * gingen 28 Grasringe hinein, keiner davon unter 1 m2 - und
-                 * 29 kamen heraus, darunter eine Nadel von 0,1132 m2 mit
-                 * 4,2 cm Breite. Sie ist also nicht hineingekommen, sondern
-                 * hier ENTSTANDEN: ein Ring, den CS2s Ear-Clipping nicht
-                 * schafft, wird an einer Sehne in zwei Teile zerlegt, und die
-                 * Sehne lag so, dass ein Teil ein Haarriss ist.
+                 * Hier standen bis dahin zwei Zweige: genau ein
+                 * Sehnenversuch, und sonst mit Randstrasse den Ring
+                 * unveraendert an CS2 (das Spiel warf ihn weg) bzw. ohne
+                 * Randstrasse weglassen. Beides ist in der Rettung enthalten
+                 * - die Sehne als zweite Stufe -, deshalb sind sie entfernt.
+                 * Der Grund fuer "nie abschicken": ein abgelehnter Ring wird
+                 * nie zur Entity, und `AreaTransferMaterialized` verlangt
+                 * alle - "Nur 137 von 138 Flaechen" (2026-09-08).
                  *
-                 * Der andere Teil (136,8 m2, 11 Ecken) deckt die Flaeche
-                 * ohnehin; die 0,11 m2 sind nackter Boden von vier
-                 * Zentimetern Breite, den niemand sieht. Weglassen ist
-                 * billiger als bauen - im Zettel des Nutzers vom 17:50 stand
-                 * genau dieses Gebilde als Entity in der Welt.
+                 * Neue Stuecke duerfen keine Haarrisse sein, mit und ohne
+                 * Randstrasse: eine Sehne hatte schon einmal eine Nadel von
+                 * 0,11 m2 und 4,2 cm Breite erzeugt, die als Entity in der
+                 * Welt stand (2026-09-10).
                  */
-                foreach (var teil in new[] { erster, zweiter })
-                {
-                    var stueck = teil.Select(punkt =>
-                        new float2((float)punkt.x, (float)punkt.y)).ToArray();
-                    if (unbaubareWeglassen && ZellenHaarriss(teil))
-                    {
-                        // Eigene Liste: CS2 haette diesen Ring GENOMMEN. Wir
-                        // lassen ihn weg. Zwei verschiedene Aussagen gehoeren
-                        // nicht in dieselbe Meldung.
-                        (haarrisse ?? unbaubar)?.Add(stueck);
-                        continue;
-                    }
-                    ausgabe.Add(stueck);
-                }
+                ausgabe.AddRange(BaubareStuecke(floatRing, unbaubar, haarrisse));
             }
             return ausgabe.ToArray();
         }

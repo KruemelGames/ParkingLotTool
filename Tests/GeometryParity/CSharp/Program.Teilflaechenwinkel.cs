@@ -84,13 +84,25 @@ internal static partial class Program
 
     private static int RunTeilflaechenwinkel()
     {
+        /*
+         * MIT HANDSCHNITT (seit 2026-10-08). Bis dahin zerlegte die
+         * Automatik die L-Form an der Innenecke in zwei Teile; die gibt es
+         * nicht mehr - ohne Schnitt ist der Umriss eine Flaeche. Derselbe
+         * Schnitt steht jetzt als Handschnitt da: von der Innenecke (90/60)
+         * zu einem gestreckten Punkt (0/60) auf der linken Seite.
+         */
         var site = new[]
         {
             new float2(0, 0), new float2(180, 0), new float2(180, 60),
             new float2(90, 60), new float2(90, 120), new float2(0, 120),
+            new float2(0, 60),
         };
-        var teile = ParkingGeometry.Teilflaechen(site
-            .Select(p => new double2(p.x, p.y)).ToArray());
+        var schnitte = new[]
+        {
+            new Teilflaechenschnitt { A = site[3], B = site[6] },
+        };
+        var teile = ParkingGeometry.TeilflaechenAusSchnitten(site
+            .Select(p => new double2(p.x, p.y)).ToArray(), schnitte);
         var anker = teile.Select(teil =>
         {
             var summe = double2.zero;
@@ -116,6 +128,7 @@ internal static partial class Program
             settings.AutomaticEntrances = false;
             settings.Entrances = new[] { new Entrance { Edge = 0, Along = 20 } };
             settings.Ausrichtwinkel = 0;
+            settings.Teilflaechenschnitte = schnitte;
             settings.TeilflaechenAusrichtungen = new[]
             {
                 new TeilflaechenAusrichtung { Anker = anker[0], Winkel = 15 },

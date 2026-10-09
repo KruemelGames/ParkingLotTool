@@ -635,6 +635,16 @@ namespace ParkingLotTool.Tools
                 new ValueBinding<int>(Group, "ZoningParzellen", 0));
             AddBinding(new TriggerBinding(Group, "TrennungFertig",
                 () => Tool()?.BeendeTrennmodus()));
+            // Teilen ist seit 2026-10-08 ein eigener Schritt, vorher oder
+            // nachher; "Remove split" nimmt die Teilung wieder weg.
+            AddBinding(new TriggerBinding(Group, "Teilen",
+                () => Tool()?.BeginTeilen()));
+            AddBinding(new TriggerBinding(Group, "TeilenAbbrechen",
+                () => Tool()?.BrecheTeilenAb("Panel")));
+            AddBinding(new TriggerBinding(Group, "TeilungEntfernen",
+                () => Tool()?.EntferneTeilung()));
+            AddBinding(_teilflaechenzahl =
+                new ValueBinding<int>(Group, "Teilflaechenzahl", 0));
             AddBinding(_liveLog =
                 new ValueBinding<bool>(Group, "LiveLog", false));
             AddBinding(new TriggerBinding(Group, "LiveLogUmschalten", () =>
@@ -949,16 +959,26 @@ namespace ParkingLotTool.Tools
                      * beenden, nicht auf einen Knopf warten.
                      */
                     var tool = Tool();
-                    if (tool != null && tool.AusrichtWahlAktiv)
+                    /*
+                     * EDGE UND FIXED SCHALTEN DAS AUSRICHTEN AUS - OHNE ES ZU
+                     * VERGESSEN (Nutzer 2026-10-08). Linien und Teilung bleiben
+                     * gemerkt; ein Klick auf "Align" holt sie zurueck. "Across"
+                     * ist dagegen nur die 90-Grad-Seite desselben Bezugs und
+                     * laesst das Ausrichten an.
+                     */
+                    if (tool != null && (value == "edge" || value == "fixed"))
                     {
-                        tool.AbortAusrichtWahl("Winkelmodus gewählt");
+                        if (tool.SchalteAusrichtungAus("Winkelmodus " + value))
+                            geaendert = true;
+                    }
+                    else if (tool != null && tool.TrennmodusAktiv)
+                    {
+                        tool.BrecheTeilenAb("Winkelmodus " + value);
                         geaendert = true;
                     }
-                    // "Fest" und "Ausrichten" schliessen einander aus: wer
-                    // "Fest" waehlt, verwirft auch die fertige Bezugslinie.
-                    if (value == "fixed" && _ausrichtwinkel.HasValue)
+                    else if (tool != null && tool.AusrichtWahlAktiv)
                     {
-                        tool?.ResetAusrichtung();
+                        tool.AbortAusrichtWahl("Winkelmodus " + value);
                         geaendert = true;
                     }
                     return geaendert;
@@ -1666,6 +1686,15 @@ namespace ParkingLotTool.Tools
             if (_zoningSeitenMoeglich != null
                 && _zoningSeitenMoeglich.value != moeglich)
                 _zoningSeitenMoeglich.Update(moeglich);
+        }
+
+        private ValueBinding<int> _teilflaechenzahl;
+
+        /** Wie viele Flaechen die Teilung ergibt; 0 = nicht geteilt. */
+        internal void SetTeilflaechenzahl(int zahl)
+        {
+            if (_teilflaechenzahl != null && _teilflaechenzahl.value != zahl)
+                _teilflaechenzahl.Update(zahl);
         }
 
         internal void SetTrennmodus(bool laeuft)

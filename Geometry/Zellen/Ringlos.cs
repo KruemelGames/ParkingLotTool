@@ -955,6 +955,24 @@ namespace ParkingLotTool.Geometry.Zellen
             .Concat(Querwege.Select(q => new Weg { A = q.Anfang, B = q.Ende,
                 Breite = q.Querstrasse.Ende - q.Querstrasse.Anfang }));
 
+        /**
+         * DIE Y-WERTE, DIE ALS BANDGRENZE QUER DURCH DIE GANZE FLAECHE LAUFEN.
+         *
+         * Bis 2026-10-08 waren das die Ecken ALLER Korridore. Bei einer
+         * waagrechten Gasse oder einem senkrechten Querweg liegen die ohnehin
+         * auf Bandgrenzen. Ein SCHRAEGER Endweg hat aber beliebige Ecken - und
+         * jede wurde zu einer Linie ueber die ganze Breite. Gemessen am
+         * geteilten Rechteck ohne Randstrasse (Teil um 60 Grad): eine Ecke lag
+         * 9,9 cm neben der Grenze des Buchtenbands, und es entstanden zwei
+         * 10 cm breite Grasstreifen ueber 100 m, die CS2 nicht bauen kann
+         * (20,6 m2 nackter Boden). Die Kanten eines schraegen Wegs schneidet
+         * der Bau ohnehin schon als eigene Linien (`Zufahrtskante`); die
+         * Bandlinien braucht er dafuer nicht.
+         */
+        internal IEnumerable<double> Bandgrenzen => Korridore
+            .Where(w => Math.Abs(w.B.Y - w.A.Y) < 1e-6 || Math.Abs(w.B.X - w.A.X) < 1e-6)
+            .SelectMany(w => w.Ecken).Select(v => v.Y);
+
         internal bool BuchtFrei(Punkt[] ecken, double gassenY)
         {
             var min = ecken.Min(v => v.X); var max = ecken.Max(v => v.X);

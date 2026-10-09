@@ -682,6 +682,14 @@ namespace ParkingLotTool.Geometry
             {
                 var summe = 0.0;
                 foreach (var ring in haarrisse) summe += Math.Abs(RingFlaeche(ring));
+                // Wie die unbaubaren Ringe: die Form gehoert ins Live-Log.
+                if (LiveAn)
+                    foreach (var ring in haarrisse)
+                        Live("  haarriss ring | " + ring.Length + " ecken | "
+                            + Math.Abs(RingFlaeche(ring)).ToString("F2") + " m2 | "
+                            + string.Join(" ", ring.Select(q => q.x.ToString("F3",
+                                System.Globalization.CultureInfo.InvariantCulture) + ","
+                                + q.y.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))));
                 warnungen.Add(
                     $"Cell engine: {haarrisse.Count} hairline ring(s) with "
                     + $"{summe:F2} m2 left out - CS2 would have taken them, but "
@@ -1829,6 +1837,19 @@ namespace ParkingLotTool.Geometry
         {
             var r = erste.B - erste.A;
             var s = zweite.B - zweite.A;
+            /*
+             * EIN STUECK OHNE LAENGE SCHNEIDET NICHTS.
+             *
+             * Issue #10 (2026-10-09): in einem schmalen Arm klappt eine Kante
+             * der Randstrassenmittellinie auf Laenge null zusammen (Kante i
+             * behaelt ihren Platz, siehe `Innenrand`). Fuer ein solches Stueck
+             * ist das Kreuzprodukt mit JEDEM Vektor null - es galt deshalb
+             * als kollinear mit allem, und sein Punkt wurde auf jede Strecke
+             * projiziert, deren Bereich er traf. Zwei Randstrassenkanten am
+             * anderen Ende des Parkplatzes bekamen so einen Knoten 60 m
+             * neben sich und liefen als Stern quer ueber den Innenhof.
+             */
+            if (Geometrie.Skalar(r, r) < 1e-18 || Geometrie.Skalar(s, s) < 1e-18) return;
             var delta = zweite.A - erste.A;
             var nenner = Geometrie.Kreuz(r, s);
             if (nenner != 0)

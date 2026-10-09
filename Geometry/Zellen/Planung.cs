@@ -130,12 +130,214 @@ namespace ParkingLotTool.Geometry.Zellen
                 }
             }
 
+            // Nur wenn der Ring nachweislich unsauber ist - sonst bleibt jede
+            // Form bitgleich (siehe ErodierterRing).
+            if (RingUnsauber(aussenring, innen, abstand))
+            {
+                var erodiert = ErodierterRing(aussenring, verschobeneKanten, abstand);
+                ParkingGeometry.Live("  innenrand " + abstand.ToString("F2") + " m: Arm zu schmal, erodierter Ring "
+                    + (erodiert == null ? "nicht darstellbar (" + _erosionsgrund + ")" : "uebernommen"));
+                if (erodiert != null) innen = erodiert;
+            }
+
             if (Geometrie.Vorzeichenflaeche(innen) <= 0)
                 throw new InvalidOperationException(
                     $"The boundary inset by {abstand:R} m is not counter-clockwise.");
             if (innen.Any(punkt => !Geometrie.EnthaeltOderRand(aussenring, punkt)))
                 throw new InvalidOperationException("The inset boundary leaves the site.");
             return innen;
+        }
+
+        /**
+         * EIN ARM, SCHMALER ALS ZWEIMAL DER VERSATZ, KLAPPT NICHT ZUSAMMEN.
+         *
+         * Issue #10 (2026-10-09): ein U-foermiger Parkplatz, dessen linker
+         * Arm oben nur 10,5 m breit ist. Der Rueckwaertstest oben strich die
+         * Kanten im Innenhof des U und verschnitt danach ihre Nachbarn - die
+         * aber lagen auf verschiedenen Seiten des Innenhofs. So entstanden
+         * Randstrassenkanten quer ueber die Luecke, sechs davon an einem
+         * Punkt, zwei bis zu 36 m ausserhalb des Parkplatzes. Die Buchten
+         * hingen sich an sie.
+         *
+         * Richtig ist der Rand des ERODIERTEN Umrisses: alle Punkte, die
+         * mindestens `abstand` von jeder Umrisskante entfernt sind. Er
+         * besteht aus Stuecken der versetzten Kanten. Von jeder versetzten
+         * Kante bleibt genau der Teil, der zu KEINER Umrisskante naeher
+         * liegt als der Versatz (der Abstand zu einer Strecke ist entlang
+         * einer Geraden konvex, die zu nahe Stelle also ein Intervall). Die
+         * Stuecke ergeben eine oder mehrere Schlaufen; es bleibt die
+         * groesste gegen den Uhrzeigersinn. Der Ring geht so weit in einen
+         * schmalen Arm, wie er hineinpasst - und kein Stueck verlaesst den
+         * Bereich, in den die Strasse passt.
+         *
+         * Kante i behaelt ihren Platz: eine Kante ohne Stueck hat Laenge
+         * null. Laesst sich die Schlaufe so nicht darstellen (eine Kante mit
+         * zwei Stuecken, Reihenfolge verdreht), bleibt es beim alten Ring.
+         */
+        private static bool RingUnsauber(IReadOnlyList<Punkt> aussen, Punkt[] innen, double abstand)
+        {
+            var n = innen.Length;
+            for (var i = 0; i < n; i++)
+            {
+                var a = innen[i];
+                var b = innen[(i + 1) % n];
+                if (Geometrie.Laenge(b - a) < 1e-9) continue;
+                foreach (var t in new[] { 0.0, 0.25, 0.5, 0.75, 1.0 })
+                {
+                    var p = a + (b - a) * t;
+                    // Auch ausserhalb: ueber einem Innenhof ist man weit weg
+                    // von jeder Kante und trotzdem nicht im Parkplatz.
+                    if (!Geometrie.EnthaeltOderRand(aussen, p)
+                        || AbstandZumUmriss(aussen, p) < abstand - 0.01) return true;
+                }
+            }
+            return false;
+        }
+
+        private static double AbstandZumUmriss(IReadOnlyList<Punkt> aussen, Punkt p)
+        {
+            var besterAbstand = double.MaxValue;
+            for (var j = 0; j < aussen.Count; j++)
+                besterAbstand = Math.Min(besterAbstand,
+                    Geometrie.AbstandPunktStrecke(p, aussen[j], aussen[(j + 1) % aussen.Count]));
+            return besterAbstand;
+        }
+
+        [ThreadStatic] private static string _erosionsgrund;
+
+        private sealed class Ringstueck
+        {
+            internal int Kante;
+            internal Punkt Anfang;
+            internal Punkt Ende;
+        }
+
+        private static Punkt[] ErodierterRing(IReadOnlyList<Punkt> aussen,
+            (Punkt Punkt, Punkt Richtung)[] linien, double abstand)
+        {
+            var n = aussen.Count;
+            const double eps = 1e-6;
+            // Rohe Gehrungspunkte, ohne jeden Wegfall.
+            var roh = new Punkt[n];
+            for (var i = 0; i < n; i++)
+            {
+                var v = linien[Geometrie.Mod(i - 1, n)];
+                var w = linien[i];
+                var nenner = Geometrie.Kreuz(v.Richtung, w.Richtung);
+                roh[i] = Math.Abs(nenner) < 1e-12 ? w.Punkt
+                    : v.Punkt + v.Richtung * (Geometrie.Kreuz(w.Punkt - v.Punkt, w.Richtung) / nenner);
+            }
+
+            var stuecke = new List<Ringstueck>();
+            for (var i = 0; i < n; i++)
+            {
+                var basis = linien[i].Punkt;
+                var laenge = Geometrie.Laenge(linien[i].Richtung);
+                if (laenge < 1e-12) continue;
+                var u = linien[i].Richtung * (1.0 / laenge);
+                Punkt Ort(double t) => basis + u * t;
+                var t0 = Geometrie.Skalar(roh[i] - basis, u);
+                var t1 = Geometrie.Skalar(roh[(i + 1) % n] - basis, u);
+                if (t1 <= t0 + eps) continue;
+                var frei = new List<(double Von, double Bis)> { (t0, t1) };
+                for (var j = 0; j < n && frei.Count > 0; j++)
+                {
+                    if (j == i) continue;
+                    var a = aussen[j];
+                    var b = aussen[(j + 1) % n];
+                    double Abst(double t) => Geometrie.AbstandPunktStrecke(Ort(t), a, b);
+                    // Konvex in t: Minimum per Dreiteilung, dann beide Raender.
+                    double lo = t0, hi = t1;
+                    for (var k = 0; k < 80; k++)
+                    {
+                        var m1 = lo + (hi - lo) / 3;
+                        var m2 = hi - (hi - lo) / 3;
+                        if (Abst(m1) < Abst(m2)) hi = m2; else lo = m1;
+                    }
+                    var tm = (lo + hi) / 2;
+                    if (Abst(tm) >= abstand - eps) continue;
+                    double Rand(double innen, double aussenT)
+                    {
+                        if (Abst(aussenT) < abstand - eps) return aussenT;
+                        for (var k = 0; k < 80; k++)
+                        {
+                            var m = (innen + aussenT) / 2;
+                            if (Abst(m) < abstand - eps) innen = m; else aussenT = m;
+                        }
+                        return (innen + aussenT) / 2;
+                    }
+                    var vonZu = Rand(tm, t0);
+                    var bisZu = Rand(tm, t1);
+                    var neu = new List<(double Von, double Bis)>();
+                    foreach (var (von, bis) in frei)
+                    {
+                        if (bisZu <= von || vonZu >= bis) { neu.Add((von, bis)); continue; }
+                        if (vonZu > von + eps) neu.Add((von, vonZu));
+                        if (bisZu < bis - eps) neu.Add((bisZu, bis));
+                    }
+                    frei = neu;
+                }
+                foreach (var (von, bis) in frei)
+                    if (bis - von > 1e-4)
+                        stuecke.Add(new Ringstueck { Kante = i, Anfang = Ort(von), Ende = Ort(bis) });
+            }
+            if (stuecke.Count < 3) { _erosionsgrund = stuecke.Count + " Stuecke"; return null; }
+
+            // Zu Schlaufen verketten: das Ende eines Stuecks ist der Anfang des naechsten.
+            var genutzt = new bool[stuecke.Count];
+            List<Ringstueck> beste = null;
+            var besteFlaeche = 0.0;
+            for (var start = 0; start < stuecke.Count; start++)
+            {
+                if (genutzt[start]) continue;
+                var schlaufe = new List<Ringstueck>();
+                var aktuell = start;
+                var geschlossen = false;
+                while (aktuell >= 0 && !genutzt[aktuell])
+                {
+                    genutzt[aktuell] = true;
+                    schlaufe.Add(stuecke[aktuell]);
+                    var ende = stuecke[aktuell].Ende;
+                    var naechstes = -1;
+                    var naechsterAbstand = 1e-3;
+                    for (var k = 0; k < stuecke.Count; k++)
+                    {
+                        var d = Geometrie.Laenge(stuecke[k].Anfang - ende);
+                        if (d < naechsterAbstand) { naechsterAbstand = d; naechstes = k; }
+                    }
+                    if (naechstes == start) { geschlossen = true; break; }
+                    aktuell = naechstes;
+                }
+                if (!geschlossen || schlaufe.Count < 3) continue;
+                var flaeche = Geometrie.Vorzeichenflaeche(schlaufe.Select(st => st.Anfang).ToList());
+                if (flaeche > besteFlaeche) { besteFlaeche = flaeche; beste = schlaufe; }
+            }
+            if (beste == null) { _erosionsgrund = "keine geschlossene Schlaufe aus " + stuecke.Count + " Stuecken"; return null; }
+
+            // Kante i behaelt ihren Platz: je Kante hoechstens ein Stueck, und die
+            // Kanten folgen einander in Umrissreihenfolge.
+            var nachKante = new Ringstueck[n];
+            foreach (var st in beste)
+            {
+                if (nachKante[st.Kante] != null) { _erosionsgrund = "Kante " + st.Kante + " zweimal"; return null; }
+                nachKante[st.Kante] = st;
+            }
+            var erste = Array.FindIndex(nachKante, st => st != null);
+            var reihenfolge = beste.Select(st => st.Kante).ToList();
+            var versatz = reihenfolge.IndexOf(erste);
+            for (var k = 0; k < reihenfolge.Count; k++)
+                if (reihenfolge[(versatz + k) % reihenfolge.Count]
+                    != nachKante.Select((st, i) => (st, i)).Where(x => x.st != null).ElementAt(k).i)
+                { _erosionsgrund = "Reihenfolge"; return null; }
+
+            var ergebnis = new Punkt[n];
+            for (var i = 0; i < n; i++)
+            {
+                var k = i;
+                while (nachKante[k] == null) k = (k + 1) % n;
+                ergebnis[i] = nachKante[k].Anfang;
+            }
+            return ergebnis;
         }
 
         internal static Bandplan Baender(

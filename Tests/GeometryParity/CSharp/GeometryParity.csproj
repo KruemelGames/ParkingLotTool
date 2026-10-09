@@ -89,6 +89,8 @@
     <Compile Include="Program.Ortsunabhaengig.cs" />
     <Compile Include="Program.Rzstufen.cs" />
     <Compile Include="Program.Teilflaechenwinkel.cs" />
+    <Compile Include="Program.Teilen.cs" />
+    <Compile Include="Program.SchmalerArm.cs" />
     <Compile Include="Dump.cs" />
     <Compile Include="..\..\..\Geometry\*.cs" Link="Geometry\%(Filename)%(Extension)" />
     <Compile Include="..\..\..\Geometry\Zellen\*.cs" Link="Geometry\Zellen\%(Filename)%(Extension)" />

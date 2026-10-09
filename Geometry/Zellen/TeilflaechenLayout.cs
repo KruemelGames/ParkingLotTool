@@ -160,7 +160,23 @@ namespace ParkingLotTool.Geometry.Zellen
                 .ToArray();
             if (vorgaben.Length == 0) return null;
 
-            var halbeNahtbreite = Math.Max(0, einstellungen.Querstrassenbreite / 2);
+            /*
+             * DIE NAHT IST EINE FAHRGASSE BREIT, nicht eine Querstrasse.
+             *
+             * So hatte es der Nutzer am 2026-09-01 geplant: "zwischen den
+             * beiden Teilen bleibt ein Spalt von einer Fahrgassenbreite, und
+             * darin liegt EINE gemeinsame Verbindungsstrasse". Hier stand
+             * die Querstrassenbreite (3 m, also 1,5 m je Seite). Die Gassen
+             * beider Teile enden aber auf der Nahtmitte und sind 7 m breit;
+             * trafen sie die Naht schraeg, ragte ihre Ecke bis in die
+             * Buchten der anderen Seite. Gemessen mit `--teilen`: 21 von 300
+             * Laeufen mit Buchten auf der Fahrbahn, ungeteilt keine. Mit der
+             * Fahrgassenbreite 0 - um den Preis von 2 bis 4 Prozent Buchten
+             * am Nutzerrechteck.
+             */
+            var halbeNahtbreite = Math.Max(0, Math.Max(
+                einstellungen.Querstrassenbreite,
+                einstellungen.Fahrgassenbreite) / 2);
             var naehte = (einstellungen.Teilflaechennaehte
                     ?? Array.Empty<Teilflaechennahtvorgabe>())
                 .Where(naht => naht != null
@@ -191,14 +207,41 @@ namespace ParkingLotTool.Geometry.Zellen
                  * Vorgabe) bleibt es beim alten Weg; bei einem konvexen Teil
                  * liefern beide dasselbe.
                  */
-                var innenSchnittWelt = vorgabe.Trennkanten != null
-                    && vorgabe.Trennkanten.Length != 0
-                    ? SchneideMitHalbebenen(innenWelt, vorgabe.Trennkanten)
-                    : SchneideMitKonvexemPolygon(innenWelt, polygonWelt);
-                var mitteSchnittWelt = vorgabe.Trennkanten != null
-                    && vorgabe.Trennkanten.Length != 0
-                    ? SchneideMitHalbebenen(mitteWelt, vorgabe.Trennkanten)
-                    : SchneideMitKonvexemPolygon(mitteWelt, polygonWelt);
+                /*
+                 * AN DER SCHNITTSTRECKE TEILEN, nicht an ihrer Geraden
+                 * (2026-10-08) - Begruendung in `Strecktrennung`. Die
+                 * Halbebenen bleiben nur als Rueckfall, wenn ein Ende der
+                 * Strecke in der Kontur liegt.
+                 */
+                Punkt[] Teilkontur(Punkt[] kontur, bool nahtZuerst)
+                {
+                    if (vorgabe.Trennkanten == null || vorgabe.Trennkanten.Length == 0)
+                        return SchneideMitKonvexemPolygon(kontur, polygonWelt);
+                    // Die Innenkontur endet am NAHTRAND, nicht an der
+                    // Schnittstrecke - siehe `Strecktrennung.Zurueckgesetzt`.
+                    // Die Mittellinie bleibt an der Strecke: die Gassen enden
+                    // auf der Nahtmitte.
+                    // Nur Trennkanten, auf denen wirklich eine Naht liegt -
+                    // zu einem Nachbarn im selben Winkel gibt es keine.
+                    var nahtkanten = vorgabe.Trennkanten.Where(kante => naehte.Any(naht =>
+                            (naht.ErstesTeil == vorgabe.Index || naht.ZweitesTeil == vorgabe.Index)
+                            && Geometrie.AbstandPunktStrecke(
+                                (kante.A + kante.B) * 0.5, naht.AnfangWelt, naht.EndeWelt) < 1e-3))
+                        .ToArray();
+                    var zurueck = nahtZuerst && nahtkanten.Length != 0
+                        ? Strecktrennung.Zurueckgesetzt(
+                            polygonWelt, nahtkanten, halbeNahtbreite)
+                        : null;
+                    return (zurueck.HasValue
+                            ? Strecktrennung.Teilkontur(
+                                kontur, zurueck.Value.Kanten, zurueck.Value.Teil)
+                            : null)
+                        ?? Strecktrennung.Teilkontur(
+                            kontur, vorgabe.Trennkanten, polygonWelt)
+                        ?? SchneideMitHalbebenen(kontur, vorgabe.Trennkanten);
+                }
+                var innenSchnittWelt = Teilkontur(innenWelt, true);
+                var mitteSchnittWelt = Teilkontur(mitteWelt, false);
                 var teilrahmen = Geometrie.Reihenrahmen(
                     polygonWelt, vorgabe.Winkel);
                 var teil = new Rasterteil
@@ -264,9 +307,9 @@ namespace ParkingLotTool.Geometry.Zellen
                 var maxX = teil.Innenkontur.Max(punkt => punkt.X) + 1;
                 var minY = teil.Innenkontur.Min(punkt => punkt.Y) - 1;
                 var maxY = teil.Innenkontur.Max(punkt => punkt.Y) + 1;
-                foreach (var y in teil.Bandplan.InnereGrenzen
-                             .Concat(teil.Ringlos?.Korridore.SelectMany(w => w.Ecken).Select(v => v.Y) ?? Array.Empty<double>())
-                             .Distinct().Where(y => y > minY + 1 && y < maxY - 1))
+                foreach (var y in Zusammenfassen(teil.Bandplan.InnereGrenzen
+                             .Concat(teil.Ringlos?.Bandgrenzen ?? Array.Empty<double>())
+                             .Where(y => y > minY + 1 + Rastergrenzenabstand && y < maxY - 1 - Rastergrenzenabstand), null))
                     FuegeTeilungHinzu(
                         ausgabe,
                         linienregister,
@@ -276,18 +319,35 @@ namespace ParkingLotTool.Geometry.Zellen
                         $"Teil {teil.Vorgabe.Index} Band y={y:R}",
                         new[] { teil.Vorgabe.Index });
 
-                var xGrenzen = teil.Reihenplaene.Values
+                /*
+                 * FAST GLEICHE GRENZEN SIND EINE GRENZE.
+                 *
+                 * Hier stand `.Distinct()` - gleich hiess bitgleich. Am
+                 * Rechteck des Nutzers (2026-10-08, Schnitt quer durch, zwei
+                 * Linien senkrecht zueinander) endeten drei Reihen an der
+                 * Schnittkante bei x = 384,0378885 / 384,0378968 /
+                 * 384,0379050 - drei Rasterlinien im Abstand von 8 µm. Sie
+                 * erzeugten Nullkanten und Splitter, und die Vereinigung
+                 * brach mit "Ein Materialrand ist offen" ab; 10 von 24
+                 * Winkelpaaren stuerzten so ab.
+                 *
+                 * Der globale Weg kennt das Problem schon und fasst Linien
+                 * unter 2 mm zusammen (`TeileModulspalten`,
+                 * `rasterlinienEpsilon`); die Querstrassenkante gewinnt dort.
+                 * Dieselbe Regel gilt jetzt auch je Teilflaeche.
+                 */
+                var querX = new HashSet<double>(teil.Modulplanung
+                    .Querstrassenstuecke.SelectMany(stueck => new[]
+                    {
+                        stueck.Querstrasse.Anfang,
+                        stueck.Querstrasse.Ende,
+                    }));
+                var xGrenzen = Zusammenfassen(teil.Reihenplaene.Values
                     .SelectMany(plan => plan.Spalten)
                     .SelectMany(spalte => new[] { spalte.Anfang, spalte.Ende })
-                    .Concat(teil.Modulplanung.Querstrassenstuecke.SelectMany(
-                        stueck => new[]
-                        {
-                            stueck.Querstrasse.Anfang,
-                            stueck.Querstrasse.Ende,
-                        }))
-                    .Where(x => x > minX + 1 && x < maxX - 1)
-                    .Distinct()
-                    .OrderBy(x => x);
+                    .Concat(querX)
+                    .Where(x => x > minX + 1 + Rastergrenzenabstand && x < maxX - 1 - Rastergrenzenabstand),
+                    querX.Contains);
                 foreach (var x in xGrenzen)
                     FuegeTeilungHinzu(
                         ausgabe,
@@ -317,6 +377,35 @@ namespace ParkingLotTool.Geometry.Zellen
                         $"Teilflaechennaht {naht.Nummer} Rand",
                         new[] { naht.ErstesTeil, naht.ZweitesTeil });
                 }
+            }
+            return ausgabe;
+        }
+
+        /** Wie `rasterlinienEpsilon` im globalen Weg. */
+        private const double Rastergrenzenabstand = 0.002;
+
+        /**
+         * Sortiert und fasst Werte zusammen, die weniger als 2 mm
+         * auseinanderliegen. Je Gruppe bleibt ein bevorzugter Wert (die
+         * Querstrassenkante), sonst der erste.
+         */
+        private static IReadOnlyList<double> Zusammenfassen(
+            IEnumerable<double> werte, Func<double, bool> bevorzugt)
+        {
+            var ausgabe = new List<double>();
+            double? letzter = null;
+            foreach (var wert in werte.Distinct().OrderBy(x => x))
+            {
+                if (letzter.HasValue
+                    && wert - letzter.Value <= Rastergrenzenabstand)
+                {
+                    if (bevorzugt != null && bevorzugt(wert)
+                        && !bevorzugt(ausgabe[ausgabe.Count - 1]))
+                        ausgabe[ausgabe.Count - 1] = wert;
+                }
+                else
+                    ausgabe.Add(wert);
+                letzter = wert;
             }
             return ausgabe;
         }

@@ -32,11 +32,18 @@ namespace ParkingLotTool.Geometry
             return normiert < 0 ? normiert + 180.0 : normiert;
         }
 
+        /**
+         * Unter 0,01 Grad (1,7 cm auf 100 m) gelten zwei Richtungen als
+         * gleich. Vorher 1e-6 Grad - weit unter dem, was ein gezeichneter
+         * Umriss an Genauigkeit hergibt (siehe PlaneTeilflaechen).
+         */
+        private const double AchsenToleranz = 0.01;
+
         private static bool VerschiedeneAchsen(double a, double b)
         {
             var differenz = Math.Abs(Achsenwinkel(a) - Achsenwinkel(b));
             differenz = Math.Min(differenz, 180.0 - differenz);
-            return differenz > 1e-6;
+            return differenz > AchsenToleranz;
         }
 
         private static bool EnthaeltAnker(double2[] polygon, double2 anker)
@@ -61,16 +68,41 @@ namespace ParkingLotTool.Geometry
              * vier Teilflaechen ohne Flaeche erzeugte (siehe `--zerlegung`).
              * Liegt ein Schnitt vor, wird die Automatik nicht befragt.
              */
+            /*
+             * OHNE SCHNITT IST DER GANZE UMRISS EINE FLAECHE (Nutzer
+             * 2026-10-08). Die automatische Zerlegung an einspringenden
+             * Ecken ist raus: an einer Rundung aus vielen kurzen Kanten
+             * erzeugte sie Dutzende winziger Teilflaechen, und die grosse
+             * war nicht mehr anzuklicken. Teilen ist jetzt ein eigener
+             * Schritt, den der Spieler selbst macht. Auch alte Parkplaetze
+             * rechnen beim naechsten Bau so - so entschieden.
+             */
             var polygone = settings?.Teilflaechenschnitte != null
                 && settings.Teilflaechenschnitte.Length != 0
                 ? TeilflaechenAusSchnitten(site, settings.Teilflaechenschnitte)
-                : Teilflaechen(site);
+                : new[] { site };
             var zuweisungen = settings?.TeilflaechenAusrichtungen?
                 .Where(zuweisung => zuweisung != null
                     && !double.IsNaN(zuweisung.Winkel)
                     && !double.IsInfinity(zuweisung.Winkel))
                 .ToArray() ?? Array.Empty<TeilflaechenAusrichtung>();
             var ausgabe = new List<TeilflaechenPlan>(polygone.Length);
+            /*
+             * FAST GLEICHE RICHTUNGEN SIND DIESELBE RICHTUNG.
+             *
+             * Zwei "parallele" Seiten eines gezeichneten Rechtecks weichen
+             * um bis zu 0,0008 Grad voneinander ab (Codex am 2026-10-08 an
+             * der Form des Nutzers gemessen). Waehlte der Spieler fuer die
+             * zweite Haelfte die Gegenseite, sah der Kern zwei verschiedene
+             * Winkel: zweites Raster, Nahtstrasse, 250 statt 268 Buchten -
+             * fuer eine Drehung, die niemand sieht. Liegt ein Teil naeher
+             * als `AchsenToleranz` am Gesamtwinkel oder an einem schon
+             * geplanten Teil, uebernimmt es dessen Wert exakt.
+             */
+            var bekannteAchsen = new List<double>
+            {
+                Achsenwinkel(Reihenwinkel(settings, LongestEdgeAngle(site))),
+            };
 
             for (var index = 0; index < polygone.Length; index++)
             {
@@ -90,13 +122,28 @@ namespace ParkingLotTool.Geometry
                 if (zuweisungen.Length != 0)
                     teilSettings.Ausrichtwinkel = zuweisungen[
                         eigene >= 0 ? eigene : 0].Winkel;
-                var winkel = Reihenwinkel(
-                    teilSettings, LongestEdgeAngle(polygon));
+                /*
+                 * DER BEZUG IST DER GANZE UMRISS, NICHT DAS TEIL.
+                 *
+                 * Ohne Zuweisung stand hier die laengste Kante des TEILS. Am
+                 * Rechteck, das der Nutzer am 2026-10-08 mitten durchteilte,
+                 * sind die Haelften fast quadratisch: die kurze Aussenseite
+                 * gewann, und beide Teile meldeten 69,2 statt 159,2 Grad.
+                 * Gebaut wurde zwar im globalen Winkel, aber Statistik und
+                 * Anzeige zeigten die Drehung. Ein Schnitt allein darf keine
+                 * Richtung aendern - die aendert nur eine gewaehlte Linie.
+                 */
+                var achse = Achsenwinkel(Reihenwinkel(
+                    teilSettings, LongestEdgeAngle(site)));
+                var gleiche = bekannteAchsen.FindIndex(
+                    bekannt => !VerschiedeneAchsen(bekannt, achse));
+                if (gleiche >= 0) achse = bekannteAchsen[gleiche];
+                else bekannteAchsen.Add(achse);
                 ausgabe.Add(new TeilflaechenPlan
                 {
                     Index = index,
                     Polygon = polygon,
-                    Winkel = Achsenwinkel(winkel),
+                    Winkel = achse,
                     EigeneZuweisung = eigene >= 0,
                 });
             }

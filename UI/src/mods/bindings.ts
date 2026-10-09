@@ -395,6 +395,12 @@ export const zoningAuswahl$ = bindValue<number>(MOD, "ZoningAuswahl", -1);
 export const zoningFlaechen$ = bindValue<number>(MOD, "ZoningFlaechen", 0);
 export const zoningParzellen$ = bindValue<number>(MOD, "ZoningParzellen", 0);
 export const trennungFertig = () => trigger(MOD, "TrennungFertig");
+/* Teilen als eigener Schritt (2026-10-08): starten, abbrechen, entfernen.
+   Teilflaechenzahl 0 heisst: nicht geteilt. */
+export const teilen = () => trigger(MOD, "Teilen");
+export const teilenAbbrechen = () => trigger(MOD, "TeilenAbbrechen");
+export const teilungEntfernen = () => trigger(MOD, "TeilungEntfernen");
+export const teilflaechenzahl$ = bindValue<number>(MOD, "Teilflaechenzahl", 0);
 export const liveLog$ = bindValue<boolean>(MOD, "LiveLog", false);
 export const liveLogPfad$ = bindValue<string>(MOD, "LiveLogPfad", "");
 export const liveLogUmschalten = () => trigger(MOD, "LiveLogUmschalten");

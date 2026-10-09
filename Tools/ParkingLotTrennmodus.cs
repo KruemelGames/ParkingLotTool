@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ParkingLotTool.Geometry;
 using Unity.Mathematics;
 using static ParkingLotTool.Tools.ParkingLotTexte;
@@ -79,6 +80,206 @@ namespace ParkingLotTool.Tools
         {
             _trennschnitte.Clear();
             _trennAnfang = -1;
+        }
+
+        /**
+         * DIE TEILUNG FOLGT DER FORM (Nutzer 2026-10-08).
+         *
+         * Bis hier merkten sich die Schnitte nur Positionen und hingen beim
+         * Bau am jeweils naechsten Punkt. Wurde die Form abgebaut, blieben
+         * sie stehen, dockten an falsche Punkte an, und "2 areas" stand
+         * weiter im Panel. Ausserdem lief eine Linien- oder Flaechenwahl
+         * weiter, wenn der Umriss aufging - sie schluckte dann die Klicks,
+         * mit denen man den Umriss neu zeichnen wollte.
+         *
+         * Nach jeder Formaenderung (einmal je Geometriestand):
+         *   - verschobene Eckpunkte: die Schnitt-Enden ziehen mit;
+         *   - geloeschter Eckpunkt, beide Enden auf demselben Punkt oder
+         *     Nachbarn: dieser Schnitt faellt weg;
+         *   - Umriss offen oder weniger als vier Punkte: die ganze Teilung
+         *     faellt weg, und jede laufende Auswahl endet.
+         * Rueckgaengig holt alles zurueck: die Sicherung vor der Aenderung
+         * enthaelt die Schnitte.
+         */
+        private int _teilungGeprueft = -1;
+        private float2[] _teilungPunkte = System.Array.Empty<float2>();
+
+        private void PflegeTeilung()
+        {
+            if (_teilungGeprueft == _geometryRevision) return;
+            _teilungGeprueft = _geometryRevision;
+            var vorher = _teilungPunkte;
+            _teilungPunkte = _points.ToArray();
+
+            if ((!_closed || _points.Count < 3) && AusrichtWahlAktiv)
+            {
+                Ausrichtwahl = Ausrichtschritt.Aus;
+                AusrichtFlaeche = -1;
+                _trennAnfang = -1;
+                _schnitteVorTeilen = null;
+                _uiSystem?.SetStatus(T("trennmodus.auswahlBeendetUmrissOffen"));
+                Mod.log.Info("PLT-Ausrichten: Auswahl beendet, der Umriss ist offen.");
+            }
+
+            var aufgeloest = 0;
+            if (_trennschnitte.Count != 0)
+            {
+                if (!_closed || _points.Count < 4)
+                {
+                    aufgeloest = _trennschnitte.Count;
+                    _trennschnitte.Clear();
+                    _trennAnfang = -1;
+                }
+                else
+                {
+                    for (var i = _trennschnitte.Count - 1; i >= 0; i--)
+                    {
+                        var schnitt = _trennschnitte[i];
+                        var a = FolgePunkt(schnitt.A, vorher);
+                        var b = FolgePunkt(schnitt.B, vorher);
+                        var benachbart = a >= 0 && b >= 0
+                            && ((a + 1) % _points.Count == b || (b + 1) % _points.Count == a);
+                        if (a < 0 || b < 0 || a == b || benachbart)
+                        {
+                            _trennschnitte.RemoveAt(i);
+                            aufgeloest++;
+                            continue;
+                        }
+                        schnitt.A = _points[a];
+                        schnitt.B = _points[b];
+                    }
+                }
+            }
+
+            if (aufgeloest > 0)
+            {
+                // Ohne Schnitt gibt es nur noch eine Flaeche - wie bei "Remove
+                // split" gilt die erste Linie fuer alles.
+                if (_trennschnitte.Count == 0 && _ausrichtungen.Count > 1)
+                    _ausrichtungen.RemoveRange(1, _ausrichtungen.Count - 1);
+                _uiSystem?.SetAusrichtwinkel(Ausrichtwinkel);
+                _layoutDirty = _closed;
+                _uiSystem?.SetStatus(_trennschnitte.Count == 0
+                    ? T("trennmodus.teilungAufgeloest")
+                    : TN("trennmodus.schnitteEntfallen", aufgeloest));
+                Mod.log.Info("PLT-Trennmodus: " + aufgeloest
+                    + " Schnitt(e) nach Formaenderung entfallen, "
+                    + _trennschnitte.Count + " bleiben.");
+            }
+            AktualisiereTeilflaechen();
+        }
+
+        /**
+         * Zu welchem heutigen Punkt gehoert ein gemerktes Schnitt-Ende?
+         * -1, wenn sein Punkt verschwunden ist.
+         *
+         * Liegt dort noch genau ein Punkt, ist es dieser. Sonst wird der
+         * Punkt im vorigen Stand gesucht: bei gleicher Punktzahl wurde er
+         * verschoben und steht an derselben Stelle der Liste; hat sich die
+         * Zahl geaendert, ist er geloescht worden. Ein Ende, das in keinem
+         * Stand vorkommt (frisch aus dem Bauzettel), nimmt den naechsten
+         * Punkt - so wie bisher.
+         */
+        private int FolgePunkt(float2 ende, float2[] vorher)
+        {
+            for (var i = 0; i < _points.Count; i++)
+                if (math.distancesq(_points[i], ende) < 1e-6f) return i;
+            for (var j = 0; j < vorher.Length; j++)
+                if (math.distancesq(vorher[j], ende) < 1e-6f)
+                    return vorher.Length == _points.Count ? j : -1;
+            return NaechsterPunkt(ende);
+        }
+
+        /** Die Schnitte beim Betreten des Teilmodus - fuer "Abbrechen". */
+        private List<Teilflaechenschnitt> _schnitteVorTeilen;
+
+        /**
+         * "SPLIT AREA" - DER EIGENE SCHRITT (Nutzer 2026-10-08).
+         *
+         * Vorher oder nachher, unabhaengig vom Ausrichten. Der Spieler zieht
+         * Schnitte von Ecke zu Ecke; mit "Done splitting" geht es zur Wahl
+         * je Flaeche, mit "Cancel" (oder Esc) gilt wieder, was vorher stand.
+         */
+        internal void BeginTeilen()
+        {
+            SetzeZoningModus(false);
+            // Nur mit eingeschaltetem Ausrichten (Nutzer 2026-10-08): Teilen
+            // gibt Flaechen eigene Linien - ohne Ausrichten gibt es keine.
+            if (!_ausrichtungAn && !AusrichtWahlAktiv)
+            {
+                _uiSystem?.SetStatus(T("trennmodus.teilenNurMitAusrichten"));
+                return;
+            }
+            if (!TrennungMoeglich)
+            {
+                _uiSystem?.SetStatus(T("trennmodus.teilenBrauchtUmriss"));
+                return;
+            }
+            _schnitteVorTeilen = _trennschnitte
+                .Select(s => new Teilflaechenschnitt { A = s.A, B = s.B }).ToList();
+            _trennAnfang = -1;
+            AusrichtFlaeche = -1;
+            AktualisiereTeilflaechen();
+            Ausrichtwahl = Ausrichtschritt.Trennen;
+            _uiSystem?.SetStatus(T("alignPick.splitModeConnectTwoOutlinePoints"));
+            Mod.log.Info("PLT-Trennmodus: gestartet, " + _points.Count
+                + " Punkte, " + _trennschnitte.Count + " vorhandene Schnitt(e).");
+        }
+
+        /** Abbrechen im Teilmodus: die Schnitte von vorher gelten wieder. */
+        internal void BrecheTeilenAb(string grund)
+        {
+            if (!TrennmodusAktiv) return;
+            var vorher = _schnitteVorTeilen;
+            _schnitteVorTeilen = null;
+            if (vorher != null && !GleicheSchnitte(vorher, _trennschnitte))
+            {
+                SetzeTrennschnitte(vorher);
+                AktualisiereTeilflaechen();
+                _geometryRevision++;
+                _layoutDirty = _closed;
+            }
+            _trennAnfang = -1;
+            Ausrichtwahl = Ausrichtschritt.Aus;
+            AusrichtFlaeche = -1;
+            _uiSystem?.SetStatus(T("trennmodus.teilenAbgebrochen"));
+            Mod.log.Info("PLT-Trennmodus: abgebrochen (" + grund + "), "
+                + _trennschnitte.Count + " Schnitt(e) wie vorher.");
+        }
+
+        private static bool GleicheSchnitte(List<Teilflaechenschnitt> a, List<Teilflaechenschnitt> b)
+        {
+            if (a.Count != b.Count) return false;
+            for (var i = 0; i < a.Count; i++)
+                if (math.distancesq(a[i].A, b[i].A) > 1e-6f || math.distancesq(a[i].B, b[i].B) > 1e-6f)
+                    return false;
+            return true;
+        }
+
+        /**
+         * "REMOVE SPLIT" - zurueck zu einer Flaeche.
+         *
+         * Die erste Linie bleibt: sie war die Vorgabe fuer alle Flaechen und
+         * gilt jetzt fuer den ganzen Parkplatz. Die Linien der uebrigen
+         * Flaechen fallen weg - es gibt diese Flaechen nicht mehr. Mit
+         * Rueckgaengig wieder herstellbar.
+         */
+        internal void EntferneTeilung()
+        {
+            if (_trennschnitte.Count == 0) return;
+            if (TrennmodusAktiv) { Ausrichtwahl = Ausrichtschritt.Aus; _schnitteVorTeilen = null; }
+            var before = CaptureUndoState();
+            VergissTrennschnitte();
+            if (_ausrichtungen.Count > 1)
+                _ausrichtungen.RemoveRange(1, _ausrichtungen.Count - 1);
+            AktualisiereTeilflaechen();
+            _uiSystem?.SetAusrichtwinkel(Ausrichtwinkel);
+            _geometryRevision++;
+            _layoutDirty = _closed;
+            CommitUndoState(before, () => T("undo.teilungEntfernt"));
+            _uiSystem?.SetStatus(T("trennmodus.teilungEntfernt"));
+            Mod.log.Info("PLT-Trennmodus: Teilung entfernt, "
+                + _ausrichtungen.Count + " Zuweisung(en) bleiben.");
         }
 
         /**
@@ -172,7 +373,7 @@ namespace ParkingLotTool.Tools
         {
             if (escapePressed)
             {
-                AbortAusrichtWahl("Esc");
+                BrecheTeilenAb("Esc");
                 return true;
             }
             if (secondaryPressed)
@@ -207,7 +408,7 @@ namespace ParkingLotTool.Tools
                     NachTrennaenderung(before, () => T("trennmodus.lastCutDeleted"));
                     return true;
                 }
-                AbortAusrichtWahl("Rechtsklick");
+                BrecheTeilenAb("Rechtsklick");
                 return true;
             }
 
@@ -322,6 +523,7 @@ namespace ParkingLotTool.Tools
                 return;
             }
             _trennAnfang = -1;
+            _schnitteVorTeilen = null;
             AktualisiereTeilflaechen();
             AusrichtFlaeche = _teilflaechen.Count > 1 ? -1 : 0;
             Ausrichtwahl = _teilflaechen.Count > 1

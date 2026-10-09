@@ -345,6 +345,13 @@ namespace ParkingLotTool.Tools
                 var document = BuildDebugDocument(now, outputPath, latestPath,
                     inputSite, inputWorld, inputSettings, inputSource,
                     world, waitTimedOut);
+                try { document.Wegvergleich = VergleicheWege(_vergleichLot, inputSite); }
+                catch (Exception fehler)
+                {
+                    _wegvergleichText = null;
+                    Mod.log.Warn("PLT-Wegvergleich fehlgeschlagen: " + fehler.Message);
+                }
+                _vergleichLot = Entity.Null;
                 var json = SerializeDebugDocument(document);
                 File.WriteAllText(outputPath, json, new System.Text.UTF8Encoding(false));
                 File.Copy(outputPath, latestPath, overwrite: true);
@@ -577,9 +584,26 @@ namespace ParkingLotTool.Tools
             var withoutTriangles = 0;
             var grassArea = 0.0;
             var asphaltArea = 0.0;
+            /*
+             * KLONE ZAEHLEN MIT, UND NUR DIE DIESES PARKPLATZES (2026-10-09).
+             *
+             * Seit dem 2026-09-23 baut der Mod mit eigenen Klonen ("PLT ...
+             * (Grass Surface 01, -95)"), verglichen wurde aber weiter mit dem
+             * Vorbildnamen. Folge: ein 18 Sekunden alter Parkplatz meldete
+             * "41 von 41 gebauten Flaechen stehen nicht in der Welt" - ein
+             * Fehlalarm, der jede Auswertung in die falsche Richtung schickt.
+             * Jetzt zaehlt das Vorbild im Klonnamen, und nur Flaechen, deren
+             * Besitzer dieses Lot ist.
+             */
+            string Vorbild(string name)
+                => Flaechenklonname.TryLese(name, out var vorbild, out _, out _) ? vorbild : name;
+            bool VomLot(DebugEntity besitzer)
+                => _lotOwner == Entity.Null || besitzer == null
+                   || (besitzer.Index == _lotOwner.Index && besitzer.Version == _lotOwner.Version);
             foreach (var item in world?.Areas ?? Array.Empty<DebugExistingArea>())
             {
-                var name = item.Prefab?.Name;
+                if (!VomLot(item.Owner)) continue;
+                var name = Vorbild(item.Prefab?.Name);
                 var isGrass = string.Equals(name, GrassSurfaceName,
                     StringComparison.OrdinalIgnoreCase);
                 var isAsphalt = string.Equals(name, PavementSurfaceName,
@@ -709,6 +733,7 @@ namespace ParkingLotTool.Tools
         {
             var gewaehlt = _abzugVonLot;
             _abzugVonLot = Entity.Null;
+            _vergleichLot = Entity.Null;
             if (gewaehlt != Entity.Null && EntityManager.Exists(gewaehlt)
                 && TryReadBuildReceipt(gewaehlt, out var zettel,
                     out var punkte, out var zufahrten, out _, out _, out _,
@@ -721,6 +746,7 @@ namespace ParkingLotTool.Tools
                     zufahrten ?? Array.Empty<Entrance>());
                 source = "gebauter Parkplatz " + gewaehlt.Index
                     + " (Bauzettel)";
+                _vergleichLot = gewaehlt;
                 return;
             }
 

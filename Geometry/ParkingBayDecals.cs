@@ -112,6 +112,7 @@ namespace ParkingLotTool.Geometry
             if (layout?.Bay == null || settings == null) return new DecalPlan();
 
             var roads = CollectRoads(layout);
+            var flaechen = CollectRoadQuads(layout);
             var placements = new List<DecalPlacement>(layout.Bay.Length);
             var unrecognized = 0;
             for (var i = 0; i < layout.Bay.Length; i++)
@@ -128,7 +129,8 @@ namespace ParkingLotTool.Geometry
                 placements.Add(new DecalPlacement
                 {
                     Center = frame.Center,
-                    Facing = OrientTowardsRoad(frame.Center, frame.Depth, roads),
+                    Facing = AnliegendeFahrbahn(layout.Bay[i], frame, flaechen)
+                        ?? OrientTowardsRoad(frame.Center, frame.Depth, roads),
                     Kind = KindFor(role),
                     Bay = i,
                 });
@@ -237,6 +239,74 @@ namespace ParkingLotTool.Geometry
             return true;
         }
 
+        /**
+         * WO GRENZT DIE BUCHT DIREKT AN EINE FAHRBAHN? - der erste Massstab
+         * fuer die Richtung (2026-10-08).
+         *
+         * Die Mittellinien allein taeuschen an Reihenenden: endet die eigene
+         * Gasse vor der Bucht, misst die Rechnung bis zu ihrem Endpunkt, und
+         * die Gasse der Nachbarreihe hinter dem Gruenstreifen kann gleich
+         * nah oder naeher sein. Gemessen am Pruefling `--teilen` (L-Form,
+         * Teilung, Randstrasse): die oberste Bucht einer Reihe an der
+         * Innenecke der Ringstrasse zeigte zur Rueckseite.
+         *
+         * Geprueft wird ein Punkt 0,3 m vor jeder Stirn: liegt er in einer
+         * Fahrbahnflaeche (Gasse, Ringstrasse, Querstrasse, Zufahrt), grenzt
+         * die Bucht dort an. Trifft das genau eine Seite, ist sie es. Sonst
+         * (beide oder keine) entscheiden die Mittellinien wie bisher.
+         */
+        private static double2? AnliegendeFahrbahn(float2[] quad, BayFrame frame,
+                                                   List<double2[]> flaechen)
+        {
+            if (flaechen.Count == 0) return null;
+            var halbeTiefe = 0.0;
+            foreach (var p in quad)
+                halbeTiefe = Math.Max(halbeTiefe,
+                    Math.Abs(math.dot(new double2(p.x, p.y) - frame.Center, frame.Depth)));
+            bool Grenzt(double seite)
+            {
+                var probe = frame.Center + frame.Depth * (seite * (halbeTiefe + 0.3));
+                foreach (var f in flaechen)
+                    if (Enthaelt(f, probe)) return true;
+                return false;
+            }
+            var plus = Grenzt(1);
+            var minus = Grenzt(-1);
+            if (plus == minus) return null;
+            return plus ? frame.Depth : -frame.Depth;
+        }
+
+        private static List<double2[]> CollectRoadQuads(ParkingLayout layout)
+        {
+            var ausgabe = new List<double2[]>();
+            void Add(float2[][] quads)
+            {
+                if (quads == null) return;
+                foreach (var q in quads)
+                    if (q != null && q.Length >= 3)
+                        ausgabe.Add(q.Select(p => new double2(p.x, p.y)).ToArray());
+            }
+            Add(layout.AisleQuad);
+            Add(layout.PerimeterQuad);
+            Add(layout.CrossQuad);
+            Add(layout.EntranceQuad);
+            return ausgabe;
+        }
+
+        private static bool Enthaelt(double2[] ring, double2 p)
+        {
+            var innen = false;
+            for (int i = 0, j = ring.Length - 1; i < ring.Length; j = i++)
+            {
+                var a = ring[i];
+                var b = ring[j];
+                if ((a.y > p.y) != (b.y > p.y)
+                    && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x)
+                    innen = !innen;
+            }
+            return innen;
+        }
+
         private static List<(double2 A, double2 B)> CollectRoads(ParkingLayout layout)
         {
             var roads = new List<(double2, double2)>();
@@ -286,6 +356,34 @@ namespace ParkingLotTool.Geometry
             // depth steht senkrecht auf der Reihe, also ist das hier die
             // Reihenachse.
             var along = new double2(-depth.y, depth.x);
+
+            /*
+             * GLEICHSTAND: EINE FESTE RICHTUNG FUER DIE GANZE REIHE.
+             *
+             * Liegt die Reihe zwischen zwei Fahrbahnen, sind beide gleich
+             * weit weg (halbe Buchttiefe plus halbe Gassenbreite, 6,45 m).
+             * "Die naechste" entschied dann der Rundungsrest - im
+             * Baubericht des Nutzers vom 2026-10-08 zeigten in EINER Reihe
+             * von 22 Buchten die Aufkleber wild durcheinander mal zur einen,
+             * mal zur anderen Seite (+,+,-,-,-,-,+,...). Jetzt wird je Seite
+             * die naechste parallele Fahrbahn gesucht; trennt sie weniger
+             * als 5 cm, gilt eine feste Richtung, die fuer alle Buchten der
+             * Reihe dieselbe ist.
+             */
+            var plus = NearestOnSide(center, roads, along, depth, 1);
+            var minus = NearestOnSide(center, roads, along, depth, -1);
+            if (plus.HasValue && minus.HasValue)
+            {
+                if (Math.Abs(plus.Value - minus.Value) < 0.05)
+                {
+                    var fest = new double2(1, 1e-3);
+                    return math.dot(depth, fest) >= 0 ? depth : -depth;
+                }
+                return plus.Value < minus.Value ? depth : -depth;
+            }
+            if (plus.HasValue) return depth;
+            if (minus.HasValue) return -depth;
+
             var target = center + depth;
             if (!TryNearestRoad(center, roads, along, out target)
                 // Notnagel: findet sich keine parallele Fahrbahn, ist die
@@ -296,6 +394,32 @@ namespace ParkingLotTool.Geometry
             var towards = target - center;
             if (math.lengthsq(towards) < 1e-12) return depth;
             return math.dot(towards, depth) >= 0 ? depth : -depth;
+        }
+
+        /**
+         * Abstand zur naechsten PARALLELEN Fahrbahn auf einer Seite der
+         * Reihe (`seite` = +1 in Richtung `depth`, -1 dagegen); `null`, wenn
+         * auf dieser Seite keine liegt.
+         */
+        private static double? NearestOnSide(double2 center,
+                                             List<(double2 A, double2 B)> roads,
+                                             double2 along, double2 depth, int seite)
+        {
+            double? best = null;
+            foreach (var road in roads)
+            {
+                var edge = road.B - road.A;
+                var lengthSquared = math.lengthsq(edge);
+                if (lengthSquared < 1e-12) continue;
+                if (Math.Abs(math.dot(edge / math.sqrt(lengthSquared), along)) < AlongRowCos)
+                    continue;
+                var t = math.clamp(math.dot(center - road.A, edge) / lengthSquared, 0, 1);
+                var foot = road.A + edge * t;
+                if (math.dot(foot - center, depth) * seite <= 0) continue;
+                var distance = math.distance(center, foot);
+                if (!best.HasValue || distance < best.Value) best = distance;
+            }
+            return best;
         }
 
         private static bool TryNearestRoad(double2 center,

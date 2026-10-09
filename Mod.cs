@@ -256,6 +256,9 @@ namespace ParkingLotTool
             // Parkplaetze mit Flaechen/Pflanzen aus nicht geladenen Mods:
             // erkennen, in der Liste zeigen, auf Klick reparieren.
             updateSystem.UpdateAt<ParkingLotFehlendeAssetsSystem>(SystemUpdatePhase.UIUpdate);
+            // Gebaute Parkplaetze mit falsch verlegten Wegen (Issue #10):
+            // erkennen, gegenpruefen, in der Liste zum Reparieren anbieten.
+            updateSystem.UpdateAt<ParkingLotWegpruefungSystem>(SystemUpdatePhase.UIUpdate);
             // Der Hinweis am Mauszeiger waehrend der Linienauswahl. Gleiche
             // Phase wie die Vanilla-Werkzeugtooltips.
             updateSystem.UpdateAt<ParkingLotAlignTooltipSystem>(
@@ -278,6 +281,10 @@ namespace ParkingLotTool
             updateSystem.UpdateAt<ParkingLotFahrwegTauschSystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateAt<ParkingLotBestandsTauschWerkzeug>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAt<ParkingLotBestandsTauschSystem>(SystemUpdatePhase.UIUpdate);
+            // Sync-Schritt 13: feste Flaechendefinitionen wie die Flaechenrettung
+            // (LegeNeuAn) - in PrefabUpdate, also vor Modification1, wo
+            // GenerateAreasSystem sie im selben Bild liest.
+            updateSystem.UpdateAt<ParkingLotFlaechenSyncSystem>(SystemUpdatePhase.PrefabUpdate);
             updateSystem.UpdateAfter<ParkingLotExklusivesBildSystem, ParkingLotHintergrundSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAfter<ParkingLotDefinitionsendeSystem, Game.Tools.ToolReadyBarrier>(SystemUpdatePhase.PostTool);
             updateSystem.UpdateBefore<ParkingLotDauerkursSystem, Game.Tools.GenerateNodesSystem>(SystemUpdatePhase.Modification1);

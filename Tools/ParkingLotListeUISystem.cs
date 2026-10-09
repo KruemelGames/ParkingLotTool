@@ -52,6 +52,7 @@ namespace ParkingLotTool.Tools
         private ValueBinding<bool> _waisenAuto;
         private ParkingLotWaisenSystem _waisen;
         private ParkingLotFehlendeAssetsSystem _fehlend;
+        private ParkingLotWegpruefungSystem _wege;
         private ParkingLotSyncSystem _sync;
         private bool _zeigtVorrunde;
 
@@ -93,6 +94,7 @@ namespace ParkingLotTool.Tools
             _stadtwerte = new CityStatistikQuelle(World);
             _waisen = World.GetOrCreateSystemManaged<ParkingLotWaisenSystem>();
             _fehlend = World.GetOrCreateSystemManaged<ParkingLotFehlendeAssetsSystem>();
+            _wege = World.GetOrCreateSystemManaged<ParkingLotWegpruefungSystem>();
             _sync = World.GetOrCreateSystemManaged<ParkingLotSyncSystem>();
 
             /*
@@ -189,7 +191,8 @@ namespace ParkingLotTool.Tools
             var bestand = _lotQuery.CalculateEntityCount()
                 + (_waisen?.OffeneWaisen.Count ?? 0) * 100000
                 + (_waisen?.OhneBauzettel.Count ?? 0) * 1000
-                + (_fehlend?.Anzahl ?? 0) * 10000000;
+                + (_fehlend?.Anzahl ?? 0) * 10000000
+                + (_wege?.Anzahl ?? 0) * 997;
             if (bestand != _zuletztGezaehlt)
             {
                 _zuletztGezaehlt = bestand;
@@ -298,7 +301,9 @@ namespace ParkingLotTool.Tools
             if (!VersucheSchluessel(schluessel, out var lot)) return;
             // Fehlende Assets zuerst: eine Waise hat keinen Bauzettel, den sie
             // pruefen koennte - beides zugleich kommt also nicht vor.
+            // Falsch verlegte Wege (Issue #10) heilt derselbe Neubau mit.
             if (_fehlend != null && _fehlend.Betrifft(lot)) _fehlend.Reparieren(lot);
+            else if (_wege != null && _wege.Betrifft(lot)) _wege.Reparieren(lot);
             else _waisen?.Reparieren(lot);
             World.GetOrCreateSystemManaged<ParkingLotUISystem>().SchliesseWerkzeug();
             _frames = AktualisierungFrames;
@@ -308,6 +313,8 @@ namespace ParkingLotTool.Tools
         {
             _waisen?.ReparierenAlle();
             _fehlend?.ReparierenAlle();
+            // Schon eingereihte Plaetze (fehlende Assets) lehnt der Hintergrund als gesperrt ab.
+            _wege?.ReparierenAlle();
             World.GetOrCreateSystemManaged<ParkingLotUISystem>().SchliesseWerkzeug();
             _frames = AktualisierungFrames;
         }
@@ -447,7 +454,9 @@ namespace ParkingLotTool.Tools
                     // Feld 21: braucht eine Synchronisation.
                     .Append('\t').Append(_sync != null && _sync.BrauchtSync(lot) ? 1 : 0)
                     // Feld 22: Assets aus nicht geladenen Mods, leer wenn alles da ist.
-                    .Append('\t').Append(Saeubere(_fehlend?.Text(lot) ?? string.Empty));
+                    .Append('\t').Append(Saeubere(_fehlend?.Text(lot) ?? string.Empty))
+                    // Feld 23: falsch verlegte Wege, 0 = in Ordnung, 1 = ausserhalb, 2 = Knoten.
+                    .Append('\t').Append(_wege?.Befund(lot) ?? 0);
             }
             SchreibeWaisen();
             Setze(_liste, _bau.ToString());

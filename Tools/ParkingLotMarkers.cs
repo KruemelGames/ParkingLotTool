@@ -299,6 +299,13 @@ namespace ParkingLotTool.Tools
             text.AppendLine();
             BeschreibeVorschau(text);
             BeschreibeGebauteParkplaetze(text);
+            // Bericht ueber EINEN gebauten Parkplatz: wurde seit dem Bau an
+            // seinen Wegen gebaut? (ParkingLotWegvergleich)
+            if (!string.IsNullOrEmpty(_wegvergleichText))
+            {
+                text.Append(_wegvergleichText);
+                _wegvergleichText = null;
+            }
 
             if (_markers.Count == 0)
             {

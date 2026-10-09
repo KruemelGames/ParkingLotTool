@@ -3130,3 +3130,36 @@ $eck-reiter: 9rem;
   text-align: center;
   vertical-align: middle;
 }
+
+/* TEILEN unter dem Ausrichten (2026-10-08).
+   Die Knoepfe sind `.ausrichtKnopf` - dieselben wie "Reset alignment".
+   Hier nur, was die Zeile mit Zustand zusaetzlich braucht. */
+
+/* "2 areas": ein Abzeichen, kein Knopf. Zuschnitt-Orange als zarter Grund,
+   damit es zur Spalte gehoert und sich vom Knopf daneben unterscheidet. */
+.teilungAbzeichen {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-top: $s2;
+  margin-right: $s2;
+  padding: 3rem $s4;
+  border-radius: $s2;
+  background-color: rgba(240, 173, 62, 0.16);
+  color: $zuschnitt;
+  font-size: $type-sm;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* Zwei Knoepfe neben dem Abzeichen teilen sich den Rest der Zeile. */
+.ausrichtReihe .teilungNeben {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  margin-left: $s2;
+}
+
+.ausrichtReihe .teilungAbzeichen + .teilungNeben {
+  margin-left: 0;
+}

@@ -163,7 +163,22 @@ namespace ParkingLotTool.Geometry.Zellen
             var a = polygon.Knoten(index - 1).Punkt;
             var b = polygon.Knoten(index).Punkt;
             var c = polygon.Knoten(index + 1).Punkt;
-            return Kreuz(b - a, c - b) < 0;
+            /*
+             * EIN GESTRECKTER PUNKT IST KEINE REFLEXECKE.
+             *
+             * Ein Punkt genau auf einer geraden Kante (der Nutzer setzt ihn,
+             * um dort einen Schnitt anzusetzen) hat 180 Grad. Nach der
+             * Drehung in den Reihenrahmen ergibt das Kreuzprodukt aber nicht
+             * 0, sondern einen Rest um -1e-13 - die Ecke galt als Reflex, die
+             * Zerlegung verlaengerte die Kante in sich selbst und warf "A
+             * sub-surface is not counter-clockwise". Gemessen mit `--teilen`
+             * (2026-10-08): 18 Wuerfe beim reinen Ausrichten von Rechteck und
+             * L-Form mit gestreckten Punkten. Relativ zur Kantenlaenge, damit
+             * die Schwelle ein Winkel ist (1e-9 rad), keine Flaeche.
+             */
+            var ab = b - a;
+            var bc = c - b;
+            return Kreuz(ab, bc) < -1e-9 * Laenge(ab) * Laenge(bc);
         }
 
         internal static bool IstKonvex(Polygon polygon)

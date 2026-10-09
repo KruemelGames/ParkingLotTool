@@ -689,6 +689,8 @@ namespace ParkingLotTool.Tools
             if (ProcessBuild()) return RenderOverlay(deps);
 
             WatchStuckPreview();
+            // Vor dem Bau: die Teilung folgt der Form (siehe PflegeTeilung).
+            PflegeTeilung();
             StartBuildIfNeeded();
             PollLotOwnerPrefab();
             _uiSystem?.PflegeSprache();
@@ -1134,7 +1136,9 @@ namespace ParkingLotTool.Tools
             _buildSettings = WithManualEntrances(_uiSystem != null
                 ? _uiSystem.CurrentSettings() : LayoutSettings.Cs2);
             _buildSettings.BusStops = _busStops.ToArray();
-            _buildSettings.Teilflaechenschnitte = _trennschnitte
+            // Bei ausgeschaltetem Ausrichten baut der Parkplatz ohne Teilung
+            // und ohne Linie - gemerkt bleiben beide (SchalteAusrichtungAus).
+            _buildSettings.Teilflaechenschnitte = (TeilungWirkt ? _trennschnitte : new List<Teilflaechenschnitt>())
                 .Select(schnitt => new Teilflaechenschnitt
                 {
                     A = schnitt.A,
@@ -1155,7 +1159,7 @@ namespace ParkingLotTool.Tools
             // genauso zum Entwurf wie die Flaechen.
             _buildSettings.Randzoning = _randzoning
                 .Select(l => l.Clone()).ToArray();
-            _buildSettings.TeilflaechenAusrichtungen = _ausrichtungen
+            _buildSettings.TeilflaechenAusrichtungen = (_ausrichtungAn ? _ausrichtungen : new List<Ausrichtzuweisung>())
                 .Select(zuweisung => new TeilflaechenAusrichtung
                 {
                     Anker = zuweisung.Anker,
