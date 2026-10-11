@@ -242,6 +242,8 @@ const baue = (d: Record<string, string>) => {
     fahrgassenbreite: tx("fahrgassenbreite"),
     querstrassenbreite: tx("querstrassenbreite"),
     verbindungAlle: tx("verbindungAlle"),
+    querstrassen: tx("querstrassen"),
+    tooltipQuerstrassen: tx("tooltipQuerstrassen"),
     einheitBuchten: tx("einheitBuchten"),
     einheitGrad: tx("einheitGrad"),
     mittelgruen: tx("mittelgruen"),

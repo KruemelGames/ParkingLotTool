@@ -190,7 +190,11 @@ namespace ParkingLotTool.Geometry
                 Buchttiefe = settings.Sl,
                 Buchtbreite = settings.Sw,
                 Gruenstreifenbreite = settings.Md,
-                Querstrassenabstand = settings.Cr,
+                // Schalter "Cross roads" aus (2026-10-11): der Bauzettel traegt Cr
+                // NEGATIV, der Betrag bleibt fuer das Wiedereinschalten. Kein
+                // eigenes Feld - kein neues Speicherformat.
+                Querstrassenabstand = System.Math.Abs(settings.Cr),
+                QuerstrassenAn = settings.Cr > 0,
                 Querstrassenkappen = settings.Qk,
                 Randstrassen = settings.Randstrassen,
                 // `edge` ist genau der im Versuch gemessene Rahmen aus der

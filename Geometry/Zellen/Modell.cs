@@ -1097,6 +1097,13 @@ namespace ParkingLotTool.Geometry.Zellen
          * (`Querstrassenabstand`, im Panel "Verbindung alle N Buchten").
          */
         internal bool Querstrassenkappen { get; set; } = true;
+        /**
+         * Schalter "Cross roads" (Nutzer 2026-10-11). Aus: keine Querstrassen im
+         * Raster. Ohne Randstrasse bleibt je Gassenpaar die NOTWENDIGE
+         * Verbindung - sonst waeren Buchten unerreichbar. Getrennt von den
+         * Kappen, siehe oben: genau diese Verwechslung war der alte Fehler.
+         */
+        internal bool QuerstrassenAn { get; set; } = true;
         internal bool Randstrassen { get; set; } = true;
         internal double? Reihenwinkel { get; set; }
         internal IReadOnlyList<Teilflaechenrahmenvorgabe> Teilflaechen

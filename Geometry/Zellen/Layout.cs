@@ -433,7 +433,8 @@ namespace ParkingLotTool.Geometry.Zellen
                 // stand `Querstrassen ? Abstand : unendlich` - und weil dieser
                 // Schalter am Kappen-Regler des Panels hing, loeschte das
                 // Abschalten der Kappen die Verbindungsstrassen gleich mit.
-                einstellungen.Querstrassenabstand,
+                // Seit 2026-10-11 gibt es dafuer einen EIGENEN Schalter.
+                einstellungen.QuerstrassenAn ? einstellungen.Querstrassenabstand : 0,
                 einstellungen.Querstrassenkappen,
                 linienregister);
             Ringlosplan ringlos = null;

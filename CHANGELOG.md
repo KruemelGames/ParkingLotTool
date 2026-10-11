@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.9 — October 11, 2026
+
+- Addition: Japanese and Simplified Chinese, automatic or chosen in the mod settings.
+- Addition: "Cross roads" switch under "Cross road every" turns off the cross roads between the rows.
+- Change: "Median" is now called "Median green".
+- Fix: a freshly built lot asked to be synchronized right away.
+- Fix: the undo and redo buttons were empty when the game runs in Japanese (and possibly other languages).
+
 ## 1.0.8 — October 11, 2026
 
 - Improvement: the surface and plant lists open where you left them.

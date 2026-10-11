@@ -114,6 +114,23 @@ internal static partial class Program
         Console.WriteLine($"Schmaler Arm: {laeufe} Laeufe, {fehler} Fehler");
         return fehler == 0 ? 0 : 1;
     }
+
+    /** Zusammenhaengende Teile des Autowegenetzes (Wege teilen sich an Einmuendungen exakte Endpunkte). */
+    private static int Netzteile(ParkingLayout layout)
+    {
+        var eltern = new Dictionary<(long, long), (long, long)>();
+        (long, long) K(float2 p) => ((long)math.round(p.x * 100), (long)math.round(p.y * 100));
+        (long, long) Find((long, long) x) { while (!eltern[x].Equals(x)) x = eltern[x] = eltern[eltern[x]]; return x; }
+        foreach (var l in layout.NetLine.Where(l => l.Kind == "aisle" || l.Kind == "cross" || l.Kind == "perimeter"))
+        {
+            var a = K(l.A); var b = K(l.B);
+            if (!eltern.ContainsKey(a)) eltern[a] = a;
+            if (!eltern.ContainsKey(b)) eltern[b] = b;
+            var ra = Find(a); var rb = Find(b);
+            if (!ra.Equals(rb)) eltern[ra] = rb;
+        }
+        return eltern.Keys.Select(Find).Distinct().Count();
+    }
 }
 
 /**
@@ -162,6 +179,64 @@ internal static partial class Program
             }
         }
         Console.WriteLine($"Fast gerade Ecke: 8 Laeufe, {fehler} Fehler");
+        return fehler == 0 ? 0 : 1;
+    }
+}
+
+/**
+ * QUERSTRASSEN AUS - Schalter "Cross roads" (2026-10-11).
+ *
+ * Aus heisst: Cr negativ im Bauzettel. Mit Randstrasse legt der Kern dann
+ * keine einzige Querstrasse. Ohne Randstrasse bleibt je Gassenpaar die
+ * NOTWENDIGE Verbindung: es duerfen nicht mehr Querwege werden, und das
+ * Wegenetz muss genauso zusammenhaengen wie mit Querstrassen.
+ */
+internal static partial class Program
+{
+    private static int RunQuerstrassenAus()
+    {
+        var formen = new (string Name, float2[] Umriss)[]
+        {
+            ("Rechteck", new[] { new float2(0, 0), new float2(160, 0), new float2(160, 90), new float2(0, 90) }),
+            ("L-Form", new[] { new float2(0, 0), new float2(150, 0), new float2(150, 60), new float2(60, 60), new float2(60, 140), new float2(0, 140) }),
+            ("Schief", new[] { new float2(0, 0), new float2(140, 20), new float2(120, 110), new float2(-10, 90) }),
+            ("Issue10", SchmalerArmUmriss),
+            ("FastGerade", FastGeradeUmriss),
+        };
+        var fehler = 0;
+        foreach (var (name, umriss) in formen)
+        foreach (var randstrassen in new[] { true, false })
+        {
+            var an = LayoutSettings.Cs2;
+            an.Randstrassen = randstrassen;
+            var aus = LayoutSettings.Cs2;
+            aus.Randstrassen = randstrassen;
+            aus.Cr = -an.Cr;
+            var fall = $"{name}, Randstrassen {(an.Randstrassen ? "an" : "aus")}";
+            try
+            {
+                var mit = ParkingGeometry.Build(umriss, an);
+                var ohne = ParkingGeometry.Build(umriss, aus);
+                var querMit = mit.NetLine.Count(l => l.Kind == "cross");
+                var querOhne = ohne.NetLine.Count(l => l.Kind == "cross");
+                var verworfen = (ohne.AsphaltSurface ?? Array.Empty<float2[]>()).Concat(ohne.GrassSurface ?? Array.Empty<float2[]>())
+                    .Count(r => r != null && r.Length >= 3 && Cs2Triangulierung.Dreiecke(r) == 0);
+                var teileMit = Netzteile(mit);
+                var teileOhne = Netzteile(ohne);
+                var ok = verworfen == 0 && (randstrassen
+                    ? querOhne == 0
+                    : querOhne <= querMit && teileOhne <= teileMit);
+                if (!ok) fehler++;
+                Console.WriteLine($"  {(ok ? "ok" : "FEHLER")} {fall}: Querstrassen {querMit} -> {querOhne}, Buchten {mit.Stalls} -> {ohne.Stalls}, Netzteile {teileMit} -> {teileOhne}"
+                    + (verworfen > 0 ? $", CS2 verwirft {verworfen}" : ""));
+            }
+            catch (Exception e)
+            {
+                fehler++;
+                Console.WriteLine($"  FEHLER {fall}: {e.GetType().Name}: {e.Message}");
+            }
+        }
+        Console.WriteLine($"Querstrassen aus: {formen.Length * 2} Laeufe, {fehler} Fehler");
         return fehler == 0 ? 0 : 1;
     }
 }

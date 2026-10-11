@@ -30,6 +30,7 @@ export type SettingKey =
   | "GreenMedian"
   | "CrossCaps"
   | "Randstrassen"
+  | "CrossRoads"
   | "AngleMode";
 
 export const panelOpen$ = bindValue<boolean>(MOD, "PanelOpen", false);
@@ -49,6 +50,7 @@ export const crossWidth$ = bindValue<number>(MOD, "CrossWidth", 3);
 export const greenMedian$ = bindValue<boolean>(MOD, "GreenMedian", true);
 export const crossCaps$ = bindValue<boolean>(MOD, "CrossCaps", true);
 export const randstrassen$ = bindValue<boolean>(MOD, "Randstrassen", true);
+export const crossRoads$ = bindValue<boolean>(MOD, "CrossRoads", true);
 export const medianWidth$ = bindValue<number>(MOD, "MedianWidth", 2.5);
 /**
  * Wie viele Buchten zwischen zwei Verbindungsstrassen liegen.
@@ -94,6 +96,7 @@ export const crossWidthDefault$ = bindValue<number>(MOD, "CrossWidthDefault", 3)
 export const greenMedianDefault$ = bindValue<boolean>(MOD, "GreenMedianDefault", true);
 export const crossCapsDefault$ = bindValue<boolean>(MOD, "CrossCapsDefault", true);
 export const randstrassenDefault$ = bindValue<boolean>(MOD, "RandstrassenDefault", true);
+export const crossRoadsDefault$ = bindValue<boolean>(MOD, "CrossRoadsDefault", true);
 export const medianWidthDefault$ = bindValue<number>(MOD, "MedianWidthDefault", 2.5);
 export const crossBaysDefault$ = bindValue<number>(MOD, "CrossBaysDefault", 9);
 export const angleModeDefault$ = bindValue<string>(MOD, "AngleModeDefault", "edge");
@@ -480,6 +483,7 @@ export const setRowAngle = (v: number) => trigger(MOD, "SetRowAngle", v);
 export const setGreenMedian = (v: boolean) => trigger(MOD, "SetGreenMedian", v);
 export const setCrossCaps = (v: boolean) => trigger(MOD, "SetCrossCaps", v);
 export const setRandstrassen = (v: boolean) => trigger(MOD, "SetRandstrassen", v);
+export const setCrossRoads = (v: boolean) => trigger(MOD, "SetCrossRoads", v);
 export const setAngleMode = (v: string) => trigger(MOD, "SetAngleMode", v);
 export const setEngine = (v: string) => trigger(MOD, "SetEngine", v);
 export const setAltEngineOhneWarnung = (v: boolean) =>

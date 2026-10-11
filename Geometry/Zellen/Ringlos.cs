@@ -715,6 +715,8 @@ namespace ParkingLotTool.Geometry.Zellen
                 var fuellRechts = Math.Min(r - rest, p.Rechts - rest);
                 var vonK = (int)Math.Ceiling((fuellLinks - anker) / schritt);
                 var bisK = (int)Math.Floor((fuellRechts - anker) / schritt);
+                // Querstrassen aus: nur die notwendige Verbindung oben, kein Raster.
+                if (!e.QuerstrassenAn) bisK = vonK - 1;
                 for (var k = vonK; k <= bisK; k++)
                 {
                     var xx = anker + k * schritt;

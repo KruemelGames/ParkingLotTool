@@ -1793,6 +1793,22 @@ namespace ParkingLotTool.Tools
                         "editAbbruch.rebuildFailedTheOldParkingLot");
                 return false;
             }
+            /*
+             * EIN NEUBAU IST AUF DEM NEUESTEN STAND (Nutzer 2026-10-11).
+             *
+             * Bis hier bekam ein frisch gebauter Parkplatz KEINEN Datenstand.
+             * Die Sync-Aufnahme 86 ms nach dem Bau sah Stand 0 und fragte alle
+             * Schritte ab - und Schritt 14 meldete "Begleiter ohne Strasse",
+             * weil CS2 den Mitarbeiterbau so frueh noch nicht angeschlossen
+             * hatte. Ergebnis: "Synchronisieren" direkt nach dem Bauen.
+             * Die Schritte sind fuer ALTE Parkplaetze; was diese Version baut,
+             * braucht keinen. Gilt fuer Neubau und Edit; der Hintergrund-Neubau
+             * laeuft ueber ParkingLotBauarbeiter und setzt seinen Stand selbst.
+             */
+            var neuesterStand = new ParkingLotDatenstand { Stand = Migrationskatalog.Aktuell };
+            if (EntityManager.HasComponent<ParkingLotDatenstand>(_lotOwner))
+                EntityManager.SetComponentData(_lotOwner, neuesterStand);
+            else EntityManager.AddComponentData(_lotOwner, neuesterStand);
             ProtokolliereBauschritt("CreateLotCarrier");
             if (!CreateLotCarrier())
             {

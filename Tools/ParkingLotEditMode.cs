@@ -764,7 +764,7 @@ namespace ParkingLotTool.Tools
                 MedianWidth = _uiSystem?.AktuelleMedianbreite ?? settings.Md,
                 GreenMedian = _uiSystem?.MittelgruenAn ?? settings.Md > 0,
                 CrossBays = _uiSystem?.AktuelleQuerbuchten
-                    ?? (settings.Cr / settings.Sw - (settings.Qk ? 2 : 0)),
+                    ?? (System.Math.Abs(settings.Cr) / settings.Sw - (settings.Qk ? 2 : 0)),
                 SurfaceRoadOn = _uiSystem?.FlaecheStrasseAn ?? true,
                 SurfaceDecorationOn = _uiSystem?.FlaecheDekoAn ?? true,
                 SurfaceApronOn = _uiSystem?.VorflaecheAn ?? true,

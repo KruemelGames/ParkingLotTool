@@ -934,10 +934,14 @@ $eck-reiter: 9rem;
   &:hover { background-color: $flaeche; }
 }
 
+/* Pfeile als MASKE, nicht als Schriftzeichen (2026-10-11): ↶ ↷ fehlen in
+   der japanischen Schrift des Spiels - ein Creator sah leere Knoepfe.
+   Wie .klappPfeil: die Datei gibt die Form, gezeichnet wird $text-1. */
 .undoSymbol {
-  font-size: 17rem;
-  line-height: 1;
-  color: $text-1;
+  width: 17rem;
+  height: 17rem;
+  mask-size: 100%;
+  background-color: $text-1;
 }
 
 /* Der senkrechte Trenner zwischen Schiene und Inhalt hat keine Aufgabe

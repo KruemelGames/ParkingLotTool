@@ -16,6 +16,7 @@ namespace ParkingLotTool.Tools
         internal bool GreenMedian;
         internal bool CrossCaps;
                 internal bool Randstrassen;
+                internal bool CrossRoads;
         internal string AngleMode;
         internal string Engine;
         internal string SurfaceRoad;
@@ -42,6 +43,7 @@ namespace ParkingLotTool.Tools
                 GreenMedian = _greenMedian.value,
                 CrossCaps = _crossCaps.value,
                 Randstrassen = _randstrassen.value,
+                CrossRoads = _crossRoads.value,
                 AngleMode = _angleMode.value,
                 Engine = _engine.value,
                 SurfaceRoad = _flaecheStrasse.value,
@@ -67,6 +69,7 @@ namespace ParkingLotTool.Tools
             changed |= UpdateValue(_greenMedian, snapshot.GreenMedian);
             changed |= UpdateValue(_crossCaps, snapshot.CrossCaps);
                 changed |= UpdateValue(_randstrassen, snapshot.Randstrassen);
+                changed |= UpdateValue(_crossRoads, snapshot.CrossRoads);
             changed |= UpdateValue(_angleMode, snapshot.AngleMode);
             changed |= UpdateValue(_engine, snapshot.Engine);
             changed |= UpdateValue(_flaecheStrasse, snapshot.SurfaceRoad);

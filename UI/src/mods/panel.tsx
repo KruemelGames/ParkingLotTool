@@ -1,6 +1,7 @@
 import { VegetationSchalter, VegetationFenster } from "./vegetation";
 import { LaternenSchalter, LaternenFenster } from "./laternen";
 import { randstrassen$, randstrassenDefault$, setRandstrassen } from "./bindings";
+import { crossRoads$, crossRoadsDefault$, setCrossRoads } from "./bindings";
 import { useValue } from "cs2/api";
 import { useEffect, useRef, useState } from "react";
 import styles from "./panel.module.scss";
@@ -45,6 +46,8 @@ import {
 } from "./bindings";
 import { useTexte } from "./texte";
 import { AnleitungTab } from "./anleitung";
+import rueckgaengigSymbol from "../assets/rueckgaengig.svg";
+import wiederherstellenSymbol from "../assets/wiederherstellen.svg";
 
 const numberDiffers = (value: number, standard: number) =>
   Math.abs(value - standard) > 0.000001;
@@ -335,6 +338,8 @@ export const ParkingLotPanel = () => {
   const greenMedianDefault = useValue(greenMedianDefault$);
   const randstrassen = useValue(randstrassen$);
   const randstrassenDefault = useValue(randstrassenDefault$);
+  const crossRoads = useValue(crossRoads$);
+  const crossRoadsDefault = useValue(crossRoadsDefault$);
   const crossCaps = useValue(crossCaps$);
   const crossCapsDefault = useValue(crossCapsDefault$);
   const medianWidth = useValue(medianWidth$);
@@ -711,7 +716,7 @@ export const ParkingLotPanel = () => {
         onMouseDown={haltAn}
         onClick={undo}
       >
-        <span className={styles.undoSymbol}>↶</span>
+        <span className={styles.undoSymbol} style={{ maskImage: `url(${rueckgaengigSymbol})` }} />
       </TooltipKnopf>
       <TooltipKnopf text={t.tooltipWiederherstellen}
         className={`${styles.iconButton}
@@ -720,7 +725,7 @@ export const ParkingLotPanel = () => {
         onMouseDown={haltAn}
         onClick={redo}
       >
-        <span className={styles.undoSymbol}>↷</span>
+        <span className={styles.undoSymbol} style={{ maskImage: `url(${wiederherstellenSymbol})` }} />
       </TooltipKnopf>
     </>
   );
@@ -1167,6 +1172,7 @@ export const ParkingLotPanel = () => {
             value={crossWidth}
             min={3} max={9} step={0.5}
             ton="Fahrwege"
+            disabled={!crossRoads}
             onChange={setCrossWidth}
             differsFromDefault={numberDiffers(crossWidth, crossWidthDefault)}
             onReset={() => resetOne("CrossWidth")}
@@ -1187,12 +1193,23 @@ export const ParkingLotPanel = () => {
             value={crossBays}
             min={5} max={30} step={1}
             ton="Fahrwege"
+            disabled={!crossRoads}
             unit={t.einheitBuchten}
             digits={0}
             onChange={setCrossBays}
             differsFromDefault={numberDiffers(crossBays, crossBaysDefault)}
             onReset={() => resetOne("CrossBays")}
             onSetDefault={() => setAsDefault("CrossBays")}
+          />
+          {/* Querstrassen an/aus, unter "Cross road every" (Nutzer 2026-10-11). Aus: Breite und Abstand grau. */}
+          <Toggle
+            label={t.querstrassen}
+            tooltip={t.tooltipQuerstrassen}
+            value={crossRoads}
+            onChange={setCrossRoads}
+            differsFromDefault={crossRoads !== crossRoadsDefault}
+            onReset={() => resetOne("CrossRoads")}
+            onSetDefault={() => setAsDefault("CrossRoads")}
           />
           <LaternenSchalter onOeffnen={oeffneLaternen} />
         </Spalte>

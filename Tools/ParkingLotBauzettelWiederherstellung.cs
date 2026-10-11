@@ -144,7 +144,7 @@ namespace ParkingLotTool.Tools
                     MedianWidth = (double?)ui["MedianWidth"] ?? settings.Md,
                     GreenMedian = (bool?)ui["GreenMedian"] ?? settings.Md > 0,
                     CrossBays = (double?)ui["CrossBays"]
-                        ?? (settings.Cr / settings.Sw - (settings.Qk ? 2 : 0)),
+                        ?? (System.Math.Abs(settings.Cr) / settings.Sw - (settings.Qk ? 2 : 0)),
                     SurfaceRoadOn = (bool?)ui["SurfaceRoadOn"] ?? true,
                     SurfaceDecorationOn = (bool?)ui["SurfaceDecorationOn"] ?? true,
                     SurfaceApronOn = (bool?)ui["SurfaceApronOn"] ?? true,

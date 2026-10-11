@@ -101,7 +101,7 @@ namespace ParkingLotTool.Geometry.Zellen
                     maxX,
                     einstellungen.Buchtbreite,
                     einstellungen.Querstrassenbreite,
-                    einstellungen.Querstrassenabstand,
+                    einstellungen.QuerstrassenAn ? einstellungen.Querstrassenabstand : 0,
                     einstellungen.Querstrassenkappen,
                     planregister);
                 if (Math.Abs(xVersatz) > 1e-9)

@@ -13,7 +13,8 @@ using ParkingLotTool.Geometry;
  * sich ohne Spiel pruefen laesst:
  *
  *   1. Jede Sprachdatei hat nur Schluessel, die es auf Englisch gibt;
- *      Deutsch hat ALLE. Platzhalter sind je Schluessel in allen Sprachen
+ *      Deutsch hat ALLE; vorhandenes Japanisch/Chinesisch ebenfalls.
+ *      Platzhalternamen sind je Schluessel in allen Sprachen
  *      dieselben, Klammern sind geschlossen, Mehrzahl hat .one UND .other.
  *   2. Jeder Schluessel, den der Code benutzt, steht in en-US.json - und
  *      jeder Schluessel in en-US.json wird benutzt.
@@ -41,8 +42,10 @@ internal static partial class Program
             foreach (var (k, v) in texte)
             {
                 if (!en.ContainsKey(k)) Fehler($"{sprache}: '{k}' gibt es auf Englisch nicht");
-                else if (string.Join(",", Sprachtexte.Platzhalter(v).Distinct())
-                         != string.Join(",", Sprachtexte.Platzhalter(en[k]).Distinct()))
+                // Japanische/chinesische Satzstellung kann Namen umordnen.
+                // Verglichen werden dieselben Namen, nicht ihre Reihenfolge.
+                else if (string.Join(",", Sprachtexte.Platzhalter(v).Distinct().OrderBy(x => x, StringComparer.Ordinal))
+                         != string.Join(",", Sprachtexte.Platzhalter(en[k]).Distinct().OrderBy(x => x, StringComparer.Ordinal)))
                     Fehler($"{sprache}: '{k}' hat andere Platzhalter als Englisch: '{v}'");
                 if (!KlammernOk(v)) Fehler($"{sprache}: '{k}' hat eine offene oder leere Klammer: '{v}'");
                 if (string.IsNullOrWhiteSpace(v) && !k.EndsWith("listentrenner")) Fehler($"{sprache}: '{k}' ist leer");
@@ -62,6 +65,12 @@ internal static partial class Program
             foreach (var k in en.Keys) if (!de.ContainsKey(k)) Fehler($"de-DE: '{k}' fehlt");
         }
         else Fehler("de-DE.json fehlt");
+        // Neue Sprachen sind optional; eine vorhandene Datei darf aber
+        // keinen englischen Rueckfall wegen fehlender Schluessel brauchen.
+        foreach (var sprache in new[] { "ja-JP", "zh-HANS" })
+            if (Sprachtexte.Sprachen.TryGetValue(sprache, out var uebersetzung))
+                foreach (var k in en.Keys)
+                    if (!uebersetzung.ContainsKey(k)) Fehler($"{sprache}: '{k}' fehlt");
         foreach (var k in en.Keys)
         {
             if (k.EndsWith(".one") && !en.ContainsKey(k.Substring(0, k.Length - 4) + ".other"))
