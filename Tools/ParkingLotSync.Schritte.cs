@@ -166,6 +166,12 @@ namespace ParkingLotTool.Tools
                     Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Einreihen(lot),
                     Tausch = true,
                 },
+                ["BegleiterAnStrasse"] = new Ausfuehrung
+                {
+                    Braucht = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBuildingEconomySystem>().BrauchtStrassensync(lot),
+                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBuildingEconomySystem>().StrassensyncEinreihen(lot),
+                    Tausch = true,
+                },
                 ["Fahrwege25MitKosten"] = new Ausfuehrung
                 {
                     // Stillgelegt 2026-10-02: der Neubau lief ueber das sichtbare

@@ -184,11 +184,27 @@ namespace ParkingLotTool.Tools
                 var edge = EntityManager.GetComponentData<Game.Net.Edge>(kante);
                 if (!EntityManager.HasComponent<Game.Net.Node>(edge.m_Start)
                     || !EntityManager.HasComponent<Game.Net.Node>(edge.m_End)) continue;
+                if (IstStrasse(kante)) continue;
                 wege.Add((EntityManager.GetComponentData<Game.Net.Node>(edge.m_Start).m_Position.xz,
                     EntityManager.GetComponentData<Game.Net.Node>(edge.m_End).m_Position.xz));
             }
             return wege;
         }
+
+        /**
+         * GASSEN UND ZONINGSTRASSEN ZAEHLEN NICHT (Spielerlog 11.10.2026).
+         *
+         * Sie sind echte Strassen, und CS2 verbindet eine Strasse an der
+         * MITTE der Stadtstrasse: im Bericht 6B5R reicht "PLT Zufahrtsgasse
+         * Einbahn" 16 m ueber den Umriss - so gewollt. Der Plan endet am
+         * Strassenrand, die Gegenprobe war deshalb sauber, und "Reparieren"
+         * erschien fuer vier Parkplaetze, die ein Neubau genauso baute.
+         * Geprueft werden nur unsere unsichtbaren Wege (keine RoadData).
+         */
+        private bool IstStrasse(Entity kante)
+            => EntityManager.HasComponent<Game.Prefabs.PrefabRef>(kante)
+               && EntityManager.HasComponent<Game.Prefabs.RoadData>(
+                   EntityManager.GetComponentData<Game.Prefabs.PrefabRef>(kante).m_Prefab);
 
         /** Unabhaengig von der Reihenfolge; aendert sich, sobald ein Weg wandert. */
         private static long Abdruck(List<(float2 A, float2 B)> wege)
@@ -287,7 +303,10 @@ namespace ParkingLotTool.Tools
                 _probe = Task.Run(() =>
                 {
                     var layout = ParkingGeometry.Build(umriss, settings);
-                    var wege = layout.NetLine.Select(n => (n.A, n.B)).ToList();
+                    // Dieselbe Auswahl wie in der Welt: ohne Gassen und Zoningstrassen.
+                    var wege = layout.NetLine
+                        .Where(n => n.Kind != "zoning" && !Zufahrtsarten.IstGasse(n.Art))
+                        .Select(n => (n.A, n.B)).ToList();
                     return Auffaellig(wege, umriss, out _);
                 });
                 return;

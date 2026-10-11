@@ -4,6 +4,10 @@ import { useTexte } from "./texte";
 import { Slider, MitTooltip, Fenster, Suchfeld, Eingabefeld, SettingActions } from "./controls";
 import styles from "./vegetation.module.scss";
 import base from "./panel.module.scss";
+import { useListenposition } from "./listenposition";
+// Nutzerwunsch 2026-10-09: Tiefe Scrollpositionen brauchen auch nach dem
+// Schliessen die zuvor mit "mehr Pflanzen" eingeblendeten Arten.
+let gemerktesLimit = 60;
 const value$ = bindValue<string>("ParkingLotTool", "Vegetation", '{"Enabled":false,"Line":false,"Density":50,"Ages":6,"NoAging":true,"Species":[]}');
 const default$ = bindValue<string>("ParkingLotTool", "VegetationDefault", '{"Enabled":false,"Line":false,"Density":50,"Ages":6,"NoAging":true,"Species":[]}');
 const catalog$ = bindValue<string>("ParkingLotTool", "VegetationCatalog", '{"Assets":[],"Sets":[]}');
@@ -84,10 +88,14 @@ export const VegetationFenster = ({ pos, onPos, onClose }: {
 }) => {
  const {t,zahl,options,catalog,send,select,button}=useVegetation();
  const [rechts,setRechts]=useState(false);
- const [limit,setLimit]=useState(60);
+ const [limit,setLimit]=useState(gemerktesLimit);
  const [search,setSearch]=useState("");
  const [name,setName]=useState("");
  const treffer=catalog.Assets.filter(a=>a.Name.toLowerCase().includes(search.toLowerCase()));
+ const listenposition=useListenposition("vegetation.arten",rechts,search!=="",Math.min(treffer.length,limit));
+ useEffect(()=>{
+  if(!rechts){setSearch("");setLimit(gemerktesLimit);}
+ },[rechts]);
  const standard:Options=JSON.parse(useValue(default$));
  const ohneSeed=(o:Options)=>JSON.stringify({...o,Seed:0,Species:[...(o.Species||[])].sort()});
  const abweichend=ohneSeed(options)!==ohneSeed(standard);
@@ -151,10 +159,10 @@ export const VegetationFenster = ({ pos, onPos, onClose }: {
       <button className={styles.einklappen} aria-label={t("laternen.collapseTheSelection")} onClick={()=>setRechts(false)}>‹</button>
      </MitTooltip>
     </div>
-    <Suchfeld wert={search} text={t("vegetation.searchPlants")} onChange={wert=>{setSearch(wert);setLimit(60);}}/>
-    <div className={styles.assets}>{treffer.slice(0,limit).map(a=><React.Fragment key={a.Id}>{button(a.Name,options.Species.includes(a.Id),()=>select([a.Id]),a.Icon)}</React.Fragment>)}{treffer.length===0&&<div className={base.flaechenLeer}>{t("vegetation.noPlantFound")}</div>}</div>
+    <Suchfeld wert={search} text={t("vegetation.searchPlants")} onChange={wert=>{setSearch(wert);setLimit(wert?60:gemerktesLimit);}}/>
+    <div className={styles.assets} {...listenposition}>{treffer.slice(0,limit).map(a=><React.Fragment key={a.Id}>{button(a.Name,options.Species.includes(a.Id),()=>select([a.Id]),a.Icon)}</React.Fragment>)}{treffer.length===0&&<div className={base.flaechenLeer}>{t("vegetation.noPlantFound")}</div>}</div>
     {/* Immer da, nur ausgegraut: ein Knopf, der mit der Suche kommt und geht, laesst das Fenster springen. */}
-    {button(t("vegetation.morePlants"),false,()=>setLimit(limit+60),"coui://uil/Standard/Trees.svg",treffer.length<=limit)}
+    {button(t("vegetation.morePlants"),false,()=>{const mehr=limit+60;if(!search)gemerktesLimit=mehr;setLimit(mehr);},"coui://uil/Standard/Trees.svg",treffer.length<=limit)}
     <div className={styles.row}><div className={styles.setName}><Eingabefeld wert={name} text={t("laternen.setName")} maxLength={64} onChange={setName}/></div><MitTooltip text={t("vegetation.saveTheCurrentSelectionAs")}><button className={styles.choice} aria-label={t("laternen.save")} title={t("laternen.save")} disabled={!name.trim()||options.Species.length===0} onClick={()=>{trigger("ParkingLotTool","SaveVegetationSet",JSON.stringify({Name:name,Species:options.Species}));setName("");}}><img alt="" src="coui://uil/Standard/DiskSave.svg"/></button></MitTooltip></div>
    </div>}
 

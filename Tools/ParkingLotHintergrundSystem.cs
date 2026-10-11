@@ -295,9 +295,11 @@ namespace ParkingLotTool.Tools
                     // laufen in die Uebernahme/Nacharbeit hinein.
                     Exklusiv(a, () =>
                     {
+                        ParkingLotSchrittmarke.Setze($"Hintergrund: Abschluss Lot {a.Lot.Index} -> {a.Neu.Index}");
                         a.Bauer.HintergrundUebernahme();
-                        EntityManager.SetComponentData(a.Neu, new ParkingLotDatenstand { Stand = 7 });
-                        EntityManager.AddComponent<ParkingLotNebenarbeitOffen>(a.Neu);
+                        if (!ParkingLotHintergrundAbschluss.MerkeNebenarbeit(EntityManager, a.Neu, a.Traeger))
+                            throw new InvalidOperationException("Neubau nach der Uebernahme nicht mehr gueltig; kein Datenstand geschrieben.");
+                        ParkingLotSchrittmarke.Setze($"Hintergrund: Datenstand und Nebenarbeit fuer Lot {a.Neu.Index} gespeichert");
                         a.Phase = Phase.Nebenarbeit; a.Seit = UnityEngine.Time.frameCount; return 0;
                     });
                     break;
@@ -405,8 +407,8 @@ namespace ParkingLotTool.Tools
             {
                 // Auch bei einer Ausnahme NACH der irreversiblen Uebernahme
                 // niemals den geprueften Neubau samt Zoningbesitzern loeschen.
-                EntityManager.SetComponentData(a.Neu,new ParkingLotDatenstand { Stand = 7 });
-                EntityManager.AddComponent<ParkingLotNebenarbeitOffen>(a.Neu);
+                if (!ParkingLotHintergrundAbschluss.MerkeNebenarbeit(EntityManager, a.Neu, a.Traeger))
+                    ParkingLotNetzRueckweg.Melde($"Neubau {a.Neu} oder Traeger {a.Traeger} nicht mehr gueltig; keine Abschlusskomponenten geschrieben.");
                 if (EntityManager.Exists(a.Lot))
                 {
                     EntityManager.RemoveComponent<ParkingLotErhaltenerKurs>(a.Lot);

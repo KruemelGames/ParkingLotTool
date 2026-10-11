@@ -90,6 +90,10 @@ namespace ParkingLotTool.Geometry
                 + "durch Stuecke aus ihren eigenen Ecken ersetzt, die CS2 annimmt (2026-10-08). Grund: "
                 + "CS2 rueckt jede Flaeche 0,1 m ein; ein Detail unter etwa 0,2 m liess die ganze Flaeche "
                 + "fallen. Kein Neubau; Prefab, Besitzer und Hoehen bleiben."),
+            new Schritt(14, "BegleiterAnStrasse",
+                "Unverbundene Wirtschaftsbegleiter an vorhandenen Zufahrten kommen an die fertige "
+                + "Strassenkante. CS2 berechnet den Gebaeudeanschluss per Updated neu; Erfolg erst "
+                + "mit RoadEdge und ConnectedBuilding. Keine neuen Netze, kein Parkplatz-Neubau."),
         };
 
         /** Der Stand, den ein heute gebauter Parkplatz hat. */

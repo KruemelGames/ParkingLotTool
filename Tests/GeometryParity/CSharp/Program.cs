@@ -192,6 +192,7 @@ internal static partial class Program
             return RunZufahrtsverlust();
         if (args.Length == 1 && args[0] == "--teilen") return RunTeilen();
         if (args.Length == 1 && args[0] == "--schmalerarm") return RunSchmalerArm();
+        if (args.Length == 1 && args[0] == "--fastgerade") return RunFastGerade();
         if (args.Length == 1 && args[0] == "--zerlegung")
         { RunZerlegungsprobe(); return 0; }
         if (args.Length >= 1 && args[0] == "--protokoll")

@@ -6,6 +6,7 @@ import {
 import { useValue } from "cs2/api";
 import { useTexte } from "./texte";
 import { brauchbar, Tooltip } from "./cs2-bausteine";
+import { useListenposition } from "./listenposition";
 
 /**
  * EIN TEXTFELD FUER ALLE EINGABEN DES PANELS.
@@ -651,6 +652,7 @@ export interface Flaeche {
 }
 
 interface AuswahlProps {
+  scrollSchluessel: string;
   label: string;
   tooltip: string;
   value: string;
@@ -705,7 +707,7 @@ interface AuswahlProps {
  */
 let schliesseOffeneAuswahl: (() => void) | null = null;
 
-export const Auswahl = ({ label, tooltip, value, options, ton, onChange, differsFromDefault,
+export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton, onChange, differsFromDefault,
                          onReset, onSetDefault,
                          kopfSchalter, ausLabel }: AuswahlProps) => {
   const [offen, setOffen] = useState(false);
@@ -718,6 +720,8 @@ export const Auswahl = ({ label, tooltip, value, options, ton, onChange, differs
     : options.filter((f) => f.name.toLowerCase().includes(gesucht)
         || f.titel.toLowerCase().includes(gesucht));
   const wurzel = useRef<HTMLDivElement>(null);
+  const listenposition = useListenposition(scrollSchluessel, offen, gesucht !== "",
+    sichtbar.length + (ausLabel ? 1 : 0));
   useEffect(() => {
     if (!offen) { setSuche(""); return; }
     const schliessen = () => setOffen(false);
@@ -793,7 +797,7 @@ export const Auswahl = ({ label, tooltip, value, options, ton, onChange, differs
       {offen ? (
         <div className={styles.flaechenFenster}>
           <Suchfeld wert={suche} onChange={setSuche} text={t.flaechenSuche} />
-          <div className={styles.flaechenGitter}>
+          <div className={styles.flaechenGitter} {...listenposition}>
             {ausLabel ? (
               <button
                 key="__aus"

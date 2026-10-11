@@ -23,6 +23,7 @@ namespace ParkingLotTool.Tools
     public sealed partial class ParkingLotFahrwegTauschSystem : GameSystemBase
     {
         private readonly List<Entity> _warteschlange = new();
+        private readonly Dictionary<Entity, int> _wartetSeit = new();
         private ToolSystem _toolSystem;
         private ParkingLotFahrwegTauschWerkzeug _werkzeug;
         private ParkingLotToolSystem _plt;
@@ -51,6 +52,7 @@ namespace ParkingLotTool.Tools
         {
             if (_warteschlange.Contains(lot)) return;
             _warteschlange.Add(lot);
+            _wartetSeit[lot] = UnityEngine.Time.frameCount;
             Mod.log.Info($"PLT-Fahrwegtausch: Lot {lot.Index} eingereiht; offen {Offen}.");
         }
 
@@ -58,8 +60,22 @@ namespace ParkingLotTool.Tools
         internal List<(Entity Kante, Entity Ziel, Entity Besitzer)> Plan(Entity lot)
         {
             var plan = new List<(Entity, Entity, Entity)>();
-            if (!EntityManager.Exists(lot) || !EntityManager.HasComponent<ParkingLotCarrierReference>(lot)) return plan;
             var fahr = World.GetOrCreateSystemManaged<ParkingLotFahrprefabSystem>();
+            foreach (var (kante, name, besitzer) in AlteFahrwege(lot))
+            {
+                // Ein fehlender Klon bedeutet "noch nicht bereit", niemals
+                // "nichts zu tun". Auch keine halbe Migration uebernehmen.
+                if (!fahr.TryWeg(name, out var ziel) || !EntityManager.Exists(ziel)) return null;
+                plan.Add((kante, ziel, besitzer));
+            }
+            return plan;
+        }
+
+        private List<(Entity Kante, string Name, Entity Besitzer)> AlteFahrwege(Entity lot)
+        {
+            var plan = new List<(Entity, string, Entity)>();
+            if (!EntityManager.Exists(lot) || !EntityManager.HasComponent<ParkingLotCarrierReference>(lot)) return plan;
+            if (EntityManager.HasComponent<Deleted>(lot)) return plan;
             var gesehen = new HashSet<Entity>();
             var traeger = EntityManager.GetComponentData<ParkingLotCarrierReference>(lot).Carrier;
             foreach (var besitzer in new[] { lot, traeger })
@@ -72,15 +88,18 @@ namespace ParkingLotTool.Tools
                     if (!gesehen.Add(e) || !EntityManager.Exists(e) || EntityManager.HasComponent<Deleted>(e)
                         || EntityManager.HasComponent<Temp>(e) || !EntityManager.HasComponent<Edge>(e)
                         || !EntityManager.HasComponent<PrefabRef>(e) || !EntityManager.HasComponent<Owner>(e)) continue;
-                    var name = _prefabs.GetPrefabName(EntityManager.GetComponentData<PrefabRef>(e).m_Prefab);
-                    if (!ParkingLotFahrregeln.IstFahrweg(name) || !fahr.TryWeg(name, out var ziel)) continue;
-                    plan.Add((e, ziel, EntityManager.GetComponentData<Owner>(e).m_Owner));
+                    var pf = EntityManager.GetComponentData<PrefabRef>(e).m_Prefab;
+                    var owner = EntityManager.GetComponentData<Owner>(e).m_Owner;
+                    if (owner != lot && owner != traeger) continue;
+                    if (!EntityManager.Exists(pf) || !_prefabs.TryGetPrefab<PrefabBase>(pf, out var value)
+                        || value == null || !ParkingLotFahrregeln.IstFahrweg(value.name)) continue;
+                    plan.Add((e, value.name, owner));
                 }
             }
             return plan;
         }
 
-        internal bool BrauchtTausch(Entity lot) => Plan(lot).Count > 0;
+        internal bool BrauchtTausch(Entity lot) => AlteFahrwege(lot).Count > 0;
 
         /** Beim Laden alles vergessen (1.0.6): Entities der alten Welt, haengender Tausch. */
         [Preserve]
@@ -91,6 +110,7 @@ namespace ParkingLotTool.Tools
                 Mod.log.Info($"PLT-Fahrwegtausch: Laden - {_warteschlange.Count} eingereiht, Werkzeug "
                     + $"{(_werkzeug.Beschaeftigt ? "beschaeftigt" : "frei")} verworfen.");
             _warteschlange.Clear();
+            _wartetSeit.Clear();
             _vorher = null;
             _alleOk = true;
             _ruheBis = 0;
@@ -106,12 +126,20 @@ namespace ParkingLotTool.Tools
             if (_warteschlange.Count == 0) return;
             // Nie zwei Tauschwerkzeuge gleichzeitig: jedes setzt das aktive Werkzeug.
             if (World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().WerkzeugLaeuft) return;
+            if (World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Laeuft) return;
             if (UnityEngine.Time.frameCount < _ruheBis) return;
             // Ein Werkzeugwechsel wuerde einen laufenden Entwurf verwerfen.
             if (_toolSystem.activeTool == _plt && _plt.ArbeitetGerade) return;
             var lot = _warteschlange[0];
-            _warteschlange.RemoveAt(0);
             var plan = Plan(lot);
+            if (plan == null)
+            {
+                if (UnityEngine.Time.frameCount - _wartetSeit[lot] < 600) return;
+                _warteschlange.RemoveAt(0); _wartetSeit.Remove(lot);
+                Fertig(lot, false, "Ziel-Prefab nach 600 Bildern nicht bereit; kein Weg ersetzt");
+                return;
+            }
+            _warteschlange.RemoveAt(0); _wartetSeit.Remove(lot);
             if (plan.Count == 0) { Fertig(lot, true, "nichts zu tauschen"); return; }
             if (_toolSystem.activeTool != _werkzeug) _vorher = _toolSystem.activeTool;
             _werkzeug.Starte(lot, plan);
@@ -120,6 +148,7 @@ namespace ParkingLotTool.Tools
 
         private void Fertig(Entity lot, bool ok, string text)
         {
+            Mod.log.Info($"PLT-Fahrwegtausch: Lot {lot.Index}, Erfolg={ok}: {text}.");
             if (!ok) _alleOk = false;
             World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(lot, lot, ok);
             _ruheBis = UnityEngine.Time.frameCount + 10;

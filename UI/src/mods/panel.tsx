@@ -1242,6 +1242,7 @@ export const ParkingLotPanel = () => {
 
         <Spalte title={t.spalteFlaechen} ton="Zufahrt" {...abschnitt("Flaechen")} titleTooltip={t.tooltipFlaechen}>
           <Auswahl
+            scrollSchluessel="flaeche.fahr"
             label={t.flaecheStrasse}
             tooltip={t.tooltipFlaecheStrasse}
             value={surfaceRoad}
@@ -1262,6 +1263,7 @@ export const ParkingLotPanel = () => {
             }}
           />
           <Auswahl
+            scrollSchluessel="flaeche.deko"
             label={t.flaecheDeko}
             tooltip={t.tooltipFlaecheDeko}
             value={surfaceDecoration}

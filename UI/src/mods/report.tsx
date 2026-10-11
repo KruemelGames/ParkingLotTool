@@ -6,7 +6,7 @@ import {
   markerMode$, meldungAbsturz, meldungOrdner, meldungPfad$,
   meldungVorschau, removeLastMarker, reportPath$, schalteMeldeLotWahl,
   setMarkerMode, writeReport,
-  leistungRest$, starteLeistungstest,
+  leistungRest$, starteLeistungstest, oeffneVideo,
 } from "./bindings";
 import { useValue } from "cs2/api";
 import { useTexte } from "./texte";
@@ -231,6 +231,20 @@ export const ReportTab = () => {
             </MitTooltip>
           </div>
         </div>
+        {/*
+          WOHIN MIT DER ZIP (Nutzer 2026-10-11): gut sichtbar, gleich unter
+          den Knoepfen, die sie erzeugen. Grosser Knopf wie der Leistungstest;
+          die Adresse steht zusaetzlich als Text da, falls sich im Vollbild
+          kein Browser oeffnet.
+        */}
+        <MitTooltip text={t.tooltipGithub}>
+        <button className={styles.meldeKnopf} onClick={() => oeffneVideo("github-issues")}>
+          <img src={icon("CloudUploadArrow")} />
+          <span>{t.githubKnopf}</span>
+        </button>
+        </MitTooltip>
+        <div className={styles.explain}>{t.githubAdresse}</div>
+
         <div className={styles.explain}>{t.meldeLotErklaerung}</div>
 
         <div className={styles.explain}>{t.meldungVorschauErklaerung}</div>

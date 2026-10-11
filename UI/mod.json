@@ -1,7 +1,7 @@
 {
   "id": "ParkingLotTool",
   "author": "KruemelGames",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "dependencies": [
     "74417",
     "79634"

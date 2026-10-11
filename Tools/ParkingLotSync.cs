@@ -248,6 +248,7 @@ namespace ParkingLotTool.Tools
             _warteschlange.Clear();
             _wartetAuf.Clear();
             _fortsetzen.Clear();
+            _index = null;
             _gesamt = _erledigt = 0;
             _letzterBestand = -1;
             _neuAufnehmen = mode == GameMode.Game;
@@ -265,6 +266,8 @@ namespace ParkingLotTool.Tools
             base.OnGamePreload(purpose, mode);
             _spielGeladen = false;
             _warteschlange.Clear();
+            _wartetAuf.Clear();
+            _fortsetzen.Clear();
             LeereMeldung();
             _offen.Clear();
             _offenMenge.Clear();
@@ -373,6 +376,8 @@ namespace ParkingLotTool.Tools
                 var lot = lots[i];
                 var hintergrund = World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>();
                 if (hintergrund.IstErsatz(lot)) continue;
+                if (_wartetAuf.ContainsKey(lot))
+                { _offen.Add(lot); _offenMenge.Add(lot); continue; }
                 /*
                  * ERST REPARIEREN, DANN SYNCHRONISIEREN (1.0.6, Nutzer 2026-10-06).
                  * Ohne Bauplan scheitern die Schritte 10/11 an "Bauzettel
@@ -394,7 +399,7 @@ namespace ParkingLotTool.Tools
                 { _offen.Add(lot); _offenMenge.Add(lot); continue; }
                 var stand = StandVon(lot);
                 if (stand >= Migrationskatalog.Aktuell) continue;
-                if (stand < 0) continue;
+                if (_gescheitert.Contains(lot)) continue;
                 var traeger = EntityManager.GetComponentData<
                     ParkingLotCarrierReference>(lot).Carrier;
                 if (!index.TryGetValue(lot, out var teile)) teile = new List<Entity>();
@@ -433,7 +438,9 @@ namespace ParkingLotTool.Tools
             {
                 if (!_ausfuehrungen.TryGetValue(Migrationskatalog.Schritte[s].Name,
                         out var a)) return s; // fehlt: nie still ueberspringen
-                if (a.Braucht(lot, traeger, teile)) return s;
+                try { if (a.Braucht(lot, traeger, teile)) return s; }
+                catch (System.Exception ex)
+                { Scheitern(lot, s, Migrationskatalog.Schritte[s].Name, ex.ToString()); return s; }
             }
             return -1;
         }
@@ -474,7 +481,12 @@ namespace ParkingLotTool.Tools
             {
                 var lot = _warteschlange[0];
                 _warteschlange.RemoveAt(0);
-                if (Synchronisiere(lot, _index)) _syncErfolge++;
+                try { if (Synchronisiere(lot, _index)) _syncErfolge++; }
+                catch (System.Exception ex)
+                {
+                    _wartetAuf.Remove(lot); _fortsetzen.Remove(lot);
+                    Scheitern(lot, StandVon(lot), "Ausfuehrung", ex.ToString());
+                }
                 _erledigt++;
             }
             while (_warteschlange.Count > 0 && uhr.Elapsed.TotalMilliseconds < BudgetMs);
@@ -504,7 +516,7 @@ namespace ParkingLotTool.Tools
                 return false;
             var traeger = EntityManager.GetComponentData<
                 ParkingLotCarrierReference>(lot).Carrier;
-            if (!EntityManager.Exists(traeger)) return false;
+            if (!EntityManager.Exists(traeger) || EntityManager.HasComponent<Deleted>(traeger)) return false;
             if (!index.TryGetValue(lot, out var teile)) teile = new List<Entity>();
             teile.RemoveAll(t => !EntityManager.Exists(t)
                 || EntityManager.HasComponent<Deleted>(t));
@@ -571,12 +583,22 @@ namespace ParkingLotTool.Tools
 
         internal void MeldeHintergrundEnde(Entity lot, Entity neu, bool erfolgreich)
         {
+            // Auch Reparaturen melden hier. Ohne zugehoerigen Sync-Auftrag
+            // duerfen sie keinen Stand setzen; alte Weltantworten ebenso wenig.
+            var erwartet = _wartetAuf.TryGetValue(lot, out var schrittNummer);
+            if (!SyncWache.AntwortErwartet(_spielGeladen, erwartet))
+            { if (_spielGeladen) NeuAufnehmen(); return; }
+            erfolgreich = erfolgreich && EntityManager.Exists(neu)
+                && !EntityManager.HasComponent<Deleted>(neu)
+                && EntityManager.HasComponent<ParkingLotCarrierReference>(neu);
+            if (erfolgreich)
+                erfolgreich = ParkingLotSyncGueltigkeit.Bestand(EntityManager, neu,
+                    EntityManager.GetComponentData<ParkingLotCarrierReference>(neu).Carrier);
             if (!EntityManager.Exists(lot) || EntityManager.HasComponent<Deleted>(lot))
             {
                 _offen.Remove(lot);
                 _offenMenge.Remove(lot);
             }
-            var schrittNummer = _wartetAuf.TryGetValue(lot, out var gewartet) ? gewartet : Migrationskatalog.Aktuell;
             _wartetAuf.Remove(lot);
             // Weiterlaufen nur nach Erfolg - und am neuen Lot, falls ein Neubau es ersetzt hat.
             var weiter = _fortsetzen.Remove(lot);
@@ -598,7 +620,8 @@ namespace ParkingLotTool.Tools
             }
             else
             {
-                var ziel = neu != Entity.Null && EntityManager.Exists(neu) ? neu : lot;
+                var ziel = neu != Entity.Null && EntityManager.Exists(neu)
+                    && !EntityManager.HasComponent<Deleted>(neu) ? neu : lot;
                 if (ziel != lot)
                 {
                     _offen.Remove(lot);
@@ -631,12 +654,14 @@ namespace ParkingLotTool.Tools
         }
 
         private int StandVon(Entity lot)
-            => EntityManager.HasComponent<ParkingLotDatenstand>(lot)
-                ? EntityManager.GetComponentData<ParkingLotDatenstand>(lot).Stand
+            => EntityManager.Exists(lot) && EntityManager.HasComponent<ParkingLotDatenstand>(lot)
+                ? System.Math.Max(0, EntityManager.GetComponentData<ParkingLotDatenstand>(lot).Stand)
                 : 0;
 
         private void SetzeStand(Entity lot, int stand)
         {
+            if (!EntityManager.Exists(lot) || EntityManager.HasComponent<Deleted>(lot)
+                || !EntityManager.HasComponent<ParkingLotCarrierReference>(lot)) return;
             var wert = new ParkingLotDatenstand { Stand = stand };
             if (EntityManager.HasComponent<ParkingLotDatenstand>(lot))
                 EntityManager.SetComponentData(lot, wert);
@@ -658,9 +683,7 @@ namespace ParkingLotTool.Tools
                 + World.GetOrCreateSystemManaged<ParkingLotWegpruefungSystem>().Anzahl;
             if (_arbeitOffen.value != zuTun) _arbeitOffen.Update(zuTun);
             var arbeit = World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>();
-            var hintergrund = arbeit.Offen
-                + World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().Offen
-                + World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Offen;
+            var hintergrund = arbeit.Offen + OffeneSyncAuftraege;
             _gesamt = System.Math.Max(_gesamt,_warteschlange.Count + hintergrund);
             var fortschritt = HintergrundFortschritt.Zaehle(_gesamt, _warteschlange.Count, hintergrund);
             var laeuft = _warteschlange.Count + hintergrund > 0
@@ -681,8 +704,13 @@ namespace ParkingLotTool.Tools
         internal bool ArbeitLaeuft
             => _warteschlange.Count > 0
                || World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>().Laeuft
-               || World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().Offen > 0
-               || World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Offen > 0;
+               || OffeneSyncAuftraege > 0;
+
+        private int OffeneSyncAuftraege => SyncWache.Offen(_wartetAuf.Count,
+            World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().Offen,
+            World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Offen,
+            World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Offen,
+            World.GetOrCreateSystemManaged<ParkingLotBuildingEconomySystem>().OffeneStrassensyncs);
 
         /** Bestand neu aufnehmen - nach einer Reparatur, die keine Parkplatzzahl aendert (Bauplan zurueck). */
         internal void NeuAufnehmen()
@@ -694,8 +722,7 @@ namespace ParkingLotTool.Tools
         /** Nur der Sync selbst (Warteschlange und beide Tausche), ohne Reparatur-Neubauten. */
         internal bool SyncLaeuft
             => _warteschlange.Count > 0
-               || World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().Offen > 0
-               || World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Offen > 0;
+               || OffeneSyncAuftraege > 0;
 
         /** True heisst: gesperrt, Meldung pulsiert. Fuer jeden Weg, der das PLT-Werkzeug oeffnet. */
         internal bool SperrtWegenArbeit(string wofuer)

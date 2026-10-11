@@ -50,7 +50,9 @@ namespace ParkingLotTool.Tools
         private sealed class Lauf
         {
             internal Entity Lot;
+            internal Entity Traeger;
             internal readonly List<Entity> Alt = new();
+            internal readonly HashSet<Entity> Vorher = new();
             internal int Neu;
             internal int Seit;
             internal double Verloren;
@@ -60,6 +62,7 @@ namespace ParkingLotTool.Tools
         private Lauf _lauf;
 
         internal int Offen => _warteschlange.Count + (_lauf != null ? 1 : 0);
+        internal bool Laeuft => _lauf != null;
 
         internal void Einreihen(Entity lot)
         {
@@ -144,6 +147,8 @@ namespace ParkingLotTool.Tools
             // Ein laufender Entwurf des Werkzeugs ersetzt die Flaechen
             // ohnehin; nicht mitten hinein tauschen.
             if (World.GetOrCreateSystemManaged<ParkingLotToolSystem>().ArbeitetGerade) return;
+            if (World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().WerkzeugLaeuft
+                || World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().WerkzeugLaeuft) return;
             var lot = _warteschlange[0];
             _warteschlange.RemoveAt(0);
             Starte(lot, bild);
@@ -151,15 +156,28 @@ namespace ParkingLotTool.Tools
 
         private void Starte(Entity lot, int bild)
         {
-            var alt = Verworfene(lot);
             _lauf = new Lauf { Lot = lot, Seit = bild };
+            var traeger = EntityManager.Exists(lot) && EntityManager.HasComponent<ParkingLotCarrierReference>(lot)
+                ? EntityManager.GetComponentData<ParkingLotCarrierReference>(lot).Carrier : Entity.Null;
+            if (!ParkingLotSyncGueltigkeit.Bestand(EntityManager, lot, traeger))
+            { Beende(false, "Bestand vor dem Start verschwunden"); return; }
+            _lauf.Traeger = traeger;
+            if (EntityManager.HasBuffer<Game.Areas.SubArea>(lot))
+            {
+                var vorher = EntityManager.GetBuffer<Game.Areas.SubArea>(lot, true);
+                for (var i = 0; i < vorher.Length; i++) _lauf.Vorher.Add(vorher[i].m_Area);
+            }
+            var alt = Verworfene(lot);
             foreach (var flaeche in alt)
             {
                 var ring = Ring(flaeche);
                 var unbaubar = new List<float2[]>();
                 var stuecke = ParkingGeometry.BaubareStuecke(ring, unbaubar);
                 foreach (var r in unbaubar) _lauf.Verloren += math.abs(Flaeche(r));
-                _lauf.Neu += LegeAn(flaeche, stuecke);
+                var neu = LegeAn(flaeche, stuecke);
+                if (neu != stuecke.Count)
+                { Beende(false, "Flaechendefinition unvollstaendig; alte Flaeche bleibt"); return; }
+                _lauf.Neu += neu;
                 // Auch ohne Stuecke weg: die Flaeche ist ohnehin unsichtbar.
                 EntityManager.AddComponent<Deleted>(flaeche);
                 _lauf.Alt.Add(flaeche);
@@ -182,12 +200,14 @@ namespace ParkingLotTool.Tools
             {
                 var nachLage = new Dictionary<float2, Node>();
                 foreach (var k in knoten) nachLage[k.m_Position.xz] = k;
+                if (!EntityManager.Exists(prefab) || !EntityManager.Exists(besitzer)
+                    || EntityManager.HasComponent<Deleted>(besitzer)
+                    || stuecke.Any(s => !s.All(nachLage.ContainsKey))) return 0;
                 var angelegt = 0;
                 foreach (var stueck in stuecke)
                 {
                     // Nur vorhandene Ecken - fehlt eine, stimmt etwas nicht;
                     // dann lieber dieses Stueck nicht als eins in falscher Hoehe.
-                    if (!stueck.All(nachLage.ContainsKey)) continue;
                     var d = EntityManager.CreateEntity();
                     EntityManager.AddComponentData(d, new CreationDefinition
                     {
@@ -213,27 +233,32 @@ namespace ParkingLotTool.Tools
         private void Pruefe(int bild)
         {
             var lot = _lauf.Lot;
+            if (!ParkingLotSyncGueltigkeit.Bestand(EntityManager, lot, _lauf.Traeger))
+            { Beende(false, "Bestand waehrend des Wartens verschwunden"); return; }
             var altWeg = _lauf.Alt.All(a => !EntityManager.Exists(a) || EntityManager.HasComponent<Deleted>(a));
             var nochVerworfen = Verworfene(lot).Count;
             // CS2s eigene Antwort: hat jede Flaeche des Parkplatzes Dreiecke?
             var ohneDreiecke = 0;
+            var entstanden = new HashSet<Entity>();
             if (EntityManager.Exists(lot) && EntityManager.HasBuffer<Game.Areas.SubArea>(lot))
             {
                 var unter = EntityManager.GetBuffer<Game.Areas.SubArea>(lot, true);
                 for (var i = 0; i < unter.Length; i++)
                 {
                     var f = unter[i].m_Area;
-                    if (!IstEigeneFlaeche(f) || !EntityManager.HasBuffer<Triangle>(f)) continue;
-                    if (EntityManager.GetBuffer<Triangle>(f, true).Length == 0) ohneDreiecke++;
+                    if (!IstEigeneFlaeche(f)) continue;
+                    if (!_lauf.Vorher.Contains(f)) entstanden.Add(f);
+                    if (!EntityManager.HasBuffer<Triangle>(f)
+                        || EntityManager.GetBuffer<Triangle>(f, true).Length == 0) ohneDreiecke++;
                 }
             }
-            if (altWeg && nochVerworfen == 0 && ohneDreiecke == 0)
+            if (altWeg && nochVerworfen == 0 && ohneDreiecke == 0 && entstanden.Count == _lauf.Neu)
             {
                 Beende(true, $"{_lauf.Alt.Count} ersetzt durch {_lauf.Neu}, alle Flaechen mit Dreiecken");
                 return;
             }
             if (bild - _lauf.Seit < Hoechstwartezeit) return;
-            Beende(false, $"alte weg {altWeg}, noch verworfen {nochVerworfen}, ohne Dreiecke {ohneDreiecke}");
+            Beende(false, $"alte weg {altWeg}, neue Flaechen {entstanden.Count}/{_lauf.Neu}, noch verworfen {nochVerworfen}, ohne Dreiecke {ohneDreiecke}");
         }
 
         private void Beende(bool ok, string text)

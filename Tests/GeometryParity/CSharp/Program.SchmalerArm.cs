@@ -115,3 +115,53 @@ internal static partial class Program
         return fehler == 0 ? 0 : 1;
     }
 }
+
+/**
+ * FAST GERADE ECKE - Preview-Bericht 6T8J (2026-10-10).
+ *
+ * Ein eingerasteter Punkt auf einer geraden Kante lag 3,6 mm daneben. Die
+ * Zerlegung hielt ihn fuer eine Reflexecke und brach mit "A polygon needs at
+ * least three corners" ab - keine Vorschau. Geprueft: baut, gedreht.
+ */
+internal static partial class Program
+{
+    private static readonly float2[] FastGeradeUmriss =
+    {
+        new float2(-1420.32532f, -114.501083f), new float2(-1460.81238f, -8.789024f),
+        new float2(-1397.25732f, 15.5486946f), new float2(-1340.234f, 37.389f),
+        new float2(-1324.34106f, -4.10700035f), new float2(-1381.3645f, -25.946743f),
+        new float2(-1356.7489f, -90.21639f),
+    };
+
+    private static int RunFastGerade()
+    {
+        var mitte = FastGeradeUmriss.Aggregate(float2.zero, (s, p) => s + p) / FastGeradeUmriss.Length;
+        var fehler = 0;
+        foreach (var randstrassen in new[] { true, false })
+        foreach (var grad in new[] { 0f, 30f, 90f, 200f })
+        {
+            var settings = LayoutSettings.Cs2;
+            settings.Randstrassen = randstrassen;
+            var bogen = math.radians(grad);
+            var (s, c) = (math.sin(bogen), math.cos(bogen));
+            var umriss = FastGeradeUmriss.Select(p =>
+            {
+                var d = p - mitte;
+                return mitte + new float2(c * d.x - s * d.y, s * d.x + c * d.y);
+            }).ToArray();
+            var name = $"Randstrassen {(randstrassen ? "an" : "aus")}, {grad:F0} Grad";
+            try
+            {
+                var layout = ParkingGeometry.Build(umriss, settings);
+                Console.WriteLine($"  ok {name}: {layout.Stalls} Buchten");
+            }
+            catch (Exception e)
+            {
+                fehler++;
+                Console.WriteLine($"  FEHLER {name}: {e.Message}");
+            }
+        }
+        Console.WriteLine($"Fast gerade Ecke: 8 Laeufe, {fehler} Fehler");
+        return fehler == 0 ? 0 : 1;
+    }
+}

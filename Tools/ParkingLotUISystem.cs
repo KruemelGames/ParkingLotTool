@@ -2126,6 +2126,10 @@ namespace ParkingLotTool.Tools
             new System.Collections.Generic.Dictionary<string, string>
             {
                 ["basics"] = "https://www.youtube.com/watch?v=bITKYlYngp8",
+                // Kein Video, aber derselbe sichere Weg: die Issue-Seite fuer
+                // "Report a problem" (Nutzer 2026-10-11).
+                // Gleich die Vorlage "Report a problem" (.github/ISSUE_TEMPLATE/bug_report.yml).
+                ["github-issues"] = "https://github.com/KruemelGames/ParkingLotTool/issues/new?template=bug_report.yml",
             };
 
         private void OeffneVideo(string kennung)

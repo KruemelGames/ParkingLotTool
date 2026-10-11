@@ -432,7 +432,7 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
             </div>
           </>
         )}
-        {platz.sync && platz.fehlt === "" && platz.wege === 0 && platz.waise !== 1 && platz.waise !== 2 && (
+        {platz.sync && platz.fehlt === "" && platz.waise !== 1 && platz.waise !== 2 && (
           <div className={styles.listeSyncZeile}>
             <TooltipKnopf text={t.tooltipSync}
               className={`${styles.listeTextknopf} ${styles.listeHinweisKnopf}`}

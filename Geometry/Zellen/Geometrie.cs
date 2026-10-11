@@ -178,7 +178,24 @@ namespace ParkingLotTool.Geometry.Zellen
              */
             var ab = b - a;
             var bc = c - b;
-            return Kreuz(ab, bc) < -1e-9 * Laenge(ab) * Laenge(bc);
+            var kreuz = Kreuz(ab, bc);
+            if (kreuz >= -1e-9 * Laenge(ab) * Laenge(bc)) return false;
+            /*
+             * FAST GERADE IST AUCH GERADE (Preview-Bericht 6T8J, 2026-10-10).
+             *
+             * Ein eingerasteter Punkt auf einer geraden Kante lag 3,6 mm
+             * daneben (Knick 0,0034 Grad). Als Reflexecke verlaengerte die
+             * Zerlegung die Kante fast in sich selbst: ein 3,6 mm schmaler
+             * Splitter, darin ein Teil aus zwei Ecken - "A polygon needs at
+             * least three corners", keine Vorschau. Weniger als 1 cm neben
+             * der Verbindung der Nachbarn und unter 0,06 Grad Knick zaehlt
+             * deshalb als gerade; CS2 verwirft ohnehin alles unter 0,2 m.
+             * Beides zugleich, damit kurze Kanten mit echtem Knick Reflex
+             * bleiben.
+             */
+            var abweichung = -kreuz / Laenge(c - a);
+            var winkel = -kreuz / (Laenge(ab) * Laenge(bc));
+            return !(abweichung < 0.01 && winkel < 1e-3);
         }
 
         internal static bool IstKonvex(Polygon polygon)

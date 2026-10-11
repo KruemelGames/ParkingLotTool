@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.8 — October 11, 2026
+
+- Improvement: the surface and plant lists open where you left them.
+- Improvement: "Report a problem" has a button that opens a new GitHub problem report.
+- Fix: possible crash when a repair or update finished in the background.
+- Fix: "Parking lots can be updated" kept coming back when a lot also offered "Repair"; it now shows its "Synchronize" button too.
+- Fix: "Repair" was offered for lots whose alley connects to a wide road, and repairing changed nothing.
+- Fix: some lots could not hire workers because their building had no road connection; "Synchronize" connects it.
+- Fix: an update could be skipped silently when a needed part was not loaded yet.
+- Fix: no preview when a point on a straight edge was snapped a few millimetres off the line.
+
 ## 1.0.7 — October 9, 2026
 
 - Addition: "How it works" tab with the tutorial videos; the first one, "Basics", is out.

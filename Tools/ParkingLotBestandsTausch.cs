@@ -152,6 +152,10 @@ namespace ParkingLotTool.Tools
             }
             if (!_laeuft.Rechnung.IsCompleted) return;
             var v = _laeuft;
+            // Das Rechnen laeuft ohne ECS. Danach kann der Nutzer den
+            // Parkplatz schon abgerissen oder der Ladepfad ihn ersetzt haben.
+            if (!ParkingLotSyncGueltigkeit.Bestand(EntityManager, v.Lot, v.Traeger))
+            { _laeuft = null; Fertig(v.Lot, false, "Bestand waehrend der Vorbereitung verschwunden"); return; }
             var e = v.Rechnung.IsFaulted
                 ? new Ergebnis { Fehler = "Rechnung fehlgeschlagen: " + v.Rechnung.Exception?.GetBaseException().Message }
                 : v.Rechnung.Result;
@@ -160,6 +164,7 @@ namespace ParkingLotTool.Tools
             if (_toolSystem.activeTool == _plt && _plt.ArbeitetGerade) return;
             // Nie zwei Tauschwerkzeuge gleichzeitig: jedes setzt das aktive Werkzeug.
             if (World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().WerkzeugLaeuft) return;
+            if (World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Laeuft) return;
             _laeuft = null;
             var auftrag = v.Art == Tauschart.Pflanzen ? PflanzenAuftrag(v, e) : LaternenAuftrag(v, e);
             Mod.log.Info($"PLT-Bestandstausch: Lot {v.Lot.Index} ({v.Art}): {e.Messung}; loeschen {auftrag.Loeschen.Count}.");
@@ -490,6 +495,8 @@ namespace ParkingLotTool.Tools
 
         private void NachDemApply(int bild)
         {
+            if (_a == null || !ParkingLotSyncGueltigkeit.Bestand(EntityManager, _a.Lot, _a.Traeger))
+            { Beende(false, "Bestand nach Apply verschwunden; kein Nachsetzen"); return; }
             switch (_stufe)
             {
                 case Stufe.Pruefen:
@@ -517,6 +524,13 @@ namespace ParkingLotTool.Tools
             // Nur noch der Fall "im selben Bild umgeschaltet"; den Wechsel
             // davor faengt PflegeOhneWerkzeug ab.
             if (m_ToolSystem.activeTool != this) return inputDeps;
+            if (_stufe != Stufe.Frei && !ParkingLotSyncGueltigkeit.Bestand(EntityManager, _a.Lot, _a.Traeger))
+            {
+                if (_stufe == Stufe.Anlegen || _stufe == Stufe.Warten || _stufe == Stufe.Uebernehmen)
+                    applyMode = ApplyMode.Clear;
+                Beende(false, "Bestand verschwunden; keine Uebernahme");
+                return inputDeps;
+            }
             if (_stufe != Stufe.Frei) _lief = true;
             switch (_stufe)
             {

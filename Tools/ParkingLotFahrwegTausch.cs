@@ -87,6 +87,7 @@ namespace ParkingLotTool.Tools
         internal void PflegeOhneWerkzeug()
         {
             if (_stufe == Stufe.Frei || m_ToolSystem.activeTool == this) return;
+            if (!BestandGueltig()) { Beende(false, "Bestand verschwunden"); return; }
             var bild = UnityEngine.Time.frameCount;
             if (_stufe == Stufe.Pruefen)
             {
@@ -118,6 +119,12 @@ namespace ParkingLotTool.Tools
             // davor faengt PflegeOhneWerkzeug ab (abgeschaltete Systeme
             // bekommen kein OnUpdate).
             if (m_ToolSystem.activeTool != this) return inputDeps;
+            if (_stufe != Stufe.Frei && !BestandGueltig())
+            {
+                if (_stufe != Stufe.Pruefen) applyMode = ApplyMode.Clear;
+                Beende(false, "Bestand verschwunden; keine Uebernahme");
+                return inputDeps;
+            }
             if (_stufe != Stufe.Frei) _lief = true;
             switch (_stufe)
             {
@@ -165,6 +172,22 @@ namespace ParkingLotTool.Tools
                     break;
             }
             return inputDeps;
+        }
+
+        private bool BestandGueltig()
+        {
+            if (!EntityManager.Exists(_lot) || !EntityManager.HasComponent<ParkingLotCarrierReference>(_lot)) return false;
+            var traeger = EntityManager.GetComponentData<ParkingLotCarrierReference>(_lot).Carrier;
+            if (!ParkingLotSyncGueltigkeit.Bestand(EntityManager, _lot, traeger)) return false;
+            foreach (var (kante, ziel, besitzer) in _plan)
+            {
+                if (!EntityManager.Exists(ziel) || EntityManager.HasComponent<Deleted>(ziel)) return false;
+                if (_stufe == Stufe.Pruefen) continue;
+                if (!EntityManager.Exists(kante) || EntityManager.HasComponent<Deleted>(kante)
+                    || !EntityManager.HasComponent<Owner>(kante)
+                    || EntityManager.GetComponentData<Owner>(kante).m_Owner != besitzer) return false;
+            }
+            return true;
         }
 
 /*
