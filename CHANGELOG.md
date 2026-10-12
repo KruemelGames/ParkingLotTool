@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Addition: parking lots show in the "Roads" info view, colored like the base-game lots and with the parking icon, and count towards its parking capacity and availability (thanks TheEsotericEric).
+- Fix: possible crash when bulldozing a large parking lot while the bulldozer was still active.
+
 ## 1.0.9 — October 11, 2026
 
 - Addition: Japanese and Simplified Chinese, automatic or chosen in the mod settings.

@@ -148,6 +148,26 @@ namespace ParkingLotTool.Tools
 
                 var carrier = EntityManager
                     .GetComponentData<ParkingLotCarrierReference>(lot).Carrier;
+                /*
+                 * DIE BESITZERKETTE DARF NICHT INS LEERE ZEIGEN (Absturz 12.10.2026).
+                 *
+                 * Baum/Aufkleber -> Traeger -> Lot. Vanilla zerstoert die Lot-Flaeche
+                 * noch in diesem Bild; Traeger und Teile leben aber ueber unsere
+                 * 32er-Portionen viele Bilder weiter. Die Bulldozer-Vorschau prueft
+                 * Ueberlappungen, laeuft dabei die Owner-Kette bis zum letzten
+                 * erreichbaren Entity hoch - die tote Lot-Flaeche - und liest dort
+                 * PrefabRef ungeprueft (Game.Objects.ValidationHelpers, Zeile 85-101
+                 * und 155): Null-Zugriff in ValidationJob, gemessen bei 834 Teilen,
+                 * davon 380 Baeume (ueberschreibbare Geometrie, genau dieser Zweig).
+                 *
+                 * Darum loest der Traeger seinen Owner auf das Lot sofort, im selben
+                 * Bild und noch vor dessen Zerstoerung. Die Teile bleiben an ihrem
+                 * LEBENDEN Traeger, bis ihre Portion dran ist.
+                 */
+                if (carrier != Entity.Null && EntityManager.Exists(carrier)
+                    && EntityManager.HasComponent<Owner>(carrier)
+                    && EntityManager.GetComponentData<Owner>(carrier).m_Owner == lot)
+                    _barrier.CreateCommandBuffer().RemoveComponent<Owner>(carrier);
                 _pending.Add(new CleanupWork { Lot = lot, Carrier = carrier });
                 Mod.log.Info($"PLT-Aufraeumer: Parkplatz {lot.Index} wirklich "
                     + "weggebaggert; relationsbasiertes Aufraeumen beginnt "

@@ -506,6 +506,10 @@ namespace ParkingLotTool
             // Phase, in der CS2 selbst zeichnet.
             updateSystem.UpdateAt<ParkingLotFlaechennetzSystem>(
                 SystemUpdatePhase.Rendering);
+            // Infoansicht "Roads" (Issue #14): Farbindex am Lot VOR der
+            // Flaechenfaerbung setzen, die ihn ueber die Besitzerkette liest.
+            updateSystem.UpdateBefore<ParkingLotInfoansichtSystem,
+                Game.Rendering.AreaColorSystem>(SystemUpdatePhase.Rendering);
             // Direkt HINTER `ParkingLaneDataSystem`, das in derselben Phase
             // laeuft (Game.Common.SystemOrder Zeile 251) und den Komfortwert
             // unserer Parkspuren bei jedem Nachrechnen auf 0 setzt, weil unser
