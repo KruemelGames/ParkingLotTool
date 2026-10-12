@@ -157,6 +157,35 @@ namespace ParkingLotTool.Tools
 
         private string _letzterSteckbrief = string.Empty;
 
+        /** Arbeitsuchende laufen zur Gebaeudevorderseite: die Kante braucht eine Fussgaengerspur. */
+        private bool HatGehweg(Entity kante)
+        {
+            if (!EntityManager.HasBuffer<Game.Net.SubLane>(kante)) return false;
+            var spuren = EntityManager.GetBuffer<Game.Net.SubLane>(kante, true);
+            // Wie Vanilla (PathfindTargetSeeker.AddEdgeTargets): Fussgaenger-
+            // Pfadmethode UND Gehweg- oder Fussgaenger-Verbindungsspur.
+            for (var i = 0; i < spuren.Length; i++)
+            {
+                if ((spuren[i].m_PathMethods & Game.Pathfind.PathMethod.Pedestrian) == 0) continue;
+                var spur = spuren[i].m_SubLane;
+                if (EntityManager.HasComponent<Game.Net.PedestrianLane>(spur)) return true;
+                if (EntityManager.HasComponent<Game.Net.ConnectionLane>(spur)
+                    && (EntityManager.GetComponentData<Game.Net.ConnectionLane>(spur).m_Flags
+                        & Game.Net.ConnectionLaneFlags.Pedestrian) != 0) return true;
+            }
+            return false;
+        }
+
+        /** "2/4" - besetzt / Plaetze, wie das Infofenster. */
+        private string Personal(Entity begleiter)
+        {
+            var plaetze = EntityManager.HasComponent<WorkProvider>(begleiter)
+                ? EntityManager.GetComponentData<WorkProvider>(begleiter).m_MaxWorkers : 0;
+            var besetzt = EntityManager.HasBuffer<Employee>(begleiter)
+                ? EntityManager.GetBuffer<Employee>(begleiter, true).Length : 0;
+            return besetzt + "/" + plaetze;
+        }
+
         /**
          * Eine Zeile je Parkplatz: was sein Infofenster fuellt.
          *
@@ -187,8 +216,10 @@ namespace ParkingLotTool.Tools
                         : Entity.Null;
                     anbindung = strasse != Entity.Null
                                 && EntityManager.Exists(strasse)
-                        ? "Begleiter " + companion.Index + " an Strasse"
+                        ? "Begleiter " + companion.Index + " an Strasse " + strasse.Index
+                            + (HatGehweg(strasse) ? " mit Gehweg" : " OHNE Gehweg")
                         : "Begleiter " + companion.Index + " OHNE Strasse";
+                    anbindung += ", Personal " + Personal(companion);
                 }
 
                 zeilen.Add("Lot " + lot.Index + " '" + LotName(lot) + "': "
@@ -197,6 +228,9 @@ namespace ParkingLotTool.Tools
             }
             if (zeilen.Count == 0) return;
 
+            // Feste Reihenfolge: die Abfrage liefert sie wechselnd, und jeder
+            // Wechsel schrieb dieselbe Liste noch einmal ins Log.
+            zeilen.Sort(System.StringComparer.Ordinal);
             var text = string.Join(" | ", zeilen);
             if (text == _letzterSteckbrief) return;
             _letzterSteckbrief = text;

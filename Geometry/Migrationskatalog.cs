@@ -94,6 +94,10 @@ namespace ParkingLotTool.Geometry
                 "Unverbundene Wirtschaftsbegleiter an vorhandenen Zufahrten kommen an die fertige "
                 + "Strassenkante. CS2 berechnet den Gebaeudeanschluss per Updated neu; Erfolg erst "
                 + "mit RoadEdge und ConnectedBuilding. Keine neuen Netze, kein Parkplatz-Neubau."),
+            new Schritt(15, "BegleiterAnStrasseNachpruefen",
+                "Wie Schritt 14, fuer Parkplaetze, die ihn schon als erledigt fuehren (2026-10-12): "
+                + "Neubau und Edit setzten den Stand vor der Anbindung; scheiterte sie, galt der "
+                + "Parkplatz trotzdem als aktuell. Ohne Strasse findet niemand zur Arbeit (0/4)."),
         };
 
         /** Der Stand, den ein heute gebauter Parkplatz hat. */

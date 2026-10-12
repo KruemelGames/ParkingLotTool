@@ -26,6 +26,8 @@ namespace ParkingLotTool.Tools
         }
 
         private readonly Dictionary<Entity, Anschluss> _anschluesse = new();
+        private EntityQuery _zoningAnker;
+        private bool _zoningAnkerBereit;
         internal int OffeneStrassensyncs
         {
             get { var n = 0; foreach (var a in _anschluesse.Values) if (a.Sync) n++; return n; }
@@ -50,8 +52,11 @@ namespace ParkingLotTool.Tools
         internal bool BrauchtStrassensync(Entity lot)
         {
             if (!Mod.WirtschaftAn || !Lebt(lot)) return false;
-            var begleiter = BegleiterVon(lot);
-            return !HatStrasse(begleiter) && Stadtstrassen(lot).Count > 0;
+            // Ohne Strasse IMMER Sync noetig (2026-10-12): mit "und Stadtstrassen
+            // gefunden" setzte der Sync einen unverbundenen Begleiter still auf
+            // erledigt, sobald die Suche nichts fand. Jetzt endet das als
+            // sichtbarer Fehlschlag mit der Kandidatenzahl im Log.
+            return !HatStrasse(BegleiterVon(lot));
         }
 
         internal void StrassensyncEinreihen(Entity lot)
@@ -94,7 +99,24 @@ namespace ParkingLotTool.Tools
             if (!Lebt(lot) || !EntityManager.HasComponent<ParkingLotCarrierReference>(lot)) return funde;
             var traeger = EntityManager.GetComponentData<ParkingLotCarrierReference>(lot).Carrier;
             var eigene = new HashSet<Entity>();
-            foreach (var besitzer in new[] { lot, traeger })
+            /*
+             * AUCH DIE ZONING-ANKER (2026-10-12). Ein Edit mit Netzerhalt laesst
+             * die Zoningstrassen samt Entity und Owner stehen; ihr Besitzer ist
+             * danach ein nackter Anker unter dem Lot, nicht mehr Lot oder Traeger
+             * (HintergrundBesitzanker). Ohne ihn fand diese Suche 0 Stadtstrassen,
+             * der Begleiter blieb ohne Anbindung - Nutzer: 0/4 Personal.
+             */
+            var besitzerliste = new List<Entity> { lot, traeger };
+            if (!_zoningAnkerBereit)
+            {
+                _zoningAnker = EntityManager.CreateEntityQuery(
+                    ComponentType.ReadOnly<ParkingLotZoninganker>(), ComponentType.ReadOnly<Owner>());
+                _zoningAnkerBereit = true;
+            }
+            using (var anker = _zoningAnker.ToEntityArray(Unity.Collections.Allocator.Temp))
+                for (var i = 0; i < anker.Length; i++)
+                    if (ParkingLotBesitz.GehoertZu(EntityManager, anker[i], lot)) besitzerliste.Add(anker[i]);
+            foreach (var besitzer in besitzerliste)
             {
                 if (!Lebt(besitzer) || !EntityManager.HasBuffer<Game.Net.SubNet>(besitzer)) continue;
                 var netze = EntityManager.GetBuffer<Game.Net.SubNet>(besitzer, true);
@@ -121,6 +143,7 @@ namespace ParkingLotTool.Tools
                         {
                             var o = EntityManager.GetComponentData<Owner>(fremd).m_Owner;
                             if (Lebt(o) && (EntityManager.HasComponent<ParkingLotCarrierReference>(o)
+                                || EntityManager.HasComponent<ParkingLotZoninganker>(o)
                                 || EntityManager.HasComponent<ParkingLotPartRelation>(fremd))) continue;
                         }
                         if (gesehen.Add(fremd))
@@ -202,7 +225,11 @@ namespace ParkingLotTool.Tools
                 if (HatStrasse(begleiter))
                 { AnschlussBeendet(lot, true, "CS2 bestaetigt RoadEdge und ConnectedBuilding"); continue; }
                 if (bild - a.Seit >= 600)
-                { AnschlussBeendet(lot, false, "nach 600 Bildern keine bestaetigte Strassenanbindung"); continue; }
+                {
+                    AnschlussBeendet(lot, false, "nach 600 Bildern keine bestaetigte Strassenanbindung");
+                    if (!a.Sync) BrauchtWiederSync(lot);
+                    continue;
+                }
                 // Kein Updated fuer das alte, unvollstaendige Building-Skelett.
                 if (!Lebt(begleiter) || !EntityManager.HasComponent<Game.Objects.Object>(begleiter)
                     || !EntityManager.HasComponent<Game.Objects.Transform>(begleiter)
@@ -221,11 +248,36 @@ namespace ParkingLotTool.Tools
             }
         }
 
+        /*
+         * EIN NEUBAU OHNE STRASSE IST NICHT AKTUELL (2026-10-12).
+         *
+         * Neubau und Edit setzen den Datenstand schon beim Bauen auf aktuell
+         * (sonst fragte der Sync direkt danach). Scheiterte danach die
+         * Anbindung des Begleiters, galt der Parkplatz trotzdem als fertig:
+         * kein Sync-Schritt pruefte ihn je wieder, niemand fand zur Arbeit
+         * (Nutzer: 0/4 bei 37,5 % Arbeitslosigkeit). Jetzt faellt der Stand
+         * vor den Nachpruefschritt zurueck, und "Synchronisieren" holt es nach.
+         */
+        private void BrauchtWiederSync(Entity lot)
+        {
+            if (!Lebt(lot) || !EntityManager.HasComponent<ParkingLotDatenstand>(lot)) return;
+            var schritt = 0;
+            foreach (var s in Migrationskatalog.Schritte)
+                if (s.Name == "BegleiterAnStrasseNachpruefen") schritt = s.Nummer;
+            if (schritt == 0) return;
+            var stand = EntityManager.GetComponentData<ParkingLotDatenstand>(lot).Stand;
+            if (stand < schritt) return;
+            EntityManager.SetComponentData(lot, new ParkingLotDatenstand { Stand = schritt - 1 });
+            Mod.log.Info($"PLT-Begleiteranschluss: Lot {lot.Index} ohne Strasse - Datenstand {stand} -> {schritt - 1}, braucht Sync.");
+            World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().NeuAufnehmen();
+        }
+
         private void AnschlussBeendet(Entity lot, bool ok, string grund)
         {
             var a = _anschluesse[lot];
             _anschluesse.Remove(lot);
-            Mod.log.Info($"PLT-Begleiteranschluss: Lot {lot.Index}, Erfolg={ok}: {grund}.");
+            Mod.log.Info($"PLT-Begleiteranschluss: Lot {lot.Index}, Erfolg={ok}: {grund}"
+                + (ok ? "." : $"; Stadtstrassen-Kandidaten {(Lebt(lot) ? Stadtstrassen(lot).Count : 0)}, Platzierungen {a.Versuche}."));
             if (a.Sync) World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(lot, lot, ok);
         }
     }
