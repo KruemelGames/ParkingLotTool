@@ -2035,6 +2035,18 @@ namespace ParkingLotTool.Tools
             // hinweg weiterlaufen - sonst wendet er im naechsten Frame ein
             // Layout an, das es nicht mehr gibt.
             CancelBuildStage();
+            /*
+             * DIE LAUFENDE VORSCHAU-RECHNUNG GEHOERT ZUR VERWORFENEN AUSWAHL
+             * (Sync-Haenger, 2026-10-12). Abgeholt wird sie nur bei offenem
+             * Werkzeug (PollCompletedBuild). Blieb sie hier stehen, war
+             * `ArbeitetGerade` nach dem Schliessen fuer immer wahr - der
+             * Flaechensync wartete darauf, und der wartende Sync sperrte das
+             * Oeffnen des Panels, das sie haette abholen koennen. Ausloeser:
+             * "Synchronize all" in der Liste, waehrend eine Vorschau rechnete.
+             * Die Rechnung laeuft im Hintergrund zu Ende; ihr Ergebnis gilt
+             * ohnehin nicht mehr (_geometryRevision steigt unten).
+             */
+            _buildTask = null;
             _points.Clear();
             _worldPoints.Clear();
             _pointAxes.Clear();

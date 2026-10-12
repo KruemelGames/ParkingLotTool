@@ -140,18 +140,38 @@ namespace ParkingLotTool.Tools
             if (_lauf != null)
             {
                 if (bild - _lauf.Seit < Pruefabstand) return;
-                Pruefe(bild);
+                try { Pruefe(bild); }
+                catch (System.Exception x) { BeendeNachAusnahme("Pruefung", x); }
                 return;
             }
             if (_warteschlange.Count == 0) return;
             // Ein laufender Entwurf des Werkzeugs ersetzt die Flaechen
             // ohnehin; nicht mitten hinein tauschen.
-            if (World.GetOrCreateSystemManaged<ParkingLotToolSystem>().ArbeitetGerade) return;
+            // Nur ein OFFENES Werkzeug hat einen Entwurf, den ein Tausch verwerfen
+            // wuerde - dieselbe Regel wie bei Fahrweg- und Bestandstausch. Ohne
+            // die Werkzeugpruefung reichte ein liegengebliebener Zustand des
+            // geschlossenen Werkzeugs, um diesen Schritt fuer immer anzuhalten.
+            var plt = World.GetOrCreateSystemManaged<ParkingLotToolSystem>();
+            if (World.GetOrCreateSystemManaged<Game.Tools.ToolSystem>().activeTool == plt
+                && plt.ArbeitetGerade) return;
             if (World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().WerkzeugLaeuft
                 || World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().WerkzeugLaeuft) return;
             var lot = _warteschlange[0];
             _warteschlange.RemoveAt(0);
-            Starte(lot, bild);
+            try { Starte(lot, bild); }
+            catch (System.Exception x) { BeendeNachAusnahme("Start", x); }
+        }
+
+        /*
+         * JEDE AUSNAHME BEENDET DEN LAUF (Sync-Haenger, 2026-10-12).
+         * Warf Starte oder Pruefe, blieb `_lauf` stehen: der Schritt meldete
+         * sich nie fertig und der Sync wartete fuer immer. Hat Beende schon
+         * gemeldet (`_lauf` ist dann null), wird nicht ein zweites Mal gemeldet.
+         */
+        private void BeendeNachAusnahme(string wo, System.Exception x)
+        {
+            Mod.log.Warn($"PLT-Flaechensync: Ausnahme beim {wo}: {x}");
+            if (_lauf != null) Beende(false, wo + " fehlgeschlagen: " + x.Message);
         }
 
         private void Starte(Entity lot, int bild)

@@ -146,8 +146,21 @@ namespace ParkingLotTool.Tools
                 if (_warteschlange.Count == 0 || UnityEngine.Time.frameCount < _ruheBis) return;
                 var (lot, art) = _warteschlange[0];
                 _warteschlange.RemoveAt(0);
-                var fehler = Bereite(lot, art, out _laeuft);
-                if (fehler != null) { _laeuft = null; Fertig(lot, false, fehler); }
+                /*
+                 * ERST UEBERNEHMEN, WENN DIE RECHNUNG LAEUFT (Sync-Haenger, 2026-10-12).
+                 * `out _laeuft` schrieb direkt ins Feld: warf `Bereite` nach dem
+                 * Anlegen, aber vor `Task.Run`, blieb `_laeuft` mit Rechnung
+                 * null stehen, jedes weitere Bild warf, und der Auftrag endete
+                 * nie - der Sync blieb gesperrt. Jetzt endet jeder Fehler hier
+                 * mit genau einem Fertig(false).
+                 */
+                Vorbereitung neu = null;
+                string fehler;
+                try { fehler = Bereite(lot, art, out neu); }
+                catch (Exception x) { fehler = "Vorbereitung fehlgeschlagen: " + x.Message; }
+                if (fehler == null && neu?.Rechnung == null) fehler = "Vorbereitung ohne Rechnung";
+                if (fehler != null) { Fertig(lot, false, fehler); return; }
+                _laeuft = neu;
                 return;
             }
             if (!_laeuft.Rechnung.IsCompleted) return;
@@ -166,19 +179,42 @@ namespace ParkingLotTool.Tools
             if (World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().WerkzeugLaeuft) return;
             if (World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Laeuft) return;
             _laeuft = null;
-            var auftrag = v.Art == Tauschart.Pflanzen ? PflanzenAuftrag(v, e) : LaternenAuftrag(v, e);
-            Mod.log.Info($"PLT-Bestandstausch: Lot {v.Lot.Index} ({v.Art}): {e.Messung}; loeschen {auftrag.Loeschen.Count}.");
+            /*
+             * UEBERGABE MIT GENAU EINEM ABSCHLUSS (Sync-Haenger, 2026-10-12).
+             * Warf Auftragsbau oder Werkzeugwechsel, meldete sich der Auftrag
+             * nie fertig. Und `try { Fertig(.., Nachsetzen()) }` fing auch eine
+             * Ausnahme AUS Fertig - dann kam nach dem Erfolg noch ein Fehlschlag.
+             */
+            ParkingLotBestandsTauschWerkzeug.Auftrag auftrag;
+            try
+            {
+                auftrag = v.Art == Tauschart.Pflanzen ? PflanzenAuftrag(v, e) : LaternenAuftrag(v, e);
+                Mod.log.Info($"PLT-Bestandstausch: Lot {v.Lot.Index} ({v.Art}): {e.Messung}; loeschen {auftrag.Loeschen.Count}.");
+            }
+            catch (Exception x) { Fertig(v.Lot, false, "Auftrag fehlgeschlagen: " + x.Message); return; }
             if (auftrag.Loeschen.Count == 0 && auftrag.NichtsAnzulegen)
             {
                 // Nichts in der Welt zu tun - nur der Zettel.
-                try { Fertig(v.Lot, true, auftrag.Nachsetzen()); }
-                catch (Exception x) { Fertig(v.Lot, false, x.Message); }
+                string bericht;
+                try { bericht = auftrag.Nachsetzen(); }
+                catch (Exception x) { Fertig(v.Lot, false, x.Message); return; }
+                Fertig(v.Lot, true, bericht);
                 return;
             }
-            if (_toolSystem.activeTool != _werkzeug) _vorher = _toolSystem.activeTool;
-            _imWerkzeug = (v.Lot, v.Art);
-            _werkzeug.Starte(auftrag);
-            _toolSystem.activeTool = _werkzeug;
+            try
+            {
+                if (_toolSystem.activeTool != _werkzeug) _vorher = _toolSystem.activeTool;
+                _imWerkzeug = (v.Lot, v.Art);
+                _werkzeug.Starte(auftrag);
+                _toolSystem.activeTool = _werkzeug;
+            }
+            catch (Exception x)
+            {
+                Mod.log.Warn("PLT-Bestandstausch: Uebergabe ans Werkzeug fehlgeschlagen: " + x);
+                // Laeuft das Werkzeug schon, meldet es selbst; sonst hier.
+                if (!_werkzeug.BrichAb("Uebergabe fehlgeschlagen: " + x.Message))
+                    Fertig(v.Lot, false, "Uebergabe fehlgeschlagen: " + x.Message);
+            }
         }
 
         /*
@@ -476,6 +512,12 @@ namespace ParkingLotTool.Tools
         internal void PflegeOhneWerkzeug()
         {
             if (_stufe == Stufe.Frei || m_ToolSystem.activeTool == this) return;
+            try { PflegeOhneWerkzeugKern(); }
+            catch (Exception x) { BrichAbNachAusnahme(x); }
+        }
+
+        private void PflegeOhneWerkzeugKern()
+        {
             var bild = UnityEngine.Time.frameCount;
             if (_stufe == Stufe.Pruefen || _stufe == Stufe.Nachsetzen) { NachDemApply(bild); return; }
             // Ein frisch gesetztes Werkzeug wird erst im naechsten Bild aktiv.
@@ -516,20 +558,49 @@ namespace ParkingLotTool.Tools
             }
         }
 
+        /** Bricht einen laufenden Tausch mit Fehlschlag ab; false, wenn keiner lief. */
+        internal bool BrichAb(string text)
+        {
+            if (_stufe == Stufe.Frei) return false;
+            Beende(false, text);
+            return true;
+        }
+
+        /*
+         * JEDE AUSNAHME BEENDET DEN TAUSCH (Sync-Haenger, 2026-10-12).
+         * Sonst blieb die Stufe stehen, jedes Bild warf erneut, und
+         * `Beschaeftigt` sperrte den Sync fuer immer. Vor dem Apply werden
+         * unsere Temps mit verworfen; danach gibt es keine mehr.
+         */
+        private void BrichAbNachAusnahme(Exception x)
+        {
+            Mod.log.Warn("PLT-Bestandstausch: Ausnahme in Stufe " + _stufe + ": " + x);
+            if (_stufe == Stufe.Anlegen || _stufe == Stufe.Warten || _stufe == Stufe.Uebernehmen)
+                applyMode = ApplyMode.Clear;
+            BrichAb("Ausnahme: " + x.Message);
+        }
+
         [Preserve]
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             applyMode = ApplyMode.None;
+            try { Schritt(); }
+            catch (Exception x) { BrichAbNachAusnahme(x); }
+            return inputDeps;
+        }
+
+        private void Schritt()
+        {
             var bild = UnityEngine.Time.frameCount;
             // Nur noch der Fall "im selben Bild umgeschaltet"; den Wechsel
             // davor faengt PflegeOhneWerkzeug ab.
-            if (m_ToolSystem.activeTool != this) return inputDeps;
+            if (m_ToolSystem.activeTool != this) return;
             if (_stufe != Stufe.Frei && !ParkingLotSyncGueltigkeit.Bestand(EntityManager, _a.Lot, _a.Traeger))
             {
                 if (_stufe == Stufe.Anlegen || _stufe == Stufe.Warten || _stufe == Stufe.Uebernehmen)
                     applyMode = ApplyMode.Clear;
                 Beende(false, "Bestand verschwunden; keine Uebernahme");
-                return inputDeps;
+                return;
             }
             if (_stufe != Stufe.Frei) _lief = true;
             switch (_stufe)
@@ -578,7 +649,6 @@ namespace ParkingLotTool.Tools
                     NachDemApply(bild);
                     break;
             }
-            return inputDeps;
         }
 
 /*
@@ -700,13 +770,19 @@ namespace ParkingLotTool.Tools
 
         private void Beende(bool ok, string text)
         {
-            foreach (var d in _definitionen)
-                if (EntityManager.Exists(d)) EntityManager.DestroyEntity(d);
-            _definitionen.Clear();
+            // Erst freigeben, dann raeumen (Sync-Haenger, 2026-10-12): warf das
+            // Raeumen, blieb `Beschaeftigt` wahr und die Meldung kam nie.
             var lot = _a?.Lot ?? Entity.Null;
             var name = _a?.Name ?? "Bestandstausch";
             _stufe = Stufe.Frei;
             _a = null;
+            // Je Definition einzeln: ein Fehler laesst die uebrigen nicht liegen.
+            foreach (var d in _definitionen)
+            {
+                try { if (EntityManager.Exists(d)) EntityManager.DestroyEntity(d); }
+                catch (Exception x) { Mod.log.Warn("PLT-Bestandstausch: Raeumen einer Definition fehlgeschlagen: " + x); }
+            }
+            _definitionen.Clear();
             ParkingLotSchrittmarke.Aenderung(name + ": Lot " + lot.Index + (ok ? " fertig" : " abgebrochen"));
             Fertig?.Invoke(lot, ok, text);
         }
