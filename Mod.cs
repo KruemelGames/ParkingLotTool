@@ -228,6 +228,8 @@ namespace ParkingLotTool
              */
 
             updateSystem.UpdateAt<ParkingLotUISystem>(SystemUpdatePhase.UIUpdate);
+            // Diagnose fuer Issue #15 (Post), nur auf Knopfdruck im dev-Debug-Reiter.
+            updateSystem.UpdateAt<ParkingLotPostsondeSystem>(SystemUpdatePhase.UIUpdate);
             // Lebenszeichen fuer Absturzberichte, auch im Hauptmenue.
             updateSystem.UpdateAt<ParkingLotHerzschlagSystem>(SystemUpdatePhase.MainLoop);
             // Einmal nach dem Laden: Masse und Lichtbedingungen der Laternen.

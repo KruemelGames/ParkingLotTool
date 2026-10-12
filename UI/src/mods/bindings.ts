@@ -407,6 +407,9 @@ export const teilflaechenzahl$ = bindValue<number>(MOD, "Teilflaechenzahl", 0);
 export const liveLog$ = bindValue<boolean>(MOD, "LiveLog", false);
 export const liveLogPfad$ = bindValue<string>(MOD, "LiveLogPfad", "");
 export const liveLogUmschalten = () => trigger(MOD, "LiveLogUmschalten");
+export const postsonde$ = bindValue<boolean>(MOD, "Postsonde", false);
+export const postsondePfad$ = bindValue<string>(MOD, "PostsondePfad", "");
+export const postsondeUmschalten = () => trigger(MOD, "PostsondeUmschalten");
 export const ueberlappungsstand$ = bindValue<string>(
   MOD, "Ueberlappungsstand", "");
 export const ueberlappungMessen = () => trigger(MOD, "UeberlappungMessen");

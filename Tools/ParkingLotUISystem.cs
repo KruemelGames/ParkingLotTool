@@ -667,6 +667,13 @@ namespace ParkingLotTool.Tools
             }));
             AddBinding(_liveLogPfad =
                 new ValueBinding<string>(Group, "LiveLogPfad", string.Empty));
+            // Post-Sonde: Getter, weil sie sich nach 3 h / 3 MB selbst abschaltet.
+            AddUpdateBinding(new Colossal.UI.Binding.GetterValueBinding<bool>(Group, "Postsonde",
+                () => ParkingLotPostsondeSystem.Aktiv));
+            AddUpdateBinding(new Colossal.UI.Binding.GetterValueBinding<string>(Group, "PostsondePfad",
+                () => ParkingLotPostsondeSystem.Aktiv ? ParkingLotPostsondeSystem.Pfad : string.Empty));
+            AddBinding(new TriggerBinding(Group, "PostsondeUmschalten",
+                () => ParkingLotPostsondeSystem.Schalte(!ParkingLotPostsondeSystem.Aktiv)));
             AddBinding(_ueberlappungsstand = new ValueBinding<string>(
                 Group, "Ueberlappungsstand", string.Empty));
             AddBinding(new TriggerBinding(Group, "UeberlappungMessen", () =>

@@ -5,6 +5,7 @@ import {
   probeState$, probeResults$, probeRunning$, startProbe, cancelProbe, dissectPrefabs,
   toggleCarrierTest, carrierTestRunning$, carrierTestState$, icon,
   liveLog$, liveLogPfad$, liveLogUmschalten,
+  postsonde$, postsondePfad$, postsondeUmschalten,
   ueberlappungsstand$, ueberlappungMessen, prefabsVergleichen,
   buildZoningProbe, measureZoningProbe, cleanupZoningProbe,
 } from "./bindings";
@@ -37,6 +38,8 @@ export const DebugTab = () => {
   const traegerstand = useValue(carrierTestState$);
   const liveAn = useValue(liveLog$);
   const livePfad = useValue(liveLogPfad$);
+  const postAn = useValue(postsonde$);
+  const postPfad = useValue(postsondePfad$);
   const ueberlappungsstand = useValue(ueberlappungsstand$);
   const [zoningRoad, setZoningRoad] = useState("Alley");
   // Der unsichtbare Klon wird als Namenszusatz durchgereicht, damit
@@ -68,6 +71,7 @@ export const DebugTab = () => {
     ["debugUeberlappung", t.kurzDebugUeberlappung],
     ["debugPrefabvergleich", t.kurzDebugPrefabvergleich],
     ["debugLiveLog", t.kurzDebugLiveLog],
+    ["debugPostsonde", t.kurzDebugPostsonde],
   ];
   const [werkzeug, setWerkzeug] = useState("debugLiveLog");
   const abschnitt = (name: string) => ({ versteckt: werkzeug !== name });
@@ -287,6 +291,24 @@ export const DebugTab = () => {
         </button>
         {livePfad !== "" ? (
           <div className={styles.pathBox}>{livePfad}</div>
+        ) : null}
+      </Spalte>
+
+      {/* Post-Sonde (Issue #15): misst nur, schreibt eine kleine eigene Datei. */}
+      <Spalte
+        title={t.debugPostsonde}
+        {...abschnitt("debugPostsonde")}
+        ton="Melden"
+        breit
+        bereichTooltip={t.tooltipDebugPostsonde}
+      >
+        <div className={styles.explain}>{t.debugPostsondeHinweis}</div>
+        <button className={styles.meldeKnopf} onClick={postsondeUmschalten}>
+          <img src={icon(postAn ? "Checkmark" : "Dot")} />
+          <span>{postAn ? t.debugPostsondeAus : t.debugPostsondeAn}</span>
+        </button>
+        {postPfad !== "" ? (
+          <div className={styles.pathBox}>{postPfad}</div>
         ) : null}
       </Spalte>
 

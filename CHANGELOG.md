@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.0.10 — October 12, 2026
 
+- Addition: Brazilian Portuguese (thanks CrNet0), Spanish and French, automatic or chosen in the mod settings.
 - Addition: parking lots show in the "Roads" info view, colored like the base-game lots and with the parking icon, and count towards its parking capacity and availability (thanks TheEsotericEric).
+- Addition: "Post probe" in the Dev-Debug tab, to help track down a reported post office problem.
 - Fix: possible crash when bulldozing a large parking lot while the bulldozer was still active.
+- Fix: updating parking lots could stay stuck for good, for example after "Synchronize all" while a preview was still being calculated, or when replacing plants or lamps ran into an error.
 
 ## 1.0.9 — October 11, 2026
 
