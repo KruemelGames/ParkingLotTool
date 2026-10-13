@@ -511,6 +511,13 @@ export const syncOffen$ = bindValue<number>(MOD, "SyncOffen", 0);
 /** Synchronisieren + Reparieren + Bauplan: was in der Parkplatzliste zu tun ist. */
 export const arbeitOffen$ = bindValue<number>(MOD, "ArbeitOffen", 0);
 export const syncLaeuft$ = bindValue<string>(MOD, "SyncLaeuft", "");
+/** "" = laeuft normal; sonst haengt der Sync ("stopped" / "stalled") - Klick meldet es. */
+export const syncHaengt$ = bindValue<string>(MOD, "SyncHaengt", "");
+export const syncMelden = () => trigger(MOD, "SyncMelden");
+export const syncHaengtSchliessen = () => trigger(MOD, "SyncHaengtSchliessen");
+/** Dev-Debug: Haenger-Hinweis zum Testen einblenden. */
+export const syncHaengerTest$ = bindValue<boolean>(MOD, "SyncHaengerTest", false);
+export const syncHaengerTestUmschalten = () => trigger(MOD, "SyncHaengerTestUmschalten");
 /** Zaehlt hoch, wenn waehrend Sync/Reparatur jemand das Werkzeug oeffnen wollte. */
 export const syncPuls$ = bindValue<number>(MOD, "SyncPuls", 0);
 export const syncAuto$ = bindValue<boolean>(MOD, "SyncAuto", false);

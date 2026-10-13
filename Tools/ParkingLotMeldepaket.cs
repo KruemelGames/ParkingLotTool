@@ -104,10 +104,11 @@ namespace ParkingLotTool.Tools
          * sind dort das Wichtigste. Deshalb darf dieser Anlass auch dann ein
          * Paket abliefern, wenn kein einziger Abzug herumliegt.
          */
-        internal enum Anlass { Bau, Vorschau, Absturz, Leistung }
+        internal enum Anlass { Bau, Vorschau, Absturz, Leistung, Sync }
 
         internal static string Schnuere(Anlass anlass, out string grund,
-            IReadOnlyList<string> frischeAbzuege = null)
+            IReadOnlyList<string> frischeAbzuege = null,
+            string zusatzName = null, string zusatzText = null)
         {
             var nurVorschau = anlass == Anlass.Vorschau;
             grund = null;
@@ -138,7 +139,8 @@ namespace ParkingLotTool.Tools
                     foreach (var pfad in frischeAbzuege)
                         if (File.Exists(pfad)) teile.Add(new FileInfo(pfad));
                 }
-                else if (anlass != Anlass.Leistung)
+                // Der Sync-Bericht beschreibt den Sync, keinen einzelnen Bau.
+                else if (anlass != Anlass.Leistung && anlass != Anlass.Sync)
                 {
                     if (!nurVorschau) Juengste(ordner, "debug", teile);
                     Juengste(ordner, "prebuild", teile);
@@ -146,7 +148,7 @@ namespace ParkingLotTool.Tools
                 }
 
                 if (teile.Count == 0 && anlass != Anlass.Absturz
-                    && anlass != Anlass.Leistung)
+                    && anlass != Anlass.Leistung && anlass != Anlass.Sync)
                 {
                     grund = nurVorschau
                         ? ParkingLotTexte.T("meldepaket.thereIsNoPreviewToReport")
@@ -189,7 +191,8 @@ namespace ParkingLotTool.Tools
                  */
                 var sparte = anlass == Anlass.Absturz ? "Crash"
                     : anlass == Anlass.Leistung ? "Performance"
-                    : anlass == Anlass.Vorschau ? "Preview" : "Build";
+                    : anlass == Anlass.Vorschau ? "Preview"
+                    : anlass == Anlass.Sync ? "Sync" : "Build";
                 var unterordner = Path.Combine(
                     Path.Combine(ordner, Wurzelname), sparte);
                 Directory.CreateDirectory(unterordner);
@@ -206,6 +209,8 @@ namespace ParkingLotTool.Tools
                         Lege(archiv, datei.FullName, datei.Name);
 
                     LegeText(archiv, "environment.txt", Umgebung());
+                    if (zusatzName != null && zusatzText != null)
+                        LegeText(archiv, zusatzName, zusatzText);
 
                     /*
                      * Die gesammelten Messzeilen. Sie stehen zwar auch im
@@ -228,8 +233,15 @@ namespace ParkingLotTool.Tools
                             "steps.log");
 
                     var log = Path.Combine(ordner, "ParkingLotTool.Mod.log");
+                    /*
+                     * BEIM SYNC NUR DIE ZEILEN, DIE ZUM SYNC GEHOEREN
+                     * (Nutzer: Berichte klein halten). Das ganze Logende war
+                     * in Issue #16 3,4 MB; gebraucht wurden davon die Zeilen
+                     * von Sync, Hintergrund und Laden sowie jede Warnung.
+                     */
                     if (File.Exists(log))
-                        LegeText(archiv, "modlog-tail.txt", Logende(log));
+                        LegeText(archiv, anlass == Anlass.Sync ? "modlog-sync.txt" : "modlog-tail.txt",
+                            anlass == Anlass.Sync ? Syncauszug(log) : Logende(log));
 
                     /*
                      * BEIM ABSTURZ KOMMEN DIE LOGS DES VORIGEN LAUFS DAZU.
@@ -497,6 +509,41 @@ namespace ParkingLotTool.Tools
          * ohne das schlaegt das Oeffnen fehl, und zwar genau dann, wenn man
          * die Datei braucht.
          */
+        /** Diese Zeilen gehoeren in den Sync-Bericht. */
+        private static readonly string[] Syncmarken =
+        {
+            "PLT-Sync", "PLT-Hintergrund", "PLT-Prefabverweise", "PLT-Laden", "PLT-Fahrweg",
+            "PLT-Bestand", "PLT-Flaechensync", "PLT-Begleiter", "PLT-Waisen", "[WARN]", "[ERROR]", "Exception",
+        };
+        private const int SyncauszugZeilen = 800;
+
+        /** Die letzten Sync-Zeilen des Modlogs, als Ring wie in `Logende`. */
+        private static string Syncauszug(string pfad)
+        {
+            using var strom = new FileStream(pfad, FileMode.Open,
+                FileAccess.Read, FileShare.ReadWrite);
+            using var leser = new StreamReader(strom);
+            var ring = new string[SyncauszugZeilen];
+            int schreib = 0, anzahl = 0;
+            string zeile;
+            while ((zeile = leser.ReadLine()) != null)
+            {
+                var passt = false;
+                foreach (var marke in Syncmarken)
+                    if (zeile.IndexOf(marke, StringComparison.Ordinal) >= 0) { passt = true; break; }
+                if (!passt) continue;
+                ring[schreib] = zeile;
+                schreib = (schreib + 1) % ring.Length;
+                if (anzahl < ring.Length) anzahl++;
+            }
+            var text = new StringBuilder();
+            text.AppendLine("Sync-related lines of ParkingLotTool.Mod.log (last " + anzahl + ").");
+            text.AppendLine(new string('-', 70));
+            for (var i = 0; i < anzahl; i++)
+                text.AppendLine(ring[(schreib - anzahl + i + ring.Length) % ring.Length]);
+            return text.ToString();
+        }
+
         private static string Logende(string pfad)
         {
             using var strom = new FileStream(pfad, FileMode.Open,

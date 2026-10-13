@@ -3063,6 +3063,45 @@ $eck-reiter: 9rem;
  * Farbiger Rand: der Nutzer hat die erste Fassung "nicht offensichtlich
  * genug" genannt.
  */
+/* Der Sync haengt: rot umrandet und klickbar - der Klick meldet es,
+   X oder Rechtsklick schliesst. */
+.syncHaengt {
+  border: 2rem solid $melden;
+  pointer-events: auto;
+  padding-right: $s6 + 24rem;
+}
+.syncHaengtFlaeche {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0);
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+
+  &:hover { background-color: rgba(242, 114, 92, 0.14); }
+}
+.syncHaengtZu {
+  position: absolute;
+  top: 6rem;
+  right: 6rem;
+  width: 24rem;
+  height: 24rem;
+  padding: 3rem;
+  background-color: rgba(0, 0, 0, 0);
+  border: none;
+  border-radius: $eck-panel;
+  cursor: pointer;
+  pointer-events: auto;
+
+  img { width: 100%; height: 100%; }
+  &:hover { background-color: rgba(255, 255, 255, 0.12); }
+}
+
 .syncFertig {
   border: 2rem solid $fahrwege;
   pointer-events: auto;

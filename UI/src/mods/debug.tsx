@@ -1,7 +1,7 @@
 import { useValue } from "cs2/api";
 import { useState } from "react";
 import styles from "./panel.module.scss";
-import {
+import { syncHaengerTest$, syncHaengerTestUmschalten,
   probeState$, probeResults$, probeRunning$, startProbe, cancelProbe, dissectPrefabs,
   toggleCarrierTest, carrierTestRunning$, carrierTestState$, icon,
   liveLog$, liveLogPfad$, liveLogUmschalten,
@@ -39,6 +39,7 @@ export const DebugTab = () => {
   const liveAn = useValue(liveLog$);
   const livePfad = useValue(liveLogPfad$);
   const postAn = useValue(postsonde$);
+  const haengerTest = useValue(syncHaengerTest$);
   const postPfad = useValue(postsondePfad$);
   const ueberlappungsstand = useValue(ueberlappungsstand$);
   const [zoningRoad, setZoningRoad] = useState("Alley");
@@ -292,6 +293,11 @@ export const DebugTab = () => {
         {livePfad !== "" ? (
           <div className={styles.pathBox}>{livePfad}</div>
         ) : null}
+        {/* Zeigt den Hinweis "Sync haengt" zum Testen des Sync-Berichts. */}
+        <button className={styles.meldeKnopf} onClick={syncHaengerTestUmschalten}>
+          <img src={icon(haengerTest ? "Checkmark" : "Dot")} />
+          <span>{haengerTest ? t.debugSyncHaengerTestAus : t.debugSyncHaengerTest}</span>
+        </button>
       </Spalte>
 
       {/* Post-Sonde (Issue #15): misst nur, schreibt eine kleine eigene Datei. */}

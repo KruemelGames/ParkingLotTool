@@ -6,6 +6,8 @@
 - Fix: after splitting or moving points, picking a new line for a sub-area could have no effect.
 - Fix: "Updating parking lots" could stay forever after loading a save made while lots were being updated (thanks PlatinMartin).
 - Change: "How it works" shows the episodes in their new order, episode 2 is now "Advanced Building and Mod Settings"; shorter tooltip for "Reset window position".
+- Addition: when updating parking lots gets stuck, its message says so; one click writes a small sync report, opens its folder and a prefilled GitHub problem report.
+
 ## 1.0.10 — October 12, 2026
 
 - Addition: Brazilian Portuguese (thanks CrNet0), Spanish and French, automatic or chosen in the mod settings.

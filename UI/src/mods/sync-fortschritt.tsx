@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useValue } from "cs2/api";
 import {
-  syncErgebnis$, syncErgebnisSchliessen, syncLaeuft$, syncPuls$, oeffneListe,
+  syncErgebnis$, syncErgebnisSchliessen, syncHaengt$, syncHaengtSchliessen, syncLaeuft$, syncMelden,
+  syncPuls$, oeffneListe, icon,
 } from "./bindings";
 import { TooltipKnopf } from "./controls";
 import { useTexte } from "./texte";
@@ -50,9 +51,42 @@ const usePuls = () => {
  */
 export const SyncFortschritt = () => {
   const lauf = useValue(syncLaeuft$);
+  const haengt = useValue(syncHaengt$);
   const ergebnis = useValue(syncErgebnis$);
   const pulsiert = usePuls();
   const t = useTexte();
+
+  /*
+   * HAENGT ER, WIRD DIE MELDUNG ZUM KNOPF (Nutzer 2026-10-13, Issue #16):
+   * "klick auf mich und reporten auf github". Kein stiller Ausweg - der
+   * Spieler soll es melden, und der Klick legt ihm den Bericht hin.
+   */
+  if (haengt) {
+    const felder = lauf ? lauf.split("\t") : [];
+    const erledigt = Number(felder[0]);
+    const gesamt = Number(felder[1]);
+    const mitBalken = felder.length === 3 && Number.isInteger(erledigt)
+      && Number.isInteger(gesamt) && gesamt > 0;
+    const anteil = mitBalken ? Math.min(1, Math.max(0, erledigt / gesamt)) : 0;
+    // Zu per X oder Rechtsklick (Nutzer 2026-10-13); Linksklick meldet.
+    return <div className={`${styles.syncFortschritt} ${styles.syncHaengt}`} role="alert"
+      onMouseDown={(e: any) => { if (e.button === 2) { e.stopPropagation(); syncHaengtSchliessen(); } }}>
+      <TooltipKnopf text={t.syncHaengtTooltip} className={styles.syncHaengtFlaeche}
+        onClick={() => syncMelden()}>
+        <div className={styles.syncMod}>{t.modnameDoppelpunkt}</div>
+        <div className={styles.syncTitel}>{t.syncHaengt}</div>
+        <div className={styles.syncTitel}>{t.syncHaengtMelden}</div>
+        {mitBalken && <div className={styles.syncBalken}>
+          <div className={styles.syncBalkenFuellung}
+            style={{ width: `${Math.round(anteil * 100)}%` }} />
+        </div>}
+      </TooltipKnopf>
+      <TooltipKnopf text={t.syncHaengtSchliessen} className={styles.syncHaengtZu}
+        onClick={() => syncHaengtSchliessen()}>
+        <img src={icon("XClose")} />
+      </TooltipKnopf>
+    </div>;
+  }
 
   // Auch beim Sync von Hand: der Neubau laeuft im Hintergrund und dauert
   // (Nutzer 2026-10-03: "Sync all" ohne jede Rueckmeldung).

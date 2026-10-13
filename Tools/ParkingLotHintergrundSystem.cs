@@ -72,6 +72,57 @@ namespace ParkingLotTool.Tools
             }
         }
         private static string RueckwegHinweis => ParkingLotTexte.T("hintergrundSystem.restorationStoppedTheParkingLotRemains");
+
+        /** Angehaltene Rueckwege: gesperrt, bis ein Spieler es meldet (Sync-Bericht). */
+        internal int Angehalten => _angehalten.Count;
+
+        /**
+         * Aendert sich, sobald irgendein Auftrag weiterkommt - fuer die
+         * Stillstandserkennung im Sync. Phase, Portionen und Messfenster
+         * zaehlen alle als Fortschritt.
+         */
+        internal string Fortschrittsmarke
+            => _aktiv == null
+                ? "q" + _queue.Count + "|h" + _angehalten.Count
+                : _aktiv.Id + "|" + _aktiv.Phase + "|" + _aktiv.RueckwegIndex + "|"
+                  + _aktiv.Rueckwegpruefungen + "|" + _aktiv.Kinderpruefungen + "|"
+                  + _aktiv.Versuch + "|q" + _queue.Count + "|h" + _angehalten.Count;
+
+        /** Klartext fuer den Sync-Bericht: jeder Auftrag, seine Phase, seine Sicherung. */
+        internal string Zustandsbericht()
+        {
+            var text = new System.Text.StringBuilder();
+            void Zeile(string art, Auftrag a)
+                => text.AppendLine("  " + art + " job " + a.Id + ": lot " + a.Lot.Index
+                    + ", phase " + a.Phase + ", attempt " + a.Versuch + "/3"
+                    + ", rollback only " + a.NurRueckweg
+                    + ", frames since start " + (UnityEngine.Time.frameCount - a.Seit)
+                    + ", rollback checks " + a.Rueckwegpruefungen
+                    + Sicherung(a.Lot));
+            text.AppendLine("Background jobs: active " + (_aktiv != null ? 1 : 0)
+                + ", queued " + _queue.Count + ", stopped " + _angehalten.Count);
+            if (_aktiv != null) Zeile("active", _aktiv);
+            foreach (var a in _queue) Zeile("queued", a);
+            foreach (var lot in _angehalten)
+                text.AppendLine("  stopped lot " + lot.Index + Sicherung(lot));
+            return text.ToString();
+        }
+
+        /** Was zum Rueckweg gesichert ist, und ob Besitzer und Bautypen noch leben. */
+        private string Sicherung(Entity lot)
+        {
+            if (!EntityManager.Exists(lot)) return ", lot gone";
+            if (!EntityManager.HasBuffer<ParkingLotRueckwegkurs>(lot)) return ", no rollback snapshot";
+            var kurse = EntityManager.GetBuffer<ParkingLotRueckwegkurs>(lot, true);
+            int ohneBesitzer = 0, ohnePrefab = 0;
+            foreach (var k in kurse)
+            {
+                if (!EntityManager.Exists(k.Besitzer) || EntityManager.HasComponent<Deleted>(k.Besitzer)) ohneBesitzer++;
+                if (!EntityManager.Exists(k.Prefab)) ohnePrefab++;
+            }
+            return ", snapshot " + kurse.Length + " edges (owner missing " + ohneBesitzer
+                + ", prefab missing " + ohnePrefab + ")";
+        }
         internal bool Gesperrt(Entity lot) => Gesperrt(lot,out _);
         private bool Gesperrt(Entity lot, out bool angehalten)
         {

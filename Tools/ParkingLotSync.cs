@@ -96,6 +96,32 @@ namespace ParkingLotTool.Tools
          */
         private ValueBinding<int> _arbeitOffen;
         private ValueBinding<string> _syncLaeuft;
+        /**
+         * HAENGT DER SYNC? "" = nein, sonst der Grund ("stopped", "stalled").
+         *
+         * Nutzer 2026-10-13 (Issue #16): kein stiller Ausweg - erkennen, dass
+         * es haengt, und den Spieler zum Melden bringen: "klick auf mich und
+         * reporten auf github". Ein Klick schreibt einen eigenen Sync-Bericht
+         * nach Logs\.ParkingLotTool-Logs\Sync, oeffnet den Ordner und die
+         * vorausgefuellte GitHub-Seite.
+         */
+        private ValueBinding<string> _syncHaengt;
+        private string _fortschrittsmarke = string.Empty;
+        /** Zuletzt erkannter Grund - unabhaengig davon, ob der Spieler den Hinweis zugemacht hat. */
+        private string _haengtErkannt = string.Empty;
+        /**
+         * Der Spieler hat den Hinweis per X oder Rechtsklick zugemacht
+         * (Nutzer 2026-10-13). Dann verschwindet die ganze Meldung, bis der
+         * Haenger vorbei ist - kommt er danach wieder, erscheint sie neu.
+         */
+        private bool _haengtVerworfen;
+        /** Der Fortschritt ungefiltert, fuer den Bericht - die Anzeige kann ihn verbergen. */
+        private string _laeuftRoh = string.Empty;
+        /** Dev-Debug: zeigt den Haenger-Hinweis, ohne dass etwas haengt - zum Testen des Berichts. */
+        private ValueBinding<bool> _haengerTest;
+        private readonly Stopwatch _stillstand = new Stopwatch();
+        /** Ab hier gilt ein Sync ohne jede Bewegung als haengend (Vorschlag 13.10., vom Nutzer bestaetigt). */
+        private const double StillstandSekunden = 120.0;
         private ValueBinding<int> _syncPuls;
         private ValueBinding<bool> _syncAuto;
 
@@ -208,6 +234,20 @@ namespace ParkingLotTool.Tools
             AddBinding(_syncLaeuft = new ValueBinding<string>(Group, "SyncLaeuft",
                 string.Empty));
             AddBinding(_syncPuls = new ValueBinding<int>(Group, "SyncPuls", 0));
+            AddBinding(_syncHaengt = new ValueBinding<string>(Group, "SyncHaengt", string.Empty));
+            AddBinding(new TriggerBinding(Group, "SyncMelden", MeldeHaengendenSync));
+            AddBinding(new TriggerBinding(Group, "SyncHaengtSchliessen", () =>
+            {
+                if (_haengtErkannt.Length == 0) return;
+                _haengtVerworfen = true;
+                Mod.log.Info("PLT-Sync-Haenger: Hinweis vom Spieler geschlossen (" + _haengtErkannt + ").");
+            }));
+            AddBinding(_haengerTest = new ValueBinding<bool>(Group, "SyncHaengerTest", false));
+            AddBinding(new TriggerBinding(Group, "SyncHaengerTestUmschalten", () =>
+            {
+                _haengerTest.Update(!_haengerTest.value);
+                Mod.log.Info("PLT-Sync-Haenger: Test " + (_haengerTest.value ? "an" : "aus") + " (Dev-Debug).");
+            }));
             AddBinding(_syncErgebnis = new ValueBinding<string>(Group,
                 "SyncErgebnis", string.Empty));
             AddBinding(new TriggerBinding(Group, "SyncErgebnisSchliessen", LeereMeldung));
@@ -689,8 +729,104 @@ namespace ParkingLotTool.Tools
             var laeuft = _warteschlange.Count + hintergrund > 0
                 ? fortschritt.Fertig + "\t" + fortschritt.Gesamt + "\t" + arbeit.Fortschrittshinweis
                 : string.Empty;
+            _laeuftRoh = laeuft;
+            var grund = PruefeHaengen(arbeit, laeuft);
+            if (grund.Length == 0) _haengtVerworfen = false;
+            var zeigeHaengt = _haengtVerworfen ? string.Empty : grund;
+            if (_haengtVerworfen) laeuft = string.Empty;
+            if (_syncHaengt.value != zeigeHaengt) _syncHaengt.Update(zeigeHaengt);
             if (_syncLaeuft.value != laeuft) _syncLaeuft.Update(laeuft);
             World.GetOrCreateSystemManaged<ParkingLotUISystem>().PflegeWiederOeffnen(ArbeitLaeuft);
+        }
+
+        /**
+         * ERKENNEN, DASS ES HAENGT.
+         *
+         * Zwei Faelle. Ein angehaltener Rueckweg sperrt sein Lot, bis jemand
+         * es meldet - das ist sofort ein Haenger. Sonst: es laeuft etwas, aber
+         * zwei Minuten lang bewegt sich nichts, weder Zaehler noch Phase noch
+         * Portion. Wartet der Sync nur auf den Spieler (Entwurf offen), steht
+         * ein Hinweis im Text; das ist kein Haenger, die Uhr beginnt neu.
+         */
+        private string PruefeHaengen(ParkingLotHintergrundSystem arbeit, string laeuft)
+        {
+            string grund;
+            if (_haengerTest.value) grund = "test";
+            else if (arbeit.Angehalten > 0) grund = "stopped";
+            else if (string.IsNullOrEmpty(laeuft)) { _stillstand.Reset(); grund = string.Empty; }
+            else
+            {
+                var marke = laeuft + "|" + arbeit.Fortschrittsmarke + "|" + _warteschlange.Count
+                    + "|" + _erledigt + "|" + OffeneSyncAuftraege;
+                var wartetAufSpieler = !string.IsNullOrEmpty(arbeit.Fortschrittshinweis);
+                if (marke != _fortschrittsmarke || wartetAufSpieler || !_stillstand.IsRunning)
+                {
+                    _fortschrittsmarke = marke;
+                    _stillstand.Restart();
+                }
+                grund = _stillstand.Elapsed.TotalSeconds >= StillstandSekunden ? "stalled" : string.Empty;
+            }
+            if (_haengtErkannt == grund) return grund;
+            _haengtErkannt = grund;
+            if (grund.Length != 0)
+                Mod.log.Warn("PLT-Sync-Haenger erkannt (" + grund + "): " + laeuft.Replace('\t', ' ')
+                    + "; Spieler bekommt den Melde-Hinweis.");
+            else Mod.log.Info("PLT-Sync-Haenger vorbei.");
+            return grund;
+        }
+
+        /** Klartext fuer den Sync-Bericht: was der Sync selbst gerade weiss. */
+        private string Zustandsbericht()
+        {
+            var text = new System.Text.StringBuilder();
+            text.AppendLine("Parking Lot Tool - sync state");
+            text.AppendLine(new string('-', 70));
+            text.AppendLine("Detected:       " + (_haengtErkannt.Length == 0 ? "-" : _haengtErkannt));
+            text.AppendLine("No movement for " + (_stillstand.IsRunning ? _stillstand.Elapsed.TotalSeconds.ToString("F0") : "0") + " s");
+            text.AppendLine("Progress:       " + _laeuftRoh.Replace("\t", " | "));
+            text.AppendLine("Auto sync:      " + (Mod.Optionen?.AutomatischSynchronisieren ?? false));
+            text.AppendLine("Queue " + _warteschlange.Count + ", done " + _erledigt + " of " + _gesamt
+                + ", open " + _offen.Count + ", failed " + _gescheitert.Count
+                + ", waiting for job " + _wartetAuf.Count + ", without build plan " + _ohneBauplan.Count);
+            foreach (var paar in _wartetAuf)
+                text.AppendLine("  lot " + paar.Key.Index + " waits on step " + paar.Value + ", data level " + StandVon(paar.Key));
+            foreach (var lot in _gescheitert)
+                text.AppendLine("  lot " + lot.Index + " failed, data level " + StandVon(lot));
+            foreach (var lot in _offen)
+                text.AppendLine("  lot " + lot.Index + " open, data level " + StandVon(lot));
+            text.AppendLine();
+            text.Append(World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>().Zustandsbericht());
+            return text.ToString();
+        }
+
+        /** Der Klick auf den Hinweis: Bericht schreiben, Ordner und GitHub oeffnen. */
+        private void MeldeHaengendenSync()
+        {
+            var pfad = ParkingLotMeldepaket.Schnuere(ParkingLotMeldepaket.Anlass.Sync, out var grund,
+                zusatzName: "sync-state.txt", zusatzText: Zustandsbericht());
+            if (pfad == null)
+            {
+                World.GetOrCreateSystemManaged<ParkingLotUISystem>().SetStatus(grund);
+                return;
+            }
+            try
+            {
+                var ordner = System.IO.Path.GetDirectoryName(pfad);
+                UnityEngine.Application.OpenURL("file:///" + ordner.Replace('\\', '/'));
+            }
+            catch (System.Exception ausnahme) { Mod.log.Warn("PLT-Sync-Bericht: Ordner nicht zu oeffnen: " + ausnahme.Message); }
+            try
+            {
+                var kennung = System.IO.Path.GetFileNameWithoutExtension(pfad).Split('_')[1];
+                var version = typeof(Mod).Assembly.GetName().Version.ToString(3);
+                var adresse = "https://github.com/KruemelGames/ParkingLotTool/issues/new?template=bug_report.yml"
+                    + "&title=" + System.Uri.EscapeDataString("Sync stuck (" + version + ")")
+                    + "&result=" + System.Uri.EscapeDataString("\"Updating parking lots\" got stuck. Report " + kennung + " is attached.")
+                    + "&steps=" + System.Uri.EscapeDataString("Parking Lot Tool showed \"Updating parking lots is stuck\" and I clicked it.");
+                UnityEngine.Application.OpenURL(adresse);
+            }
+            catch (System.Exception ausnahme) { Mod.log.Warn("PLT-Sync-Bericht: GitHub nicht zu oeffnen: " + ausnahme.Message); }
+            Mod.log.Info("PLT-Sync-Bericht: " + pfad + " geschrieben, Ordner und GitHub geoeffnet.");
         }
 
         /*
