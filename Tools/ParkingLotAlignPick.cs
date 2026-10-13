@@ -266,14 +266,37 @@ namespace ParkingLotTool.Tools
             else if (AusrichtWahlAktiv) AbortAusrichtWahl(grund);
             SetzeAusrichtungAn(false);
             if (war)
-                Mod.log.Info("PLT-Ausrichten: aus (" + grund + "), "
+                AusrichtLog("aus (" + grund + "), "
                     + _ausrichtungen.Count + " Linie(n) und "
                     + _trennschnitte.Count + " Schnitt(e) bleiben gemerkt.");
             return war;
         }
 
+        /**
+         * Jede Zeile des Ausrichtens auch in den Live-Log (2026-10-13): der
+         * Nutzer bekommt das Ausrichten "manchmal nachtraeglich nicht hin",
+         * und im Live-Log stand bis hier nur die GELUNGENE Linienwahl. Was
+         * abgelehnt wurde oder gar nicht ankam, war unsichtbar.
+         */
+        private void AusrichtLog(string text)
+        {
+            Mod.log.Info("PLT-Ausrichten" + ": " + text);
+            ParkingLotLiveLog.Zeile("align | " + text);
+        }
+
+        private string ZeigerZustand()
+            => "schritt " + Ausrichtwahl + ", flaeche " + AusrichtFlaeche
+                + ", hover " + (_hasHover ? "ja" : "nein")
+                + ", kante " + _hoverEdge + "/" + _points.Count
+                + ", teilflaechen " + _teilflaechen.Count
+                + ", an " + (_ausrichtungAn ? "ja" : "nein");
+
         internal void BeginAusrichtWahl()
         {
+            AusrichtLog("Knopf Align, geschlossen " + (_closed ? "ja" : "nein")
+                + ", " + _points.Count + " Punkte, " + _ausrichtungen.Count
+                + " Linie(n), " + _trennschnitte.Count + " Schnitt(e), Wahl lief "
+                + (AusrichtWahlAktiv ? Ausrichtwahl.ToString() : "nein") + ".");
             /*
              * ENTWEDER ODER, und zwar in BEIDE Richtungen.
              *
@@ -288,6 +311,7 @@ namespace ParkingLotTool.Tools
             if (!_closed || _points.Count < 3)
             {
                 _uiSystem?.SetStatus(T("alignPick.closeTheOutlineFirstThenPick"));
+                AusrichtLog("abgelehnt: Umriss nicht geschlossen.");
                 return;
             }
             /*
@@ -316,7 +340,7 @@ namespace ParkingLotTool.Tools
             _uiSystem?.SetStatus(_teilflaechen.Count > 1
                 ? T("alignPick.whichSubAreaRightClickTo")
                 : T("alignPick.clickALineRightClickTo"));
-            Mod.log.Info("PLT-Ausrichten: Auswahl gestartet, "
+            AusrichtLog("Auswahl gestartet, "
                 + _teilflaechen.Count + " Teilflaeche(n); "
                 + (_teilflaechen.Count > 1
                     ? "erst Flaeche waehlen." : "direkt zur Linie."));
@@ -341,7 +365,7 @@ namespace ParkingLotTool.Tools
              * bleibt der vorherige Modi aktiv."
              */
             _uiSystem?.SetStatus(T("alignPick.selectionCancelled"));
-            Mod.log.Info("PLT-Ausrichten: Auswahl abgebrochen (" + grund + ").");
+            AusrichtLog("Auswahl abgebrochen (" + grund + ").");
         }
 
         /**
@@ -365,7 +389,7 @@ namespace ParkingLotTool.Tools
             _uiSystem?.SetStatus(zuweisungen == 0
                 ? T("alignPick.finishedNoLineWasPicked")
                 : T("alignPick.alignmentApplied", ("zuweisungen", zuweisungen)));
-            Mod.log.Info("PLT-Ausrichten: vom Nutzer bestaetigt, "
+            AusrichtLog("vom Nutzer bestaetigt, "
                 + zuweisungen + " Zuweisung(en) stehen.");
         }
 
@@ -401,7 +425,7 @@ namespace ParkingLotTool.Tools
             _layoutDirty = _closed;
             CommitUndoState(before, () => T("alignPick.alignmentReset"));
             _uiSystem?.SetStatus(T("alignPick.alignmentResetLongestEdgeAgain"));
-            Mod.log.Info("PLT-Ausrichten: zurueckgesetzt, vorher "
+            AusrichtLog("zurueckgesetzt, vorher "
                 + vorher.ToString("F2",
                     System.Globalization.CultureInfo.InvariantCulture)
                 + " Grad. Wer wieder ausrichten will, waehlt neu.");
@@ -495,7 +519,7 @@ namespace ParkingLotTool.Tools
                     AusrichtFlaeche = -1;
                     Ausrichtwahl = Ausrichtschritt.Flaeche;
                     _uiSystem?.SetStatus(T("alignPick.subAreaDeselectedWhichSubArea"));
-                    Mod.log.Info("PLT-Ausrichten: Flaechenwahl per Rechtsklick "
+                    AusrichtLog("Flaechenwahl per Rechtsklick "
                         + "zurueckgenommen.");
                     return true;
                 }
@@ -515,6 +539,7 @@ namespace ParkingLotTool.Tools
             var maus = UnityEngine.InputSystem.Mouse.current;
             if (maus == null || !maus.leftButton.wasPressedThisFrame)
                 return true;
+            ParkingLotLiveLog.Zeile("align | Klick, " + ZeigerZustand());
 
             /*
              * ERSTE RUNDE: DIE TEILFLAECHE.
@@ -525,12 +550,15 @@ namespace ParkingLotTool.Tools
              */
             if (Ausrichtwahl == Ausrichtschritt.Flaeche)
             {
-                if (!_hasHover) return true;
+                if (!_hasHover) { AusrichtLog("abgelehnt: Zeiger nicht auf dem Boden."); return true; }
                 var treffer = TeilflaecheUnter(
                     new float2(_hoverPosition.x, _hoverPosition.z));
                 if (treffer < 0)
                 {
                     _uiSystem?.SetStatus(T("alignPick.noSubAreaUnderTheCursor"));
+                    AusrichtLog("abgelehnt: keine Teilflaeche unter dem Zeiger ("
+                        + ParkingLotLiveLog.Zahl(_hoverPosition.x) + "; "
+                        + ParkingLotLiveLog.Zahl(_hoverPosition.z) + ").");
                     return true;
                 }
                 AusrichtFlaeche = treffer;
@@ -538,7 +566,7 @@ namespace ParkingLotTool.Tools
                 // Die Statuszeile nennt beide Wege - sonst sucht man den
                 // Rueckweg und findet nur Esc.
                 _uiSystem?.SetStatus(T("alignPick.subAreaSelectedNowClickA", ("treffer", (treffer + 1))));
-                Mod.log.Info("PLT-Ausrichten: Teilflaeche " + treffer
+                AusrichtLog("Teilflaeche " + treffer
                     + " gewaehlt, warte auf Linie.");
                 return true;
             }
@@ -546,6 +574,7 @@ namespace ParkingLotTool.Tools
             if (_hoverEdge < 0 || _hoverEdge >= _points.Count)
             {
                 _uiSystem?.SetStatus(T("alignPick.noLineUnderTheCursor"));
+                AusrichtLog("abgelehnt: keine Linie unter dem Zeiger, " + ZeigerZustand() + ".");
                 return true;
             }
 
@@ -555,6 +584,7 @@ namespace ParkingLotTool.Tools
             if (math.lengthsq(richtung) < 1e-6f)
             {
                 _uiSystem?.SetStatus(T("alignPick.thatLineHasNoLength"));
+                AusrichtLog("abgelehnt: Linie " + _hoverEdge + " ohne Laenge.");
                 return true;
             }
 
@@ -597,8 +627,9 @@ namespace ParkingLotTool.Tools
                 LinieB = b,
                 Winkel = grad,
             };
-            var vorhanden = _ausrichtungen.FindIndex(z =>
-                GleicherAnker(z.Anker, anker));
+            // Dieselbe Regel wie der Kern: ersetzt wird die Zuweisung, die
+            // fuer diese Flaeche WIRKT, nicht nur eine mit gleichem Anker.
+            var vorhanden = ZuweisungFuer(gewaehlteFlaeche);
             /*
              * DIESELBE WAHL NOCH EINMAL KOSTET NICHTS MEHR.
              *
@@ -614,6 +645,12 @@ namespace ParkingLotTool.Tools
                 && math.abs(_ausrichtungen[vorhanden].Winkel - grad) < 0.001;
             if (vorhanden >= 0) _ausrichtungen[vorhanden] = neuerEintrag;
             else _ausrichtungen.Add(neuerEintrag);
+            // Weitere Anker in derselben Flaeche wirken nie (der Kern nimmt
+            // den ersten) - sie sind Reste von frueher und fliegen raus.
+            if (vorhanden >= 0)
+                for (var k = _ausrichtungen.Count - 1; k > vorhanden; k--)
+                    if (AnkerIn(gewaehlteFlaeche, _ausrichtungen[k].Anker))
+                        _ausrichtungen.RemoveAt(k);
             _ausrichtungAn = true;
             _linieInDieserWahl = true;
             _uiSystem?.SetAusrichtwinkel(Ausrichtwinkel);
@@ -654,15 +691,14 @@ namespace ParkingLotTool.Tools
                     ? T("alignPick.sameLineNothingChanged")
                     : T("alignPick.appliedPickADifferentLineOr", ("rechenhinweis", Rechenhinweis())));
             }
-            ParkingLotLiveLog.Zeile("align linie | teil " + gewaehlteFlaeche
-                + " | winkel " + ParkingLotLiveLog.Zahl(grad)
-                + " | zuweisungen " + _ausrichtungen.Count
-                + " | teilflaechen " + _teilflaechen.Count);
-            Mod.log.Info("PLT-Ausrichten: Linie " + _hoverEdge + " gewaehlt, "
+            AusrichtLog("Linie " + _hoverEdge + " gewaehlt, "
                 + grad.ToString("F2",
                     System.Globalization.CultureInfo.InvariantCulture)
                 + " Grad fuer Teilflaeche " + gewaehlteFlaeche + "; "
-                + _ausrichtungen.Count + " Zuweisung(en) gesamt.");
+                + (vorhanden >= 0 ? "ersetzt Zuweisung " + vorhanden : "neu angehaengt")
+                + ", " + _ausrichtungen.Count + " Zuweisung(en) gesamt, "
+                + _teilflaechen.Count + " Teilflaeche(n)"
+                + (unveraendert ? "; gleiche Linie, nichts geaendert." : "."));
             return true;
         }
     }

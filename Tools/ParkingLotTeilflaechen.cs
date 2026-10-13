@@ -147,6 +147,36 @@ namespace ParkingLotTool.Tools
         internal static bool GleicherAnker(float2 a, float2 b)
             => math.distancesq(a, b) < 0.01f;
 
+        /**
+         * Die Zuweisung, die der Kern fuer Teilflaeche `teil` nimmt; -1 fuer
+         * keine. Dieselbe Funktion wie im Kern (`ZuweisungFuerTeil`) -
+         * sonst ersetzt das Werkzeug eine andere Zuweisung als die, die wirkt.
+         */
+        internal int ZuweisungFuer(int teil)
+        {
+            if (teil < 0 || teil >= _teilflaechen.Count) return -1;
+            var umriss = _teilflaechen[teil].Umriss;
+            var polygon = new double2[umriss.Length];
+            for (var i = 0; i < umriss.Length; i++)
+                polygon[i] = new double2(umriss[i].x, umriss[i].y);
+            var anker = new double2[_ausrichtungen.Count];
+            for (var k = 0; k < _ausrichtungen.Count; k++)
+                anker[k] = new double2(_ausrichtungen[k].Anker.x, _ausrichtungen[k].Anker.y);
+            return ParkingGeometry.ZuweisungFuerTeil(polygon, anker);
+        }
+
+        /** Liegt dieser Anker in Teilflaeche `teil`? Dieselbe Regel. */
+        internal bool AnkerIn(int teil, float2 anker)
+        {
+            if (teil < 0 || teil >= _teilflaechen.Count) return false;
+            var umriss = _teilflaechen[teil].Umriss;
+            var polygon = new double2[umriss.Length];
+            for (var i = 0; i < umriss.Length; i++)
+                polygon[i] = new double2(umriss[i].x, umriss[i].y);
+            return ParkingGeometry.ZuweisungFuerTeil(polygon,
+                new[] { new double2(anker.x, anker.y) }) == 0;
+        }
+
         private readonly List<bool> _teilflaecheZugewiesen = new List<bool>();
 
         /**
@@ -161,17 +191,7 @@ namespace ParkingLotTool.Tools
         {
             _teilflaecheZugewiesen.Clear();
             for (var i = 0; i < _teilflaechen.Count; i++)
-            {
-                var treffer = false;
-                for (var k = 0; k < _ausrichtungen.Count; k++)
-                    if (GleicherAnker(_ausrichtungen[k].Anker,
-                        _teilflaechen[i].Anker))
-                    {
-                        treffer = true;
-                        break;
-                    }
-                _teilflaecheZugewiesen.Add(treffer);
-            }
+                _teilflaecheZugewiesen.Add(ZuweisungFuer(i) >= 0);
             return _teilflaecheZugewiesen;
         }
 

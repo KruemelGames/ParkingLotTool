@@ -1192,6 +1192,10 @@ namespace ParkingLotTool.Tools
                     : "-")
                 + " | ausrichtungen "
                 + _buildSettings.TeilflaechenAusrichtungen.Length
+                + (_buildSettings.TeilflaechenAusrichtungen.Length > 0
+                    ? " (" + string.Join(", ", _buildSettings.TeilflaechenAusrichtungen
+                        .Select(z => ParkingLotLiveLog.Zahl(z.Winkel))) + ")"
+                    : "")
                 + " | schnitte " + _buildSettings.Teilflaechenschnitte.Length
                 + " | stand " + _buildRevision);
             var settings = _buildSettings;

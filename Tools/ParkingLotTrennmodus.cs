@@ -118,7 +118,7 @@ namespace ParkingLotTool.Tools
                 _trennAnfang = -1;
                 _schnitteVorTeilen = null;
                 _uiSystem?.SetStatus(T("trennmodus.auswahlBeendetUmrissOffen"));
-                Mod.log.Info("PLT-Ausrichten: Auswahl beendet, der Umriss ist offen.");
+                AusrichtLog("Auswahl beendet, der Umriss ist offen.");
             }
 
             var aufgeloest = 0;
@@ -162,7 +162,7 @@ namespace ParkingLotTool.Tools
                 _uiSystem?.SetStatus(_trennschnitte.Count == 0
                     ? T("trennmodus.teilungAufgeloest")
                     : TN("trennmodus.schnitteEntfallen", aufgeloest));
-                Mod.log.Info("PLT-Trennmodus: " + aufgeloest
+                TrennLog(aufgeloest
                     + " Schnitt(e) nach Formaenderung entfallen, "
                     + _trennschnitte.Count + " bleiben.");
             }
@@ -222,7 +222,7 @@ namespace ParkingLotTool.Tools
             AktualisiereTeilflaechen();
             Ausrichtwahl = Ausrichtschritt.Trennen;
             _uiSystem?.SetStatus(T("alignPick.splitModeConnectTwoOutlinePoints"));
-            Mod.log.Info("PLT-Trennmodus: gestartet, " + _points.Count
+            TrennLog("gestartet, " + _points.Count
                 + " Punkte, " + _trennschnitte.Count + " vorhandene Schnitt(e).");
         }
 
@@ -243,7 +243,7 @@ namespace ParkingLotTool.Tools
             Ausrichtwahl = Ausrichtschritt.Aus;
             AusrichtFlaeche = -1;
             _uiSystem?.SetStatus(T("trennmodus.teilenAbgebrochen"));
-            Mod.log.Info("PLT-Trennmodus: abgebrochen (" + grund + "), "
+            TrennLog("abgebrochen (" + grund + "), "
                 + _trennschnitte.Count + " Schnitt(e) wie vorher.");
         }
 
@@ -278,7 +278,7 @@ namespace ParkingLotTool.Tools
             _layoutDirty = _closed;
             CommitUndoState(before, () => T("undo.teilungEntfernt"));
             _uiSystem?.SetStatus(T("trennmodus.teilungEntfernt"));
-            Mod.log.Info("PLT-Trennmodus: Teilung entfernt, "
+            TrennLog("Teilung entfernt, "
                 + _ausrichtungen.Count + " Zuweisung(en) bleiben.");
         }
 
@@ -327,6 +327,13 @@ namespace ParkingLotTool.Tools
         }
 
         /** Welcher gezogene Schnitt liegt unter dem Zeiger? -1 wenn keiner. */
+        /** Wie `AusrichtLog`: jede Zeile des Teilens auch in den Live-Log. */
+        private void TrennLog(string text)
+        {
+            Mod.log.Info("PLT-Trennmodus" + ": " + text);
+            ParkingLotLiveLog.Zeile("teilen | " + text);
+        }
+
         private int TrennlinieUnter(float2 punkt)
         {
             var treffer = -1;
@@ -422,6 +429,7 @@ namespace ParkingLotTool.Tools
             if (getroffen < 0)
             {
                 _uiSystem?.SetStatus(T("trennmodus.noOutlinePointUnderTheCursor"));
+                TrennLog("abgelehnt: kein Umrisspunkt unter dem Zeiger.");
                 return true;
             }
 
@@ -429,6 +437,7 @@ namespace ParkingLotTool.Tools
             {
                 _trennAnfang = getroffen;
                 _uiSystem?.SetStatus(T("trennmodus.nowPickTheSecondPoint"));
+                TrennLog("erster Punkt " + getroffen + ".");
                 return true;
             }
             if (getroffen == _trennAnfang)
@@ -443,6 +452,7 @@ namespace ParkingLotTool.Tools
             if ((i + 1) % _points.Count == j || (j + 1) % _points.Count == i)
             {
                 _uiSystem?.SetStatus(T("trennmodus.thoseTwoPointsAreNeighboursAt"));
+                TrennLog("abgelehnt: Punkte " + i + " und " + j + " sind Nachbarn.");
                 return true;
             }
             var site = new double2[_points.Count];
@@ -451,12 +461,14 @@ namespace ParkingLotTool.Tools
             if (!ParkingGeometry.SchnittLiegtInnen(site, i, j))
             {
                 _uiSystem?.SetStatus(T("trennmodus.thatCutWouldRunOutsideThe"));
+                TrennLog("abgelehnt: Schnitt " + i + "-" + j + " laeuft ausserhalb.");
                 _trennAnfang = -1;
                 return true;
             }
             if (KreuztVorhandenen(i, j))
             {
                 _uiSystem?.SetStatus(T("trennmodus.thatCutCrossesAnExistingOne"));
+                TrennLog("abgelehnt: Schnitt " + i + "-" + j + " kreuzt einen vorhandenen.");
                 _trennAnfang = -1;
                 return true;
             }
@@ -468,6 +480,7 @@ namespace ParkingLotTool.Tools
                 B = _points[j],
             });
             _trennAnfang = -1;
+            TrennLog("Schnitt " + i + "-" + j + " gezogen, " + _trennschnitte.Count + " gesamt.");
             NachTrennaenderung(vorher, () => T("trennmodus.cutDrawn"));
             return true;
         }
@@ -531,7 +544,7 @@ namespace ParkingLotTool.Tools
             _uiSystem?.SetStatus(_teilflaechen.Count > 1
                 ? T("trennmodus.nowPickASubArea")
                 : T("trennmodus.nowPickTheReferenceLine"));
-            Mod.log.Info("PLT-Trennmodus: beendet mit " + _trennschnitte.Count
+            TrennLog("beendet mit " + _trennschnitte.Count
                 + " Schnitt(en), " + _teilflaechen.Count + " Teilflaeche(n).");
         }
     }

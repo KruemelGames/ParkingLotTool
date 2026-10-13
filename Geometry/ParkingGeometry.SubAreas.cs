@@ -51,6 +51,27 @@ namespace ParkingLotTool.Geometry
                || DistToBoundary(anker, polygon) <= 0.01;
 
         /**
+         * WELCHE ZUWEISUNG GILT FUER DIESES TEIL? Die erste, deren Anker
+         * darin liegt; -1 fuer keine.
+         *
+         * EINE Regel fuer Kern und Werkzeug (2026-10-13). Das Werkzeug suchte
+         * beim Ersetzen nach GLEICHEM Anker (10 cm), der Kern nach dem ersten
+         * Anker IM Teil. Ein Anker von frueher - vor dem Teilen oder vor
+         * einem verschobenen Punkt - lag noch im Teil, war aber nicht mehr
+         * "gleich": die neue Wahl wurde hinten angehaengt, und der Kern nahm
+         * weiter die alte. Live-Log des Nutzers: 3 Zuweisungen fuer 2 Teile,
+         * die dritte nie wirksam - "die Flaeche laesst sich nicht aendern".
+         */
+        public static int ZuweisungFuerTeil(double2[] polygon,
+            IReadOnlyList<double2> anker)
+        {
+            if (polygon == null || anker == null) return -1;
+            for (var z = 0; z < anker.Count; z++)
+                if (EnthaeltAnker(polygon, anker[z])) return z;
+            return -1;
+        }
+
+        /**
          * Leitet jeden wirksamen Winkel ueber genau dieselbe Funktion ab wie
          * der Einwinkelbau. Der erste Eintrag liefert den Bezug fuer alle
          * Teile; ein Anker im Teil ersetzt ihn dort.
@@ -107,16 +128,8 @@ namespace ParkingLotTool.Geometry
             for (var index = 0; index < polygone.Length; index++)
             {
                 var polygon = polygone[index];
-                var eigene = -1;
-                if (zuweisungen.Length != 0)
-                    for (var z = 0; z < zuweisungen.Length; z++)
-                    {
-                        var anker = new double2(
-                            zuweisungen[z].Anker.x, zuweisungen[z].Anker.y);
-                        if (!EnthaeltAnker(polygon, anker)) continue;
-                        eigene = z;
-                        break;
-                    }
+                var eigene = ZuweisungFuerTeil(polygon, zuweisungen
+                    .Select(z => new double2(z.Anker.x, z.Anker.y)).ToArray());
 
                 var teilSettings = settings.Clone();
                 if (zuweisungen.Length != 0)

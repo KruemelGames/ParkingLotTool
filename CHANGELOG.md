@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix: with the automatic entrance mode switched off, the entrance buttons stayed locked after closing an outline that was too small.
+- Fix: after splitting or moving points, picking a new line for a sub-area could have no effect.
 ## 1.0.10 — October 12, 2026
 
 - Addition: Brazilian Portuguese (thanks CrNet0), Spanish and French, automatic or chosen in the mod settings.
