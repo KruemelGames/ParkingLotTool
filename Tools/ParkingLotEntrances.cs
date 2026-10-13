@@ -45,6 +45,24 @@ namespace ParkingLotTool.Tools
             new ParkingLotEntranceOverlayState();
 
         private bool _entranceMode;
+        /** Letzte Vorschau scheiterte an "zu klein" (siehe SetzeVorschaufehler). */
+        private bool _vorschauZuKlein;
+        private string _vorschaufehler = string.Empty;
+
+        /** Einzige Stelle, die den Grund einer fehlenden Vorschau setzt oder leert. */
+        private void SetzeVorschaufehler(string ursache, string anlass)
+        {
+            ursache ??= string.Empty;
+            _vorschauZuKlein = ursache.StartsWith("zuKlein", StringComparison.Ordinal);
+            if (ursache == _vorschaufehler) return;
+            _vorschaufehler = ursache;
+            Mod.log.Info("PLT-Vorschaufehler: '" + ursache + "' (" + anlass + ").");
+            _uiSystem?.SetVorschaufehler(ursache);
+            _debugTooltipSystem?.SetVorschauHinweis(
+                ursache == "zuKleinRandstrassen" ? T("vorschauhinweis.zuKleinRandstrassen")
+                : ursache == "zuKlein" ? T("vorschauhinweis.zuKlein")
+                : string.Empty);
+        }
 
         /*
          * MESSUNG FUER SHIFT+KLICK.
@@ -784,7 +802,15 @@ namespace ParkingLotTool.Tools
                 if (!hasBounds)
                 {
                     along = math.clamp(rawAlong, 0f, gate.EdgeLength);
-                    blockReason = EntranceBlockReason.NoRoom;
+                    /*
+                     * ZU KLEIN: EINFAHRT TROTZDEM ERLAUBT (Nutzer 2026-10-13).
+                     * Der Eckabstand passt nicht, weil die ganze Flaeche zu
+                     * klein ist - meist wegen der Randstrassen. Die Sperre
+                     * zwang den Spieler, ohne Erklaerung den Schalter zu
+                     * suchen. Jetzt darf er setzen; Bauknopf und blinkender
+                     * Schalter sagen, was noch fehlt.
+                     */
+                    if (!_vorschauZuKlein) blockReason = EntranceBlockReason.NoRoom;
                 }
                 else
                 {

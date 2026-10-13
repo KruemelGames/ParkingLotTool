@@ -450,6 +450,8 @@ interface ToggleProps {
   differsFromDefault: boolean;
   onReset: () => void;
   onSetDefault: () => void;
+  /** Blinkt gelb: hier liegt die Loesung fuer eine fehlende Vorschau. */
+  blinkt?: boolean;
 }
 
 /**
@@ -459,8 +461,8 @@ interface ToggleProps {
  * tut es auch.
  */
 export const Toggle = ({ label, tooltip, value, onChange, differsFromDefault,
-                         onReset, onSetDefault }: ToggleProps) => (
-  <div className={styles.schalterReihe}>
+                         onReset, onSetDefault, blinkt }: ToggleProps) => (
+  <div className={`${styles.schalterReihe} ${blinkt ? styles.schalterBlinkt : ""}`}>
     <MitTooltip text={tooltip}>
       <div className={styles.schalterBereich} title={tooltip} aria-label={tooltip}>
         <span className={styles.label}>{label}</span>

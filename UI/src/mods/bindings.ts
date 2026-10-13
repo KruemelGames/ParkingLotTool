@@ -145,6 +145,8 @@ export const aisles$ = bindValue<number>(MOD, "Aisles", 0);
 export const rowAngleResult$ = bindValue<string>(MOD, "RowAngleResult", "");
 export const siteArea$ = bindValue<string>(MOD, "SiteArea", "");
 export const status$ = bindValue<string>(MOD, "Status", "");
+/** "", "zuKlein" oder "zuKleinRandstrassen" - Grund fuer eine fehlende Vorschau. */
+export const vorschaufehler$ = bindValue<string>(MOD, "Vorschaufehler", "");
 
 /**
  * Angezeigte Sprache als Kennung des Spiels ("en-US", "de-DE", ...).
