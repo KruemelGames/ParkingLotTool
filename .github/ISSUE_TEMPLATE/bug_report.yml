@@ -12,10 +12,11 @@ body:
 
         The files are here (paste the path into the Explorer address bar):
 
-        `%USERPROFILE%\AppData\LocalLow\Colossal Order\Cities Skylines II\Logs\ParkingLotTool-Logs`
+        `%USERPROFILE%\AppData\LocalLow\Colossal Order\Cities Skylines II\Logs\.ParkingLotTool-Logs`
 
-        Inside are the folders **Crash**, **Build** and **Preview**, one per
-        report type. The newest file is the one you just created.
+        Inside are the folders **Crash**, **Build**, **Preview** and **Sync**,
+        one per report type. If the mod told you that updating parking lots is
+        stuck, clicking that message already opened the **Sync** folder. The newest file is the one you just created.
 
         Please don't paste logs. Everything technical is already in the file.
 
