@@ -276,6 +276,10 @@ namespace ParkingLotTool
                 SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateAt<ParkingLotToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAfter<ParkingLotHintergrundSystem, Game.Tools.ToolOutputBarrier>(SystemUpdatePhase.ToolUpdate);
+            // Issue #16: Prefab-Verweise in unseren gespeicherten Puffern beim
+            // Laden umbiegen (und beim Speichern als benutzt melden) - vor dem
+            // letzten CheckPrefabReferencesSystem der Phase, wie CS2 selbst.
+            updateSystem.UpdateAfter<ParkingLotPrefabVerweiseSystem, Game.Serialization.SecondaryPrefabReferencesSystem>(SystemUpdatePhase.PrefabReferences);
             // Sync-Schritt 9: Fahrwege per Vanilla-Ersetzen tauschen. Das
             // Werkzeug laeuft wie jedes Werkzeug in ToolUpdate, die Steuerung
             // schaltet es ausserhalb davon ein und wieder aus.
