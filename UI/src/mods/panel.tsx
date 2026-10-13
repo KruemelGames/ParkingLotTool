@@ -28,7 +28,7 @@ import {
   setCrossWidth, setEdgeSetback, setGreenMedian, setMedianWidth,
   setEntranceMode, setPanelPosition, setRowAngle, setTab, siteArea$,
   stalls$,
-  hinweis$, status$, tab$,
+  hinweis$, status$, vorschaufehler$, tab$,
   panelDiagnose, panelHome$, surfaceRoad$, surfaceDecoration$, surfaceList$, bayIcons$,
   bayIconsDefault$, surfaceRoadOnDefault$, surfaceDecorationOnDefault$,
   surfaceRoadDefault$, surfaceDecorationDefault$,
@@ -372,6 +372,9 @@ export const ParkingLotPanel = () => {
    */
   const entranceMissing = useValue(entranceMissing$);
   const darfBauen = entranceMissing === "";
+  // Zu klein fuer eine Buchtreihe: der Bauknopf sagt es selbst (die Statuszeile liest nicht jeder).
+  const vorschaufehler = useValue(vorschaufehler$);
+  const zuKlein = vorschaufehler === "zuKlein" || vorschaufehler === "zuKleinRandstrassen";
   const fehltText = entranceMissing === "einfahrt" ? t.fehltEinfahrt
     : entranceMissing === "ausfahrt" ? t.fehltAusfahrt
     : t.fehltZugang;
@@ -506,10 +509,12 @@ export const ParkingLotPanel = () => {
     // ueberschriebe jeder Wechsel die gemerkte Position mit der Heimecke.
   }, [panelHome]);
 
+  // Dunkelorange fuer unsere Warn-Hinweise am Cursor: Zufahrt-Modus und
+  // "zu klein" (beide sind dann exklusiv unsere Warning-Tooltips).
   useEffect(() => {
-    document.body.classList.toggle("pltEntranceHintActive", entranceMode);
+    document.body.classList.toggle("pltEntranceHintActive", entranceMode || zuKlein);
     return () => document.body.classList.remove("pltEntranceHintActive");
-  }, [entranceMode]);
+  }, [entranceMode, zuKlein]);
 
   useEffect(() => {
     // Der Zellenweg besitzt noch keine Winkelsuche. War "Meiste" im alten
@@ -1237,6 +1242,7 @@ export const ParkingLotPanel = () => {
             label={t.randstrassen}
             tooltip={t.tooltipRandstrassen}
             value={randstrassen}
+            blinkt={randstrassen && vorschaufehler === "zuKleinRandstrassen"}
             onChange={setRandstrassen}
             differsFromDefault={randstrassen !== randstrassenDefault}
             onReset={() => resetOne("Randstrassen")}
@@ -1457,15 +1463,25 @@ export const ParkingLotPanel = () => {
 
         <TooltipKnopf text={t.tooltipBauen}
             className={`${styles.aktion} ${styles.aktionBauen}
-              ${polygonClosed && darfBauen ? "" : styles.aktionAus}`}
-            aria-disabled={!polygonClosed || entranceCount === 0}
-            onClick={() => { if (polygonClosed && darfBauen) buildNow(); }}
+              ${polygonClosed && darfBauen && !zuKlein ? "" : styles.aktionAus}
+              ${polygonClosed && zuKlein ? styles.aktionZuKlein : ""}`}
+            aria-disabled={!polygonClosed || entranceCount === 0 || zuKlein}
+            onClick={() => { if (polygonClosed && darfBauen && !zuKlein) buildNow(); }}
         >
             <img src={icon("Checkmark")} />
-            <div className={styles.aktionText}>
-              <div className={styles.aktionName}>{t.bauen}</div>
-              <div className={styles.aktionNebentext}>{t.tasteEnter}</div>
-            </div>
+            {polygonClosed && zuKlein ? (
+              <div className={styles.aktionText}>
+                <div className={styles.aktionName}>{t.bauenZuKlein}</div>
+                <div className={styles.aktionNebentext}>
+                  {vorschaufehler === "zuKleinRandstrassen" ? t.bauenZuKleinRand : t.bauenZuKleinGroesser}
+                </div>
+              </div>
+            ) : (
+              <div className={styles.aktionText}>
+                <div className={styles.aktionName}>{t.bauen}</div>
+                <div className={styles.aktionNebentext}>{t.tasteEnter}</div>
+              </div>
+            )}
         </TooltipKnopf>
         </div>
         </div>

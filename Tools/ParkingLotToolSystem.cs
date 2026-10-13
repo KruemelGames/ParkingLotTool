@@ -937,6 +937,7 @@ namespace ParkingLotTool.Tools
                 _layoutDirty = false;
                 _overlay.ClearLayout();
                 ClearAreaPreviewLayout("polygon reopened");
+                SetzeVorschaufehler(string.Empty, "Polygon geoeffnet");
             }
 
             /**
@@ -1416,6 +1417,7 @@ namespace ParkingLotTool.Tools
                  * Statusleiste. Sie bleiben im Bauzettel; nur die Anzeige
                  * filtert. Begruendung und Schwelle in `Hinweisfilter`.
                  */
+                SetzeVorschaufehler(string.Empty, "Vorschau gelungen");
                 _uiSystem?.SetHinweise(
                     MitGroessenwarnung(
                         ParkingLotTool.Geometry.Hinweisfilter.Sichtbare(
@@ -1510,10 +1512,19 @@ namespace ParkingLotTool.Tools
                     // Kein roher Kerntext: `Vorschaufehler` ordnet die Ausnahme
                     // einer Ursache zu, die der Spieler selbst beheben kann.
                     // Der volle Text steht zwei Zeilen hoeher im Log.
-                    var meldung = Vorschaufehler.Text(
-                        Vorschaufehler.Einordnen(exception),
-                        settings?.Randstrassen ?? true);
+                    var ursache = Vorschaufehler.Einordnen(exception);
+                    var randstrassen = settings?.Randstrassen ?? true;
+                    var meldung = Vorschaufehler.Text(ursache, randstrassen);
                     _uiSystem?.SetStatus(T(meldung));
+                    /*
+                     * DIE STATUSZEILE LIEST NICHT JEDER (Nutzer 2026-10-13).
+                     * "Zu klein" kommt deshalb auch in den Bauknopf, und der
+                     * Randstrassen-Schalter blinkt, solange er an ist - genau
+                     * dort, wo der Spieler die Loesung anklickt.
+                     */
+                    SetzeVorschaufehler(ursache == Vorschaufehler.Ursache.ZuKlein
+                        ? (randstrassen ? "zuKleinRandstrassen" : "zuKlein") : string.Empty,
+                        "Vorschau gescheitert");
                 }
             }
         }
@@ -2073,6 +2084,7 @@ namespace ParkingLotTool.Tools
             _geometryRevision++;
             _overlay?.ClearLayout();
             ClearAreaPreviewLayout("selection reset");
+            SetzeVorschaufehler(string.Empty, "Auswahl verworfen");
             VergissAusrichtung();
             ClearUndoHistory();
         }

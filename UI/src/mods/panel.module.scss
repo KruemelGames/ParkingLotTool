@@ -3167,3 +3167,33 @@ $eck-reiter: 9rem;
 .ausrichtReihe .teilungAbzeichen + .teilungNeben {
   margin-left: 0;
 }
+
+/*
+ * ZU KLEIN FUER EINE BUCHTREIHE (2026-10-13). Der Bauknopf traegt den Grund
+ * in Hinweisgelb ($hinweis = es wartet etwas), der Nebentext darf umbrechen:
+ * die Loesung ist laenger als "Enter". Der Randstrassen-Schalter blinkt.
+ */
+.aktionZuKlein.aktionZuKlein {
+  height: auto;
+  min-height: 54rem;
+  border: 1rem solid $hinweis;
+  background-color: $hinweis;
+  color: #1f1a08;
+  cursor: default;
+
+  &:hover { background-color: $hinweis; }
+  img { opacity: 0.55; }
+  .aktionName { white-space: normal; }
+  .aktionNebentext { white-space: normal; color: rgba(31, 26, 8, 0.75); }
+}
+
+@keyframes schalterBlinken {
+  0%   { background-color: rgba(242, 201, 76, 0); }
+  100% { background-color: rgba(242, 201, 76, 0.32); }
+}
+.schalterBlinkt.schalterBlinkt {
+  border-radius: 4rem;
+  animation: schalterBlinken 0.7s ease-in-out infinite alternate;
+
+  .label { color: $hinweis; }
+}

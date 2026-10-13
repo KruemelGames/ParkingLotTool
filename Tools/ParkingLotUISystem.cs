@@ -332,6 +332,8 @@ namespace ParkingLotTool.Tools
          * als eine Fehlermeldung: das Ergebnis ist still falsch.
          */
         private ValueBinding<string> _hinweis;
+        /** Warum die Vorschau fehlt, fuer Bauknopf und Schalter: "", "zuKlein", "zuKleinRandstrassen". */
+        private ValueBinding<string> _vorschaufehler;
         private ValueBinding<int> _fensterHeim;
         private ValueBinding<string> _flaecheStrasse;
         private ValueBinding<string> _flaecheDeko;
@@ -757,6 +759,7 @@ namespace ParkingLotTool.Tools
             AddBinding(_status = new ValueBinding<string>(
                 Group, "Status", T("uISystem.ready")));
             AddBinding(_hinweis = new ValueBinding<string>(Group, "Hinweis", ""));
+            AddBinding(_vorschaufehler = new ValueBinding<string>(Group, "Vorschaufehler", ""));
             AddBinding(_fensterHeim = new ValueBinding<int>(Group, "PanelHome", 0));
             /**
              * Was das Panel gemessen hat, ins Log.
@@ -2669,6 +2672,9 @@ namespace ParkingLotTool.Tools
         }
 
         /** Mehrere Hinweise durch Zeilenumbruch getrennt; leer heisst: keine. */
+        internal void SetVorschaufehler(string ursache)
+            => _vorschaufehler?.Update(ursache ?? string.Empty);
+
         internal void SetHinweise(string[] hinweise)
             => _hinweis?.Update(hinweise == null || hinweise.Length == 0
                 ? string.Empty

@@ -11,6 +11,9 @@ namespace ParkingLotTool.Tools
 
         private StringTooltip _message;
         private StringTooltip _entranceHint;
+        private StringTooltip _vorschauHinweis;
+        private string _vorschauHinweisText;
+        private Game.Tools.ToolSystem _toolSystem;
         private float _visibleUntil;
         private string _entranceHintText;
 
@@ -35,6 +38,23 @@ namespace ParkingLotTool.Tools
                 // #8A4300-Hintergrund; die Debug-Bestaetigung bleibt Success.
                 color = TooltipColor.Warning,
             };
+            // Zu klein fuer eine Buchtreihe (2026-10-13): steht am Cursor, weil
+            // die Statuszeile nicht jeder liest; ausfuehrlicher als der Bauknopf.
+            _vorschauHinweis = new StringTooltip
+            {
+                path = "parkingLotPreviewHint",
+                icon = null,
+                color = TooltipColor.Warning,
+            };
+            _toolSystem = World.GetOrCreateSystemManaged<Game.Tools.ToolSystem>();
+        }
+
+        internal void SetVorschauHinweis(string text)
+        {
+            text ??= string.Empty;
+            if (text == _vorschauHinweisText) return;
+            _vorschauHinweisText = text;
+            _vorschauHinweis.value = LocalizedString.Value(text);
         }
 
         internal void Show(string text)
@@ -63,6 +83,11 @@ namespace ParkingLotTool.Tools
             // Cursor, bis das Werkzeug den Zustand ausdruecklich beendet.
             if (_entranceHint != null && !string.IsNullOrEmpty(_entranceHintText))
                 AddMouseTooltip(_entranceHint);
+            // Nur solange das PLT-Werkzeug offen ist - auch wenn ein anderer Weg
+            // den Zustand einmal nicht leert, bleibt er nie an fremden Werkzeugen.
+            if (_vorschauHinweis != null && !string.IsNullOrEmpty(_vorschauHinweisText)
+                && _toolSystem?.activeTool is ParkingLotToolSystem)
+                AddMouseTooltip(_vorschauHinweis);
         }
     }
 }

@@ -6,6 +6,7 @@
 - Fix: after splitting or moving points, picking a new line for a sub-area could have no effect.
 - Fix: "Updating parking lots" could stay forever after loading a save made while lots were being updated (thanks PlatinMartin).
 - Change: "How it works" shows the episodes in their new order, episode 2 is now "Advanced Building and Mod Settings"; shorter tooltip for "Reset window position".
+- Improvement: when the area is too small for a parking row, the build button turns yellow and says why, a hint next to the cursor explains it, the perimeter roads switch blinks if it is on, and entrances can still be placed.
 ## 1.0.10 — October 12, 2026
 
 - Addition: Brazilian Portuguese (thanks CrNet0), Spanish and French, automatic or chosen in the mod settings.
