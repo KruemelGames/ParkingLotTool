@@ -3,6 +3,8 @@
 ## 1.0.11 — October 13, 2026
 
 - Addition: when updating parking lots gets stuck, its message says so; one click writes a small sync report, opens its folder and a prefilled GitHub problem report.
+- Improvement: when the area is too small for a parking row, the build button turns yellow and says why, a hint next to the cursor explains it, the perimeter roads switch blinks if it is on, and entrances can still be placed.
+- Improvement: in "Split area", the point under the cursor lights up in the color of the split line.
 - Change: "How it works" shows the episodes in their new order, episode 2 is now "Advanced Building and Mod Settings"; shorter tooltip for "Reset window position".
 - Fix: "Updating parking lots" could stay forever after loading a save made while lots were being updated (thanks PlatinMartin).
 - Fix: after splitting or moving points, picking a new line for a sub-area could have no effect.
