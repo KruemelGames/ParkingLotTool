@@ -1083,8 +1083,8 @@ namespace ParkingLotTool.Tools
                 // Im Trennmodus sind die PUNKTE das Ziel - dort muss man
                 // sehen, welchen man gerade trifft. Ziehen geht trotzdem
                 // nicht: der Klick ist vorher verbraucht.
-                else if (Ausrichtwahl == Ausrichtschritt.Trennen
-                    && _hasHover) _hoverPoint = PunktUnterZeiger();
+                else if (Ausrichtwahl == Ausrichtschritt.Trennen)
+                    _hoverPoint = _hasHover ? PunktUnterZeiger() : -1;
                 // `UpdateEdgeHover` setzt die Fahne nach dem Modifier; hier
                 // darf sie nie stehen, sonst legte Strg+Klick einen Punkt an.
                 _insertReady = false;
@@ -1674,7 +1674,10 @@ namespace ParkingLotTool.Tools
             var uhrZeichnen = ParkingLotMessung.Start();
             _overlay.Draw(buffer, _worldPoints, _closed, (entwurfshilfen || MarkerMode) && _hasHover,
                 _hoverPosition, CanCloseAtCursor(),
-                entwurfshilfen ? _hoverPoint : -1, entwurfshilfen ? _dragPoint : -1,
+                // Im Trennmodus ist der Punkt das Auswahlziel - wie die Kante
+                // beim Ausrichten. Gezogen wird er trotzdem nicht.
+                entwurfshilfen || TrennmodusAktiv ? _hoverPoint : -1,
+                entwurfshilfen ? _dragPoint : -1,
                 LastSnap, entwurfshilfen && HasSnapGuide, SnapGuide, _markers, MarkerMode,
                 _entranceOverlay,
                 // Die Kante wird auch beim Ausrichten gezeigt - dort ist sie

@@ -662,7 +662,8 @@ namespace ParkingLotTool.Tools
                     var active = i == dragPoint || i == hoverPoint;
                     var closeTarget = !closed && canClose && i == 0;
                     buffer.DrawCircle(closeTarget ? ClosePointColor
-                            : active ? ActivePointColor : PointColor,
+                            : active ? (trennmodus ? TrennschnittColor : ActivePointColor)
+                            : PointColor,
                         polygon[i], active || closeTarget
                             ? ActivePointDiameter : PointDiameter);
                 }
