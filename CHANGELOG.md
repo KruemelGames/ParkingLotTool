@@ -1,12 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.0.11 — October 13, 2026
 
-- Fix: with the automatic entrance mode switched off, the entrance buttons stayed locked after closing an outline that was too small.
-- Fix: after splitting or moving points, picking a new line for a sub-area could have no effect.
-- Fix: "Updating parking lots" could stay forever after loading a save made while lots were being updated (thanks PlatinMartin).
-- Change: "How it works" shows the episodes in their new order, episode 2 is now "Advanced Building and Mod Settings"; shorter tooltip for "Reset window position".
 - Addition: when updating parking lots gets stuck, its message says so; one click writes a small sync report, opens its folder and a prefilled GitHub problem report.
+- Change: "How it works" shows the episodes in their new order, episode 2 is now "Advanced Building and Mod Settings"; shorter tooltip for "Reset window position".
+- Fix: "Updating parking lots" could stay forever after loading a save made while lots were being updated (thanks PlatinMartin).
+- Fix: after splitting or moving points, picking a new line for a sub-area could have no effect.
+- Fix: with the automatic entrance mode switched off, the entrance buttons stayed locked after closing an outline that was too small.
 
 ## 1.0.10 — October 12, 2026
 
