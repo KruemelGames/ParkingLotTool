@@ -839,7 +839,15 @@ namespace ParkingLotTool.Tools
                 // bleibt erst einmal bearbeitbar.
                 if (Mod.Optionen == null || Mod.Optionen.AutomatischZufahrtModus)
                     BeginEntrancePlacement(showMissingPrompt: false);
-                else _uiSystem?.SetStatus(T("toolSystem.outlineClosedDragCornersAndEdges"));
+                else
+                {
+                    _uiSystem?.SetStatus(T("toolSystem.outlineClosedDragCornersAndEdges"));
+                    // Auch ohne Zufahrtmodus muss das Panel "geschlossen" erfahren
+                    // (2026-10-13): sonst blieben die Zufahrtknoepfe gesperrt, bis eine
+                    // gelungene Vorschau den Zustand nachreichte - bei einer zu
+                    // kleinen Flaeche nie.
+                    PublishEntranceState();
+                }
                 CommitUndoState(before, () => T("toolSystem.outlineClosed"));
                 Mod.log.Info($"PLT-Polygon geschlossen: {_points.Count} Punkte.");
                 return;

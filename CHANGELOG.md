@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+
+- Fix: with the automatic entrance mode switched off, the entrance buttons stayed locked after closing an outline that was too small.
 ## 1.0.10 — October 12, 2026
 
 - Addition: Brazilian Portuguese (thanks CrNet0), Spanish and French, automatic or chosen in the mod settings.
