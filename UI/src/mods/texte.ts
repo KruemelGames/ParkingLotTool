@@ -94,7 +94,7 @@ const baue = (d: Record<string, string>) => {
     anleitungEinleitung: tx("anleitung.einleitung"),
     /** Titel der Folgen, in der Reihenfolge von FOLGEN in anleitung.tsx. */
     anleitungFolgen: [tx("anleitung.basics"), tx("anleitung.formUndLayout"),
-      tx("anleitung.vegetationUndLaternen"), tx("anleitung.zoning"), tx("anleitung.probleme")],
+      tx("anleitung.zoning"), tx("anleitung.vegetationUndLaternen"), tx("anleitung.probleme")],
     anleitungFolge: (nummer: number) => tf("anleitung.folge", { nummer }),
     anleitungBald: tx("anleitung.bald"),
     anleitungAnsehen: (titel: string) => tf("anleitung.ansehen", { titel }),

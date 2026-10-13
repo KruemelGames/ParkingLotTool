@@ -35,8 +35,8 @@ type Folge = {
 const FOLGEN: Folge[] = [
   { titel: "basics", ton: "Fahrwege", kennung: "basics", bild: basicsBild },
   { titel: "formUndLayout", ton: "Zuschnitt" },
-  { titel: "vegetationUndLaternen", ton: "Gruen" },
   { titel: "zoning", ton: "Zufahrt" },
+  { titel: "vegetationUndLaternen", ton: "Gruen" },
   { titel: "probleme", ton: "Melden" },
 ];
 
