@@ -444,6 +444,16 @@ namespace ParkingLotTool.Tools
                 var point = new float3(sign.x, 0f, sign.y);
                 var height = _terrainSystem.GetHeightData();
                 point.y = TerrainUtils.SampleHeight(ref height, point);
+                // Wie bei Aufklebern, Pfeilen, Pflanzen und Laternen: nie ein
+                // Objekt an eine ungueltige Stelle (2026-10-13, Kunreds Log mit
+                // "Object has NaN bounds" - Herkunft dort unklar, dies war
+                // die einzige ungeprueft gebliebene Stelle).
+                if (!math.all(math.isfinite(point)))
+                {
+                    Mod.log.Warn($"PLT-Bushalt {i}: Schildposition ungueltig ({point}); kein Schild gebaut.");
+                    offen.Add(stop);
+                    continue;
+                }
                 var city = World.GetExistingSystemManaged<CityConfigurationSystem>();
                 var travel = BusStopSnap.TravelDirection(stop,
                     city != null && city.leftHandTraffic);
