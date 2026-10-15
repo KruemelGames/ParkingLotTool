@@ -267,7 +267,7 @@ namespace ParkingLotTool.Tools
                         m_Owner = alt.Besitzer, m_Flags = CreationFlags.Permanent,
                         m_RandomSeed = math.max(1, d.Index) });
                     em.AddComponentData(d, Eingabekurs(alt));
-                    em.SetComponentData(d, BindeRueckwegknoten(em,Eingabekurs(alt),eigeneKanten,alt.Besitzer));
+                    em.SetComponentData(d, BindeRueckwegknoten(em,Eingabekurs(alt),eigeneKanten,alt.Besitzer,alt.Prefab));
                     if (alt.HatUpgrade) em.AddComponentData(d, alt.Upgrade);
                     ParkingLotToolSystem.NurDiesesBild(em, d);
                     ParkingLotDauerkursSystem.Plane(em,d);
@@ -399,7 +399,7 @@ namespace ParkingLotTool.Tools
             return eigene;
         }
 
-        private static NetCourse BindeRueckwegknoten(EntityManager em,NetCourse kurs,List<Entity> kanten,Entity owner)
+        private static NetCourse BindeRueckwegknoten(EntityManager em,NetCourse kurs,List<Entity> kanten,Entity owner,Entity prefab)
         {
             kurs.m_StartPosition = Binde(kurs.m_StartPosition);
             kurs.m_EndPosition = Binde(kurs.m_EndPosition);
@@ -424,10 +424,33 @@ namespace ParkingLotTool.Tools
                     foreach (var n in new[] {k.m_Start,k.m_End})
                         if (Lebt(em,n) && em.HasComponent<Game.Net.Node>(n) && em.HasComponent<Owner>(n)
                             && em.GetComponentData<Owner>(n).m_Owner == owner
-                            && math.distance(em.GetComponentData<Game.Net.Node>(n).m_Position,pos.m_Position) <= .05f)
+                            && math.distance(em.GetComponentData<Game.Net.Node>(n).m_Position,pos.m_Position) <= .05f
+                            && Anschliessbar(n))
                         { pos.m_Entity = n; pos.m_Position = em.GetComponentData<Game.Net.Node>(n).m_Position; return pos; }
                 }
                 return pos;
+            }
+            /*
+             * 2026-10-15: PLT legt Wege verschiedener Typen an dieselben
+             * Punkte. Ohne diese Pruefung band der Rueckweg eine Kante an den
+             * erstbesten eigenen Knoten in 5 cm - auch einen mit
+             * unvereinbaren Layern. `ParkingLotDauerkursSystem.Plane` lehnte
+             * das danach ab ("unvereinbare Layer"), der Rueckweg hielt an,
+             * und weil der Schnappschuss gleich blieb, nach JEDEM Laden
+             * wieder. Hier gilt dieselbe Regel wie dort: CanConnect, oder der
+             * erlaubte direkte Pathway-an-Road-Anschluss.
+             */
+            bool Anschliessbar(Entity n)
+            {
+                if (!em.HasComponent<PrefabRef>(n) || !em.HasComponent<NetData>(prefab)) return false;
+                var ziel = em.GetComponentData<PrefabRef>(n).m_Prefab;
+                if (!em.HasComponent<NetData>(ziel)) return false;
+                var eigen = em.GetComponentData<NetData>(prefab);
+                var anderer = em.GetComponentData<NetData>(ziel);
+                if (NetUtils.CanConnect(eigen, anderer)) return true;
+                return em.HasComponent<PathwayData>(prefab)
+                    && (!em.HasBuffer<AuxiliaryNet>(prefab) || em.GetBuffer<AuxiliaryNet>(prefab,true).Length == 0)
+                    && (anderer.m_RequiredLayers & Layer.Road) != 0;
             }
         }
 
