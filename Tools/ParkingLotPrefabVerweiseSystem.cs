@@ -30,7 +30,14 @@ namespace ParkingLotTool.Tools
      * nach dem Abriss nur noch unser Schnappschuss darauf zeigt.
      *
      * Weil die Platzhalter erst NACH dieser Phase zerstoert werden, greift
-     * das auch fuer Spielstaende, die schon mit dem Fehler gespeichert wurden.
+     * das auch fuer Spielstaende, die schon mit dem Fehler gespeichert wurden
+     * - ABER NUR, wenn CS2 das Prefab damals selbst mitgespeichert hat.
+     * Issue #17 (2026-10-15): ein mit 1.0.10 gespeicherter Rueckweg kam mit
+     * leeren Verweisen zurueck ("0 geprueft"). Seitdem tragen Rueckwegkurs
+     * und Anschluss zusaetzlich die PrefabID; sie wird hier ZUERST
+     * aufgeloest, das Umbiegen ist nur noch Rueckfall fuer alte Eintraege.
+     * Fehlt beides, verwirft der Rueckweg sich und der Parkplatz wird aus
+     * dem Bauplan neu gebaut (ParkingLotHintergrundSystem).
      */
     internal sealed partial class ParkingLotPrefabVerweiseSystem : GameSystemBase
     {
@@ -60,7 +67,24 @@ namespace ParkingLotTool.Tools
 
             var verweise = _pruefung.GetPrefabReferences(this, out var abhaengig);
             abhaengig.Complete();
-            int geprueft = 0, umgebogen = 0, unbekannt = 0;
+            int geprueft = 0, umgebogen = 0, unbekannt = 0, perName = 0, leer = 0;
+
+            // Name zuerst; danach Check, damit das Prefab beim Speichern als
+            // benutzt gilt (beim Laden laesst Check echte Prefabs unveraendert).
+            Entity PruefeMitName(Entity prefab, ref FixedString512Bytes name)
+            {
+                var ausName = ParkingLotPrefabname.Aufloesen(EntityManager, name);
+                if (ausName != Entity.Null)
+                {
+                    geprueft++;
+                    if (ausName != prefab) perName++;
+                    return verweise.Check(EntityManager, ausName);
+                }
+                if (prefab == Entity.Null && name.IsEmpty) leer++;
+                var ergebnis = Pruefe(prefab);
+                if (name.IsEmpty) name = ParkingLotPrefabname.Von(EntityManager, ergebnis);
+                return ergebnis;
+            }
 
             Entity Pruefe(Entity prefab)
             {
@@ -80,21 +104,21 @@ namespace ParkingLotTool.Tools
                 {
                     var puffer = EntityManager.GetBuffer<ParkingLotRueckwegkurs>(lot);
                     for (var i = 0; i < puffer.Length; i++)
-                    { var k = puffer[i]; k.Prefab = Pruefe(k.Prefab); puffer[i] = k; }
+                    { var k = puffer[i]; k.Prefab = PruefeMitName(k.Prefab, ref k.PrefabName); puffer[i] = k; }
                 }
             using (var lots = _erhalteneKurse.ToEntityArray(Allocator.Temp))
                 foreach (var lot in lots)
                 {
                     var puffer = EntityManager.GetBuffer<ParkingLotErhaltenerKurs>(lot);
                     for (var i = 0; i < puffer.Length; i++)
-                    { var k = puffer[i]; k.Bestand.Prefab = Pruefe(k.Bestand.Prefab); puffer[i] = k; }
+                    { var k = puffer[i]; k.Bestand.Prefab = PruefeMitName(k.Bestand.Prefab, ref k.Bestand.PrefabName); puffer[i] = k; }
                 }
             using (var lots = _anschluesse.ToEntityArray(Allocator.Temp))
                 foreach (var lot in lots)
                 {
                     var puffer = EntityManager.GetBuffer<ParkingLotRueckweganschluss>(lot);
                     for (var i = 0; i < puffer.Length; i++)
-                    { var a = puffer[i]; a.Prefab = Pruefe(a.Prefab); puffer[i] = a; }
+                    { var a = puffer[i]; a.Prefab = PruefeMitName(a.Prefab, ref a.PrefabName); puffer[i] = a; }
                 }
             using (var lots = _stufeA.ToEntityArray(Allocator.Temp))
                 foreach (var lot in lots)
@@ -112,8 +136,10 @@ namespace ParkingLotTool.Tools
                 }
 
             Mod.log.Info("PLT-Prefabverweise: " + geprueft + " geprueft, "
+                + perName + " ueber den Namen gefunden, "
                 + umgebogen + " auf das geladene Prefab umgebogen, "
-                + unbekannt + " ohne Prefab (bleiben stehen).");
+                + unbekannt + " ohne Prefab (bleiben stehen), "
+                + leer + " leer ohne Namen.");
         }
     }
 }

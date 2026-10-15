@@ -27,12 +27,14 @@ namespace ParkingLotTool.Tools
     public struct ParkingLotRueckwegkurs : IBufferElementData, ISerializable
     {
         public Entity Kante, Prefab, Besitzer, Start, Ende;
+        /** PrefabID des Prefabs (ParkingLotPrefabname); ueberlebt das Laden auch ohne Umbiegen (Issue #17). */
+        public FixedString512Bytes PrefabName;
         public NetCourse Kurs;
         public bool HatUpgrade;
         public Upgraded Upgrade;
         public void Serialize<TWriter>(TWriter w) where TWriter : IWriter
         {
-            w.Write(1); w.Write(Kante); w.Write(Prefab); w.Write(Besitzer);
+            w.Write(2); w.Write(Kante); w.Write(Prefab); w.Write(Besitzer);
             w.Write(Start); w.Write(Ende);
             w.Write(Kurs.m_Curve.a); w.Write(Kurs.m_Curve.b);
             w.Write(Kurs.m_Curve.c); w.Write(Kurs.m_Curve.d);
@@ -40,6 +42,7 @@ namespace ParkingLotTool.Tools
             w.Write((uint)Upgrade.m_Flags.m_General);
             w.Write((uint)Upgrade.m_Flags.m_Left); w.Write((uint)Upgrade.m_Flags.m_Right);
             SchreibePos(w, Kurs.m_StartPosition); SchreibePos(w, Kurs.m_EndPosition);
+            w.Write(PrefabName.ToString());
         }
         private static void SchreibePos<TWriter>(TWriter w, CoursePos p) where TWriter : IWriter
         {
@@ -48,7 +51,7 @@ namespace ParkingLotTool.Tools
         }
         public void Deserialize<TReader>(TReader r) where TReader : IReader
         {
-            r.Read(out int version); if (version != 1) throw new InvalidOperationException("Rueckwegversion");
+            r.Read(out int version); if (version != 1 && version != 2) throw new InvalidOperationException("Rueckwegversion");
             r.Read(out Kante); r.Read(out Prefab); r.Read(out Besitzer);
             r.Read(out Start); r.Read(out Ende);
             r.Read(out float3 a); r.Read(out float3 b); r.Read(out float3 c); r.Read(out float3 d);
@@ -59,6 +62,8 @@ namespace ParkingLotTool.Tools
             Kurs = new NetCourse { m_Curve = new Bezier4x3(a,b,c,d), m_Length = laenge,
                 m_Elevation = elevation, m_FixedIndex = -1,
                 m_StartPosition = LiesPos(r, Start, true), m_EndPosition = LiesPos(r, Ende, false) };
+            PrefabName = default;
+            if (version >= 2) { r.Read(out string name); PrefabName = ParkingLotPrefabname.Fest(name); }
         }
         private static CoursePos LiesPos<TReader>(TReader r, Entity original, bool start) where TReader : IReader
         {
@@ -143,13 +148,44 @@ namespace ParkingLotTool.Tools
             }
             em.AddComponent<ParkingLotRueckwegsicherungOffen>(lot);
             em.AddBuffer<ParkingLotRueckwegkurs>(lot);
-            foreach (var kurs in kurse) { em.GetBuffer<ParkingLotRueckwegkurs>(lot).Add(kurs); yield return 0; }
+            foreach (var k in kurse)
+            {
+                var kurs = k; kurs.PrefabName = ParkingLotPrefabname.Von(em, kurs.Prefab);
+                em.GetBuffer<ParkingLotRueckwegkurs>(lot).Add(kurs); yield return 0;
+            }
             em.AddBuffer<ParkingLotRueckweganschluss>(lot);
-            foreach (var a in anschluesse) { em.GetBuffer<ParkingLotRueckweganschluss>(lot).Add(a); yield return 0; }
+            foreach (var x in anschluesse)
+            {
+                var a = x; a.PrefabName = ParkingLotPrefabname.Von(em, a.Prefab);
+                em.GetBuffer<ParkingLotRueckweganschluss>(lot).Add(a); yield return 0;
+            }
             em.AddBuffer<ParkingLotErhaltenerKurs>(lot);
-            foreach (var kurs in bleibt) { em.GetBuffer<ParkingLotErhaltenerKurs>(lot).Add(kurs); yield return 0; }
+            foreach (var k in bleibt)
+            {
+                var kurs = k; kurs.Bestand.PrefabName = ParkingLotPrefabname.Von(em, kurs.Bestand.Prefab);
+                em.GetBuffer<ParkingLotErhaltenerKurs>(lot).Add(kurs); yield return 0;
+            }
             em.RemoveComponent<ParkingLotRueckwegsicherungOffen>(lot);
+            // Ab hier traegt der neue Schnappschuss die Pflicht (Issue #17).
+            if (em.HasComponent<ParkingLotNeubauFaellig>(lot)) em.RemoveComponent<ParkingLotNeubauFaellig>(lot);
             Melde($"Schnappschuss Lot {lot.Index}: neu aufzubauende Kanten {kurse.Count}, erhaltene Kanten {bleibt.Count}, eigene Knoten {eigene}, erhaltene/fremde Anschlussknoten {fremde}, seitliche Anschluesse {anschluesse.Count}.");
+        }
+
+        /**
+         * Zaehlt Eintraege des Rueckwegs, deren Prefab es nicht mehr gibt.
+         * Dann kann der Rueckweg die alten Kanten nie bauen (Issue #17).
+         */
+        internal static int FehlendePrefabs(EntityManager em, Entity lot)
+        {
+            bool Fehlt(Entity p) => !em.Exists(p) || !em.HasComponent<PrefabData>(p);
+            int n = 0;
+            if (em.HasBuffer<ParkingLotRueckwegkurs>(lot))
+                foreach (var k in em.GetBuffer<ParkingLotRueckwegkurs>(lot, true)) if (Fehlt(k.Prefab)) n++;
+            if (em.HasBuffer<ParkingLotRueckweganschluss>(lot))
+                foreach (var a in em.GetBuffer<ParkingLotRueckweganschluss>(lot, true)) if (Fehlt(a.Prefab)) n++;
+            if (em.HasBuffer<ParkingLotErhaltenerKurs>(lot))
+                foreach (var k in em.GetBuffer<ParkingLotErhaltenerKurs>(lot, true)) if (Fehlt(k.Bestand.Prefab)) n++;
+            return n;
         }
 
         internal static void VerwerfeOffeneSicherung(EntityManager em,Entity lot)

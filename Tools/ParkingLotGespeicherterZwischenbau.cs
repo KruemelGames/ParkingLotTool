@@ -1,9 +1,18 @@
 using Colossal.Serialization.Entities;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
 namespace ParkingLotTool.Tools
 {
+    /** Issue #17: Rueckweg wurde verworfen, der Neubau aus dem Bauplan ist
+     *  noch nicht gesichert. Ueberlebt das Speichern; beim Laden wird der
+     *  Neubau erneut eingereiht. Faellt weg, sobald der neue Rueckweg steht. */
+    public struct ParkingLotNeubauFaellig : IComponentData, ISerializable
+    {
+        public void Serialize<TWriter>(TWriter w) where TWriter : IWriter => w.Write(1);
+        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); }
+    }
     public struct ParkingLotNebenarbeitOffen : IComponentData, ISerializable
     {
         public void Serialize<TWriter>(TWriter w) where TWriter : IWriter => w.Write(1);
@@ -32,9 +41,25 @@ namespace ParkingLotTool.Tools
         public Entity Prefab, Besitzer;
         public float3 Position;
         public float Lage;
+        /** PrefabID des Prefabs (Issue #17), siehe ParkingLotPrefabname. */
+        public FixedString512Bytes PrefabName;
+        // Das alte Format hatte keine Version und begann mit Kursindex >= 0.
+        // Eine negative Kennung davor erkennt das neue Format eindeutig.
+        private const int Format2 = -2;
         public void Serialize<TWriter>(TWriter w) where TWriter : IWriter
-        { w.Write(Kursindex); w.Write(Knoten); w.Write(Lage); w.Write(Prefab); w.Write(Besitzer); w.Write(Position); }
+        {
+            w.Write(Format2);
+            w.Write(Kursindex); w.Write(Knoten); w.Write(Lage); w.Write(Prefab); w.Write(Besitzer); w.Write(Position);
+            w.Write(PrefabName.ToString());
+        }
         public void Deserialize<TReader>(TReader r) where TReader : IReader
-        { r.Read(out Kursindex); r.Read(out Knoten); r.Read(out Lage); r.Read(out Prefab); r.Read(out Besitzer); r.Read(out Position); }
+        {
+            r.Read(out int erstes);
+            bool neu = erstes == Format2;
+            if (neu) r.Read(out Kursindex); else Kursindex = erstes;
+            r.Read(out Knoten); r.Read(out Lage); r.Read(out Prefab); r.Read(out Besitzer); r.Read(out Position);
+            PrefabName = default;
+            if (neu) { r.Read(out string name); PrefabName = ParkingLotPrefabname.Fest(name); }
+        }
     }
 }

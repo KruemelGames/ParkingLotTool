@@ -404,6 +404,7 @@ namespace ParkingLotTool.Tools
                     break;
                 case Phase.Rueckweg:
                     if (!EntityManager.HasBuffer<ParkingLotRueckwegkurs>(a.Lot)) { RueckwegFertig(a,0,0); return; }
+                    if (a.RueckwegIndex == 0 && !a.RueckwegAusgegeben && VerwirfUnbaubarenRueckweg(a)) return;
                     if (!a.RueckwegAusgegeben)
                     {
                         Exklusiv(a, () =>
@@ -478,6 +479,44 @@ namespace ParkingLotTool.Tools
                 HalteRueckwegAn(a); return;
             }
             a.Phase = Phase.Ruecknahme;
+        }
+
+        /**
+         * Issue #17: Ein Rueckweg, dessen Prefabs es nicht mehr gibt, kann die
+         * alten Kanten nie bauen. Statt den Parkplatz fuer immer zu sperren,
+         * wird der Schnappschuss verworfen und SOFORT ein voller Neubau aus
+         * dem Bauplan eingereiht - ein normaler Sync baut fehlende eigene
+         * Kanten nicht nach (Schritt 9 tauscht nur vorhandene). Der Neubau
+         * sichert vor seinem Abriss einen neuen, vollstaendigen Rueckweg.
+         * Nur vor der ersten Ausgabe und nur mit lesbarem Bauplan - ohne Plan
+         * bleibt es bei der Sperre wie bisher.
+         */
+        private bool VerwirfUnbaubarenRueckweg(Auftrag a)
+        {
+            int fehlen = ParkingLotNetzRueckweg.FehlendePrefabs(EntityManager, a.Lot);
+            if (fehlen == 0) return false;
+            if (EntityManager.HasComponent<ParkingLotOffenerErsatz>(a.Lot))
+            {
+                ParkingLotNetzRueckweg.Melde($"Rueckweg Lot {a.Lot.Index}: {fehlen} Prefab(s) fehlen, offener Ersatz vorhanden; nicht verworfen.");
+                return false;
+            }
+            if (!KannNeubauen(a.Lot, out var grund))
+            {
+                ParkingLotNetzRueckweg.Melde($"Rueckweg Lot {a.Lot.Index}: {fehlen} Prefab(s) fehlen, kein Bauplan ({grund}); Sperre bleibt.");
+                return false;
+            }
+            // Erst die gespeicherte Pflicht, dann den alten Schnappschuss weg:
+            // ein Speichern bis zur neuen Sicherung darf den Neubau nicht verlieren.
+            if (!EntityManager.HasComponent<ParkingLotNeubauFaellig>(a.Lot))
+                EntityManager.AddComponent<ParkingLotNeubauFaellig>(a.Lot);
+            EntityManager.RemoveComponent<ParkingLotRueckwegkurs>(a.Lot);
+            ParkingLotNetzRueckweg.Melde($"Rueckweg Lot {a.Lot.Index} VERWORFEN: {fehlen} gesicherte Prefab(s) fehlen nach dem Laden; "
+                + "Neubau aus dem Bauplan wird eingereiht.");
+            var lot = a.Lot;
+            RueckwegFertig(a, 0, 0);
+            if (!a.Beendet) return true;
+            Einreihen(lot, fruehestens: UnityEngine.Time.frameCount + HintergrundTakt.Versuchspause);
+            return true;
         }
 
         private void HalteRueckwegAn(Auftrag a)
@@ -587,6 +626,15 @@ namespace ParkingLotTool.Tools
                 Einreihen(lot,true);
                 var a = _queue[_queue.Count-1];
                 if (EntityManager.HasComponent<ParkingLotOffenerErsatz>(lot)) a.Phase = Phase.Ruecknahme;
+            }
+            // Issue #17: verworfener Rueckweg, Neubau noch nicht gesichert.
+            using var faelligQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ParkingLotNeubauFaellig>(),
+                ComponentType.Exclude<ParkingLotRueckwegkurs>(), ComponentType.Exclude<Deleted>());
+            using var faellig = faelligQuery.ToEntityArray(Allocator.Temp);
+            foreach (var lot in faellig)
+            {
+                ParkingLotNetzRueckweg.Melde($"Lot {lot.Index}: Neubau nach verworfenem Rueckweg war offen; wird eingereiht.");
+                Einreihen(lot, fruehestens: UnityEngine.Time.frameCount + HintergrundTakt.Versuchspause);
             }
         }
 
