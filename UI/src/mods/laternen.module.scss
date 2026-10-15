@@ -20,9 +20,11 @@
 /* Sets tragen Namen statt Bildern - "Strasse", "Gewerbe", "Industrie".
    Doppelte Klasse: sonst gewinnt die feste Breite 32rem von .choice aus dem
    Vegetationsstil, je nach Reihenfolge im Buendel ("Commercial" lief heraus). */
-.setKnopf.setKnopf { width: auto; min-width: 96rem; height: 32rem; padding: 3rem 10rem; }
+.setKnopf.setKnopf { max-width:100%; width: auto; min-width: 96rem; height: 32rem; padding: 3rem 10rem; }
 /* .choice span setzt flex-basis 0 - dann misst der Knopf den Namen nicht mit. */
-.setName.setName { flex: 0 0 auto; white-space: nowrap; }
+.setName.setName { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; overflow-wrap: break-word; }
 .breiterKnopf.breiterKnopf { width: 100%; height: auto; min-height: 28rem; padding: 4rem 8rem; margin-top: 4rem; }
 /* Ohne Bild der Name, klein und gekuerzt. */
-.ohneBild { font-size: var(--fontSizeXS); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ohneBild { flex: 1 1 0; min-width: 0; overflow-wrap: break-word; font-size: var(--fontSizeXS); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.breiterKnopf.breiterKnopf > span { flex: 1 1 0; min-width: 0; white-space: normal; overflow-wrap: break-word; overflow: visible; }

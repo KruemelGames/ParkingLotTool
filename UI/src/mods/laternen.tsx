@@ -57,7 +57,7 @@ export const LaternenSchalter = ({ onOeffnen }: { onOeffnen: (an: boolean) => vo
  return <div className={styles.root}>
   <div className={base.schalterReihe}>
    <MitTooltip text={t("laternen.openTheLanternSettings")}>
-    <button className={`${base.label} ${styles.nameKnopf}`} onClick={()=>onOeffnen(true)}>{t("laternen.lanterns")}</button>
+    <button className={styles.nameKnopf} onClick={()=>onOeffnen(true)}><span className={base.label}>{t("laternen.lanterns")}</span></button>
    </MitTooltip>
    <MitTooltip text={t("laternen.placeStreetLanternsAlongThe")}>
     <button role="switch" aria-label={t("laternen.lanterns")} aria-checked={optionen.Enabled}
@@ -131,7 +131,7 @@ export const LaternenFenster = ({ pos, onPos, onClose }: {
     </div>)}</div>
     <MitTooltip text={t("laternen.chooseModelsCustomSet")}>
      <button className={`${styles.choice} ${eigene.breiterKnopf} ${rechts?styles.selected:""}`} aria-pressed={rechts} onClick={()=>setRechts(!rechts)}>
-      {t("laternen.chooseModelsCustomSet")}
+      <span>{t("laternen.chooseModelsCustomSet")}</span>
      </button>
     </MitTooltip>
     <div className={eigene.wahl}><Zeichen doppelt={false}/><span className={styles.label}>{name(optionen.Einzeln)}</span></div>

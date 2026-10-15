@@ -6,7 +6,7 @@ import { useValue } from "cs2/api";
 import { useEffect, useRef, useState } from "react";
 import styles from "./panel.module.scss";
 import {
-  Auswahl, Fangschalter, Flaeche, ModeChooser, Slider, Spalte, Toggle,
+  Auswahl, Fangschalter, Flaeche, ModeChooser, Slider, Spalte, SpaltenGruppe, Toggle,
   TooltipKnopf,
 } from "./controls";
 import { ReportTab } from "./report";
@@ -47,6 +47,11 @@ import {
 import { useTexte } from "./texte";
 import { AnleitungTab } from "./anleitung";
 import rueckgaengigSymbol from "../assets/rueckgaengig.svg";
+import {
+  abschlussRem, Aufklapper, AufklappEbene, hoechsterAnker, hoechsthoehePx, SPALTE_REM,
+  HOEHE_100_RUECKFALL_REM, HOEHE_WAAGERECHT_REM,
+  SpaltenProReihe, unterFreiRem, useBildschirm, useRemPx, useTextFaktor,
+} from "./rahmen";
 import wiederherstellenSymbol from "../assets/wiederherstellen.svg";
 
 const numberDiffers = (value: number, standard: number) =>
@@ -65,7 +70,8 @@ const MAX_ANTEIL = 0.95;
 
 /**
  * Was vom hochkanten Fenster mindestens stehenbleiben muss - Kopfleiste,
- * ein Stueck Einstellungen und der Abschluss mit dem Bauknopf.
+ * ein Stueck Einstellungen und der Abschluss mit dem Bauknopf. In rem; bis
+ * zum 2026-10-15 wurde es als Pixel gerechnet (bei 4K nur die halbe Hoehe).
  */
 const MindesthoeheHochkant = 420;
 
@@ -191,6 +197,13 @@ export const ParkingLotPanel = () => {
     useState<{ x: number; y: number } | null>(null);
 
   const leiste = useRef<HTMLDivElement>(null);
+  /* rem aus CS2s eigener Rechnung (beachtet "Interface scaling"), und ein
+     neues Bild, sobald sich die Bildschirmgroesse aendert. Beides Hooks,
+     also hier oben. */
+  const remPx = useRemPx();
+  useBildschirm();
+  /* Wie stark "Text scale" die Schrift vergroessert (150 % = gut 2-fach). */
+  const textFaktor = useTextFaktor();
 
   /**
    * DER BEZUGSRAHMEN IST NICHT DAS FENSTER.
@@ -234,16 +247,7 @@ export const ParkingLotPanel = () => {
    * wird der Zugriff abgesichert: faellt er aus, bleibt es bei 1 - dem
    * Wert, bei dem der Nutzer gemessen hat.
    */
-  const toolbarSkala = () => {
-    try {
-      const wert = getComputedStyle(document.documentElement)
-        .getPropertyValue("--toolbarScale");
-      const zahl = parseFloat(wert);
-      return zahl > 0 && zahl < 10 ? zahl : 1;
-    } catch {
-      return 1;
-    }
-  };
+  /* `toolbarSkala` steht seit 2026-10-15 in `rahmen.tsx`. */
 
   /**
    * Wie hoch ueber der Bildschirmunterkante das Fenster enden soll.
@@ -257,14 +261,13 @@ export const ParkingLotPanel = () => {
    * `--toolbarHeight`), die uebrigen 56 rem sind fest. Bei Skala 1 kommen
    * wieder die gemessenen 106 heraus.
    */
-  const unterrandRem = () => 56 + 50 * toolbarSkala();
+  const unterrandRem = unterFreiRem;
 
-  /** 1 rem in Pixeln, nach derselben Rechnung wie CS2s Stylesheet. */
-  const remGroesse = () => {
-    const b = window.innerWidth || 1920;
-    const h = window.innerHeight || 1080;
-    return h >= b * 0.5625 ? b / 1920 : h / 1080;
-  };
+  /**
+   * 1 rem in Pixeln. Seit 2026-10-15 aus CS2s `useRem`: die nachgerechnete
+   * Formel kannte den Schalter "Interface scaling" nicht.
+   */
+  const remGroesse = () => remPx;
 
   /**
    * Die Breiten und Hoehen der beiden Stile in rem.
@@ -413,6 +416,47 @@ export const ParkingLotPanel = () => {
   const [zug, setZug] = useState<{ x: number; y: number } | null>(null);
   const anker = useRef({ mausX: 0, mausY: 0, x: 0, y: 0 });
 
+  /* --------------------------------------------- Hochkant bei grossem Text */
+  /*
+   * GROSSER TEXT, GLEICHE SPALTE (2026-10-15).
+   *
+   * Hochkant bleibt 364 rem breit - die Grundregel des Nutzers: das Fenster
+   * waechst nicht. Bei 150 % Text brauchten aber Reiter, Ergebnis und
+   * Zufahrtknoepfe zusammen drei Viertel der Hoehe, und fuer die
+   * Einstellungen blieb ein Streifen. Zwei Ausweichen, beide GEMESSEN statt
+   * an einer Textgroesse festgemacht (Sprache und Hinweise aendern die
+   * Hoehen genauso):
+   *
+   *   Reiter   brechen sie in mehr als zwei Zeilen um, wird daraus eine
+   *            Auswahl: der aktive Reiter mit Pfeil, die anderen klappen
+   *            darunter auf.
+   *   Fuss     nimmt der Abschluss (Ergebnis, Zufahrten, Bauknopf) mehr
+   *            als 40 % der Hoehe, laeuft er mit den Einstellungen; nur
+   *            der Bauknopf bleibt unten stehen. Zurueck erst unter 30 %,
+   *            damit es an der Grenze nicht hin und her springt.
+   */
+  const reiterZeile = useRef<HTMLDivElement>(null);
+  const reiterAnker = useRef<HTMLDivElement>(null);
+  const reiterListe = useRef<HTMLElement | null>(null);
+  const [reiterKlappe, setReiterKlappe] = useState("");
+  const [reiterOffen, setReiterOffen] = useState(false);
+  const abschlussRef = useRef<HTMLDivElement>(null);
+  const fussRef = useRef<HTMLDivElement>(null);
+  const hoechsthoeheJetzt = useRef(0);
+  const [fussLaeuft, setFussLaeuft] = useState(false);
+  /* Waagerecht: Hoehe der Kopfleiste, damit Einstellungen und Abschluss
+     wissen, wieviel von der festen Leistenhoehe fuer sie bleibt. */
+  const railRef = useRef<HTMLDivElement>(null);
+  const [railPx, setRailPx] = useState(0);
+  /* Hoehe der waagerechten Leiste im Entwurf bei 100 % Text, in rem -
+     gemerkt, damit sie auch gilt, wenn man nur mit grossem Text spielt. */
+  const [hoehe100Rem, setHoehe100Rem] = useState<number | null>(() => {
+    try {
+      const w = parseFloat(window.localStorage.getItem("plt.hoehe100Rem") ?? "");
+      return w > 0 ? w : null;
+    } catch { return null; }
+  });
+
   /* ------------------------------------------------------- Abschnitte */
   /**
    * HOCHKANT IST IMMER NUR EIN ABSCHNITT OFFEN.
@@ -530,6 +574,78 @@ export const ParkingLotPanel = () => {
     if (!polygonClosed && tab === "zoning") setTab("layout");
   }, [polygonClosed, tab]);
 
+  /* Reiter: gemessen wird nur, solange sie als Zeile stehen. Der Schluessel
+     haelt fest, WOFUER die Auswahl gilt - aendern sich Textgroesse,
+     Aufloesung, Sprache oder die Zahl der Reiter, wird neu gemessen. */
+  const reiterSchluessel = `${textFaktor.toFixed(2)}|${remPx.toFixed(3)}|`
+    + `${t.reiterMelden}|${t.reiterEntwurf}|${entwicklerDebug ? 1 : 0}`;
+  const reiterGeklappt = hochkant && reiterKlappe === reiterSchluessel;
+  useEffect(() => {
+    if (!hochkant || reiterGeklappt) return;
+    let weg = false;
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => {
+      const zeile = reiterZeile.current;
+      const erster = zeile?.firstElementChild as HTMLElement | null;
+      if (weg || !zeile || !erster) return;
+      const h = erster.offsetHeight;
+      // Zwei Zeilen sind gut 2 Reiterhoehen, drei gut 3.
+      if (h > 0 && zeile.offsetHeight > 2.5 * h) setReiterKlappe(reiterSchluessel);
+    }));
+    return () => { weg = true; cancelAnimationFrame(id); };
+  });
+  useEffect(() => { setReiterOffen(false); }, [tab, reiterGeklappt]);
+  useEffect(() => {
+    if (!reiterOffen) return;
+    const klick = (e: MouseEvent) => {
+      const ziel = e.target as Node;
+      if (!reiterAnker.current?.contains(ziel) && !reiterListe.current?.contains(ziel))
+        setReiterOffen(false);
+    };
+    window.addEventListener("mousedown", klick);
+    return () => window.removeEventListener("mousedown", klick);
+  }, [reiterOffen]);
+
+  useEffect(() => {
+    let weg = false;
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => {
+      const h = railRef.current?.offsetHeight ?? 0;
+      if (!weg && h > 0 && Math.abs(h - railPx) > 0.5) setRailPx(h);
+    }));
+    return () => { weg = true; cancelAnimationFrame(id); };
+  });
+
+  useEffect(() => {
+    const imEntwurf = tab !== "report" && tab !== "debug" && tab !== "liste"
+      && tab !== "anleitung" && !(tab === "zoning" && polygonClosed);
+    if (hochkant || textFaktor > 1.001 || !imEntwurf) return;
+    let weg = false;
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => {
+      const h = leiste.current?.offsetHeight ?? 0;
+      if (weg || !(h > 0) || !(remPx > 0)) return;
+      const neu = Math.round(h / remPx);
+      if (hoehe100Rem !== null && Math.abs(neu - hoehe100Rem) < 2) return;
+      setHoehe100Rem(neu);
+      try { window.localStorage.setItem("plt.hoehe100Rem", String(neu)); } catch { }
+    }));
+    return () => { weg = true; cancelAnimationFrame(id); };
+  });
+
+  /* Fuss: Abschluss plus (falls ausgelagert) Bauknopf gegen die Hoechsthoehe. */
+  useEffect(() => {
+    if (!hochkant) { if (fussLaeuft) setFussLaeuft(false); return; }
+    let weg = false;
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => {
+      const abschluss = abschlussRef.current;
+      const max = hoechsthoeheJetzt.current;
+      if (weg || !abschluss || !(max > 0)) return;
+      const h = abschluss.offsetHeight + (fussRef.current?.offsetHeight ?? 0);
+      if (!(h > 0)) return;
+      if (!fussLaeuft && h > 0.4 * max) setFussLaeuft(true);
+      else if (fussLaeuft && h < 0.3 * max) setFussLaeuft(false);
+    }));
+    return () => { weg = true; cancelAnimationFrame(id); };
+  });
+
   /**
    * Wieviel Hoehe unter der Oberkante des Fensters noch frei ist.
    *
@@ -537,9 +653,23 @@ export const ParkingLotPanel = () => {
    * darunter bleibt der Rest bis zu dem Streifen, den wir ueber CS2s
    * Hauptleiste frei lassen.
    */
-  const platzHochkant = (obenAnteil: number, hoehe: number) =>
-    Math.max(MindesthoeheHochkant,
-      (1 - obenAnteil) * hoehe - unterrandRem() * remGroesse());
+  /*
+   * BEIDE STILE HABEN EINE HOECHSTHOEHE (2026-10-15), nicht nur hochkant.
+   * Grundregel des Nutzers: das Panel darf nie ueber den Bildschirm wachsen.
+   * Die waagerechte Leiste haengt unten (`y` = Abstand der Unterkante),
+   * die Spalte oben (`y` = Abstand der Oberkante).
+   */
+  const hoechsthoehe = (anteil: number, hoehe: number) => {
+    const frei = hoechsthoehePx(remGroesse(), hoehe,
+      hochkant ? { oben: anteil * hoehe } : { unten: anteil * hoehe });
+    // Waagerecht: bei 100 % Text hoechstens 40 % des Bildes, bei groesserem
+    // Text hoechstens so hoch wie bei 100 % (siehe `hoehe100Rem`).
+    const grenzeRem = textFaktor > 1.001
+      ? Math.min(HOEHE_WAAGERECHT_REM, hoehe100Rem ?? HOEHE_100_RUECKFALL_REM)
+      : HOEHE_WAAGERECHT_REM;
+    return hochkant ? frei
+      : Math.min(frei, Math.floor(grenzeRem * remGroesse()));
+  };
 
   /**
    * Wie weit das hochkante Fenster nach unten darf.
@@ -550,15 +680,43 @@ export const ParkingLotPanel = () => {
    * Das war kein Fehler in der Rechnung, sondern eine fehlende Untergrenze.
    */
   const maxYHochkant = (hoehe: number) => Math.max(0,
-    (hoehe - unterrandRem() * remGroesse() - MindesthoeheHochkant) / hoehe);
+    (hoehe - (unterrandRem() + MindesthoeheHochkant) * remGroesse()) / hoehe);
+
+  /* Die Leiste haengt unten: so weit nach oben, dass ueber ihr noch Platz
+     fuer eine bedienbare Hoehe bleibt (die Hoechsthoehe waechst nie ueber den
+     freien Platz hinaus). */
+  const maxYWaagerecht = (hoehe: number) =>
+    Math.min(MAX_ANTEIL, hoechsterAnker(remGroesse(), hoehe, false) / hoehe);
 
   const { breite: rahmenBreite, hoehe: rahmenHoehe } = rahmen();
+
+  /*
+   * WIE VIELE ABSCHNITTE NEBENEINANDER (2026-10-15) - gerechnet, nicht dem
+   * Umbruch von Gameface ueberlassen. Die Leiste ist dieselbe Breite wie im
+   * Stylesheet (88 % des Rahmens, hoechstens 1680 rem), abzueglich des
+   * Innenrands von `.inhalt`. Passen vier Abschnitte UND der Abschluss,
+   * bleibt alles in einer Zeile; sonst steht der Abschluss darunter und die
+   * Abschnitte in Reihen. Hochkant: 0 - dort stapelt das Stylesheet.
+   */
+  /* Spalten- und Abschlussbreite wachsen mit der Schrift, die Leiste nicht:
+     bei grossem Text stehen weniger Abschnitte nebeneinander. */
+  const leisteInnenRem = Math.min(1680 * remGroesse(), 0.88 * rahmenBreite)
+    / remGroesse() - 2 * 14;
+  const spalteRem = SPALTE_REM * textFaktor;
+  const proReiheAllgemein = hochkant ? 0
+    : Math.max(1, Math.floor(leisteInnenRem / spalteRem));
+  /* Entwurf: der Abschluss steht IMMER rechts daneben (16 rem Rand), die
+     Abschnitte teilen sich den Rest. */
+  const proReiheEntwurf = hochkant ? 0
+    : Math.max(1, Math.min(4, Math.floor(
+        (leisteInnenRem - abschlussRem(textFaktor) - 16) / spalteRem)));
   const maxX = Math.max(0, (rahmenBreite - leistenbreite()) / rahmenBreite);
   const x = klemme(zug ? zug.x : panelX, maxX);
   // Auch ein aelterer gespeicherter Wert darf das Fenster nicht unter die
   // Mindesthoehe druecken.
   const y = klemme(zug ? zug.y : panelY,
-    hochkant ? maxYHochkant(rahmenHoehe) : MAX_ANTEIL);
+    hochkant ? maxYHochkant(rahmenHoehe) : maxYWaagerecht(rahmenHoehe));
+  hoechsthoeheJetzt.current = hoechsthoehe(y, rahmenHoehe);
 
   const zugBeginnen = (event: any) => {
     anker.current = {
@@ -586,7 +744,7 @@ export const ParkingLotPanel = () => {
        */
       y: klemme(anker.current.y + (hochkant ? 1 : -1)
         * (event.clientY - anker.current.mausY) / hoehe,
-        hochkant ? maxYHochkant(hoehe) : MAX_ANTEIL),
+        hochkant ? maxYHochkant(hoehe) : maxYWaagerecht(hoehe)),
     });
   };
 
@@ -632,7 +790,7 @@ export const ParkingLotPanel = () => {
     const el = leiste.current;
     const gemessenH = el?.offsetHeight ?? 0;
     const gemessenB = el?.offsetWidth ?? 0;
-    const panelhoehe = gemessenH > 0 ? gemessenH : (hochkant ? 700 : 420) * rem;
+    const panelhoehe = gemessenH > 0 ? gemessenH : (hochkant ? 700 : HOEHE_WAAGERECHT_REM) * rem;
     const panelbreite = gemessenB > 0 ? gemessenB : leistenbreite();
     const panelLinks = x * breite;
     const panelOben = hochkant ? y * hoehe : hoehe - y * hoehe - panelhoehe;
@@ -695,98 +853,18 @@ export const ParkingLotPanel = () => {
   const zoning = tab === "zoning" && polygonClosed;
   const liste = tab === "liste";
   const anleitung = tab === "anleitung";
-
-  /** Der Name des Mods - hochkant in einer Zeile mit den beiden Pfeilen. */
-  const marke = (
-    <div className={styles.marke}>
-      <span className={styles.markeStrich} />
-      <span className={styles.markeText}>{t.titel}</span>
-    </div>
-  );
+  const entwurf = !melden && !debug && !anleitung && !zoning && !liste;
+  const aktiverReiterName = melden ? t.reiterMelden : debug ? t.reiterDebug
+    : liste ? t.reiterListe : anleitung ? t.reiterAnleitung
+    : zoning ? t.zoningReiter : t.reiterEntwurf;
 
   /**
-   * Rueckgaengig und Wiederherstellen.
-   *
-   * Sie stehen an zwei verschiedenen Stellen, je nach Stil - waagerecht bei
-   * den Fensterknoepfen, hochkant oben in der Reiterzeile -, aber es ist
-   * derselbe Knopf. Deshalb steht er einmal hier und nicht zweimal im
-   * Aufbau.
+   * Die Reiter - als Zeile, oder hochkant bei grossem Text in der Auswahl
+   * (siehe `reiterGeklappt`). Einmal hier, damit beide Orte dieselben
+   * Knoepfe zeigen.
    */
-  const undoRedo = (
+  const reiterKnoepfe = (
     <>
-      <TooltipKnopf text={t.tooltipRueckgaengig}
-        className={`${styles.iconButton}
-          ${undoAvailable ? "" : styles.iconButtonAus}`}
-        aria-disabled={!undoAvailable}
-        onMouseDown={haltAn}
-        onClick={undo}
-      >
-        <span className={styles.undoSymbol} style={{ maskImage: `url(${rueckgaengigSymbol})` }} />
-      </TooltipKnopf>
-      <TooltipKnopf text={t.tooltipWiederherstellen}
-        className={`${styles.iconButton}
-          ${redoAvailable ? "" : styles.iconButtonAus}`}
-        aria-disabled={!redoAvailable}
-        onMouseDown={haltAn}
-        onClick={redo}
-      >
-        <span className={styles.undoSymbol} style={{ maskImage: `url(${wiederherstellenSymbol})` }} />
-      </TooltipKnopf>
-    </>
-  );
-
-  return (
-    <>
-    <div
-      ref={leiste}
-      className={`${styles.panel} ${
-        hochkant ? styles.stilHochkant : styles.stilHorizontal}`}
-      style={hochkant
-        ? { left: `${x * 100}%`, top: `${y * 100}%` }
-        : { left: `${x * 100}%`, bottom: `${y * 100}%` }}
-    >
-      {/*
-        DIE HOECHSTHOEHE SITZT HIER, NICHT AM PANEL.
-        Am Panel hat sie den Inhalt zerlegt: das Panel waere dafuer ein
-        Flex-Kasten geworden, und als dessen Kind rechnet `.reihe` nicht mehr
-        nach Max-Content - `.inhalt` fiel auf seine Polsterung zusammen.
-
-        An `.reihe` gilt beides: kurzer Inhalt laesst das Fenster
-        schrumpfen, langer wird begrenzt, und erst dann geben `.inhalt` und
-        die Spaltengruppe ihre Hoehe an die Bildlaufleiste weiter.
-
-        AUSGERECHNET IN PIXELN, NICHT ALS `calc`: Cohtml mischt in `calc`
-        keine Einheiten zuverlaessig (vh mit rem ist derselbe Fall wie
-        Prozent mit rem, siehe cs2-ui-cohtml).
-      */}
-      <div className={styles.reihe}
-           style={hochkant
-             ? { maxHeight: `${platzHochkant(y, rahmenHoehe)}px` }
-             : undefined}>
-
-        {/* Die Schiene ist zugleich der Griff zum Verschieben. Reiter und
-            Knoepfe darin halten das Mausereignis selbst auf, sonst wandert
-            die Leiste bei jedem Klick ein Stueck mit. */}
-        <div className={styles.rail} onMouseDown={zugBeginnen}
-             title={t.titelZiehen}>
-          {marke}
-          {/*
-            DER RECHENWEG GEHOERT NICHT IN DIE LAYOUT-SPALTE.
-            Er stellt nicht EINE Eigenschaft des Parkplatzes ein, sondern
-            entscheidet, WOMIT gerechnet wird - eine Ebene ueber allem
-            anderen. Deshalb steht er jetzt in der Schiene unter dem Namen
-            des Mods, nicht zwischen Randabstand und Winkel.
-          */}
-          {/* Der einzige Reiter ohne Tooltip - bis zum 2026-09-16. Die
-              vier anderen hatten laengst einen; hier fehlte er, weil der
-              Reiter als erster entstand und der `TooltipKnopf` spaeter
-              dazukam. */}
-          {/*
-            EINE ZEILE FUER DIE REITER.
-            Hochkant sitzen Rueckgaengig und Wiederherstellen rechts darin;
-            waagerecht ist die Zeile nur eine Huelle, die nichts aendert.
-          */}
-          <div className={styles.reiterZeile}>
           <TooltipKnopf
             text={t.tooltipEntwurf}
             className={`${styles.tab} ${melden || debug || zoning || liste || anleitung ? "" : styles.tabAktiv}`}
@@ -866,18 +944,160 @@ export const ParkingLotPanel = () => {
           >
             {t.reiterMelden}
           </TooltipKnopf>
+    </>
+  );
+
+  /** Der Bauknopf - im Abschluss, oder hochkant bei grossem Text unten fest. */
+  const bauKnopf = (
+        <TooltipKnopf text={t.tooltipBauen}
+            className={`${styles.aktion} ${styles.aktionBauen}
+              ${polygonClosed && darfBauen && !zuKlein ? "" : styles.aktionAus}
+              ${polygonClosed && zuKlein ? styles.aktionZuKlein : ""}`}
+            aria-disabled={!polygonClosed || entranceCount === 0 || zuKlein}
+            onClick={() => { if (polygonClosed && darfBauen && !zuKlein) buildNow(); }}
+        >
+            <img src={icon("Checkmark")} />
+            {polygonClosed && zuKlein ? (
+              <div className={styles.aktionText}>
+                <div className={styles.aktionName}>{t.bauenZuKlein}</div>
+                <div className={styles.aktionNebentext}>
+                  {vorschaufehler === "zuKleinRandstrassen" ? t.bauenZuKleinRand : t.bauenZuKleinGroesser}
+                </div>
+              </div>
+            ) : (
+              <div className={styles.aktionText}>
+                <div className={styles.aktionName}>{t.bauen}</div>
+                <div className={styles.aktionNebentext}>{t.tasteEnter}</div>
+              </div>
+            )}
+        </TooltipKnopf>
+  );
+
+  /**
+   * Rueckgaengig und Wiederherstellen.
+   *
+   * Sie stehen an zwei verschiedenen Stellen, je nach Stil - waagerecht bei
+   * den Fensterknoepfen, hochkant oben in der Reiterzeile -, aber es ist
+   * derselbe Knopf. Deshalb steht er einmal hier und nicht zweimal im
+   * Aufbau.
+   */
+  const undoRedo = (
+    <>
+      <TooltipKnopf text={t.tooltipRueckgaengig}
+        className={`${styles.iconButton}
+          ${undoAvailable ? "" : styles.iconButtonAus}`}
+        aria-disabled={!undoAvailable}
+        onMouseDown={haltAn}
+        onClick={undo}
+      >
+        <span className={styles.undoSymbol} style={{ maskImage: `url(${rueckgaengigSymbol})` }} />
+      </TooltipKnopf>
+      <TooltipKnopf text={t.tooltipWiederherstellen}
+        className={`${styles.iconButton}
+          ${redoAvailable ? "" : styles.iconButtonAus}`}
+        aria-disabled={!redoAvailable}
+        onMouseDown={haltAn}
+        onClick={redo}
+      >
+        <span className={styles.undoSymbol} style={{ maskImage: `url(${wiederherstellenSymbol})` }} />
+      </TooltipKnopf>
+    </>
+  );
+
+  /**
+   * Der Name des Mods - hochkant in einer Zeile mit den beiden Pfeilen.
+   * Steht HINTER `undoRedo`, weil er ihn hochkant mitnimmt.
+   */
+  const marke = (
+    <div className={styles.marke}>
+      <span className={styles.markeStrich} />
+      <span className={styles.markeText}>{t.titel}</span>
+      {hochkant ? <>
+        <span className={styles.kopfFueller} />
+        {undoRedo}
+      </> : null}
+    </div>
+  );
+
+  return (
+    <AufklappEbene>
+    <div
+      ref={leiste}
+      className={`${styles.panel} ${
+        hochkant ? styles.stilHochkant : styles.stilHorizontal}`}
+      style={{
+        ...(hochkant
+          ? { left: `${x * 100}%`, top: `${y * 100}%` }
+          : { left: `${x * 100}%`, bottom: `${y * 100}%` }),
+        /* Breiten, die Text tragen, rechnen damit (panel.module.scss). */
+        ["--pltText" as any]: textFaktor,
+      }}
+    >
+      {/*
+        DIE HOECHSTHOEHE SITZT HIER, NICHT AM PANEL.
+        Am Panel hat sie den Inhalt zerlegt: das Panel waere dafuer ein
+        Flex-Kasten geworden, und als dessen Kind rechnet `.reihe` nicht mehr
+        nach Max-Content - `.inhalt` fiel auf seine Polsterung zusammen.
+
+        An `.reihe` gilt beides: kurzer Inhalt laesst das Fenster
+        schrumpfen, langer wird begrenzt, und erst dann geben `.inhalt` und
+        die Spaltengruppe ihre Hoehe an die Bildlaufleiste weiter.
+
+        AUSGERECHNET IN PIXELN, NICHT ALS `calc`: Cohtml mischt in `calc`
+        keine Einheiten zuverlaessig (vh mit rem ist derselbe Fall wie
+        Prozent mit rem, siehe cs2-ui-cohtml).
+      */}
+      <div className={styles.reihe}
+           style={{ maxHeight: `${hoechsthoehe(y, rahmenHoehe)}px` }}>
+
+        {/* Die Schiene ist zugleich der Griff zum Verschieben. Reiter und
+            Knoepfe darin halten das Mausereignis selbst auf, sonst wandert
+            die Leiste bei jedem Klick ein Stueck mit. */}
+        <div className={styles.rail} ref={railRef} onMouseDown={zugBeginnen}
+             title={t.titelZiehen}>
+          {marke}
           {/*
-            HOCHKANT STEHEN DIE BEIDEN PFEILE HIER, rechts neben den
-            Reitern. Beim ersten Anlauf passten sie nicht - die Reiter
-            liessen 43 rem frei, zwei Knoepfe brauchten 52, und der zweite
-            ist umgebrochen. Statt sie woanders hinzuschieben, ist jetzt
-            Platz gemacht: engere Reiter und kleinere Knoepfe in dieser
-            Zeile, zusammen rund 30 rem Luft.
+            DER RECHENWEG GEHOERT NICHT IN DIE LAYOUT-SPALTE.
+            Er stellt nicht EINE Eigenschaft des Parkplatzes ein, sondern
+            entscheidet, WOMIT gerechnet wird - eine Ebene ueber allem
+            anderen. Deshalb steht er jetzt in der Schiene unter dem Namen
+            des Mods, nicht zwischen Randabstand und Winkel.
           */}
-          {hochkant ? <>
-            <span className={styles.kopfFueller} />
-            {undoRedo}
-          </> : null}
+          {/* Der einzige Reiter ohne Tooltip - bis zum 2026-09-16. Die
+              vier anderen hatten laengst einen; hier fehlte er, weil der
+              Reiter als erster entstand und der `TooltipKnopf` spaeter
+              dazukam. */}
+          {/*
+            EINE ZEILE FUER DIE REITER.
+            Hochkant sitzen Rueckgaengig und Wiederherstellen rechts darin;
+            waagerecht ist die Zeile nur eine Huelle, die nichts aendert.
+          */}
+          <div className={styles.reiterZeile} ref={reiterZeile}>
+          {reiterGeklappt ? (
+            <div ref={reiterAnker} className={styles.reiterWahlHuelle}>
+              <button className={`${styles.tab} ${styles.tabAktiv} ${styles.reiterWahl}`}
+                onMouseDown={haltAn}
+                onClick={() => setReiterOffen(!reiterOffen)}>
+                <span className={styles.reiterWahlName}>{aktiverReiterName}</span>
+                <span className={styles.klappPfeil}
+                      style={{ maskImage: `url(Media/Glyphs/ThickStrokeArrow${
+                        reiterOffen ? "Up" : "Down"}.svg)` }} />
+              </button>
+              {reiterOffen ? (
+                <Aufklapper anker={reiterAnker} richtung="unten"
+                  klasse={styles.reiterListe} klasseVorOrt={styles.reiterListeVorOrt}
+                  innenRef={(el) => { reiterListe.current = el; }}>
+                  {reiterKnoepfe}
+                </Aufklapper>
+              ) : null}
+            </div>
+          ) : reiterKnoepfe}
+          {/*
+            HOCHKANT STEHEN DIE BEIDEN PFEILE NICHT MEHR HIER, sondern
+            in der Zeile mit dem Namen (2026-10-15). Mit "How it works"
+            passten Reiter und Pfeile nicht mehr in 364 rem, die Zeile brach
+            um, und "Report a problem" lag ueber der Knopfreihe darunter.
+          */}
           </div>
           {/* Die Fangschalter des Spiels, gleich links neben den
               Fensterknoepfen. Sie zeigen und setzen denselben Zustand wie
@@ -991,14 +1211,36 @@ export const ParkingLotPanel = () => {
 
         <div className={styles.trenner} />
 
-        <div className={styles.inhalt}>
+        {/*
+          WER LAEUFT, ENTSCHEIDET DER REITER (2026-10-15).
+            Entwurf    hochkant laufen nur die Einstellungen, der Abschluss
+                       mit dem Bauknopf steht; waagerecht laeuft alles.
+            Liste      Kopf und Fusszeile stehen, nur die Kacheln laufen.
+            sonst      der ganze Inhalt laeuft.
+        */}
+        <SpaltenProReihe.Provider value={
+          !melden && !debug && !anleitung && !zoning && !liste
+            ? proReiheEntwurf : proReiheAllgemein}>
+        <div className={`${styles.inhalt} ${
+          liste ? styles.inhaltSpalte
+            : !melden && !debug && !anleitung && !zoning
+              ? `${styles.inhaltEntwurf} ${
+                  hochkant && fussLaeuft ? styles.inhaltGanz : ""}`
+            : ""}`}
+          style={{
+            /* Waagerecht: was nach Kopfleiste und Innenrand (2 x 14 rem)
+               von der festen Hoehe bleibt - fuer Einstellungen und
+               Abschluss, die jeder fuer sich laufen. */
+            ["--pltInnenHoehe" as any]: `${Math.max(0, Math.floor(
+              hoechsthoehe(y, rahmenHoehe) - railPx - 28 * remGroesse()))}px`,
+          }}>
         {/* Aus heisst aus: wer den Schalter umlegt, waehrend der Reiter
             offen ist, soll nicht auf einem unsichtbaren Reiter sitzenbleiben. */}
         {melden ? <ReportTab /> : debug && entwicklerDebug ? <DebugTab />
           : liste ? <ListeTab />
           : anleitung ? <AnleitungTab />
           : zoning ? <ZoningTab /> : <>
-        <div className={styles.spaltenGruppe}>
+        <SpaltenGruppe>
         <Spalte title={t.zuschnitt} ton="Zuschnitt" {...abschnitt("Zuschnitt")} titleTooltip={t.tooltipZuschnitt}>
           <Slider
             label={t.randabstand}
@@ -1334,9 +1576,9 @@ export const ParkingLotPanel = () => {
           />
         </Spalte>
 
-        </div>
+        </SpaltenGruppe>
 
-        <div className={styles.abschluss}>
+        <div className={styles.abschluss} ref={abschlussRef}>
 
         {/* Das Ergebnis zuerst, und die Stellplatzzahl gross: das ist die
             Zahl, wegen der man die Leiste ueberhaupt offen hat. Vorher stand
@@ -1461,33 +1703,18 @@ export const ParkingLotPanel = () => {
           <div className={styles.zugangFehlt}>{fehltText}</div>
         ) : null}
 
-        <TooltipKnopf text={t.tooltipBauen}
-            className={`${styles.aktion} ${styles.aktionBauen}
-              ${polygonClosed && darfBauen && !zuKlein ? "" : styles.aktionAus}
-              ${polygonClosed && zuKlein ? styles.aktionZuKlein : ""}`}
-            aria-disabled={!polygonClosed || entranceCount === 0 || zuKlein}
-            onClick={() => { if (polygonClosed && darfBauen && !zuKlein) buildNow(); }}
-        >
-            <img src={icon("Checkmark")} />
-            {polygonClosed && zuKlein ? (
-              <div className={styles.aktionText}>
-                <div className={styles.aktionName}>{t.bauenZuKlein}</div>
-                <div className={styles.aktionNebentext}>
-                  {vorschaufehler === "zuKleinRandstrassen" ? t.bauenZuKleinRand : t.bauenZuKleinGroesser}
-                </div>
-              </div>
-            ) : (
-              <div className={styles.aktionText}>
-                <div className={styles.aktionName}>{t.bauen}</div>
-                <div className={styles.aktionNebentext}>{t.tasteEnter}</div>
-              </div>
-            )}
-        </TooltipKnopf>
+        {fussLaeuft && hochkant ? null : bauKnopf}
         </div>
         </div>
         </>}
 
       </div>
+      </SpaltenProReihe.Provider>
+      {/* Hochkant bei grossem Text: der Bauknopf bleibt unten stehen, der
+          Rest des Abschlusses laeuft mit den Einstellungen. */}
+      {hochkant && fussLaeuft && entwurf ? (
+        <div ref={fussRef} className={styles.fussBauen}>{bauKnopf}</div>
+      ) : null}
     </div>
     </div>
 
@@ -1559,6 +1786,6 @@ export const ParkingLotPanel = () => {
         onMouseLeave={zugBeenden}
       />
     ) : null}
-    </>
+    </AufklappEbene>
   );
 };

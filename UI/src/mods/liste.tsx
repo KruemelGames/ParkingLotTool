@@ -4,6 +4,7 @@ import styles from "./panel.module.scss";
 import { Listengebuehr } from "./liste-gebuehr";
 import { anteilBelegt, waehlePlaetze, Listenfilter, Listensortierung } from "./liste-logik";
 import { MitTooltip, TooltipKnopf } from "./controls";
+import { Aufklapper } from "./rahmen";
 import { Satzteil, Texte, useTexte } from "./texte";
 import {
   icon, parkplatzBearbeiten, parkplatzInfos$,
@@ -327,7 +328,7 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
                   className={`${styles.listeSymbol} ${styles.listeBearbeiten}`}
                   onClick={() => parkplatzReparieren(platz.id)}
                 >
-                  {t.bauplanWiederherstellen}
+                  <span className={styles.textEinzeilig}>{t.bauplanWiederherstellen}</span>
                 </button>
               </MitTooltip>
             : <MitTooltip text={platz.bauzettel ? t.tooltipBearbeitenListe : t.ohneBauzettel}>
@@ -336,7 +337,7 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
                   disabled={!platz.bauzettel}
                   onClick={() => parkplatzBearbeiten(platz.id)}
                 >
-                  {t.listeBearbeiten}
+                  <span className={styles.textEinzeilig}>{t.listeBearbeiten}</span>
                 </button>
               </MitTooltip>}
         </div>
@@ -504,6 +505,21 @@ export const ListeTab = () => {
   const zielslot = useRef<"anfang" | "ende">("anfang");
   const wechsel = useRef(false);
   const gitter = useRef<HTMLDivElement>(null);
+  /* Das Sortiermenue liegt im Aufklapper ausserhalb der Liste (2026-10-15).
+     `onBlur` am Knopf schloss es, bevor ein Klick im Menue ankam - jetzt
+     schliesst ein Mausdruck ausserhalb von Knopf UND Menue. */
+  const sortAnker = useRef<HTMLDivElement>(null);
+  const sortMenue = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!sortOffen) return;
+    const klick = (e: MouseEvent) => {
+      const ziel = e.target as Node;
+      if (!sortAnker.current?.contains(ziel) && !sortMenue.current?.contains(ziel))
+        setSortOffen(false);
+    };
+    window.addEventListener("mousedown", klick);
+    return () => window.removeEventListener("mousedown", klick);
+  }, [sortOffen]);
 
   const plaetze = useMemo<Parkplatz[]>(() => zeilen(rohListe).map(f => ({
     id: f[0] ?? "", name: f[1] ?? "", kapazitaet: zahl(f[2]),
@@ -599,17 +615,17 @@ export const ListeTab = () => {
             className={`${styles.listeTextknopf} ${filter === f ? styles.listeAktiv : ""}`}
             aria-pressed={filter === f} onClick={() => setFilter(f)}>{t.listeFilter[i]}</TooltipKnopf>)}
         </div>
-        <div className={styles.listeSortierung} onBlur={e => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) setSortOffen(false);
-        }}>
+        <div ref={sortAnker} className={styles.listeSortierung}>
           <TooltipKnopf text={t.listeSortieren} className={styles.listeTextknopf}
             aria-expanded={sortOffen} onClick={() => setSortOffen(!sortOffen)}>
             {t.listeSortiertNach(t.listeSortierungen[SORTIERUNG.indexOf(sortierung)])}
           </TooltipKnopf>
-          {sortOffen && <div className={styles.listeSortiermenue}>
+          {sortOffen && <Aufklapper anker={sortAnker} richtung="unten" breiteRem={180}
+            klasse={styles.listeSortiermenue} klasseVorOrt={styles.listeSortiermenueVorOrt}
+            innenRef={(el) => { sortMenue.current = el; }}>
             {SORTIERUNG.map((s, i) => <button key={s} className={styles.listeTextknopf}
               onClick={() => { setSortierung(s); setSortOffen(false); }}>{t.listeSortierungen[i]}</button>)}
-          </div>}
+          </Aufklapper>}
         </div>
         </div>
       </div>
@@ -619,7 +635,7 @@ export const ListeTab = () => {
             .map(platz => <Kachel key={platz.id} platz={platz} bloecke={bloecke.get(platz.id) ?? []} slot={slot} runde={rundenFelder[0]} />)}
         </div>
         {gefiltert.length === 0 && <div className={styles.listeLeer}>
-          {plaetze.length === 0 ? t.listeLeer : t.listeKeineTreffer}
+          <span className={styles.text}>{plaetze.length === 0 ? t.listeLeer : t.listeKeineTreffer}</span>
           {plaetze.length > 0 && <TooltipKnopf text={t.listeFilterZurueck} className={styles.listeTextknopf}
             onClick={() => { setSuche(""); setFilter("alle"); }}>{t.listeFilterZurueck}</TooltipKnopf>}
         </div>}

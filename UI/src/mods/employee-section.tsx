@@ -33,8 +33,9 @@ export const ParkingEmployeeSection = ({
     ? (
       <Zeile
         icon={SYMBOL}
-        left={t.beschaeftigte}
-        right={`${employees} / ${maxEmployees}`}
+        className={styles.infoZeile}
+        left={<span className={styles.name}>{t.beschaeftigte}</span>}
+        right={<span className={styles.value}>{`${employees} / ${maxEmployees}`}</span>}
         uppercase={false}
         disableFocus
       />
@@ -43,7 +44,7 @@ export const ParkingEmployeeSection = ({
       <div className={styles.zeile}>
         <img className={styles.symbol} src={SYMBOL} />
         <span className={styles.name}>{t.beschaeftigte}</span>
-        <span className={styles.value}>{employees} / {maxEmployees}</span>
+        <span className={styles.value}>{`${employees} / ${maxEmployees}`}</span>
       </div>
     );
 
