@@ -456,9 +456,11 @@ namespace ParkingLotTool
             => System.Math.Min(3f, System.Math.Max(0.5f, VegetationsdichteFaktor));
 
         /**
-         * Sprache der Oberflaeche. Standard ENGLISCH - Wunsch des Nutzers am
-         * 2026-08-21: der Mod geht in den Workshop, dort ist Englisch die
-         * Sprache, die jeder lesen kann.
+         * Sprache der Oberflaeche. Standard AUTOMATISCH (Nutzer 2026-10-15):
+         * Spielsprache, wenn es eine Datei dafuer gibt, sonst Englisch. Bis
+         * dahin war Englisch der Standard (Wunsch vom 2026-08-21, als es nur
+         * Englisch und Deutsch gab); zwei deutsche YouTuber sahen den Mod
+         * deshalb auf Englisch, obwohl ihr Spiel deutsch lief.
          */
         public enum Sprachwahl
         {
@@ -504,7 +506,20 @@ namespace ParkingLotTool
         }
 
         [SettingsUISection(ReiterAllgemein, GruppeSprache)]
-        public Sprachwahl Sprache { get; set; } = Sprachwahl.English;
+        public Sprachwahl Sprache { get; set; } = Sprachwahl.Automatic;
+
+        /**
+         * EINMALIGE UMSTELLUNG AUF AUTOMATISCH (Nutzer 2026-10-15).
+         *
+         * Mit dem Wechsel des Standards wird JEDE gespeicherte Sprachwahl
+         * einmal auf "Automatisch" gestellt - auch eine selbst gewaehlte, weil
+         * sich der alte Standard nicht von einer bewussten Wahl unterscheiden
+         * laesst. Danach gilt jede Wahl wieder dauerhaft. Der Nutzer: "Das
+         * wird zwar die wenigsten betreffen aber das Uebel muessen wir auf
+         * uns nehmen."
+         */
+        [SettingsUIHidden]
+        public bool SpracheAufAutomatischUmgestellt { get; set; }
 
         /**
          * Die Sprachdatei, aus der angezeigt wird ("en-US", "de-DE", ...).
@@ -703,7 +718,7 @@ namespace ParkingLotTool
             set
             {
                 SetDefaults();
-                Sprache = Sprachwahl.English;
+                Sprache = Sprachwahl.Automatic;
                 Fangauswahl = -1;
                 FangauswahlGesetzt = false;
                 ApplyAndSave();

@@ -169,6 +169,18 @@ namespace ParkingLotTool
             _setting.RegisterInOptionsUI();
             AssetDatabase.global.LoadSettings(
                 nameof(ParkingLotTool), _setting, new Setting(this));
+            // Einmal je Installation: jede Sprachwahl wird "Automatisch"
+            // (siehe Setting.SpracheAufAutomatischUmgestellt). Vor dem
+            // Anmelden der Texte, damit gleich die richtige Sprache gilt.
+            if (!_setting.SpracheAufAutomatischUmgestellt)
+            {
+                var vorher = _setting.Sprache;
+                _setting.Sprache = Setting.Sprachwahl.Automatic;
+                _setting.SpracheAufAutomatischUmgestellt = true;
+                _setting.ApplyAndSave();
+                log.Info("PLT-Sprache: einmalig von " + vorher
+                    + " auf Automatic umgestellt (neuer Standard).");
+            }
             /*
              * TEXTE ERST NACH DEN GESPEICHERTEN EINSTELLUNGEN ANMELDEN.
              *
