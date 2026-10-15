@@ -300,6 +300,7 @@ namespace ParkingLotTool.Tools
         {
             ParkingLotSchrittmarke.Aenderung("Stadtreinigung: Lot " + lot.Index + " zum Abriss markiert");
             FuelleBesitzlisten(lot);
+            ParkingLotAbriss.Sichern(EntityManager, lot);
             EntityManager.AddComponent<Deleted>(lot);
         }
 

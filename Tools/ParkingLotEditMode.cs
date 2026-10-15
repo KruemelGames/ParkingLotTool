@@ -399,6 +399,7 @@ namespace ParkingLotTool.Tools
                 : Entity.Null;
             TransferVegetation(old, next, carrier);
             var abrissLot = _bauarbeiter && _erhalteneNetzteile.Count > 0 ? HintergrundBesitzanker(old,next,alterTraeger) : old;
+            ParkingLotAbriss.Sichern(EntityManager, abrissLot);
             EntityManager.AddComponent<Deleted>(abrissLot);
             /*
              * `Hidden` DARF NICHT EINFACH VERGESSEN WERDEN.
@@ -540,7 +541,11 @@ namespace ParkingLotTool.Tools
             {
                 if (EntityManager.HasComponent<Temp>(_replacementNewLot))
                     applyMode = ApplyMode.Clear;
-                else EntityManager.AddComponent<Deleted>(_replacementNewLot);
+                else
+                {
+                    ParkingLotAbriss.Sichern(EntityManager, _replacementNewLot);
+                    EntityManager.AddComponent<Deleted>(_replacementNewLot);
+                }
             }
             if (_replacementNewCarrier != Entity.Null
                 && EntityManager.Exists(_replacementNewCarrier)

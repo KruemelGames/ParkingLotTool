@@ -228,6 +228,7 @@ namespace ParkingLotTool.Tools
                 || EntityManager.HasComponent<Game.Tools.Temp>(lot)
                 || EntityManager.HasComponent<ParkingLotCarrierReference>(lot)
                 || EntityManager.HasComponent<Deleted>(traeger)
+                || EntityManager.HasComponent<ParkingLotAbrissabsicht>(traeger)
                 || EntityManager.HasComponent<Game.Tools.Temp>(traeger)
                 || !EntityManager.HasBuffer<Game.Objects.SubObject>(traeger)
                 || !EntityManager.HasComponent<Owner>(traeger)

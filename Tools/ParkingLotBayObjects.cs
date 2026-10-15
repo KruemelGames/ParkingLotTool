@@ -240,6 +240,8 @@ namespace ParkingLotTool.Tools
             // der Puffer deshalb aus der exakt referenzierten PLT-Flaeche
             // wiederhergestellt; ein spaeter Anlass findet ihn bereits vor.
             RestoreCarrierSubNetsAfterLoad();
+            World.GetOrCreateSystemManaged<ParkingLotCleanupSystem>()
+                .NimmAbrissNachLadenWiederAuf();
             ParkingLotSchrittmarke.Setze("Laden: Traeger-SubNet wiederherstellen beendet; Decal-Prefabs aufloesen");
             ResolveBayDecalPrefabs();
             PflegeUnsichtbaresDecal();

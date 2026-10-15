@@ -47,6 +47,7 @@ namespace ParkingLotTool.Tools
 
         private ModificationBarrier2 _barrier;
         private EntityQuery _deletedLotQuery;
+        private EntityQuery _abrissabsichten;
         private EntityQuery _partQuery;
         private EntityQuery _besitzQuery;
         // Der Besitzkinder-Befund einmal je Sitzung, nicht je Durchgang.
@@ -58,7 +59,8 @@ namespace ParkingLotTool.Tools
          * so ist, wartet die Nacharbeit nach dem Bau
          * (`ParkingLotToolSystem.PflegeNacharbeit`).
          */
-        internal bool AbrissLaeuft => _pending.Count > 0 || _nachlauf > 0;
+        internal bool AbrissLaeuft => _pending.Count > 0 || _nachlauf > 0
+            || !_abrissabsichten.IsEmptyIgnoreFilter;
 
         /**
          * Der alte Traeger faellt erst an der Barrier NACH dem Durchgang, der
@@ -67,6 +69,7 @@ namespace ParkingLotTool.Tools
          */
         private int _nachlauf;
         private readonly HashSet<Entity> _knownLots = new HashSet<Entity>();
+        private readonly HashSet<Entity> _knownCarriers = new HashSet<Entity>();
 
         /*
          * PROBELAUF 2026-09-10 18:53: EINS JE DURCHGANG.
@@ -104,6 +107,16 @@ namespace ParkingLotTool.Tools
                 None = new[] { ComponentType.ReadOnly<Temp>() },
             });
 
+            _abrissabsichten = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<ParkingLotAbrissabsicht>() },
+                None = new[]
+                {
+                    ComponentType.ReadOnly<Deleted>(),
+                    ComponentType.ReadOnly<Temp>(),
+                },
+            });
+
             // Alles, was einen Besitzer hat - daraus filtert
             // `MarkBesitzkinder` die Kinder des gerade abgerissenen Lots.
             _besitzQuery = GetEntityQuery(new EntityQueryDesc
@@ -131,9 +144,40 @@ namespace ParkingLotTool.Tools
                 ParkingLotMessung.Sys.Aufraeumen);
             if (_nachlauf > 0) _nachlauf--;
             CollectDeletedLots();
+            CollectAbrissabsichten();
             ProcessOnePass();
             World.GetExistingSystemManaged<ParkingLotVersorgungsdiagnoseSystem>()
                 ?.Phasenmarke($"Aufraeumer-fertig pending={_pending.Count}");
+        }
+
+        /** Nach dem Laden, erst nach RestoreCarrierSubNetsAfterLoad aufrufen. */
+        internal void NimmAbrissNachLadenWiederAuf()
+        {
+            _pending.Clear();
+            _knownLots.Clear();
+            _knownCarriers.Clear();
+            _nachlauf = 0;
+            _besitzGemeldet = false;
+            var anzahl = CollectAbrissabsichten();
+            Mod.log.Info($"PLT-Aufraeumer: Laden: {anzahl} Abrissabsicht(en) "
+                + "wiederaufgenommen.");
+        }
+
+        private int CollectAbrissabsichten()
+        {
+            var anzahl = 0;
+            using var traeger = _abrissabsichten.ToEntityArray(Allocator.Temp);
+            for (var i = 0; i < traeger.Length; i++)
+            {
+                var carrier = traeger[i];
+                if (!_knownCarriers.Add(carrier)) continue;
+                // Die alte Lot-Flaeche darf nach Laden fehlen.
+                _pending.Add(new CleanupWork { Carrier = carrier });
+                anzahl++;
+                Mod.log.Info($"PLT-Aufraeumer: Abrissabsicht an Traeger "
+                    + $"{carrier.Index} aufgenommen; {_pending.Count} offen.");
+            }
+            return anzahl;
         }
 
         private void CollectDeletedLots()
@@ -164,10 +208,10 @@ namespace ParkingLotTool.Tools
                  * Bild und noch vor dessen Zerstoerung. Die Teile bleiben an ihrem
                  * LEBENDEN Traeger, bis ihre Portion dran ist.
                  */
-                if (carrier != Entity.Null && EntityManager.Exists(carrier)
-                    && EntityManager.HasComponent<Owner>(carrier)
-                    && EntityManager.GetComponentData<Owner>(carrier).m_Owner == lot)
-                    _barrier.CreateCommandBuffer().RemoveComponent<Owner>(carrier);
+                ParkingLotAbriss.Sichern(EntityManager, lot,
+                    _barrier.CreateCommandBuffer());
+                if (carrier != Entity.Null && !_knownCarriers.Add(carrier))
+                    continue;
                 _pending.Add(new CleanupWork { Lot = lot, Carrier = carrier });
                 Mod.log.Info($"PLT-Aufraeumer: Parkplatz {lot.Index} wirklich "
                     + "weggebaggert; relationsbasiertes Aufraeumen beginnt "
@@ -190,7 +234,7 @@ namespace ParkingLotTool.Tools
             }
             var buffer = _barrier.CreateCommandBuffer();
             var (marked, remaining, pflanzen, pflanzenUebrig) =
-                MarkRelatedParts(buffer, work.Lot);
+                MarkRelatedParts(buffer, work.Lot, work.Carrier);
             var besitz = MarkBesitzkinder(buffer, work.Lot, work.Carrier);
             /*
              * DIE LEITUNGEN WERDEN HIER NICHT MEHR ANGEFASST.
@@ -295,6 +339,7 @@ namespace ParkingLotTool.Tools
 
             _pending.RemoveAt(0);
             _knownLots.Remove(work.Lot);
+            _knownCarriers.Remove(work.Carrier);
             _nachlauf = 3;
             Mod.log.Info("PLT-Aufraeumer: relationsbasierter Abriss vollstaendig; "
                 + (carrierRemoved ? "technischer Traeger entfernt."
@@ -351,7 +396,8 @@ namespace ParkingLotTool.Tools
                 if (kind == lot || kind == carrier) continue;
                 var besitzer = EntityManager
                     .GetComponentData<Owner>(kind).m_Owner;
-                if (besitzer != lot && besitzer != carrier) continue;
+                if ((lot == Entity.Null || besitzer != lot)
+                    && (carrier == Entity.Null || besitzer != carrier)) continue;
                 if (EntityManager.HasComponent<Temp>(kind)) continue;
 
                 /*
@@ -428,7 +474,7 @@ namespace ParkingLotTool.Tools
         }
 
         private (int Marked, int Remaining, int Pflanzen, int PflanzenUebrig)
-            MarkRelatedParts(EntityCommandBuffer buffer, Entity lot)
+            MarkRelatedParts(EntityCommandBuffer buffer, Entity lot, Entity carrier)
         {
             using var parts = _partQuery.ToEntityArray(Allocator.TempJob);
             var marked = 0;
@@ -441,7 +487,12 @@ namespace ParkingLotTool.Tools
                 var part = parts[i];
                 var relation = EntityManager
                     .GetComponentData<ParkingLotPartRelation>(part);
-                if (relation.Lot != lot) continue;
+                if (lot != Entity.Null)
+                {
+                    if (relation.Lot != lot) continue;
+                }
+                else if (carrier == Entity.Null || relation.Carrier != carrier)
+                    continue;
 
                 if (EntityManager.HasComponent<Temp>(part)
                     || marked >= PartsPerPass)
