@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.12 — October 15, 2026
+
+- Improvement: all Parking Lot Tool windows follow the game's interface scaling and text size and never grow past the screen; with large text only the text gives way and the rest scrolls.
+- Improvement: the post probe also records the mail supplier, its queue and trucks, and leftovers from Parking Lot Tool in the save.
+- Change: the mod language now follows the game language by default ("Automatic", English if the game language isn't available); with this update every installation is switched to "Automatic" once, after that your choice in the mod settings stays.
+- Fix: saving while a parking lot is being demolished no longer leaves its remaining parts behind; the demolition continues after loading.
+- Fix: parking lots no longer stay locked when an update was saved and the save lost its path types; they are rebuilt from their build plan instead (thanks PlatinMartin).
+- Fix: restoring a parking lot after an interrupted edit no longer gets stuck on a connection point of the wrong path type.
+- Fix: a bus stop sign with an invalid position is skipped instead of being placed.
+
 ## 1.0.11 — October 13, 2026
 
 - Addition: when updating parking lots gets stuck, its message says so; one click writes a small sync report, opens its folder and a prefilled GitHub problem report.
