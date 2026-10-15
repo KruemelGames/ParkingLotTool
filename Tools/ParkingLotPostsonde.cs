@@ -31,6 +31,15 @@ namespace ParkingLotTool.Tools
      * haengt (Ablauf: `PostFacilityAISystem` -> Flags/Ressourcen/Wagen,
      * `PostVanDispatchSystem` -> Anfragen mit Fehlerzaehler, Briefkaesten).
      *
+     * 2026-10-15, zweite Stufe: Der erste Lauf zeigte alle Transfer-
+     * Anfragen der Aemter bei EINEM Lieferanten wartend (Entity 950404),
+     * ohne Fehler und ohne Fortschritt. `ValidateHandler` prueft nur, ob
+     * die Anfrage in dessen `TripNeeded`/`ServiceDispatch` steht, nicht ob
+     * je ein Lkw kommt. Deshalb schreibt die Sonde jetzt je Lieferant
+     * Art, Warteschlange, Fahrzeuggrenze und eigene Fahrzeuge, dazu die
+     * Post-Lkw unterwegs und einmal die PLT-Reste im Spielstand (die
+     * Lot-Zaehlung sieht nur Parkplaetze mit Traeger-Verweis).
+     *
      * NUR LESEN. Schreibt alle 30 s einen Schnappschuss in eine eigene,
      * kleine Datei; keine Spielstanddaten, keine Namen, keine Pfade ausser
      * der eigenen Datei. Hoert nach 3 MB oder 3 Stunden von selbst auf.
@@ -44,6 +53,7 @@ namespace ParkingLotTool.Tools
 
         private static StreamWriter _schreiber;
         private static float _start, _naechste;
+        private static bool _resteGeschrieben;
         internal static bool Aktiv { get; private set; }
 
         internal static string Pfad
@@ -57,6 +67,8 @@ namespace ParkingLotTool.Tools
         }
 
         private EntityQuery _aemter, _wagenAnfragen, _transfers, _briefkaesten, _wagen, _wagenPrefabs, _lots;
+        private EntityQuery _lkw, _mitPrefab;
+        private const Resource Post = Resource.LocalMail | Resource.UnsortedMail | Resource.OutgoingMail;
         private PrefabSystem _prefabs;
         private SimulationSystem _simulation;
 
@@ -70,6 +82,7 @@ namespace ParkingLotTool.Tools
                     _schreiber = new StreamWriter(new FileStream(Pfad, FileMode.Create,
                         FileAccess.Write, FileShare.ReadWrite)) { AutoFlush = true };
                     Aktiv = true;
+                    _resteGeschrieben = false;
                     _start = UnityEngine.Time.realtimeSinceStartup;
                     _naechste = _start;
                     _schreiber.WriteLine("PLT post probe " + typeof(Mod).Assembly.GetName().Version
@@ -121,6 +134,10 @@ namespace ParkingLotTool.Tools
             { All = new[] { ComponentType.ReadOnly<Game.Vehicles.PostVan>() }, None = ohne });
             _wagenPrefabs = GetEntityQuery(ComponentType.ReadOnly<PostVanData>(), ComponentType.ReadOnly<PrefabData>());
             _lots = GetEntityQuery(ComponentType.ReadOnly<ParkingLotCarrierReference>());
+            _lkw = GetEntityQuery(new EntityQueryDesc
+            { All = new[] { ComponentType.ReadOnly<Game.Vehicles.DeliveryTruck>() }, None = ohne });
+            _mitPrefab = GetEntityQuery(new EntityQueryDesc
+            { All = new[] { ComponentType.ReadOnly<PrefabRef>() }, None = ohne });
         }
 
         [Preserve]
@@ -201,6 +218,153 @@ namespace ParkingLotTool.Tools
             // Je Amt.
             using var aemter = _aemter.ToEntityArray(Allocator.Temp);
             foreach (var amt in aemter) Zeile("  " + Amt(amt));
+
+            if (!_resteGeschrieben) { _resteGeschrieben = true; Zeile("  " + PltReste()); }
+            Zeile("  " + PostLkw());
+
+            // Lieferanten: jeder Handler, bei dem eine Transfer-Anfrage steht.
+            var lieferanten = new Dictionary<Entity, List<Entity>>();
+            using (var anfragen = _transfers.ToEntityArray(Allocator.Temp))
+            {
+                foreach (var a in anfragen)
+                {
+                    if (!EntityManager.HasComponent<Dispatched>(a)) continue;
+                    var h = EntityManager.GetComponentData<Dispatched>(a).m_Handler;
+                    if (!lieferanten.TryGetValue(h, out var liste)) lieferanten[h] = liste = new List<Entity>();
+                    liste.Add(a);
+                }
+            }
+            foreach (var l in lieferanten) Zeile("  " + Lieferant(l.Key, l.Value));
+        }
+
+        /** Ein Lieferant: was er ist, ob TripNeededSystem ihn bearbeitet, Schlange, Fahrzeuge. */
+        private string Lieferant(Entity h, List<Entity> anfragen)
+        {
+            var em = EntityManager;
+            var sb = new StringBuilder();
+            sb.Append("supplier ").Append(h.Index).Append(':').Append(h.Version);
+            if (!em.Exists(h)) return sb.Append(" dead | post requests here ").Append(anfragen.Count).ToString();
+            sb.Append(' ').Append(PrefabName(h));
+            if (em.HasComponent<Game.Objects.OutsideConnection>(h)) sb.Append(" outside-connection");
+            if (em.HasComponent<Game.Companies.StorageCompany>(h)) sb.Append(" storage");
+            if (em.HasComponent<Game.Buildings.PostFacility>(h)) sb.Append(" post-facility");
+            if (em.HasComponent<Deleted>(h)) sb.Append(" DELETED");
+            // Abfrage von TripNeededSystem: TripNeeded, PrefabRef, Resources, OwnedVehicle.
+            var fehlt = new List<string>();
+            if (!em.HasBuffer<Game.Citizens.TripNeeded>(h)) fehlt.Add("TripNeeded");
+            if (!em.HasBuffer<Game.Economy.Resources>(h)) fehlt.Add("Resources");
+            if (!em.HasBuffer<OwnedVehicle>(h)) fehlt.Add("OwnedVehicle");
+            sb.Append(fehlt.Count == 0 ? " | trip system ok" : " | trip system MISSING " + string.Join("+", fehlt));
+            var ort = h;
+            if (em.HasComponent<PropertyRenter>(h))
+            {
+                ort = em.GetComponentData<PropertyRenter>(h).m_Property;
+                sb.Append(" | property ").Append(ort.Index).Append(' ').Append(PrefabName(ort));
+            }
+            sb.Append(em.HasComponent<Game.Objects.Transform>(ort) ? " transform" : " NO transform");
+            if (em.HasBuffer<Game.Economy.Resources>(h))
+            {
+                var res = em.GetBuffer<Game.Economy.Resources>(h, true);
+                sb.Append(" | local ").Append(EconomyUtils.GetResources(Resource.LocalMail, res))
+                  .Append(" unsorted ").Append(EconomyUtils.GetResources(Resource.UnsortedMail, res));
+            }
+            if (em.HasComponent<PrefabRef>(h))
+            {
+                var prefab = em.GetComponentData<PrefabRef>(h).m_Prefab;
+                if (em.HasComponent<Game.Companies.TransportCompanyData>(prefab))
+                    sb.Append(" | max trucks (prefab) ").Append(em.GetComponentData<Game.Companies.TransportCompanyData>(prefab).m_MaxTransports);
+                else sb.Append(" | no truck limit");
+            }
+            if (em.HasBuffer<Efficiency>(h))
+                sb.Append(" efficiency ").Append(BuildingUtils.GetEfficiency(em.GetBuffer<Efficiency>(h, true)).ToString("0.00", CultureInfo.InvariantCulture));
+            if (em.HasBuffer<OwnedVehicle>(h))
+            {
+                var eigene = em.GetBuffer<OwnedVehicle>(h, true);
+                int tot = 0, postLkw = 0, wartend = 0;
+                for (var i = 0; i < eigene.Length; i++)
+                {
+                    var v = eigene[i].m_Vehicle;
+                    if (!em.Exists(v) || em.HasComponent<Deleted>(v)) { tot++; continue; }
+                    if (IstPostLkw(v)) postLkw++;
+                    if (em.HasComponent<Game.Objects.Unspawned>(v)) wartend++;
+                }
+                sb.Append(" | vehicles ").Append(eigene.Length).Append(" (dead ").Append(tot)
+                  .Append(", mail trucks ").Append(postLkw).Append(", unspawned ").Append(wartend).Append(')');
+            }
+            if (em.HasBuffer<Game.Citizens.TripNeeded>(h))
+            {
+                var fahrten = em.GetBuffer<Game.Citizens.TripNeeded>(h, true);
+                sb.Append(" | queue ").Append(fahrten.Length).Append(" [");
+                var zwecke = new SortedDictionary<string, int>();
+                var plaetze = new List<int>();
+                for (var i = 0; i < fahrten.Length; i++)
+                {
+                    var f = fahrten[i];
+                    var k = f.m_Purpose + "/" + f.m_Resource;
+                    zwecke[k] = zwecke.TryGetValue(k, out var n) ? n + 1 : 1;
+                    if (anfragen.Contains(f.m_TargetAgent)) plaetze.Add(i);
+                }
+                var teile = new List<string>();
+                foreach (var z in zwecke) teile.Add(z.Key + " " + z.Value);
+                sb.Append(string.Join(", ", teile)).Append("] post requests at ")
+                  .Append(plaetze.Count == 0 ? "-" : string.Join(",", plaetze));
+            }
+            if (em.HasBuffer<ServiceDispatch>(h)) sb.Append(" | dispatches ").Append(em.GetBuffer<ServiceDispatch>(h, true).Length);
+            sb.Append(" | post requests here ").Append(anfragen.Count);
+            return sb.ToString();
+        }
+
+        private bool IstPostLkw(Entity v)
+        {
+            var em = EntityManager;
+            if (!em.HasComponent<Game.Vehicles.DeliveryTruck>(v)) return false;
+            if ((em.GetComponentData<Game.Vehicles.DeliveryTruck>(v).m_Resource & Post) != 0) return true;
+            return em.HasComponent<ReturnLoad>(v) && (em.GetComponentData<ReturnLoad>(v).m_Resource & Post) != 0;
+        }
+
+        /** Alle Post-Lkw unterwegs: wie viele warten auf den Start, haengen oder fanden keinen Weg. */
+        private string PostLkw()
+        {
+            var em = EntityManager;
+            int n = 0, wartend = 0, fehlgeschlagen = 0, steckt = 0;
+            var besitzer = new Dictionary<int, int>();
+            using var lkw = _lkw.ToEntityArray(Allocator.Temp);
+            foreach (var v in lkw)
+            {
+                if (!IstPostLkw(v)) continue;
+                n++;
+                if (em.HasComponent<Game.Objects.Unspawned>(v)) wartend++;
+                if (em.HasComponent<PathOwner>(v))
+                {
+                    var p = em.GetComponentData<PathOwner>(v).m_State;
+                    if ((p & PathFlags.Failed) != 0) fehlgeschlagen++;
+                    if ((p & PathFlags.Stuck) != 0) steckt++;
+                }
+                if (em.HasComponent<Owner>(v))
+                {
+                    var o = em.GetComponentData<Owner>(v).m_Owner.Index;
+                    besitzer[o] = besitzer.TryGetValue(o, out var c) ? c + 1 : 1;
+                }
+            }
+            var teile = new List<string>();
+            foreach (var b in besitzer) teile.Add(b.Key + " " + b.Value);
+            return "mail trucks " + n + " (unspawned " + wartend + ", path failed " + fehlgeschlagen + ", stuck " + steckt + ")"
+                + (teile.Count > 0 ? "  owners [" + string.Join(", ", teile) + "]" : "");
+        }
+
+        /** Einmal je Lauf: Objekte aus PLT-Prefabs im Spielstand, auch verwaiste. */
+        private string PltReste()
+        {
+            var je = new Dictionary<Entity, int>();
+            using (var refs = _mitPrefab.ToComponentDataArray<PrefabRef>(Allocator.Temp))
+                foreach (var r in refs) je[r.m_Prefab] = je.TryGetValue(r.m_Prefab, out var c) ? c + 1 : 1;
+            var teile = new List<string>();
+            foreach (var p in je)
+            {
+                if (!_prefabs.TryGetPrefab<PrefabBase>(p.Key, out var pb) || pb == null) continue;
+                if (pb.name.StartsWith("PLT", StringComparison.Ordinal)) teile.Add(pb.name + " " + p.Value);
+            }
+            return "PLT objects in save: " + (teile.Count == 0 ? "none" : string.Join(", ", teile));
         }
 
         private string Anfragen(EntityQuery abfrage)
