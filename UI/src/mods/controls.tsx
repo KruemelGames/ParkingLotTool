@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Children, isValidElement, useCallback, useContext, useEffect, useRef, useState } from "react";
 import styles from "./panel.module.scss";
 import {
   icon, FANGOPTIONEN, fangGewaehlt$, fangVerfuegbar$, setzeFang,
@@ -7,6 +7,9 @@ import { useValue } from "cs2/api";
 import { useTexte } from "./texte";
 import { brauchbar, Tooltip } from "./cs2-bausteine";
 import { useListenposition } from "./listenposition";
+import {
+  Aufklapper, hoechsterAnker, hoechsthoehePx, RAND_REM, SpaltenProReihe, useBildschirm, useRemPx,
+} from "./rahmen";
 
 /**
  * EIN TEXTFELD FUER ALLE EINGABEN DES PANELS.
@@ -98,28 +101,47 @@ export const Fenster = ({ titel, breite = 320, links = 0, oben = 0,
 
   const beginnen = (event: any) => {
     anker.current = {
-      mausX: event.clientX, mausY: event.clientY, x: pos.x, y: pos.y,
+      // Von der GEZEICHNETEN Stelle aus, nicht der gemerkten: ist das Fenster
+      // ins Bild geklemmt, liefe der Zug sonst erst ein Stueck ins Leere.
+      mausX: event.clientX, mausY: event.clientY, x: xPx / rem, y: yPx / rem,
     };
     setZug(true);
   };
   const bewegen = (event: any) => {
     if (!zug) return;
     setPos({
-      x: anker.current.x + (event.clientX - anker.current.mausX),
+      // Die Stelle steht in rem, die Maus liefert Pixel - umrechnen, sonst
+      // laeuft das Fenster ausserhalb von 1080p schneller als die Maus.
+      x: anker.current.x + (event.clientX - anker.current.mausX) / rem,
       // Bei unten verankertem Fenster laeuft y andersherum, sonst liefe es
       // der Maus davon.
       y: anker.current.y + (vonUnten ? -1 : 1)
-        * (event.clientY - anker.current.mausY),
+        * (event.clientY - anker.current.mausY) / rem,
     });
   };
   const beenden = () => setZug(false);
+
+  /*
+   * NIE GROESSER ALS DER BILDSCHIRM, NIE AUSSERHALB (2026-10-15).
+   * Breite und Hoehe sind nach oben begrenzt, der Inhalt laeuft; die Stelle
+   * wird beim Zeichnen ins Bild geklemmt, die gemerkte Stelle bleibt.
+   */
+  const rem = useRemPx();
+  const schirm = useBildschirm();
+  const randPx = RAND_REM * rem;
+  const breitePx = Math.min(breite * rem, schirm.breite - 2 * randPx);
+  const xPx = Math.max(0, Math.min(pos.x * rem, schirm.breite - breitePx));
+  const yPx = Math.max(0, Math.min(pos.y * rem,
+    hoechsterAnker(rem, schirm.hoehe, !vonUnten)));
+  const hoehePx = hoechsthoehePx(rem, schirm.hoehe,
+    vonUnten ? { unten: yPx } : { oben: yPx });
 
   return (
     <div
       className={styles.fenster}
       style={vonUnten
-        ? { left: `${pos.x}rem`, bottom: `${pos.y}rem`, width: `${breite}rem` }
-        : { left: `${pos.x}rem`, top: `${pos.y}rem`, width: `${breite}rem` }}
+        ? { left: `${xPx}px`, bottom: `${yPx}px`, width: `${breitePx}px`, maxHeight: `${hoehePx}px` }
+        : { left: `${xPx}px`, top: `${yPx}px`, width: `${breitePx}px`, maxHeight: `${hoehePx}px` }}
       onMouseMove={bewegen}
       onMouseUp={beenden}
       onMouseLeave={beenden}
@@ -595,6 +617,45 @@ interface SpalteProps {
  * allen drei Gruppen derselbe Balken, und mit 14 rem kleiner als die
  * Beschriftungen darunter.
  */
+/**
+ * DIE GRUPPE DER ABSCHNITTE - mit Reihen, die das Panel ausrechnet.
+ *
+ * Steht `SpaltenProReihe` auf N > 0, werden die Abschnitte (`Spalte`) in
+ * Reihen zu je N gelegt, alle gleich breit; eine kurze letzte Reihe wird mit
+ * Luecken aufgefuellt, damit die Breiten gleich bleiben. Alles andere (z. B.
+ * die Werkzeugzeile im Debug-Reiter) bekommt eine eigene volle Zeile.
+ * Versteckte Abschnitte zaehlen nicht mit. Bei 0 bleibt alles wie es ist -
+ * hochkant stapelt das Stylesheet.
+ */
+export const SpaltenGruppe = ({ children }: { children: any }) => {
+  const proReihe = useContext(SpaltenProReihe);
+  const teile = Children.toArray(children).filter((k) =>
+    !(isValidElement(k) && (k.props as any)?.versteckt));
+  if (proReihe <= 0) return <div className={styles.spaltenGruppe}>{teile}</div>;
+  /* Weniger Abschnitte als Platz: die vorhandenen teilen sich die Reihe,
+     statt einer schmalen Spalte mit leeren Luecken daneben (Debug zeigt
+     immer nur ein Werkzeug). */
+  const anzahl = teile.filter((k) => isValidElement(k) && k.type === Spalte).length;
+  const n = Math.max(1, Math.min(proReihe, anzahl));
+  const reihen: any[] = [];
+  let puffer: any[] = [];
+  const leeren = () => {
+    for (let i = 0; i < puffer.length; i += n) {
+      const stueck = puffer.slice(i, i + n);
+      while (stueck.length < n)
+        stueck.push(<div key={`luecke${stueck.length}`} className={styles.spaltenLuecke} />);
+      reihen.push(<div key={`reihe${reihen.length}`} className={styles.spaltenReihe}>{stueck}</div>);
+    }
+    puffer = [];
+  };
+  teile.forEach((k) => {
+    if (isValidElement(k) && k.type === Spalte) puffer.push(k);
+    else { leeren(); reihen.push(k); }
+  });
+  leeren();
+  return <div className={`${styles.spaltenGruppe} ${styles.spaltenGruppeReihen}`}>{reihen}</div>;
+};
+
 export const Spalte = ({ title, ton, breit, titleTooltip, bereichTooltip,
                          einklappbar, offen = true, onKlick, versteckt,
                          children }: SpalteProps) => {
@@ -722,6 +783,9 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
     : options.filter((f) => f.name.toLowerCase().includes(gesucht)
         || f.titel.toLowerCase().includes(gesucht));
   const wurzel = useRef<HTMLDivElement>(null);
+  /* Die Liste liegt im Portal, also NICHT in `wurzel` - ein Klick in sie
+     muss trotzdem als "innen" gelten. */
+  const liste = useRef<HTMLElement | null>(null);
   const listenposition = useListenposition(scrollSchluessel, offen, gesucht !== "",
     sichtbar.length + (ausLabel ? 1 : 0));
   useEffect(() => {
@@ -730,7 +794,8 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
     if (schliesseOffeneAuswahl) schliesseOffeneAuswahl();
     schliesseOffeneAuswahl = schliessen;
     const klick = (e: MouseEvent) => {
-      if (!wurzel.current?.contains(e.target as Node)) schliessen();
+      const ziel = e.target as Node;
+      if (!wurzel.current?.contains(ziel) && !liste.current?.contains(ziel)) schliessen();
     };
     window.addEventListener("mousedown", klick);
     return () => {
@@ -797,7 +862,9 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
         </div>
       </div>
       {offen ? (
-        <div className={styles.flaechenFenster}>
+        <Aufklapper anker={wurzel} richtung="oben"
+          klasse={styles.flaechenFenster} klasseVorOrt={styles.flaechenFensterVorOrt}
+          innenRef={(el) => { liste.current = el; }}>
           <Suchfeld wert={suche} onChange={setSuche} text={t.flaechenSuche} />
           <div className={styles.flaechenGitter} {...listenposition}>
             {ausLabel ? (
@@ -830,7 +897,7 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
               <div className={styles.flaechenLeer}>{t.flaechenKeineTreffer}</div>
             ) : null}
           </div>
-        </div>
+        </Aufklapper>
       ) : null}
     </div>
   );

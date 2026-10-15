@@ -9,7 +9,7 @@ import {
   surfaceZoning$, setSurfaceZoning, surfaceList$,
   zoningAussentiefe$, setZoningAussentiefe,
 } from "./bindings";
-import { Auswahl, Flaeche, ModeChooser, Slider, Spalte, TooltipKnopf }
+import { Auswahl, Flaeche, ModeChooser, Slider, Spalte, SpaltenGruppe, TooltipKnopf }
   from "./controls";
 import { useTexte } from "./texte";
 
@@ -57,7 +57,7 @@ export const ZoningTab = () => {
   const hatBezug = !Number.isNaN(bezug);
 
   return (
-    <div className={styles.spaltenGruppe}>
+    <SpaltenGruppe>
       <Spalte title={t.zoningReiter} ton="Zuschnitt" breit>
         <div className={styles.explain}>{t.zoningHinweis}</div>
         {/* `TooltipKnopf` statt `title`: in Cohtml zeigt das rohe
@@ -207,6 +207,6 @@ export const ZoningTab = () => {
           ausLabel={t.zoningFlaecheAus}
         />
       </Spalte>
-    </div>
+    </SpaltenGruppe>
   );
 };

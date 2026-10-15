@@ -64,7 +64,7 @@ export const VegetationSchalter = ({ onOeffnen }: {
  return <div className={styles.root}>
   <div className={base.schalterReihe}>
    <MitTooltip text={t("vegetation.openTheVegetationSettings")}>
-    <button className={`${base.label} ${styles.nameKnopf}`} onClick={()=>onOeffnen(true)}>{t("vegetation.vegetation")}</button>
+    <button className={styles.nameKnopf} onClick={()=>onOeffnen(true)}><span className={base.label}>{t("vegetation.vegetation")}</span></button>
    </MitTooltip>
    <MitTooltip text={t("vegetation.plantVegetationOnDecorationSurface")}>
     <button role="switch" aria-label={t("vegetation.vegetation")} aria-checked={options.Enabled}

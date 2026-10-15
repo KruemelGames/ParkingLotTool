@@ -31,6 +31,11 @@ $abstand: 12rem;
 }
 
 .titel {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
   font-size: var(--fontSizeL);
   font-weight: bold;
   color: #ffffff;
@@ -38,6 +43,10 @@ $abstand: 12rem;
 }
 
 .einleitung {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
   font-size: var(--fontSizeXS);
   color: var(--menuText2Normal);
   max-width: 640rem;
@@ -50,6 +59,7 @@ $abstand: 12rem;
 }
 
 .kachel {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   width: $kachel-breit;
@@ -75,6 +85,7 @@ $abstand: 12rem;
 /* Rahmen in der Farbe der Folge. Der Rand traegt die Farbe, damit auch das
    Vorschaubild zur Reihe gehoert. */
 .bildRahmen {
+  flex-shrink: 0;
   position: relative;
   width: 100%;
   height: $kachel-hoch;
@@ -97,6 +108,7 @@ $abstand: 12rem;
 .kachelFertig:hover .rahmenFahrwege { border-color: $fahrwege; }
 
 .bild {
+  flex-shrink: 0;
   width: 100%;
   height: 100%;
 }
@@ -129,6 +141,7 @@ $abstand: 12rem;
 }
 
 .abspielenSymbol {
+  flex-shrink: 0;
   width: 24rem;
   height: 24rem;
   margin-left: 2rem;
@@ -151,6 +164,11 @@ $abstand: 12rem;
 .grundMelden { background-color: rgba(242, 114, 92, 0.14); }
 
 .platzhalterNummer {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
   font-size: calc(var(--fontSizeXL) * 1.5);
   font-weight: bold;
   color: rgba(255, 255, 255, 0.55);
@@ -161,6 +179,11 @@ $abstand: 12rem;
 }
 
 .bald {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
   margin-top: 2rem;
   font-size: var(--fontSizeXS);
   letter-spacing: 0.06em;
@@ -169,12 +192,19 @@ $abstand: 12rem;
 }
 
 .unterzeile {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   margin-top: 6rem;
 }
 
 .nummer {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
   font-size: var(--fontSizeXS);
   font-weight: bold;
   letter-spacing: 0.04em;
@@ -188,6 +218,11 @@ $abstand: 12rem;
 .textMelden { color: $melden; }
 
 .name {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
   margin-top: 2rem;
   font-size: var(--fontSizeS);
   color: var(--menuText1Normal);

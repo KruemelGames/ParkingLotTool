@@ -6,6 +6,7 @@ import {
 } from "./bindings";
 import { TooltipKnopf } from "./controls";
 import { useTexte } from "./texte";
+import { RAND_REM, useBildschirm, useRemPx } from "./rahmen";
 import styles from "./panel.module.scss";
 
 /** Steht in jeder Meldung vorn: der Nutzer soll sehen, von welcher Mod sie kommt. */
@@ -55,6 +56,11 @@ export const SyncFortschritt = () => {
   const ergebnis = useValue(syncErgebnis$);
   const pulsiert = usePuls();
   const t = useTexte();
+  /* NIE BREITER ALS DER BILDSCHIRM (2026-10-15): die Breite folgt dem Text,
+     ein langer Text bricht um, statt die Meldung ueber den Rand zu ziehen. */
+  const rem = useRemPx();
+  const { breite } = useBildschirm();
+  const begrenzt = { maxWidth: `${Math.floor(breite - 2 * RAND_REM * rem)}px` };
 
   /*
    * HAENGT ER, WIRD DIE MELDUNG ZUM KNOPF (Nutzer 2026-10-13, Issue #16):
@@ -69,7 +75,7 @@ export const SyncFortschritt = () => {
       && Number.isInteger(gesamt) && gesamt > 0;
     const anteil = mitBalken ? Math.min(1, Math.max(0, erledigt / gesamt)) : 0;
     // Zu per X oder Rechtsklick (Nutzer 2026-10-13); Linksklick meldet.
-    return <div className={`${styles.syncFortschritt} ${styles.syncHaengt}`} role="alert"
+    return <div className={`${styles.syncFortschritt} ${styles.syncHaengt}`} role="alert" style={begrenzt}
       onMouseDown={(e: any) => { if (e.button === 2) { e.stopPropagation(); syncHaengtSchliessen(); } }}>
       <TooltipKnopf text={t.syncHaengtTooltip} className={styles.syncHaengtFlaeche}
         onClick={() => syncMelden()}>
@@ -97,7 +103,7 @@ export const SyncFortschritt = () => {
     if (felder.length !== 3 || !Number.isInteger(erledigt)
         || !Number.isInteger(gesamt) || gesamt <= 0) return null;
     const anteil = Math.min(1, Math.max(0, erledigt / gesamt));
-    return <div className={`${styles.syncFortschritt} ${pulsiert ? styles.syncPuls : ""}`} role="status">
+    return <div className={`${styles.syncFortschritt} ${pulsiert ? styles.syncPuls : ""}`} role="status" style={begrenzt}>
       <div className={styles.syncMod}>{t.modnameDoppelpunkt}</div>
       <div className={styles.syncTitel}>{t.syncFortschritt(erledigt, gesamt)}</div>
       {felder[2] && <div className={styles.syncTitel}>{felder[2]}</div>}
@@ -120,7 +126,7 @@ export const SyncFortschritt = () => {
   // Reparaturknoepfe gelb hervorgehoben.
   return <TooltipKnopf text={t.syncSchliessen}
     className={`${styles.syncFortschritt} ${styles.syncFertig}`}
-    role="status" onClick={() => { syncErgebnisSchliessen(); oeffneListe(); }}>
+    role="status" style={begrenzt} onClick={() => { syncErgebnisSchliessen(); oeffneListe(); }}>
     <div className={styles.syncMod}>
       {t.modnameDoppelpunkt}
     </div>

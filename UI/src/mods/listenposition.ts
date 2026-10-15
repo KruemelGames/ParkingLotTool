@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 // Nutzerwunsch 2026-10-09: Listen in der Sitzung am letzten Ort oeffnen;
 // Suchtreffer haben andere Hoehen und duerfen diesen Ort nicht ersetzen.
@@ -10,6 +10,10 @@ export const useListenposition = (schluessel: string, offen: boolean,
   const zustand = useRef({ offen, gefiltert });
   zustand.current = { offen, gefiltert };
   const stelltWiederHer = useRef(false);
+  /* Haengt die Liste erst SPAETER an (Aufklapper misst zwei Bilder lang,
+     2026-10-15), lief der Effekt unten schon mit leerer Ref ins Leere. Jedes
+     neue Anhaengen loest ihn deshalb noch einmal aus. */
+  const [angehaengt, setAngehaengt] = useState(0);
   const merken = useCallback(() => {
     if (element.current && !zustand.current.gefiltert && !stelltWiederHer.current)
       positionen.set(schluessel, element.current.scrollTop);
@@ -17,7 +21,9 @@ export const useListenposition = (schluessel: string, offen: boolean,
   const ref = useCallback((node: HTMLDivElement | null) => {
     // Beim Schliessen auch vor dem Entfernen des Containers messen.
     if (!node) merken();
+    const neu = node !== null && node !== element.current;
     element.current = node;
+    if (neu) setAngehaengt((n) => n + 1);
   }, [merken]);
 
   useLayoutEffect(() => {
@@ -35,7 +41,7 @@ export const useListenposition = (schluessel: string, offen: boolean,
       cancelAnimationFrame(frame);
       stelltWiederHer.current = false;
     };
-  }, [schluessel, offen, gefiltert, anzahl]);
+  }, [schluessel, offen, gefiltert, anzahl, angehaengt]);
 
   const onScroll = useCallback(() => {
     if (zustand.current.offen) merken();

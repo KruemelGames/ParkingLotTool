@@ -1,23 +1,23 @@
 .root { margin-top: 8rem; min-width: 0; }
 .row { display:flex; flex-wrap:wrap; align-items:center; }
-.label { color:rgba(255,255,255,.65); font-size:var(--fontSizeXS); margin:6rem 0; }
+.label { flex:0 1 auto; min-width:0; white-space:normal; overflow-wrap:break-word; color:rgba(255,255,255,.65); font-size:var(--fontSizeXS); margin:6rem 0; }
 /* Text direkt vor dem Schalter: base.label waechst auf volle Breite und
    schob den Schalter an den rechten Rand. */
-.schalterText { color:rgba(255,255,255,.65); font-size:var(--fontSizeXS); margin-right:8rem; }
+.schalterText { flex:0 1 auto; min-width:0; white-space:normal; overflow-wrap:break-word; color:rgba(255,255,255,.65); font-size:var(--fontSizeXS); margin-right:8rem; }
 .choice { display:flex; align-items:center; justify-content:center; width:32rem; height:32rem; flex-shrink:0; padding:3rem; margin:0 4rem 4rem 0; border:1rem solid rgba(255,255,255,.15); border-radius:4rem; background-color:rgba(255,255,255,.06); color:white; font-size:var(--fontSizeXS); }
-.choice img { width:24rem; height:24rem; }
-.choice span { flex:1 1 0; min-width:0; }
+.choice img { flex-shrink:0; width:24rem; height:24rem; }
+.choice span { flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; overflow-wrap:break-word; }
 .choice:hover { background-color:rgba(79,195,247,.15); }
 .selected { border-color:#4fc3f7; background-color:rgba(79,195,247,.2); }
 .choice[disabled] { opacity:.4; }
 .sets { display:flex; flex-wrap:wrap; max-height:104rem; overflow-y:auto; }
-.set { display:flex; align-items:center; }
+.set { display:flex; align-items:center; min-width:0; max-width:100%; }
 
-.remove { background-color:transparent; color:white; font-size:18rem; }
+.remove { flex-shrink:0; background-color:transparent; color:white; font-size:18rem; }
 /* Im eigenen Fenster braucht die Auswahl keinen abgesetzten Grund mehr -
    das Fenster IST die Absetzung. */
 .picker { min-width:0; }
-.setName { width:100%; min-width:0; }
+.setName { flex-shrink:0; width:100%; min-width:0; }
 /* Feste Hoehe: mit max-height schrumpfte das Fenster bei jeder Suche. */
 .assets { display:flex; flex-wrap:wrap; height:320rem; overflow-y:auto; margin:5rem 0; }
 
@@ -30,12 +30,12 @@
 .zweiTeile { display:flex; align-items:flex-start; }
 .teilLinks { width:284rem; flex-shrink:0; min-width:0; }
 .teilRechts {
-  width:308rem; flex-shrink:0; min-width:0;
+  width:308rem; flex-shrink:0; min-width:0; max-width:100%;
   margin-left:16rem; padding-left:16rem;
   border-left:1rem solid var(--menuBorderColor1);
 }
 .teilKopf { display:flex; align-items:center; margin-bottom:6rem; }
-.teilTitel { flex:1 1 0; min-width:0; color:#fff; font-size:var(--fontSizeS); }
+.teilTitel { flex:1 1 0; min-width:0; white-space:normal; overflow-wrap:break-word; color:#fff; font-size:var(--fontSizeS); }
 /* Der Knopf, der die rechte Haelfte wieder einklappt. Ein Zeichen, kein
    Symbol - fuer "nach rechts zuklappen" gibt es unter CS2s Standardsymbolen
    keines, und ein geratener Name waere ein kaputtes Bild. */
@@ -55,6 +55,7 @@
  * aussieht, liest sich schlechter.
  */
 .nameKnopf {
+  display:flex; flex:1 0 0; min-width:0;
   border:none; background-color:rgba(255,255,255,0); padding:2rem 6rem;
   margin-left:-6rem; border-radius:4rem; text-align:left; cursor:pointer;
 }
@@ -69,6 +70,7 @@
  * weg.
  */
 .hinweisBox {
+  flex:0 1 auto; min-width:0; white-space:normal; overflow-wrap:break-word;
   min-height: 34rem;
   margin: 6rem 0 0;
   color: rgba(255,255,255,.65);

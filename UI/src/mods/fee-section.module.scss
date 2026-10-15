@@ -7,6 +7,9 @@
 }
 
 .value {
+  /* Zahlen ("3 / 4") brechen nie um; die Beschriftung gibt nach. */
+  flex-shrink: 0;
+  white-space: nowrap;
   font-weight: bold;
   color: var(--accentColorNormal);
 }
@@ -17,6 +20,7 @@
 
 /* Kein input[type=range]: Cohtml zeichnet dafuer keinen brauchbaren Griff. */
 .track {
+  flex-shrink: 0;
   position: relative;
   height: 6rem;
   border-radius: 3rem;
@@ -34,6 +38,7 @@
 }
 
 .knob {
+  flex-shrink: 0;
   position: absolute;
   top: -4rem;
   width: 14rem;
@@ -61,11 +66,16 @@
  * Cohtml: kein grid, kein gap, kein hsl - Flex und Raender.
  */
 .header {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
   text-transform: uppercase;
   font-weight: bold;
 }
 
 .haken {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -80,6 +90,7 @@
   &:hover { border-color: rgba(255, 255, 255, 0.65); }
 
   img {
+    flex-shrink: 0;
     width: 14rem;
     height: 14rem;
   }
@@ -90,6 +101,8 @@
 }
 
 .betrag {
+  flex-shrink: 0;
+  white-space: nowrap;
   margin-top: 3rem;
   text-align: right;
   font-weight: bold;
@@ -118,13 +131,17 @@
 }
 
 .symbol {
+  flex-shrink: 0;
   width: 20rem;
   height: 20rem;
   margin-right: 6rem;
 }
 
 .name {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
   /* Werte aus panel.module.scss; diese Datei hat keine eigenen Variablen. */
   color: rgba(255, 255, 255, 0.82);
   font-size: var(--fontSizeXS);
@@ -136,6 +153,10 @@
 }
 
 .editButton {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,13 +179,30 @@
 
 /* Hinweis fuer verwaiste Parkplaetze im Auswahlfenster. */
 .waiseTitel {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
   margin-bottom: 4rem;
   color: rgb(242, 114, 92);
   font-size: var(--fontSizeS);
   font-weight: bold;
 }
 .waiseText {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
   margin-bottom: 6rem;
   color: rgba(255, 255, 255, 0.8);
   font-size: var(--fontSizeXS);
 }
+
+/* Nur die PLT-Infozeilen: Text links gibt nach, der Haken behaelt Platz. */
+.infoZeile {
+  > img { flex-shrink: 0; }
+  > div { min-width: 0; white-space: normal; overflow-wrap: break-word; }
+  > div:first-of-type { flex: 1 1 0; }
+  > div:last-of-type { flex: 0 1 auto; }
+}
+.infoZeileSchalter > div:last-of-type { flex-shrink: 0; }

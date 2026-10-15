@@ -27,6 +27,7 @@ export const ParkingLotLauncher = () => {
 
   return (
     <FloatingButton
+      style={{ flexShrink: 0 }}
       src={toolbarIcon}
       selected={toolActive && open}
       onSelect={toggleTool}

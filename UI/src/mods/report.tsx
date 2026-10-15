@@ -1,5 +1,5 @@
 import styles from "./panel.module.scss";
-import { MitTooltip, Spalte } from "./controls";
+import { MitTooltip, Spalte, SpaltenGruppe } from "./controls";
 import {
   absturzBefund$, absturzErkannt$, baubefund$, baukurzinfo$,
   clearMarkers, icon, markerCount$, meldeLotWahl$,
@@ -145,7 +145,7 @@ export const ReportTab = () => {
   const leistungRest = useValue(leistungRest$);
 
   return (
-    <div className={styles.spaltenGruppe}>
+    <SpaltenGruppe>
       {/*
         EINE EIGENE SPALTE, WEIL ES EINE ANDERE SORTE MELDUNG IST.
         Die Knoepfe daneben beschreiben EINEN Parkplatz. Diese hier misst den
@@ -198,7 +198,11 @@ export const ReportTab = () => {
           in derselben Form wie die uebrigen Schalter des Reiters, damit er
           nicht aus der Gruppe faellt.
         */}
+        {/* Zwei echte Reihen statt `flex-wrap` (2026-10-15): Gameface
+            rechnete umgebrochene Zeilen zu niedrig, die Knoepfe waren
+            kleiner als ihr Text. */}
         <div className={styles.meldeGitter}>
+          <div className={styles.meldeGitterReihe}>
           <div className={styles.meldeGitterKnopf}>
             <MitTooltip text={t.tooltipMeldungVorschau}>
             <button className={styles.smallButton} onClick={meldungVorschau}>
@@ -213,6 +217,8 @@ export const ReportTab = () => {
             </button>
             </MitTooltip>
           </div>
+          </div>
+          <div className={styles.meldeGitterReihe}>
           <div className={styles.meldeGitterKnopf}>
             <MitTooltip text={t.tooltipMeldeLot}>
             <button
@@ -229,6 +235,7 @@ export const ReportTab = () => {
               {t.meldungOrdnerKnopf}
             </button>
             </MitTooltip>
+          </div>
           </div>
         </div>
         {/*
@@ -273,7 +280,7 @@ export const ReportTab = () => {
 
         {baukurzinfo ? (
           <div className={styles.explain}>
-            <b>{t.kurzinfoTitel}</b> · {baukurzinfo}
+            <b>{t.kurzinfoTitel}</b> <span className={styles.textRest}>· {baukurzinfo}</span>
           </div>
         ) : null}
         {meldungPfad ? (
@@ -282,6 +289,6 @@ export const ReportTab = () => {
           <div className={styles.explain}>{t.meldungErklaerung}</div>
         )}
       </Spalte>
-    </div>
+    </SpaltenGruppe>
   );
 };

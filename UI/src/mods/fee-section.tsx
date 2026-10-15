@@ -131,7 +131,8 @@ export const ParkingFeeSection = () => {
       <>
         <Zeile
           icon={icon("Lanes")}
-          left={t.parkgebuehr}
+          className={`${styles.infoZeile} ${styles.infoZeileSchalter}`}
+          left={<span className={styles.name}>{t.parkgebuehr}</span>}
           right={haken}
           uppercase={false}
           disableFocus
