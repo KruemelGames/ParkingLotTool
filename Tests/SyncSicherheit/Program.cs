@@ -71,9 +71,9 @@ internal static partial class Program
         UnityEngine.Time.frameCount = 0; StarteFahrweg(w, lot); t.Tick();
         Pruefe(t.Offen == 1 && sync.Antworten.Count == 0 && tool.Starts == 0, "nicht bereiter Klon wartet ohne falschen Erfolg");
         w.GetOrCreateSystemManaged<ParkingLotFahrprefabSystem>().Ziele[name] = ziel; em.Set(ziel, 0);
-        w.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Laeuft = true; t.Tick();
+        w.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().TestBelegung(true); t.Tick();
         Pruefe(tool.Starts == 0, "keine parallele Uebernahme mit laufendem Flaechentausch");
-        w.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Laeuft = false; t.Tick();
+        w.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().TestBelegung(false); t.Tick();
         Pruefe(tool.Starts == 1 && t.Plan(lot).Count == 1, "spaeter bereiter Klon startet denselben Auftrag");
         w.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().Preload();
         t.Preload();
@@ -124,6 +124,7 @@ internal static partial class Program
             && !ParkingLotHintergrundAbschluss.MerkeNebenarbeit(em, Entity.Null, Entity.Null), "totes und leeres Lot verhindern Abschluss");
         Pruefe(em.Adds + em.Sets == vorher, "ungueltige Abschluesse schreiben keinerlei Komponenten");
         AuftraegePruefen();
+        RestlicheWorkerPruefen();
         Hardening();
         Logauszuege();
         Console.WriteLine($"SYNC-SICHERHEIT: {_pruefungen} Pruefungen, {_fehler} Fehler.");

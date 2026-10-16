@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <SyncAuftraegeQuelle Condition="'$(SyncAuftraegeQuelle)' == ''">../../Tools/ParkingLotSync.Auftraege.cs</SyncAuftraegeQuelle>
     <RegisterQuelle Condition="'$(RegisterQuelle)' == ''">../../Geometry/Auftragsregister.cs</RegisterQuelle>
     <SyncAntwortQuelle Condition="'$(SyncAntwortQuelle)' == ''">../../Tools/ParkingLotSync.Antwort.cs</SyncAntwortQuelle>
     <RegisterAdapterQuelle Condition="'$(RegisterAdapterQuelle)' == ''">../../Tools/ParkingLotAuftragsSystem.cs</RegisterAdapterQuelle>
@@ -13,12 +14,25 @@
     <FahrwegAbschlussQuelle Condition="'$(FahrwegAbschlussQuelle)' == ''">../../Tools/ParkingLotFahrwegTausch.Abschluss.cs</FahrwegAbschlussQuelle>
     <DispatcherQuelle Condition="'$(DispatcherQuelle)' == ''">../../Tools/ParkingLotSync.Abarbeiten.cs</DispatcherQuelle>
     <StrassenAbschlussQuelle Condition="'$(StrassenAbschlussQuelle)' == ''">../../Tools/ParkingLotBuildingEconomy.Abschluss.cs</StrassenAbschlussQuelle>
+    <BestandsAuftragQuelle Condition="'$(BestandsAuftragQuelle)' == ''">../../Tools/ParkingLotBestandsTausch.Auftrag.cs</BestandsAuftragQuelle>
+    <BestandsAbschlussQuelle Condition="'$(BestandsAbschlussQuelle)' == ''">../../Tools/ParkingLotBestandsTausch.Abschluss.cs</BestandsAbschlussQuelle>
+    <FlaechenAuftragQuelle Condition="'$(FlaechenAuftragQuelle)' == ''">../../Tools/ParkingLotFlaechenSync.Auftrag.cs</FlaechenAuftragQuelle>
+    <HintergrundAuftragQuelle Condition="'$(HintergrundAuftragQuelle)' == ''">../../Tools/ParkingLotHintergrund.Auftrag.cs</HintergrundAuftragQuelle>
+    <HintergrundAbschlussAdapterQuelle Condition="'$(HintergrundAbschlussAdapterQuelle)' == ''">../../Tools/ParkingLotHintergrund.Abschluss.cs</HintergrundAbschlussAdapterQuelle>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="WorkerContainer.cs" /><Compile Include="WorkerTests.cs" />
+    <Compile Include="$(BestandsAuftragQuelle)" Link="ParkingLotBestandsTausch.Auftrag.cs" />
+    <Compile Include="$(BestandsAbschlussQuelle)" Link="ParkingLotBestandsTausch.Abschluss.cs" />
+    <Compile Include="$(FlaechenAuftragQuelle)" Link="ParkingLotFlaechenSync.Auftrag.cs" />
+    <Compile Include="$(HintergrundAuftragQuelle)" Link="ParkingLotHintergrund.Auftrag.cs" />
+    <Compile Include="$(HintergrundAbschlussAdapterQuelle)" Link="ParkingLotHintergrund.Abschluss.cs" />
+    <Compile Include="../../Geometry/HintergrundAuftragsregel.cs" Link="HintergrundAuftragsregel.cs" />
+    <Compile Include="../../Geometry/HintergrundTakt.cs" Link="HintergrundTakt.cs" />
     <Compile Include="AuftragsTests.cs" /><Compile Include="AuftragsContainer.cs" />
     <Compile Include="$(RegisterQuelle)" Link="Auftragsregister.cs" />
     <Compile Include="$(RegisterAdapterQuelle)" Link="ParkingLotAuftragsSystem.cs" />
-    <Compile Include="../../Tools/ParkingLotSync.Auftraege.cs" Link="ParkingLotSync.Auftraege.cs" />
+    <Compile Include="$(SyncAuftraegeQuelle)" Link="ParkingLotSync.Auftraege.cs" />
     <Compile Include="$(SyncAntwortQuelle)" Link="ParkingLotSync.Antwort.cs" />
     <Compile Include="../../Tools/ParkingLotSync.Datenstand.cs" Link="ParkingLotSync.Datenstand.cs" />
     <Compile Include="../../Tools/ParkingLotBuildingEconomy.Auftrag.cs" Link="ParkingLotBuildingEconomy.Auftrag.cs" />

@@ -7,14 +7,6 @@ namespace ParkingLotTool.Tools
 {
     public sealed partial class ParkingLotSyncSystem
     {
-        internal void MeldeHintergrundEnde(Entity lot, Entity neu, bool erfolgreich)
-        {
-            // Noch nicht umgestellte Worker bleiben auf ihrem bisherigen Pfad.
-            // Eine nackte Entity-Antwort darf keinen registrierten Auftrag treffen.
-            if (_auftragsWarten.ContainsKey(lot)) return;
-            VerbucheHintergrundEnde(lot, neu, erfolgreich);
-        }
-
         private bool VerbucheHintergrundEnde(Entity lot, Entity neu, bool erfolgreich)
         {
             var erwartet = _wartetAuf.TryGetValue(lot, out var schrittNummer);

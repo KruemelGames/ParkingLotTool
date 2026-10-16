@@ -170,8 +170,8 @@ internal static partial class Program
         var aktuell = s.TestMigration(lot, 14, Auftragsarbeiter.Strasse, id => e.StrassensyncEinreihen(lot, id));
         e.TestAnlauf(lot);
         e.TestAntwort(lot, alt, true);
-        s.MeldeHintergrundEnde(lot, lot, true);
-        Pruefe(s.TestWartet(lot) && s.TestStand(lot) == 15, "alte und nackte Antworten koennen neuen registrierten Schritt nicht verbuchen");
+        Pruefe(!a.Beende(alt, lot, true), "abgeschlossene alte Kennung kann nicht erneut antworten");
+        Pruefe(s.TestWartet(lot) && s.TestStand(lot) == 15, "alte Antworten koennen neuen registrierten Schritt nicht verbuchen");
         e.TestAntwort(lot, aktuell, true);
         Pruefe(s.TestStand(lot) == 14 && !s.TestWartet(lot), "neue Generation bleibt nach alter Antwort abschliessbar");
         s.TestNutzerFertig(lot);

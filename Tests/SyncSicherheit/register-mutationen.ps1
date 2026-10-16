@@ -14,8 +14,8 @@ $faelle = @(
       '_stufe = Stufe.Frei;', '// Mutation: Freigabe fehlt.'),
     @('AnnahmeUnbestaetigt', 'Tools/ParkingLotAuftragsSystem.cs', 'RegisterAdapterQuelle',
       'if (a.Phase != Auftragsphase.Vorgemerkt) return true; // bestaetigte Annahme ist verbindlich', 'if (angenommen) return true;'),
-    @('NackteAntwortZugelassen', 'Tools/ParkingLotSync.Antwort.cs', 'SyncAntwortQuelle',
-      'if (_auftragsWarten.ContainsKey(lot)) return;', '// Mutation: Entity allein reicht.'),
+    @('FalscheAuftragsAntwort', 'Tools/ParkingLotSync.Auftraege.cs', 'SyncAuftraegeQuelle',
+      ' || id != auftrag.Kennung', ''),
     @('StrassenantwortNimmtAktuelleID', 'Tools/ParkingLotBuildingEconomy.Abschluss.cs', 'StrassenAbschlussQuelle',
       'if (!_anschluesse.TryGetValue(lot, out var a) || a.Auftrag != id || !Auftraege.DarfAnwenden(id)) return;',
       'if (!_anschluesse.TryGetValue(lot, out var a)) return; id = a.Auftrag; if (!Auftraege.DarfAnwenden(id)) return;')

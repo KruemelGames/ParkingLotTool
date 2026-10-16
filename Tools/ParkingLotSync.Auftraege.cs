@@ -38,13 +38,13 @@ namespace ParkingLotTool.Tools
         }
 
         private void AsynchronenSchrittStarten(Entity lot, int schritt, Auftragsarbeiter? arbeiter,
-            Func<Entity, Auftragskennung, bool> uebergabe, Action bisher)
+            Func<Entity, Auftragskennung, bool> uebergabe)
         {
+            if (!arbeiter.HasValue || uebergabe == null) throw new InvalidOperationException("Asynchroner Schritt ohne Register-Adapter.");
             _wartetAuf.Add(lot, schritt);
             _fortsetzen.Add(lot);
             _offen.Add(lot); _offenMenge.Add(lot);
-            if (arbeiter.HasValue) RegistriertenSchrittStarten(lot, schritt, arbeiter.Value, uebergabe);
-            else bisher();
+            RegistriertenSchrittStarten(lot, schritt, arbeiter.Value, uebergabe);
         }
 
         private void RegistriertenSchrittStarten(Entity lot, int schritt, Auftragsarbeiter arbeiter,

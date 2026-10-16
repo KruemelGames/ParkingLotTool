@@ -134,7 +134,8 @@ namespace ParkingLotTool.Tools
                 ["PflanzenNachWuchs"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => _werkzeug.BrauchtPflanzenNachWuchs(lot),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Pflanzen),
+                    Arbeiter = Auftragsarbeiter.Bestand,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Pflanzen, id),
                     Tausch = true,
                 },
                 /*
@@ -145,7 +146,8 @@ namespace ParkingLotTool.Tools
                 ["LaternenNachruesten"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => _werkzeug.BrauchtLaternenNachruesten(lot, teile),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Laternen),
+                    Arbeiter = Auftragsarbeiter.Bestand,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Laternen, id),
                     Tausch = true,
                 },
                 /*
@@ -155,7 +157,8 @@ namespace ParkingLotTool.Tools
                 ["LaternenNachZettel"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => _werkzeug.BrauchtLaternenNachZettel(lot, teile),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Laternen),
+                    Arbeiter = Auftragsarbeiter.Bestand,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Laternen, id),
                     Tausch = true,
                 },
                 /*
@@ -166,7 +169,8 @@ namespace ParkingLotTool.Tools
                 ["FlaechenFuerCs2"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Braucht(lot),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Einreihen(lot),
+                    Arbeiter = Auftragsarbeiter.Flaechen,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Einreihen(lot, id),
                     Tausch = true,
                 },
                 ["BegleiterAnStrasse"] = new Ausfuehrung

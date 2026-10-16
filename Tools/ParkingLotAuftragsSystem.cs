@@ -29,6 +29,24 @@ namespace ParkingLotTool.Tools
         internal Auftragskennung Merke(Entity lot, Auftragsarbeiter arbeiter, Auftragsgrund grund,
             int schritt = 0, long nutzer = 0, Func<Bauauftrag<Entity>, Entity, bool, bool> antwort = null)
         {
+            /*
+             * NIE WERFEN, WENN DAS REGISTER NICHT BEREIT IST.
+             *
+             * Zwischen OnGamePreload und der Puffer-Wiederherstellung ist es
+             * das nicht - und genau dort reiht ein Edit-Abbruch beim
+             * Spielstandwechsel seinen Rueckweg ein. Eine Ausnahme in einem
+             * Lade-Ereignis laesst CS2 das ganze aufrufende System abschalten
+             * ("Error on game preload, disabling system"). Eine leere Kennung
+             * wird von Uebergib/Beende/Lies abgewiesen; was gespeichert ist,
+             * nimmt die Wiederaufnahme nach dem Laden selbst wieder auf.
+             */
+            if (!Register.Bereit)
+            {
+                try { Mod.log.Warn("PLT-Auftrag: Register nicht bereit (Laden laeuft); " + arbeiter + "/" + grund
+                    + " fuer Lot " + lot.Index + " nicht angenommen."); }
+                catch (Exception) { }
+                return default;
+            }
             var id = Register.Merke(lot, arbeiter, grund, schritt, Jetzt, nutzer);
             if (antwort != null) _antworten.Add(id, antwort);
             return id;

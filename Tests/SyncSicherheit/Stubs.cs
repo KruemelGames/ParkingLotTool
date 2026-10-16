@@ -28,6 +28,7 @@ namespace Unity.Entities
         }
         public void AddComponent<T>(Entity e) => AddComponentData(e, default(T));
         public void Remove(Entity e) => Data.Remove(e);
+        public void RemoveComponent<T>(Entity e) { if (Exists(e)) { Data[e].Remove(typeof(T)); Data[e].Remove(typeof(List<T>)); } }
         public bool Exists(Entity e) => Data.ContainsKey(e);
         public bool HasComponent<T>(Entity e) => Exists(e) && Data[e].ContainsKey(typeof(T));
         public T GetComponentData<T>(Entity e) => (T)Data[e][typeof(T)];
@@ -45,6 +46,7 @@ namespace Unity.Entities
     {
         public readonly EntityManager EntityManager = new();
         public World() { GetOrCreateSystemManaged<ParkingLotTool.Tools.ParkingLotAuftragsSystem>().PufferWiederhergestellt(); }
+        public void DestroySystemManaged(Game.GameSystemBase system) { }
         private readonly Dictionary<Type, Game.GameSystemBase> _systems = new();
         public T GetOrCreateSystemManaged<T>() where T : Game.GameSystemBase, new()
         {
@@ -70,6 +72,7 @@ namespace Game
     }
 }
 namespace Game.Common { public struct Deleted { } public struct Owner { public Entity m_Owner; } }
+namespace Game.Areas { public struct Area { } }
 namespace Game.Net { public struct SubNet { public Entity m_SubNet; } public struct Edge { } }
 namespace Game.SceneFlow
 {
@@ -131,9 +134,9 @@ namespace ParkingLotTool.Tools
         public void Zuruecksetzen() { _auftrag = default; _stufe = Stufe.Frei; _lot = Entity.Null; _plan.Clear(); _definitionen.Clear(); }
         public void PflegeOhneWerkzeug() { }
     }
-    public class ParkingLotBestandsTauschSystem : Game.GameSystemBase { public bool WerkzeugLaeuft; }
-    public class ParkingLotBestandsTauschWerkzeug : Game.Tools.ToolBaseSystem { }
-    public class ParkingLotFlaechenSyncSystem : Game.GameSystemBase { public bool Laeuft; }
+    public sealed partial class ParkingLotBestandsTauschSystem : Game.GameSystemBase { public bool WerkzeugLaeuft; }
+    public sealed partial class ParkingLotBestandsTauschWerkzeug : Game.Tools.ToolBaseSystem { }
+    public sealed partial class ParkingLotFlaechenSyncSystem : Game.GameSystemBase { }
     public sealed partial class ParkingLotSyncSystem : Game.GameSystemBase
     {
         public readonly List<bool> Antworten = new();

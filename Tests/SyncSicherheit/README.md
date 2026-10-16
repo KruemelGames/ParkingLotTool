@@ -10,7 +10,10 @@ Einzellauf: `dotnet run -c Release --project Tests/SyncSicherheit/SyncSicherheit
 Der produktive Registerkern kommt aus Geometry/Auftragsregister.cs.
 Eingebunden sind auch der echte Weltadapter, die asynchrone Sync-Uebergabe,
 Sync-Antwort/Datenstand, Fahrwegsteuerung, Fahrwegabschluss/-Identitaetspruefung
-und Strassenannahme/-Abschluss. Native ECS-, Werkzeug- und UI-Zugriffe werden
+und Strassenannahme/-Abschluss. Hinzu kommen Bestandsannahme/Task-Lesen,
+Bestandswerkzeugabschluss, Flaechenannahme/-Abschluss und die echten
+Hintergrundannahme-, Gate-, Fehler-, Rueckweg- und Abschlussmethoden.
+Native ECS-, Werkzeug- und UI-Zugriffe werden
 durch Container ersetzt. Test-Main faengt alle Ausnahmen ab und liefert Exit 1.
 
 Geprueft werden insbesondere:
@@ -23,7 +26,12 @@ Geprueft werden insbesondere:
 - Datenstand fehlt / 0 bis 15; Normalbau, Repair und Wiederaufnahme gegen Migration 14/15.
 - Fehler vor dem Schreiben und Diagnosefehler nach bestaetigter Wirkung.
 - Spaeter Normalbauabschluss nach Uebernahme durch eine Migration.
-- Keine Bereinigung veralteter Fahrweg-Entity-IDs in der neuen Welt.
+- Keine Bereinigung veralteter Fahrweg-/Bestands-Entity-IDs in der neuen Welt.
+- Schritte 10/11/12/13 bei fehlendem Datenstand und allen Staenden 0..15.
+- Alte Task-Ergebnisse, Gate-Rueckrufe und fremde aktuelle Auftragskennungen.
+- Drei Bauversuche mit einer Kennung, bisherigen Pausen und einem Abschluss.
+- Rueckweg, NeubauFaellig und OffenerErsatz; Fehler vor/nach der Uebernahme.
+- Freigabe-/Diagnoseausnahmen; ein Rueckweg bestaetigt keine Migration.
 
 Die sechs Registermutationen entfernen Generation, Abschlussbegrenzung,
 Workerfreigabe, Annahmebestaetigung oder die Antwortidentitaet. Jede muss mit
@@ -31,9 +39,12 @@ Exit 1 an einer Testaussage scheitern; Compilerfehler gelten nicht als Treffer.
 Die bestehenden Hardening-Mutationen bleiben aktiv; ihr Strassen-Ziel wurde
 auf den neuen registrierten Rueckmeldeaufruf umgestellt.
 
-Offen bleiben die Adapter fuer Bestands-, Flaechen- und Hintergrundarbeit.
-Deren Task-Ergebnisse, Gate-Callbacks und Wiederholungen haben hier noch
-keine Registerkennung. Nur der Wiederaufnahme-Zeitpunkt des Hintergrunds
-liegt jetzt hinter der nativen Pufferwiederherstellung.
+Alle fuenf Worker benutzen das Register; die Entity-Rueckmeldung ohne
+Kennung und der Dispatcher-Rueckfall ohne Register sind entfernt.
+worker-mutationen.ps1 prueft zusaetzlich neun Fehler: falsche Bestandskennung,
+altes Task-Ergebnis, fehlende Freigabe bei Bestand/Flaechen/Hintergrund,
+fehlende Flaechengeneration, alter Gate-Rueckruf, vorzeitiger Abschluss einer
+Wiederholung und Migrationserfolg durch einen blossen Rueckweg.
+Die Leser aller Speicherformate bleiben unveraendert.
 Die native Aufrufreihenfolge beim Laden, Apply und Cohtml-Darstellung
 brauchen weiterhin Ingame-Abnahme. Es gibt keine neuen Fristen oder Abbrueche.

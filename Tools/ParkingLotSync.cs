@@ -544,8 +544,7 @@ namespace ParkingLotTool.Tools
                         + " Schritt " + schritt.Nummer + " " + schritt.Name + " beginnt");
                     if (a.Hintergrund || a.Tausch)
                     {
-                        AsynchronenSchrittStarten(lot, schritt.Nummer, a.Arbeiter, a.Uebergabe,
-                            () => a.Ausfuehren(lot, traeger, teile));
+                        AsynchronenSchrittStarten(lot, schritt.Nummer, a.Arbeiter, a.Uebergabe);
                         // Synchrone Antworten haben die Zuordnung bereits verbraucht.
                         Abschlussdiagnose(() => Mod.log.Info("PLT-Sync: Lot " + lot.Index + " Schritt "
                             + schritt.Nummer + " uebergeben; Datenstand nur nach bestaetigtem Abschluss."));

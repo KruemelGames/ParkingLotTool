@@ -11,8 +11,9 @@ namespace ParkingLotTool.Tools
         private readonly List<Entity> _offen = new();
         private readonly HashSet<Entity> _offenMenge = new(), _gescheitert = new();
         public Action BeiMeldung;
-        private void NeuAufnehmen() => _neuAufnehmen = true;
+        internal void NeuAufnehmen() => _neuAufnehmen = true;
         public int TestStand(Entity lot) => StandVon(lot);
+        public bool TestAntwortDirekt(Bauauftrag<Entity> a, Entity neu, bool ok) => AuftragsAntwort(a, neu, ok);
         public bool TestWartet(Entity lot) => _wartetAuf.ContainsKey(lot);
         public bool TestGescheitert(Entity lot) => _gescheitert.Contains(lot);
         public void TestPflege() => PflegeAuftraege();
@@ -20,7 +21,7 @@ namespace ParkingLotTool.Tools
             Func<Auftragskennung, bool> uebergabe)
         {
             Auftragskennung kennung = default;
-            AsynchronenSchrittStarten(lot, schritt, arbeiter, (e, id) => { kennung = id; return uebergabe(id); }, null);
+            AsynchronenSchrittStarten(lot, schritt, arbeiter, (e, id) => { kennung = id; return uebergabe(id); });
             return kennung;
         }
         public void TestNutzerFertig(Entity lot)
