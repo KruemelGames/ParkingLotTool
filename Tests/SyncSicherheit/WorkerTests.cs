@@ -254,6 +254,21 @@ internal static partial class Program
             && welt.EntityManager.HasComponent<ParkingLotNebenarbeitOffen>(ersatz)
             && s.TestStand(ersatz) == 7, "Fehler nach Wirkung behaelt Neubau und Nebenarbeit bei Stand 7");
 
+        // Mit Bauplan (16.10.): Sicherheitsnetz statt Dauersperre - Rueckweg verworfen,
+        // Neubaupflicht gespeichert, keine Sperre. Ein werfender Logger aendert daran nichts.
+        a.Preload(); bg.TestLaden(); s.TestNeueLadung(); a.PufferWiederhergestellt();
+        if (welt.EntityManager.HasComponent<ParkingLotNeubauFaellig>(lot)) welt.EntityManager.RemoveComponent<ParkingLotNeubauFaellig>(lot);
+        bg.Einreihen(lot, true); bg.TestStart();
+        welt.EntityManager.Set(lot, new List<ParkingLotRueckwegkurs> { new() });
+        Mod.log.InfoFehler = true;
+        try { bg.TestRueckwegFehler(); }
+        finally { Mod.log.InfoFehler = false; }
+        Pruefe(!welt.EntityManager.HasBuffer<ParkingLotRueckwegkurs>(lot)
+            && welt.EntityManager.HasComponent<ParkingLotNeubauFaellig>(lot) && bg.Offen == 1,
+            "Rueckwegfehler mit Bauplan verwirft den Rueckweg und merkt den Neubau vor");
+
+        // Ein zweites Scheitern in derselben Sitzung (oder ohne Bauplan): wie bisher
+        // Sperre und Sicherung behalten - das Netz greift je Lot nur einmal.
         bg.Einreihen(lot, true); var gestoppt = bg.TestKennung; bg.TestStart();
         welt.EntityManager.Set(lot, new List<ParkingLotRueckwegkurs> { new() });
         Mod.log.InfoFehler = true;
@@ -261,6 +276,6 @@ internal static partial class Program
         finally { Mod.log.InfoFehler = false; }
         Pruefe(!a.Gilt(gestoppt) && bg.TestGesperrt(lot)
             && welt.EntityManager.HasBuffer<ParkingLotRueckwegkurs>(lot),
-            "Rueckwegfehler behaelt bisherige Sperre und Sicherung, Registerauftrag endet");
+            "zweiter Rueckwegfehler behaelt Sperre und Sicherung, Registerauftrag endet");
     }
 }

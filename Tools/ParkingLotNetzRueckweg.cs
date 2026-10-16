@@ -168,6 +168,7 @@ namespace ParkingLotTool.Tools
             weiter = anfang;
             var uhr = System.Diagnostics.Stopwatch.StartNew();
             if (!em.HasBuffer<ParkingLotRueckwegkurs>(lot)) return 0;
+            if (anfang == 0) ErsetzeToteAnschlussknoten(em, lot);
             // Strukturveraenderungen invalidieren DynamicBuffer: ZUERST kopieren.
             var kopie = em.GetBuffer<ParkingLotRueckwegkurs>(lot, true).ToNativeArray(Allocator.Temp);
             try
@@ -391,18 +392,7 @@ namespace ParkingLotTool.Tools
              * wieder. Hier gilt dieselbe Regel wie dort: CanConnect, oder der
              * erlaubte direkte Pathway-an-Road-Anschluss.
              */
-            bool Anschliessbar(Entity n)
-            {
-                if (!em.HasComponent<PrefabRef>(n) || !em.HasComponent<NetData>(prefab)) return false;
-                var ziel = em.GetComponentData<PrefabRef>(n).m_Prefab;
-                if (!em.HasComponent<NetData>(ziel)) return false;
-                var eigen = em.GetComponentData<NetData>(prefab);
-                var anderer = em.GetComponentData<NetData>(ziel);
-                if (NetUtils.CanConnect(eigen, anderer)) return true;
-                return em.HasComponent<PathwayData>(prefab)
-                    && (!em.HasBuffer<AuxiliaryNet>(prefab) || em.GetBuffer<AuxiliaryNet>(prefab,true).Length == 0)
-                    && (anderer.m_RequiredLayers & Layer.Road) != 0;
-            }
+            bool Anschliessbar(Entity n) => KannAnschliessen(em, prefab, n);
         }
 
         private static NetCourse Eingabekurs(ParkingLotRueckwegkurs alt)
@@ -559,6 +549,86 @@ namespace ParkingLotTool.Tools
                     && ParkingLotBesitz.GehoertZu(em,em.GetComponentData<Owner>(e).m_Owner,lot)) em.AddComponent<Updated>(e);
             Melde($"Rueckweg: {knoten.Count} seitliche Knoten mit eigenen Kanten bei Vanilla angemeldet; 0 direkte Netzeintraege.");
         }
+        /**
+         * ERSETZTE ANSCHLUSSKNOTEN AN IHRER STELLE WIEDERFINDEN (2026-10-16).
+         *
+         * Gemessen: F5 nach dem Uebernehmen eines Edit-Neubaus. Der neue
+         * Parkplatz hatte sich an eine Stadtstrasse angeschlossen, und CS2
+         * hatte deren Knoten 430590 dabei durch einen neuen an derselben
+         * Stelle ersetzt. Der Rueckweg kannte nur die alte Nummer ("Gesicherter
+         * Anschlussknoten fehlt") und sperrte den Parkplatz. Ein gesicherter
+         * Knoten, der nicht mehr lebt, wird deshalb an seiner gespeicherten
+         * Lage gesucht: genau EIN lebender Knoten in 5 cm, an den der Weg
+         * anschliessen darf. Gibt es keinen oder mehrere, bleibt der alte
+         * Verweis stehen und die bisherige Pruefung meldet es wie vorher.
+         * Der Fund wird in den Schnappschuss geschrieben, damit auch die
+         * Nachpruefung und ein spaeteres Laden ihn kennen.
+         */
+        private static void ErsetzeToteAnschlussknoten(EntityManager em, Entity lot)
+        {
+            bool Tot(Entity n) => n != Entity.Null && !Lebt(em, n);
+            bool brauchtSuche = false;
+            foreach (var k in em.GetBuffer<ParkingLotRueckwegkurs>(lot, true))
+                if (Tot(k.Start) || Tot(k.Ende)) { brauchtSuche = true; break; }
+            if (!brauchtSuche && em.HasBuffer<ParkingLotRueckweganschluss>(lot))
+                foreach (var a in em.GetBuffer<ParkingLotRueckweganschluss>(lot, true))
+                    if (Tot(a.Knoten)) { brauchtSuche = true; break; }
+            if (!brauchtSuche) return;
+
+            Entity[] knoten;
+            using (var q = em.CreateEntityQuery(ComponentType.ReadOnly<Game.Net.Node>(), ComponentType.ReadOnly<PrefabRef>(),
+                ComponentType.Exclude<Deleted>(), ComponentType.Exclude<Temp>()))
+            using (var alle = q.ToEntityArray(Allocator.Temp)) knoten = alle.ToArray();
+            Entity Finde(float3 lage, Entity prefab)
+            {
+                Entity treffer = Entity.Null;
+                foreach (var n in knoten)
+                {
+                    if (math.distance(em.GetComponentData<Game.Net.Node>(n).m_Position, lage) > .05f) continue;
+                    if (!KannAnschliessen(em, prefab, n)) continue;
+                    if (treffer != Entity.Null) return Entity.Null;
+                    treffer = n;
+                }
+                return treffer;
+            }
+            int ersetzt = 0, offen = 0;
+            var kurse = em.GetBuffer<ParkingLotRueckwegkurs>(lot);
+            for (int i = 0; i < kurse.Length; i++)
+            {
+                var k = kurse[i];
+                if (Tot(k.Start)) { var n = Finde(k.Kurs.m_StartPosition.m_Position, k.Prefab); if (n != Entity.Null) { k.Start = n; k.Kurs.m_StartPosition.m_Entity = n; ersetzt++; } else offen++; }
+                if (Tot(k.Ende)) { var n = Finde(k.Kurs.m_EndPosition.m_Position, k.Prefab); if (n != Entity.Null) { k.Ende = n; k.Kurs.m_EndPosition.m_Entity = n; ersetzt++; } else offen++; }
+                kurse[i] = k;
+            }
+            if (em.HasBuffer<ParkingLotRueckweganschluss>(lot))
+            {
+                var anschluesse = em.GetBuffer<ParkingLotRueckweganschluss>(lot);
+                for (int i = 0; i < anschluesse.Length; i++)
+                {
+                    var a = anschluesse[i];
+                    if (!Tot(a.Knoten)) continue;
+                    var n = Finde(a.Position, a.Prefab);
+                    if (n != Entity.Null) { a.Knoten = n; anschluesse[i] = a; ersetzt++; } else offen++;
+                }
+            }
+            Melde($"Rueckweg Lot {lot.Index}: {ersetzt} ersetzte(r) Anschlussknoten an der gespeicherten Stelle wiedergefunden"
+                + (offen > 0 ? $", {offen} nicht eindeutig auffindbar" : "") + ".");
+        }
+
+        /** Darf ein Weg dieses Prefabs an diesen Knoten? Dieselbe Regel wie ParkingLotDauerkursSystem.Plane. */
+        private static bool KannAnschliessen(EntityManager em, Entity prefab, Entity n)
+        {
+            if (!em.HasComponent<PrefabRef>(n) || !em.HasComponent<NetData>(prefab)) return false;
+            var ziel = em.GetComponentData<PrefabRef>(n).m_Prefab;
+            if (!em.HasComponent<NetData>(ziel)) return false;
+            var eigen = em.GetComponentData<NetData>(prefab);
+            var anderer = em.GetComponentData<NetData>(ziel);
+            if (NetUtils.CanConnect(eigen, anderer)) return true;
+            return em.HasComponent<PathwayData>(prefab)
+                && (!em.HasBuffer<AuxiliaryNet>(prefab) || em.GetBuffer<AuxiliaryNet>(prefab,true).Length == 0)
+                && (anderer.m_RequiredLayers & Layer.Road) != 0;
+        }
+
         private static Entity Anschlussknoten(EntityManager em, ParkingLotRueckweganschluss a)
         {
             if (a.Knoten != Entity.Null) return a.Knoten;

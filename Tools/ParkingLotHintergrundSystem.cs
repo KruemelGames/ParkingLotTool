@@ -375,6 +375,11 @@ namespace ParkingLotTool.Tools
                     break;
                 case Phase.Rueckweg:
                     if (!EntityManager.HasBuffer<ParkingLotRueckwegkurs>(a.Lot)) { RueckwegFertig(a,0,0); return; }
+                    // Erst wenn der Aufraeumer fertig ist (16.10.): nach F5 hinter dem
+                    // Uebernehmen reisst er noch den neuen Parkplatz ab, und dessen
+                    // Anschluesse an Stadtstrassen sind dann noch nicht wieder frei.
+                    if (a.RueckwegIndex == 0 && !a.RueckwegAusgegeben
+                        && World.GetOrCreateSystemManaged<ParkingLotCleanupSystem>().AbrissLaeuft) return;
                     if (a.RueckwegIndex == 0 && !a.RueckwegAusgegeben && VerwirfUnbaubarenRueckweg(a)) return;
                     if (!a.RueckwegAusgegeben)
                     {
@@ -457,7 +462,7 @@ namespace ParkingLotTool.Tools
             if (_aktiv?.Bauer != null) World.DestroySystemManaged(_aktiv.Bauer);
             foreach (var b in _flussbeobachter) World.DestroySystemManaged(b.Bauer);
             _flussbeobachter.Clear();
-            _aktiv = null; _queue.Clear(); _angehalten.Clear(); _regel = new HintergrundAuftragsregel<Entity>();
+            _aktiv = null; _queue.Clear(); _angehalten.Clear(); _neubauStattSperre.Clear(); _regel = new HintergrundAuftragsregel<Entity>();
             _naechsterStart = 0; _letztesArbeitsbild = -1;
             _wiederaufnahmeOffen = true;
         }

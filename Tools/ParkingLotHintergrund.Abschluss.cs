@@ -7,6 +7,8 @@ namespace ParkingLotTool.Tools
 {
     internal sealed partial class ParkingLotHintergrundSystem
     {
+        /** Lots, die in dieser Sitzung schon einmal statt einer Sperre neu gebaut wurden. */
+        private readonly System.Collections.Generic.HashSet<Entity> _neubauStattSperre = new System.Collections.Generic.HashSet<Entity>();
         private void Fehler(Auftrag a, Exception e)
         {
             if (!Aktuell(a)) return;
@@ -70,22 +72,46 @@ namespace ParkingLotTool.Tools
                 ParkingLotNetzRueckweg.Melde($"Rueckweg Lot {a.Lot.Index}: {fehlen} Prefab(s) fehlen, kein Bauplan ({grund}); Sperre bleibt.");
                 return false;
             }
+            NeubauStattRueckweg(a, $"{fehlen} gesicherte Prefab(s) fehlen nach dem Laden");
+            return true;
+        }
+
+        /** Rueckweg verwerfen und den Parkplatz aus seinem Bauplan neu bauen (Bauplan vorher geprueft). */
+        private void NeubauStattRueckweg(Auftrag a, string grund)
+        {
             // Erst die gespeicherte Pflicht, dann den alten Schnappschuss weg:
             // ein Speichern bis zur neuen Sicherung darf den Neubau nicht verlieren.
             if (!EntityManager.HasComponent<ParkingLotNeubauFaellig>(a.Lot))
                 EntityManager.AddComponent<ParkingLotNeubauFaellig>(a.Lot);
             EntityManager.RemoveComponent<ParkingLotRueckwegkurs>(a.Lot);
-            ParkingLotNetzRueckweg.Melde($"Rueckweg Lot {a.Lot.Index} VERWORFEN: {fehlen} gesicherte Prefab(s) fehlen nach dem Laden; "
-                + "Neubau aus dem Bauplan wird eingereiht.");
+            Diagnose(() => ParkingLotNetzRueckweg.Melde($"Rueckweg Lot {a.Lot.Index} VERWORFEN: {grund}; "
+                + "Neubau aus dem Bauplan wird eingereiht."));
             a.Fortsetzen = true;
             RueckwegFertig(a, 0, 0);
-            if (!a.Beendet) return true;
+            if (!a.Beendet) return;
             SetzeFort(a);
-            return true;
         }
 
         private void HalteRueckwegAn(Auftrag a)
         {
+            /*
+             * SICHERHEITSNETZ: NEUBAU STATT DAUERSPERRE (16.10.).
+             *
+             * Ein Rueckweg, der endgueltig nicht aufgeht, sperrte den Parkplatz
+             * bisher fuer immer (Spieler sahen nur die rote Meldung). Mit
+             * lesbarem Bauplan gibt es einen sicheren Ausweg: derselbe Neubau
+             * wie bei der Reparatur. Er sichert den jetzigen Bestand als neuen
+             * Rueckweg und ersetzt ihn. Einmal je Lot und Sitzung, damit keine
+             * Schleife entsteht; ohne Bauplan oder mit offenem Ersatz bleibt es
+             * bei der Sperre mit Meldung.
+             */
+            if (EntityManager.Exists(a.Lot) && !EntityManager.HasComponent<ParkingLotOffenerErsatz>(a.Lot)
+                && EntityManager.HasBuffer<ParkingLotRueckwegkurs>(a.Lot)
+                && KannNeubauen(a.Lot, out _) && _neubauStattSperre.Add(a.Lot))
+            {
+                NeubauStattRueckweg(a, "Rueckweg ging nicht auf (Phase " + a.Phase + ")");
+                return;
+            }
             // Keine Freigabe bei 20/22 und keine neue Definitionsserie. Der
             // serialisierte Schnappschuss bleibt auch nach World-Wechsel erhalten.
             _angehalten.Add(a.Lot);

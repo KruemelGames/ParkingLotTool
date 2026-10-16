@@ -183,6 +183,6 @@ namespace ParkingLotTool.Tools
         public bool TestInRuecknahme => _aktiv?.Phase == Phase.Ruecknahme;
         public void TestRueckwegFehler()
         { _aktiv.Phase = Phase.Rueckweg; Fehler(_aktiv, new InvalidOperationException("Rueckweg")); }
-        public void TestLaden() { _aktiv = null; _queue.Clear(); _angehalten.Clear(); _regel = new(); }
+        public void TestLaden() { _aktiv = null; _queue.Clear(); _angehalten.Clear(); _neubauStattSperre.Clear(); _regel = new(); }
     }
 }

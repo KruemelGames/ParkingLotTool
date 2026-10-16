@@ -694,6 +694,28 @@ namespace ParkingLotTool.Tools
                 _speicherLaeuft = true;
                 _speicherSeit = UnityEngine.Time.realtimeSinceStartup;
                 if (!IsEditing) return;
+                /*
+                 * FERTIGER NEUBAU WIRD UEBERNOMMEN, NICHT ZURUECKGENOMMEN (16.10.).
+                 *
+                 * Gemessen: F5 eine Sekunde nach dem Bauen. Der neue Parkplatz
+                 * stand vollstaendig (Apply, Wirtschaft gemessen), die Uebernahme
+                 * waere im naechsten Bild gekommen. Der Abbruch riss ihn wieder
+                 * ab und schickte den alten Parkplatz in den Rueckweg - der an
+                 * den inzwischen von CS2 ersetzten Stadtstrassenknoten scheiterte
+                 * und den Parkplatz sperrte. Ein Rueckgaengigmachen eines fertigen
+                 * Baus ist der falsche Weg: ist die Uebernahme jetzt moeglich,
+                 * geschieht sie sofort; der alte Parkplatz geht an den Aufraeumer,
+                 * dessen Abrissabsicht das Speichern uebersteht. Nur ein noch
+                 * nicht fertiger Neubau wird wie bisher abgebrochen.
+                 */
+                if (_replacementNewLot != Entity.Null && PollReplacementCommit() && !IsEditing)
+                {
+                    ParkingLotSchrittmarke.Setze("Bearbeiten vor dem Speichern uebernommen: " + saveName);
+                    Mod.log.Info("PLT-Bearbeiten: Speichern von " + saveName
+                        + " - fertiger Neubau vorher uebernommen statt zurueckgenommen.");
+                    return;
+                }
+                if (!IsEditing) return;
                 _editNachSpeichern = _editLot;
                 AbortEdit("Speichern von " + saveName,
                     "editAbbruch.editWasAutomaticallyCancelledBeforeSaving");
