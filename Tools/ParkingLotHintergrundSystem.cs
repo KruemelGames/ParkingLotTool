@@ -609,6 +609,8 @@ namespace ParkingLotTool.Tools
             }
         }
 
+        private bool _wiederaufnahmeOffen;
+
         protected override void OnGameLoaded(Context context)
         {
             base.OnGameLoaded(context);
@@ -620,6 +622,14 @@ namespace ParkingLotTool.Tools
             _flussbeobachter.Clear();
             _aktiv = null; _queue.Clear(); _angehalten.Clear(); _regel = new HintergrundAuftragsregel<Entity>();
             _naechsterStart = 0; _letztesArbeitsbild = -1;
+            _wiederaufnahmeOffen = true;
+        }
+
+        // BayObjects ruft erst nach den nativen Traeger-Puffern auf.
+        internal void NimmNachLadenWiederAuf()
+        {
+            if (!_wiederaufnahmeOffen) return;
+            _wiederaufnahmeOffen = false;
             using (var offenQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ParkingLotRueckwegsicherungOffen>()))
             using (var offen = offenQuery.ToEntityArray(Allocator.Temp))
                 foreach (var lot in offen) ParkingLotNetzRueckweg.VerwerfeOffeneSicherung(EntityManager,lot);

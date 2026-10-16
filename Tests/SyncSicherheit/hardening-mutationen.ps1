@@ -12,7 +12,7 @@ $faelle = @(
     @('RueckmeldungImCatch', 'Tools/ParkingLotFahrwegTausch.Abschluss.cs', 'FahrwegAbschlussQuelle',
       'try { ok = Pruefe(out text); }', 'try { ok = Pruefe(out text); Beende(ok, text); return; }'),
     @('StrassenantwortFehlt', 'Tools/ParkingLotBuildingEconomy.Abschluss.cs', 'StrassenAbschlussQuelle',
-      'if (a.Sync) World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(lot, lot, ok);',
+      'Auftraege.Beende(id, lot, ok);',
       '// Mutation: Rueckmeldung fehlt.'),
     @('IndexAusserhalbCatch', 'Tools/ParkingLotSync.Abarbeiten.cs', 'DispatcherQuelle',
       'var uhr = Stopwatch.StartNew();', 'var uhr = Stopwatch.StartNew(); _index ??= TeileJeLot();')

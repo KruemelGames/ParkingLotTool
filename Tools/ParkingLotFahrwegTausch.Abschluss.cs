@@ -10,6 +10,7 @@ namespace ParkingLotTool.Tools
         // Rueckmeldung ausserhalb des Catchs: ein werfender Empfaenger wird nie erneut aufgerufen.
         private void PruefeUndBeende()
         {
+            if (VerwirfVeraltetenAuftrag()) return;
             bool ok;
             string text;
             try { ok = Pruefe(out text); }
@@ -33,7 +34,7 @@ namespace ParkingLotTool.Tools
 
         private void Beende(bool ok, string text)
         {
-            if (_stufe == Stufe.Frei) return;
+            if (_stufe == Stufe.Frei || VerwirfVeraltetenAuftrag()) return;
             var lot = _lot;
             // Freigabe vor Bereinigung: eine defekte Definition darf den Worker nicht sperren.
             _stufe = Stufe.Frei;

@@ -1,13 +1,14 @@
 using System;
+using ParkingLotTool.Geometry;
 using Unity.Entities;
 
 namespace ParkingLotTool.Tools
 {
     public sealed partial class ParkingLotBuildingEconomySystem
     {
-        private void AnschlussBeendet(Entity lot, bool ok, string grund)
+        private void AnschlussBeendet(Entity lot, Auftragskennung id, bool ok, string grund)
         {
-            if (!_anschluesse.TryGetValue(lot, out var a)) return;
+            if (!_anschluesse.TryGetValue(lot, out var a) || a.Auftrag != id || !Auftraege.DarfAnwenden(id)) return;
             _anschluesse.Remove(lot);
             try
             {
@@ -20,7 +21,7 @@ namespace ParkingLotTool.Tools
                 catch (Exception) { /* Rueckmeldung bleibt unabhaengig vom Logger. */ }
             }
             // Ausserhalb des Catchs: auch bei werfendem Empfaenger genau ein Versuch.
-            if (a.Sync) World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(lot, lot, ok);
+            Auftraege.Beende(id, lot, ok);
         }
     }
 }

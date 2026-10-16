@@ -123,6 +123,7 @@ namespace ParkingLotTool.Tools
         {
             using var uhr = ParkingLotMessung.Miss(
                 ParkingLotMessung.Sys.Begleiter);
+            if (!Auftraege.Register.Bereit) return;
             DisableLegacyLots();
             var enabled = Mod.WirtschaftAn;
             if (_lastEnabled != enabled)
@@ -134,7 +135,10 @@ namespace ParkingLotTool.Tools
             if (!enabled)
             {
                 foreach (var lot in new List<Entity>(_anschluesse.Keys))
-                    AnschlussBeendet(lot, false, "Wirtschaft ausgeschaltet");
+                {
+                    var a = _anschluesse[lot];
+                    if (AnschlussDarfArbeiten(lot, a)) AnschlussBeendet(lot, a.Auftrag, false, "Wirtschaft ausgeschaltet");
+                }
                 DisableAll();
                 return;
             }
@@ -350,6 +354,7 @@ namespace ParkingLotTool.Tools
                 // Erst die fertige Strassenkante verwenden; fehlt sie noch,
                 // wird genau dieser Neubau begrenzt nachgefuehrt. Geladene
                 // Begleiter bleiben bis zum ausdruecklichen Sync unveraendert.
+                var anschluss = Normalanschluss(lot);
                 var lage = new Game.Objects.Transform(AreaCenter(lot), quaternion.identity);
                 var platziert = Strassenlage(lot, prefab, out var strassenlage);
                 if (platziert) lage = strassenlage;
@@ -364,8 +369,6 @@ namespace ParkingLotTool.Tools
                 EntityManager.SetComponentData(companion, new CurrentDistrict(Entity.Null));
                 EntityManager.SetComponentData(companion,
                     new PseudoRandomSeed((ushort)math.clamp(companion.Index, 1, ushort.MaxValue)));
-                if (!_anschluesse.TryGetValue(lot, out var anschluss))
-                    _anschluesse[lot] = anschluss = new Anschluss();
                 anschluss.Platziert = platziert;
                 anschluss.Versuche = platziert ? 1 : 0;
                 anschluss.NaechstePlatzierung = UnityEngine.Time.frameCount + 120;

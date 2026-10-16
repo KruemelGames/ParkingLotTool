@@ -11,6 +11,7 @@ namespace Unity.Entities
     {
         public readonly Dictionary<Entity, Dictionary<Type, object>> Data = new();
         public int Adds, Sets;
+        public Action VorSchreiben;
         public Action<Entity> BeimZerstoeren;
         public readonly List<Entity> Zerstoerversuche = new();
         public void DestroyEntity(Entity e) { Zerstoerversuche.Add(e); BeimZerstoeren?.Invoke(e); Data.Remove(e); }
@@ -18,12 +19,12 @@ namespace Unity.Entities
         public void SetComponentData<T>(Entity e, T c)
         {
             if (!HasComponent<T>(e)) throw new InvalidOperationException("Set auf fehlende Komponente: " + typeof(T).Name);
-            Sets++; Set(e, c);
+            VorSchreiben?.Invoke(); Sets++; Set(e, c);
         }
         public void AddComponentData<T>(Entity e, T c)
         {
             if (!Exists(e)) throw new InvalidOperationException("Add auf tote Entity");
-            Adds++; Set(e, c);
+            VorSchreiben?.Invoke(); Adds++; Set(e, c);
         }
         public void AddComponent<T>(Entity e) => AddComponentData(e, default(T));
         public void Remove(Entity e) => Data.Remove(e);
@@ -43,6 +44,7 @@ namespace Unity.Entities
     public class World
     {
         public readonly EntityManager EntityManager = new();
+        public World() { GetOrCreateSystemManaged<ParkingLotTool.Tools.ParkingLotAuftragsSystem>().PufferWiederhergestellt(); }
         private readonly Dictionary<Type, Game.GameSystemBase> _systems = new();
         public T GetOrCreateSystemManaged<T>() where T : Game.GameSystemBase, new()
         {
@@ -93,7 +95,7 @@ namespace Game.Prefabs
         { p = Prefabs.TryGetValue(e, out var f) ? f as T : null; return p != null; }
     }
 }
-namespace UnityEngine { public static class Time { public static int frameCount; } }
+namespace UnityEngine { public static class Time { public static int frameCount; public static float realtimeSinceStartup; } }
 namespace UnityEngine.Scripting { public class PreserveAttribute : Attribute { } }
 namespace Colossal.Serialization.Entities { public struct Purpose { } }
 namespace ParkingLotTool.Tools
@@ -125,8 +127,8 @@ namespace ParkingLotTool.Tools
     {
         public bool Beschaeftigt => _stufe != Stufe.Frei; public int Starts;
         public Action<Entity, bool, string> Fertig;
-        public void Starte(Entity e, List<(Entity, Entity, Entity)> p) { Starts++; _lot = e; _plan.Clear(); _plan.AddRange(p); _stufe = Stufe.Anlegen; }
-        public void Zuruecksetzen() { _stufe = Stufe.Frei; _lot = Entity.Null; _plan.Clear(); _definitionen.Clear(); }
+        public void Starte(Entity e, List<(Entity, Entity, Entity)> p, ParkingLotTool.Geometry.Auftragskennung id = default) { Starts++; _auftrag = id; _lot = e; _plan.Clear(); _plan.AddRange(p); _stufe = Stufe.Anlegen; }
+        public void Zuruecksetzen() { _auftrag = default; _stufe = Stufe.Frei; _lot = Entity.Null; _plan.Clear(); _definitionen.Clear(); }
         public void PflegeOhneWerkzeug() { }
     }
     public class ParkingLotBestandsTauschSystem : Game.GameSystemBase { public bool WerkzeugLaeuft; }
@@ -136,6 +138,7 @@ namespace ParkingLotTool.Tools
     {
         public readonly List<bool> Antworten = new();
         public bool AntwortFehler;
-        public void MeldeHintergrundEnde(Entity e, Entity n, bool ok) { Antworten.Add(ok); if (AntwortFehler) throw new InvalidOperationException("Empfaenger"); }
+        public bool TestAntwort(ParkingLotTool.Geometry.Bauauftrag<Entity> a, Entity neu, bool ok)
+        { Antworten.Add(ok); if (AntwortFehler) throw new InvalidOperationException("Empfaenger"); return ok; }
     }
 }

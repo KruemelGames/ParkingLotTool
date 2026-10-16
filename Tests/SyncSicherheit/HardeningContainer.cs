@@ -35,19 +35,25 @@ namespace ParkingLotTool.Tools
         public void DispatcherBild() => Abarbeiten();
         private Dictionary<Entity, List<Entity>> TeileJeLot() => IndexBauen();
         private bool Synchronisiere(Entity lot, Dictionary<Entity, List<Entity>> index) { Synclots.Add(lot); return true; }
-        private int StandVon(Entity lot) => 7;
         private void Scheitern(Entity lot, int stand, string wo, string grund) { Fehlerlots.Add(lot); BeimScheitern?.Invoke(); }
-        private void VeroeffentlicheMeldung() { }
+        private void VeroeffentlicheMeldung() { BeiMeldung?.Invoke(); }
     }
 
     public sealed partial class ParkingLotBuildingEconomySystem : Game.GameSystemBase
     {
-        private sealed class Anschluss { internal bool Sync; internal int Versuche; }
-        private readonly Dictionary<Entity, Anschluss> _anschluesse = new();
         public Func<List<Entity>> Kandidaten = () => new();
         public int AnschluesseOffen => _anschluesse.Count;
-        public void StarteAnschluss(Entity lot, bool sync) => _anschluesse.Add(lot, new Anschluss { Sync = sync, Versuche = 1 });
-        public void BeendeAnschluss(Entity lot, bool ok) => AnschlussBeendet(lot, ok, "Test");
+        public void StarteAnschluss(Entity lot, bool sync)
+        {
+            if (!sync) { Normalanschluss(lot); return; }
+            var id = Auftraege.Merke(lot, ParkingLotTool.Geometry.Auftragsarbeiter.Strasse,
+                ParkingLotTool.Geometry.Auftragsgrund.Migration, 14,
+                antwort: World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().TestAntwort);
+            Auftraege.Uebergib(id, token => StrassensyncEinreihen(lot, token));
+            AnschlussDarfArbeiten(lot, _anschluesse[lot]);
+        }
+        public void BeendeAnschluss(Entity lot, bool ok)
+        { if (_anschluesse.TryGetValue(lot, out var a)) AnschlussBeendet(lot, a.Auftrag, ok, "Test"); }
         private bool Lebt(Entity lot) => EntityManager.Exists(lot);
         private List<Entity> Stadtstrassen(Entity lot) => Kandidaten();
     }

@@ -68,17 +68,19 @@ internal static partial class Program
         var sync = w.GetOrCreateSystemManaged<ParkingLotSyncSystem>();
         Pruefe(t.BrauchtTausch(lot), "alter Fahrweg bleibt noetig obwohl Zielklon noch fehlt");
         Pruefe(t.Plan(lot) == null, "keine halbe oder leere Migration wenn Klon fehlt");
-        UnityEngine.Time.frameCount = 0; t.Einreihen(lot); t.Tick();
+        UnityEngine.Time.frameCount = 0; StarteFahrweg(w, lot); t.Tick();
         Pruefe(t.Offen == 1 && sync.Antworten.Count == 0 && tool.Starts == 0, "nicht bereiter Klon wartet ohne falschen Erfolg");
         w.GetOrCreateSystemManaged<ParkingLotFahrprefabSystem>().Ziele[name] = ziel; em.Set(ziel, 0);
         w.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Laeuft = true; t.Tick();
         Pruefe(tool.Starts == 0, "keine parallele Uebernahme mit laufendem Flaechentausch");
         w.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Laeuft = false; t.Tick();
         Pruefe(tool.Starts == 1 && t.Plan(lot).Count == 1, "spaeter bereiter Klon startet denselben Auftrag");
+        w.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().Preload();
         t.Preload();
+        w.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().PufferWiederhergestellt();
         Pruefe(t.Offen == 0 && !tool.Beschaeftigt, "Laden verwirft alte Warteschlange und Werkzeug");
         w.GetOrCreateSystemManaged<ParkingLotFahrprefabSystem>().Ziele.Clear();
-        UnityEngine.Time.frameCount = 10; t.Einreihen(lot);
+        UnityEngine.Time.frameCount = 10; StarteFahrweg(w, lot);
         UnityEngine.Time.frameCount = 610; t.Tick();
         Pruefe(t.Offen == 0 && sync.Antworten.Count == 1 && !sync.Antworten[0], "fehlender Klon endet begrenzt mit Fehlschlag");
         Pruefe(ParkingLotSyncGueltigkeit.Bestand(em, lot, carrier), "gesunder Bestand gueltig");
@@ -121,6 +123,7 @@ internal static partial class Program
         Pruefe(!ParkingLotHintergrundAbschluss.MerkeNebenarbeit(em, neu, neuerTraeger)
             && !ParkingLotHintergrundAbschluss.MerkeNebenarbeit(em, Entity.Null, Entity.Null), "totes und leeres Lot verhindern Abschluss");
         Pruefe(em.Adds + em.Sets == vorher, "ungueltige Abschluesse schreiben keinerlei Komponenten");
+        AuftraegePruefen();
         Hardening();
         Logauszuege();
         Console.WriteLine($"SYNC-SICHERHEIT: {_pruefungen} Pruefungen, {_fehler} Fehler.");

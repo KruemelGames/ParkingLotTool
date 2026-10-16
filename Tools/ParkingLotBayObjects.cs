@@ -239,9 +239,19 @@ namespace ParkingLotTool.Tools
             // SubNet-Eintraege gemessen. Noch vor dem ersten Spielframe wird
             // der Puffer deshalb aus der exakt referenzierten PLT-Flaeche
             // wiederhergestellt; ein spaeter Anlass findet ihn bereits vor.
-            RestoreCarrierSubNetsAfterLoad();
-            World.GetOrCreateSystemManaged<ParkingLotCleanupSystem>()
-                .NimmAbrissNachLadenWiederAuf();
+            try
+            {
+                RestoreCarrierSubNetsAfterLoad();
+                World.GetOrCreateSystemManaged<ParkingLotCleanupSystem>()
+                    .NimmAbrissNachLadenWiederAuf();
+            }
+            finally
+            {
+                // Auch wenn die Wiederherstellung wirft: ein nie bereites
+                // Register liesse danach JEDEN Sync- und Bauauftrag scheitern.
+                World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().PufferWiederhergestellt();
+            }
+            World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>().NimmNachLadenWiederAuf();
             ParkingLotSchrittmarke.Setze("Laden: Traeger-SubNet wiederherstellen beendet; Decal-Prefabs aufloesen");
             ResolveBayDecalPrefabs();
             PflegeUnsichtbaresDecal();

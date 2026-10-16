@@ -4,6 +4,7 @@ using Game;
 using Game.Common;
 using Game.Net;
 using Game.Prefabs;
+using ParkingLotTool.Geometry;
 using Game.Tools;
 using Unity.Collections;
 using Unity.Entities;
@@ -67,8 +68,9 @@ namespace ParkingLotTool.Tools
             _temps = GetEntityQuery(ComponentType.ReadOnly<Temp>());
         }
 
-        internal void Starte(Entity lot, List<(Entity Kante, Entity Ziel, Entity Besitzer)> plan)
+        internal void Starte(Entity lot, List<(Entity Kante, Entity Ziel, Entity Besitzer)> plan, Auftragskennung auftrag)
         {
+            _auftrag = auftrag;
             _lot = lot;
             _plan.Clear();
             _plan.AddRange(plan);
@@ -86,6 +88,7 @@ namespace ParkingLotTool.Tools
          */
         internal void PflegeOhneWerkzeug()
         {
+            if (VerwirfVeraltetenAuftrag()) return;
             if (_stufe == Stufe.Frei || m_ToolSystem.activeTool == this) return;
             if (!BestandGueltig()) { Beende(false, "Bestand verschwunden"); return; }
             var bild = UnityEngine.Time.frameCount;
@@ -105,6 +108,7 @@ namespace ParkingLotTool.Tools
             _definitionen.Clear();
             _plan.Clear();
             _stufe = Stufe.Frei;
+            _auftrag = default;
             _lot = Entity.Null;
             _lief = false;
         }
@@ -113,6 +117,7 @@ namespace ParkingLotTool.Tools
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             applyMode = ApplyMode.None;
+            if (VerwirfVeraltetenAuftrag()) return inputDeps;
             var bild = UnityEngine.Time.frameCount;
             // Nur noch der Fall "im selben Bild umgeschaltet"; den Wechsel
             // davor faengt PflegeOhneWerkzeug ab (abgeschaltete Systeme

@@ -266,6 +266,7 @@ namespace ParkingLotTool
             // Synchronisieren: bestehende Parkplaetze nachruesten, gedrosselt.
             // UIUpdate, weil es auch in der Pause laufen soll und die
             // Bindungen fuer Liste, Panelkopf und Fortschrittsmeldung traegt.
+            updateSystem.UpdateAt<ParkingLotAuftragsSystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateAt<ParkingLotSyncSystem>(SystemUpdatePhase.UIUpdate);
             // Parkplaetze mit Flaechen/Pflanzen aus nicht geladenen Mods:
             // erkennen, in der Liste zeigen, auf Klick reparieren.

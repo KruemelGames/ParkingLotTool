@@ -20,6 +20,7 @@ namespace ParkingLotTool.Tools
                     // Auch ein Indexfehler gehoert zu genau diesem vorgemerkten Lot.
                     _index ??= TeileJeLot();
                     if (Synchronisiere(lot, _index)) _syncErfolge++;
+                    else if (!_wartetAuf.ContainsKey(lot) && !_fortsetzen.Contains(lot)) NutzerAbgeschlossen(lot, false);
                 }
                 catch (Exception ex)
                 {
@@ -28,7 +29,7 @@ namespace ParkingLotTool.Tools
                     _fortsetzen.Remove(lot);
                     Scheitern(lot, StandVon(lot), "Ausfuehrung", ex.ToString());
                 }
-                finally { _erledigt++; }
+                finally { _erledigt++; PflegeAuftraege(); }
             }
             while (_warteschlange.Count > 0 && uhr.Elapsed.TotalMilliseconds < BudgetMs);
             if (_warteschlange.Count == 0)

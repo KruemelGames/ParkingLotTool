@@ -281,16 +281,6 @@ namespace ParkingLotTool.Tools
             Colossal.Serialization.Entities.Purpose purpose, GameMode mode)
         {
             base.OnGameLoadingComplete(purpose, mode);
-            _offen.Clear();
-            _offenMenge.Clear();
-            _gescheitert.Clear();
-            _ohneBauplan.Clear();
-            _warteschlange.Clear();
-            _wartetAuf.Clear();
-            _fortsetzen.Clear();
-            _index = null;
-            _gesamt = _erledigt = 0;
-            _letzterBestand = -1;
             _neuAufnehmen = mode == GameMode.Game;
             _spielGeladen = mode == GameMode.Game;
             if (_spielGeladen)
@@ -305,21 +295,28 @@ namespace ParkingLotTool.Tools
                 ParkingLotSchrittmarke.Setze("Laden: Sync.OnGamePreload");
             base.OnGamePreload(purpose, mode);
             _spielGeladen = false;
+            _offen.Clear();
+            _offenMenge.Clear();
+            _gescheitert.Clear();
+            _ohneBauplan.Clear();
             _warteschlange.Clear();
             _wartetAuf.Clear();
             _fortsetzen.Clear();
-            LeereMeldung();
-            _offen.Clear();
-            _offenMenge.Clear();
             _index = null;
+            _gesamt = _erledigt = 0;
+            _letzterBestand = -1;
+            _auftragsWarten.Clear();
+            _nutzerAuftraege.Clear();
+            LeereMeldung();
         }
 
         [Preserve]
         protected override void OnUpdate()
         {
             base.OnUpdate();
+            PflegeAuftraege();
             PflegeSchalter();
-            if (!_spielGeladen)
+            if (!_spielGeladen || !Auftraege.Register.Bereit)
             {
                 Melde();
                 return;
@@ -499,6 +496,7 @@ namespace ParkingLotTool.Tools
             if (hintergrund.Gesperrt(lot)) return;
             if (_warteschlange.Count == 0 && hintergrund.Offen == 0)
                 _gesamt = _erledigt = _syncErfolge = 0;
+            NutzerVon(lot);
             _warteschlange.Add(lot);
             _gesamt++;
             VergissOffenMeldung();
@@ -544,23 +542,18 @@ namespace ParkingLotTool.Tools
                     { MeldeBauplanFehlt(lot,grund); return false; }
                     ParkingLotSchrittmarke.Setze("Sync: Lot " + lot.Index
                         + " Schritt " + schritt.Nummer + " " + schritt.Name + " beginnt");
+                    if (a.Hintergrund || a.Tausch)
+                    {
+                        AsynchronenSchrittStarten(lot, schritt.Nummer, a.Arbeiter, a.Uebergabe,
+                            () => a.Ausfuehren(lot, traeger, teile));
+                        // Synchrone Antworten haben die Zuordnung bereits verbraucht.
+                        Abschlussdiagnose(() => Mod.log.Info("PLT-Sync: Lot " + lot.Index + " Schritt "
+                            + schritt.Nummer + " uebergeben; Datenstand nur nach bestaetigtem Abschluss."));
+                        return false;
+                    }
                     a.Ausfuehren(lot, traeger, teile);
                     ParkingLotSchrittmarke.Setze("Sync: Lot " + lot.Index
                         + " Schritt " + schritt.Nummer + " " + schritt.Name + " beendet");
-                    if (a.Hintergrund || a.Tausch)
-                    {
-                        _wartetAuf[lot] = schritt.Nummer;
-                        _fortsetzen.Add(lot);
-                        // Ein vorgemerkter Neubau ist noch KEINE Wirkung.
-                        // Datenstand bleibt vor diesem Schritt, bis der echte
-                        // Hintergrundpfad das alte Lot ersetzt und die Aufnahme die
-                        // neuen Wege nachprueft. Bei Abbruch bleibt es offen.
-                        _offen.Add(lot);
-                        _offenMenge.Add(lot);
-                        Mod.log.Info("PLT-Sync: Lot " + lot.Index + " Schritt "
-                            + schritt.Nummer + " wartet auf Hintergrundauftrag; Datenstand bleibt " + s + ".");
-                        return false;
-                    }
                     // Nachpruefung: die Wirkung muss da sein, nicht nur
                     // "kein Fehler".
                     if (a.Braucht(lot, traeger, teile))
@@ -587,62 +580,6 @@ namespace ParkingLotTool.Tools
                 + ". Bis zum naechsten Laden kein neuer Versuch.");
         }
 
-        internal void MeldeHintergrundEnde(Entity lot, Entity neu, bool erfolgreich)
-        {
-            // Auch Reparaturen melden hier. Ohne zugehoerigen Sync-Auftrag
-            // duerfen sie keinen Stand setzen; alte Weltantworten ebenso wenig.
-            var erwartet = _wartetAuf.TryGetValue(lot, out var schrittNummer);
-            if (!SyncWache.AntwortErwartet(_spielGeladen, erwartet))
-            { if (_spielGeladen) NeuAufnehmen(); return; }
-            erfolgreich = erfolgreich && EntityManager.Exists(neu)
-                && !EntityManager.HasComponent<Deleted>(neu)
-                && EntityManager.HasComponent<ParkingLotCarrierReference>(neu);
-            if (erfolgreich)
-                erfolgreich = ParkingLotSyncGueltigkeit.Bestand(EntityManager, neu,
-                    EntityManager.GetComponentData<ParkingLotCarrierReference>(neu).Carrier);
-            if (!EntityManager.Exists(lot) || EntityManager.HasComponent<Deleted>(lot))
-            {
-                _offen.Remove(lot);
-                _offenMenge.Remove(lot);
-            }
-            _wartetAuf.Remove(lot);
-            // Weiterlaufen nur nach Erfolg - und am neuen Lot, falls ein Neubau es ersetzt hat.
-            var weiter = _fortsetzen.Remove(lot);
-            if (erfolgreich && weiter && neu != Entity.Null) _fortsetzen.Add(neu);
-            if (erfolgreich)
-            {
-                // Nur nach der echten Nachpruefung des Auftrags. Stand = dieser
-                // Schritt; die Neuaufnahme arbeitet die Schritte danach ab.
-                SetzeStand(neu, schrittNummer);
-                _offen.Remove(lot);
-                _offenMenge.Remove(lot);
-                _neuAufnehmen = true;
-                _index = null;
-                if (Mod.Optionen?.AutomatischSynchronisieren ?? false)
-                {
-                    _meldungSync++;
-                    VeroeffentlicheMeldung();
-                }
-            }
-            else
-            {
-                var ziel = neu != Entity.Null && EntityManager.Exists(neu)
-                    && !EntityManager.HasComponent<Deleted>(neu) ? neu : lot;
-                if (ziel != lot)
-                {
-                    _offen.Remove(lot);
-                    _offenMenge.Remove(lot);
-                    SetzeStand(ziel, schrittNummer - 1);
-                }
-                _offen.Remove(lot);
-                _offenMenge.Remove(lot);
-                if (EntityManager.Exists(ziel) && !EntityManager.HasComponent<Deleted>(ziel))
-                    _gescheitert.Add(ziel);
-                Mod.log.Warn("PLT-Sync: Hintergrundauftrag (Schritt " + schrittNummer + ") von " + lot
-                    + " nicht abgeschlossen; " + ziel + " bleibt auf seinem Datenstand, neuer Versuch nach dem naechsten Laden.");
-            }
-        }
-
         internal void MeldeBauplanFehlt(Entity lot, string grund)
         {
             _offen.Remove(lot); _offenMenge.Remove(lot);
@@ -657,21 +594,6 @@ namespace ParkingLotTool.Tools
         {
             if (erster && _warteschlange.Count == 0) _gesamt = _erledigt = 0;
             _gesamt++;
-        }
-
-        private int StandVon(Entity lot)
-            => EntityManager.Exists(lot) && EntityManager.HasComponent<ParkingLotDatenstand>(lot)
-                ? System.Math.Max(0, EntityManager.GetComponentData<ParkingLotDatenstand>(lot).Stand)
-                : 0;
-
-        private void SetzeStand(Entity lot, int stand)
-        {
-            if (!EntityManager.Exists(lot) || EntityManager.HasComponent<Deleted>(lot)
-                || !EntityManager.HasComponent<ParkingLotCarrierReference>(lot)) return;
-            var wert = new ParkingLotDatenstand { Stand = stand };
-            if (EntityManager.HasComponent<ParkingLotDatenstand>(lot))
-                EntityManager.SetComponentData(lot, wert);
-            else EntityManager.AddComponentData(lot, wert);
         }
 
         // ------------------------------------------------------------------
