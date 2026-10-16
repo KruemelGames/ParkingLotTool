@@ -6,87 +6,53 @@ import { TooltipKnopf } from "./controls";
 import styles from "./fee-section.module.scss";
 import { useTexte } from "./texte";
 
-/**
- * Zwei Einstiege; die Sichtbarkeit entscheidet die C#-Sektion.
- *
- * Neben "Bearbeiten" steht seit der Testveroeffentlichung "Bericht
- * schreiben". Ansage des Nutzers: *"Wenn denen was auffaellt, sollen die
- * einfach auf nen Parkplatz klicken koennen und nen Button druecken, um nen
- * Debug zu erstellen."* Genau hier ist der Ort dafuer - der Nutzer hat den
- * Parkplatz schon angeklickt, um sich zu wundern.
- */
+/** C# erkennt die PLT-Flaeche und liefert Freigabe samt lokalisiertem Grund. */
 export const ParkingEditSection = (props: {
   waise?: number; bauzettel?: boolean; schluessel?: string;
+  bearbeitbar?: boolean; reparierbar?: boolean; grund?: string;
 }) => {
   const t = useTexte();
   const waise = props.waise ?? 0;
-  /*
-   * DIE FLAECHE KOMMT ALS SCHLUESSEL MIT, NICHT AUS DER SPIELAUSWAHL.
-   *
-   * Der Knopf las frueher `SelectedInfoUISystem.selectedEntity` erst beim
-   * Klick. Der Einstieg ins Bearbeiten wechselt aber das Werkzeug, und CS2
-   * raeumt dabei die Auswahl im Infofenster auf - mal vor, mal nach dem
-   * Klick. Von Zeit zu Zeit verschwand so die Auswahl, und nichts geschah.
-   *
-   * Jetzt fast derselbe Weg wie aus der Liste: den Schluessel, der beim
-   * Zeichnen der Sektion feststand, an `GewaehltenBearbeiten`. Der waehlt
-   * die Flaeche erneut an und oeffnet das Werkzeug - ohne Kamerasprung.
-   * Nur wenn kein Schluessel da ist, bleibt der alte Auswahlweg als
-   * Rueckfall.
-   */
+  const bearbeitbar = props.bearbeitbar ?? false;
+  const reparierbar = props.reparierbar ?? false;
+  const grund = props.grund ?? "";
+  // Der Schluessel bleibt auch beim Werkzeugwechsel auf derselben Flaeche.
   const bearbeiten = () => {
+    if (!bearbeitbar) return;
     const schluessel = props.schluessel ?? "";
     if (schluessel !== "") gewaehltenBearbeiten(schluessel);
     else editSelectedParkingLot();
   };
-  if (waise === 3) {
-    return (
-      <div className={styles.editSection}>
-        <div className={styles.waiseTitel}>{t.bauplanTitel}</div>
-        <div className={styles.waiseText}>{t.bauplanText}</div>
-        <TooltipKnopf
-          text={t.tooltipBauplanWiederherstellen}
-          className={styles.editButton}
-          onMouseDown={(event: any) => event.stopPropagation()}
-          onClick={gewaehltenReparieren}
-        >
-          {t.bauplanWiederherstellen}
-        </TooltipKnopf>
-      </div>
-    );
-  }
-  if (waise > 0) {
-    return (
-      <div className={styles.editSection}>
-        <div className={styles.waiseTitel}>{t.waiseTitel}</div>
-        <div className={styles.waiseText}>{t.waiseErklaerung}</div>
-        {waise === 1
-          ? <TooltipKnopf
-              text={t.tooltipWaiseReparieren}
-              className={styles.editButton}
-              onMouseDown={(event: any) => event.stopPropagation()}
-              onClick={gewaehltenReparieren}
-            >
-              {t.waiseReparieren}
-            </TooltipKnopf>
-          : <div className={styles.waiseText}>{t.waiseNichtReparierbar}</div>}
-      </div>
-    );
-  }
+  const knopfklasse = (aktiv: boolean) =>
+    `${styles.editButton} ${aktiv ? "" : styles.editButtonGesperrt}`;
   return (
     <div className={styles.editSection}>
-      {/* Der reine HTML-`title` erzeugt in Cohtml KEINEN Tooltip. Die
-          Projektregel in controls.tsx sagt es woertlich: "Kein
-          title-Attribut als alleinige Quelle." `TooltipKnopf` setzt den
-          Spiel-Tooltip und den Rueckfalltext aus derselben Quelle. */}
+      {waise > 0 && <div className={styles.waiseTitel}>
+        {waise === 3 ? t.bauplanTitel : t.waiseTitel}
+      </div>}
+      {waise === 3 && <div className={styles.waiseText}>{t.bauplanText}</div>}
+      {grund !== "" && <div className={styles.waiseText} role="status">{grund}</div>}
+      {waise === 2 && <div className={styles.waiseText}>{t.waiseNichtReparierbar}</div>}
       <TooltipKnopf
-        text={t.tooltipBearbeiten}
-        className={styles.editButton}
+        text={grund || t.tooltipBearbeiten}
+        className={knopfklasse(bearbeitbar)}
+        disabled={!bearbeitbar}
+        aria-disabled={!bearbeitbar}
         onMouseDown={(event: any) => event.stopPropagation()}
         onClick={bearbeiten}
       >
         {t.bearbeiten}
       </TooltipKnopf>
+      {(waise === 1 || waise === 3) && <TooltipKnopf
+        text={reparierbar ? (waise === 3 ? t.tooltipBauplanWiederherstellen : t.tooltipWaiseReparieren) : grund}
+        className={knopfklasse(reparierbar)}
+        disabled={!reparierbar}
+        aria-disabled={!reparierbar}
+        onMouseDown={(event: any) => event.stopPropagation()}
+        onClick={() => { if (reparierbar) gewaehltenReparieren(); }}
+      >
+        {waise === 3 ? t.bauplanWiederherstellen : t.waiseReparieren}
+      </TooltipKnopf>}
       <TooltipKnopf
         text={t.tooltipLotBericht}
         className={styles.editButton}

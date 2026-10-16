@@ -46,6 +46,7 @@ namespace ParkingLotTool.Tools
         private EntityQuery _erhalteneKurse;
         private EntityQuery _anschluesse;
         private EntityQuery _stufeA;
+        private EntityQuery _stufeAID;
         private EntityQuery _sonden;
 
         protected override void OnCreate()
@@ -56,6 +57,7 @@ namespace ParkingLotTool.Tools
             _erhalteneKurse = GetEntityQuery(ComponentType.ReadWrite<ParkingLotErhaltenerKurs>());
             _anschluesse = GetEntityQuery(ComponentType.ReadWrite<ParkingLotRueckweganschluss>());
             _stufeA = GetEntityQuery(ComponentType.ReadWrite<ParkingLotStufeAPrefab>());
+            _stufeAID = GetEntityQuery(ComponentType.ReadWrite<ParkingLotStufeAPrefabID>());
             _sonden = GetEntityQuery(ComponentType.ReadWrite<ParkingLotZoningProbeMarker>());
         }
 
@@ -63,7 +65,7 @@ namespace ParkingLotTool.Tools
         {
             if (_rueckwegkurse.IsEmptyIgnoreFilter && _erhalteneKurse.IsEmptyIgnoreFilter
                 && _anschluesse.IsEmptyIgnoreFilter && _stufeA.IsEmptyIgnoreFilter
-                && _sonden.IsEmptyIgnoreFilter) return;
+                && _stufeAID.IsEmptyIgnoreFilter && _sonden.IsEmptyIgnoreFilter) return;
 
             var verweise = _pruefung.GetPrefabReferences(this, out var abhaengig);
             abhaengig.Complete();
@@ -119,6 +121,13 @@ namespace ParkingLotTool.Tools
                     var puffer = EntityManager.GetBuffer<ParkingLotRueckweganschluss>(lot);
                     for (var i = 0; i < puffer.Length; i++)
                     { var a = puffer[i]; a.Prefab = PruefeMitName(a.Prefab, ref a.PrefabName); puffer[i] = a; }
+                }
+            using (var lots = _stufeAID.ToEntityArray(Allocator.Temp))
+                foreach (var lot in lots)
+                {
+                    var s = EntityManager.GetComponentData<ParkingLotStufeAPrefabID>(lot);
+                    s.Prefab = PruefeMitName(s.Prefab, ref s.PrefabName);
+                    EntityManager.SetComponentData(lot, s);
                 }
             using (var lots = _stufeA.ToEntityArray(Allocator.Temp))
                 foreach (var lot in lots)

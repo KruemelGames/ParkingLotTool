@@ -140,10 +140,14 @@ namespace ParkingLotTool.Tools
             }
             return false;
         }
+        internal string Sperrgrund(Entity lot)
+            => !Gesperrt(lot, out bool angehalten) ? string.Empty
+                : angehalten ? RueckwegHinweis : ParkingLotTexte.T("hintergrundSystem.thisParkingLotIsBeingRebuilt");
+
         internal bool Sperrmeldung(Entity lot)
         {
-            if (!Gesperrt(lot,out bool angehalten)) return false;
-            var text = angehalten ? RueckwegHinweis : ParkingLotTexte.T("hintergrundSystem.thisParkingLotIsBeingRebuilt");
+            var text = Sperrgrund(lot);
+            if (string.IsNullOrEmpty(text)) return false;
             World.GetOrCreateSystemManaged<ParkingLotUISystem>().SetStatus(text);
             ParkingLotNetzRueckweg.Melde($"Lotsperre {lot.Index}: {text}; offene Auftraege {Offen}.");
             return true;
@@ -468,7 +472,7 @@ namespace ParkingLotTool.Tools
                     EntityManager.RemoveComponent<ParkingLotRueckweganschluss>(a.Lot);
                     EntityManager.RemoveComponent<ParkingLotOffenerErsatz>(a.Lot);
                     EntityManager.RemoveComponent<ParkingLotStufeAKnoten>(a.Lot);
-                    EntityManager.RemoveComponent<ParkingLotStufeAPrefab>(a.Lot);
+                    ParkingLotStufeA.VergissPrefab(EntityManager, a.Lot);
                 }
                 World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(a.Lot,a.Neu,false);
                 Ende(a); return;
@@ -548,7 +552,7 @@ namespace ParkingLotTool.Tools
             if (EntityManager.HasComponent<ParkingLotOffenerErsatz>(a.Lot)) EntityManager.RemoveComponent<ParkingLotOffenerErsatz>(a.Lot);
             if (EntityManager.HasBuffer<ParkingLotRueckweganschluss>(a.Lot)) EntityManager.RemoveComponent<ParkingLotRueckweganschluss>(a.Lot);
             if (EntityManager.HasBuffer<ParkingLotStufeAKnoten>(a.Lot)) EntityManager.RemoveComponent<ParkingLotStufeAKnoten>(a.Lot);
-            if (EntityManager.HasComponent<ParkingLotStufeAPrefab>(a.Lot)) EntityManager.RemoveComponent<ParkingLotStufeAPrefab>(a.Lot);
+            ParkingLotStufeA.VergissPrefab(EntityManager, a.Lot);
             bool wieder = !a.NurRueckweg && gesichert && _regel.Wiederholen(a.Lot,true);
             if (!a.NurRueckweg && !wieder) World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(a.Lot,Entity.Null,false);
             if (!a.NurRueckweg && !wieder)
@@ -642,11 +646,17 @@ namespace ParkingLotTool.Tools
         {
             if (EntityManager.HasComponent<ParkingLotOffenerErsatz>(lot)
                 || !EntityManager.HasBuffer<ParkingLotStufeAKnoten>(lot)
-                || !EntityManager.HasComponent<ParkingLotStufeAPrefab>(lot)) return;
+                || (!EntityManager.HasComponent<ParkingLotStufeAPrefab>(lot)
+                    && !EntityManager.HasComponent<ParkingLotStufeAPrefabID>(lot))) return;
             var stufeA = EntityManager.GetBuffer<ParkingLotStufeAKnoten>(lot,true);
             var punkte = new Unity.Mathematics.float3[stufeA.Length];
             for (var i = 0; i < stufeA.Length; i++) punkte[i] = stufeA[i].Position;
-            var prefab = EntityManager.GetComponentData<ParkingLotStufeAPrefab>(lot).Prefab;
+            var prefab = ParkingLotStufeA.Prefab(EntityManager, lot);
+            if (prefab == Entity.Null)
+            {
+                ParkingLotNetzRueckweg.Melde($"Stufe A Lot {lot.Index}: Prefab nicht aufloesbar; keine Flaeche auf Verdacht geloescht.");
+                return;
+            }
             using var q = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<Game.Areas.Area>(),
                 ComponentType.ReadOnly<Game.Areas.Node>(), ComponentType.ReadOnly<Game.Prefabs.PrefabRef>(),
                 ComponentType.Exclude<Game.Tools.Temp>(),ComponentType.Exclude<Deleted>());

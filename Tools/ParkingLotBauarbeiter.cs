@@ -171,11 +171,14 @@ namespace ParkingLotTool.Tools
         {
             _areaTransferRecords.Clear();
             var height = _editHeightSnapshot.isCreated ? _editHeightSnapshot : _terrainSystem.GetHeightData(true);
+            if (!TryResolveLotOwnerPrefab(out var prefab)) return 0;
+            var prefabName = ParkingLotPrefabname.Von(EntityManager, prefab);
+            if (prefabName.IsEmpty) throw new InvalidOperationException("Stufe A ohne speicherbare PrefabID; keine Definition ausgegeben.");
             int n = CreateLotOwnerDefinition(ref height);
             if (n == 1)
             {
                 var r = _areaTransferRecords[0];
-                EntityManager.AddComponentData(_editLot,new ParkingLotStufeAPrefab { Prefab = r.Prefab });
+                EntityManager.AddComponentData(_editLot,new ParkingLotStufeAPrefabID { PrefabName = prefabName, Prefab = r.Prefab });
                 var b = EntityManager.AddBuffer<ParkingLotStufeAKnoten>(_editLot);
                 foreach (var p in r.SentNodes) b.Add(new ParkingLotStufeAKnoten { Position = p });
             }

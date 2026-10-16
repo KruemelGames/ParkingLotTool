@@ -432,7 +432,7 @@ namespace ParkingLotTool.Tools
             if (EntityManager.HasComponent<ParkingLotOffenerErsatz>(old)) EntityManager.RemoveComponent<ParkingLotOffenerErsatz>(old);
             if (EntityManager.HasBuffer<ParkingLotRueckweganschluss>(old)) EntityManager.RemoveComponent<ParkingLotRueckweganschluss>(old);
             if (EntityManager.HasBuffer<ParkingLotStufeAKnoten>(old)) EntityManager.RemoveComponent<ParkingLotStufeAKnoten>(old);
-            if (EntityManager.HasComponent<ParkingLotStufeAPrefab>(old)) EntityManager.RemoveComponent<ParkingLotStufeAPrefab>(old);
+            ParkingLotStufeA.VergissPrefab(EntityManager, old);
             // Der Hintergrund meldet sie selbst im exklusiven Bild an.
             if (!_bauarbeiter && _erhalteneNetzteile.Count > 0)
                 Mod.log.Info("PLT-Bearbeiten: " + MeldeErhalteneNetzteileAn()

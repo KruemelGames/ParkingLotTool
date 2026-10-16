@@ -12,16 +12,6 @@ using SubNet = Game.Net.SubNet;
 
 namespace ParkingLotTool.Tools
 {
-    // Separat vom Rueckbauplan: diese IDs werden weder geloescht noch neu
-    // erzeugt. Der gespeicherte Befund bleibt auch nach Laden pruefbar.
-    [InternalBufferCapacity(0)]
-    public struct ParkingLotErhaltenerKurs : IBufferElementData, ISerializable
-    {
-        public ParkingLotRueckwegkurs Bestand;
-        public void Serialize<TWriter>(TWriter w) where TWriter : IWriter => Bestand.Serialize(w);
-        public void Deserialize<TReader>(TReader r) where TReader : IReader => Bestand.Deserialize(r);
-    }
-
     internal static class ParkingLotNetzerhalt
     {
         // SubNet ist auch Vanilla-Loeschkaskade. Der neue Lot darf bis zur

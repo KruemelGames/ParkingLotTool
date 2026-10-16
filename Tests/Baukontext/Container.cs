@@ -67,7 +67,7 @@ namespace Colossal.Serialization.Entities
 }
 namespace ParkingLotTool
 {
-    public static class ParkingLotTexte { public static string T(string de, string en) => de; }
+    public static class ParkingLotTexte { public static string T(string key, params (string Name, object Wert)[] args) => key; }
     public static class Mod
     {
         public static readonly Log log = new();

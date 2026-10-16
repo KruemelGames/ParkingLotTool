@@ -26,8 +26,11 @@ namespace ParkingLotTool.Tools
                 "GewaehltenReparieren", () =>
                 {
                     var lot = selectedEntity;
-                    if (lot != Entity.Null && EntityManager.Exists(lot))
-                        _waisen.Reparieren(lot);
+                    if (IstParkplatz(lot))
+                    {
+                        AktualisiereFreigabe(lot);
+                        if (_reparierbar) _waisen.Reparieren(lot);
+                    }
                     RequestUpdate();
                 }));
         }
@@ -72,17 +75,11 @@ namespace ParkingLotTool.Tools
                         && EntityManager.HasComponent<Temp>(alt)) + ")");
                 _letzteAuswahl = Entity.Null;
             }
-            _bauzettel = da
-                && EntityManager.HasComponent<ParkingLotCarrierReference>(lot)
-                && EntityManager.HasComponent<ParkingLotBuildReceipt>(lot)
-                && EntityManager.HasBuffer<ParkingLotBuildPoint>(lot)
-                && EntityManager.HasBuffer<ParkingLotBuildEntrance>(lot)
-                && EntityManager.HasBuffer<ParkingLotBuildText>(lot);
-            _waise = da ? _waisen.Zustand(lot) : 0;
-            _schluessel = da
-                ? ParkingLotListeUISystem.SchluesselVon(lot)
-                : string.Empty;
-            visible = _bauzettel || _waise > 0;
+            visible = da && IstParkplatz(lot);
+            _bearbeitbar = _reparierbar = false;
+            _grund = string.Empty;
+            if (visible) AktualisiereFreigabe(lot);
+            _schluessel = visible ? ParkingLotListeUISystem.SchluesselVon(lot) : string.Empty;
         }
 
         protected override void OnProcess()
@@ -92,6 +89,12 @@ namespace ParkingLotTool.Tools
         /** 0 = nicht verwaist, 1 = reparierbar, 2 = nicht reparierbar. */
         public override void OnWriteProperties(IJsonWriter writer)
         {
+            writer.PropertyName("bearbeitbar");
+            writer.Write(_bearbeitbar);
+            writer.PropertyName("reparierbar");
+            writer.Write(_reparierbar);
+            writer.PropertyName("grund");
+            writer.Write(_grund);
             writer.PropertyName("waise");
             writer.Write(_waise);
             writer.PropertyName("bauzettel");
