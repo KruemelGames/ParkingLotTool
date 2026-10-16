@@ -219,6 +219,15 @@ namespace ParkingLotTool.Tools
                 if (_toolSystem.activeTool != _werkzeug) _vorher = _toolSystem.activeTool;
                 _imWerkzeug = (v.Lot, v.Art);
                 _werkzeug.Fertig = Fertig;
+                /*
+                 * LATERNENZETTEL VOR DEM APPLY (16.10.). Er stand erst im Nachsetzen,
+                 * 3+30 Bilder nach dem Apply. Ein Speichern dazwischen behielt die
+                 * Laternen ohne Zettel - und weil Laternen standen, holte Schritt 11
+                 * ihn nie nach; ein spaeteres Edit nahm den Standard statt der Wahl.
+                 * Jetzt zuerst: kommt der Tausch nicht zum Apply, sagt der Zettel
+                 * "an" ohne Laterne, und genau das baut Schritt 12 nach.
+                 */
+                if (v.Art == Tauschart.Laternen && v.Laternen != null) _plt.SchreibeLaternenZettel(v.Lot, v.Laternen);
                 _werkzeug.Starte(auftrag);
                 _toolSystem.activeTool = _werkzeug;
             }

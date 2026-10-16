@@ -753,6 +753,7 @@ namespace ParkingLotTool.Tools
         {
             if (_bauarbeiter) return;
             base.OnGamePreload(purpose, mode);
+            _baumzieleNachLadenGeprueft = false;
             _pendingEditLot = Entity.Null;
             _editNachSpeichern = Entity.Null;
             _speicherLaeuft = false;

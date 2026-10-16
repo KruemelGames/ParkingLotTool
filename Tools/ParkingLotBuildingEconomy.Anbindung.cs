@@ -27,6 +27,7 @@ namespace ParkingLotTool.Tools
         {
             base.OnGamePreload(purpose, mode);
             _anschluesse.Clear();
+            _wiederaufnahmeGeprueft = false;
             _strassenWartet.Clear();
             _strassenGemeldet.Clear();
             _announcedCompanions.Clear();
@@ -202,11 +203,15 @@ namespace ParkingLotTool.Tools
                 { AnschlussBeendet(lot, a.Auftrag, false, "Parkplatz/Traeger nicht mehr gueltig oder Wirtschaft aus"); continue; }
                 begleiterJeLot.TryGetValue(lot, out var begleiter);
                 if (HatStrasse(begleiter))
-                { AnschlussBeendet(lot, a.Auftrag, true, "CS2 bestaetigt RoadEdge und ConnectedBuilding"); continue; }
+                {
+                    SchliesseAnschlussOffen(begleiter);
+                    AnschlussBeendet(lot, a.Auftrag, true, "CS2 bestaetigt RoadEdge und ConnectedBuilding"); continue;
+                }
                 if (bild - a.Seit >= 600)
                 {
                     AnschlussBeendet(lot, a.Auftrag, false, "nach 600 Bildern keine bestaetigte Strassenanbindung");
-                    if (!a.Sync) BrauchtWiederSync(lot);
+                    // Die Pflicht geht an den Datenstand ueber: der Sync holt sie nach.
+                    if (!a.Sync) { BrauchtWiederSync(lot); SchliesseAnschlussOffen(begleiter); }
                     continue;
                 }
                 // Kein Updated fuer das alte, unvollstaendige Building-Skelett.

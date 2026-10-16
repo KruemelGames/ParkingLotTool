@@ -27,18 +27,19 @@ namespace ParkingLotTool.Tools
             return true;
         }
 
-        private Anschluss Normalanschluss(Entity lot)
+        /** null, wenn das Register den Auftrag nicht angenommen hat (etwa waehrend des Ladens). */
+        private Anschluss Normalanschluss(Entity lot, Auftragsgrund grund = Auftragsgrund.Normalbau)
         {
             if (!_anschluesse.TryGetValue(lot, out var a) || !Auftraege.Gilt(a.Auftrag))
             {
-                var id = Auftraege.Merke(lot, Auftragsarbeiter.Strasse, Auftragsgrund.Normalbau);
+                var id = Auftraege.Merke(lot, Auftragsarbeiter.Strasse, grund);
                 Auftraege.Uebergib(id, kennung =>
                 {
                     if (!Auftraege.Annehmen(kennung, lot, Auftragsarbeiter.Strasse)) return false;
                     _anschluesse[lot] = new Anschluss { Auftrag = kennung };
                     return true;
                 });
-                a = _anschluesse[lot];
+                if (!_anschluesse.TryGetValue(lot, out a) || !Auftraege.Gilt(a.Auftrag)) return null;
             }
             Auftraege.Starte(a.Auftrag);
             return a;

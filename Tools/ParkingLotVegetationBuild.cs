@@ -32,6 +32,28 @@ namespace ParkingLotTool.Tools
         public int Version = 2;
         public string Options, Signature;
     }
+    /**
+     * ZIEL EINES BAUMS BIS ZUM NACHSETZEN (2026-10-16).
+     *
+     * Der gewaehlte Zustand wird 30 Bilder nach dem Apply am dauerhaften Baum
+     * gesetzt (am Temp-Baum geht er verloren). Die Ziele lagen bis dahin nur
+     * im Speicher; ein Speichern dazwischen liess die Baeume als Setzlinge
+     * stehen. Zwei Byte je Baum, entfernt sobald gesetzt.
+     */
+    public struct ParkingLotBaumziel : IComponentData, ISerializable
+    {
+        public Game.Objects.TreeState Zustand;
+        public byte Wuchs;
+        public void Serialize<TWriter>(TWriter w) where TWriter : IWriter
+        { w.Write(1); w.Write((byte)Zustand); w.Write(Wuchs); }
+        public void Deserialize<TReader>(TReader r) where TReader : IReader
+        {
+            r.Read(out int version);
+            r.Read(out byte zustand); Zustand = (Game.Objects.TreeState)zustand;
+            r.Read(out Wuchs);
+        }
+    }
+
     public sealed partial class ParkingLotToolSystem
     {
         internal void RefreshVegetationPreview()
@@ -222,7 +244,51 @@ namespace ParkingLotTool.Tools
          * 120 Bilder Abstand, damit die Temp-Objekte sicher dauerhaft sind.
          */
         private Entity _vegNachschauLot = Entity.Null;
-        private int _vegNachschauFrame;
+        private int _vegNachschauFrame, _vegNachschauSetzen;
+        private bool _baumzieleNachLadenGeprueft;
+
+        /** Ziel an jedem fertigen Baum des Lots, bis es gesetzt ist. */
+        private void HefteBaumziele(Entity lot)
+        {
+            if (_vegNachschauZiele.Count == 0) return;
+            using var parts = _editRelatedParts.ToEntityArray(Allocator.Temp);
+            int n = 0;
+            foreach (var part in parts)
+            {
+                if (EntityManager.GetComponentData<ParkingLotPartRelation>(part).Lot != lot) continue;
+                if (!EntityManager.HasComponent<Game.Objects.Tree>(part) || !EntityManager.HasComponent<PrefabRef>(part)
+                    || !EntityManager.HasComponent<Game.Objects.Transform>(part)) continue;
+                var prefab = EntityManager.GetComponentData<PrefabRef>(part).m_Prefab;
+                var stelle = EntityManager.GetComponentData<Game.Objects.Transform>(part).m_Position.xz;
+                if (!_vegNachschauZiele.TryGetValue((prefab, stelle), out var ziel)) continue;
+                ziel = StumpfNurMitMesh(ziel, prefab);
+                var marke = new ParkingLotBaumziel { Zustand = ziel.m_State, Wuchs = ziel.m_Growth };
+                if (EntityManager.HasComponent<ParkingLotBaumziel>(part)) EntityManager.SetComponentData(part, marke);
+                else EntityManager.AddComponentData(part, marke);
+                n++;
+            }
+            ParkingLotSchrittmarke.Aenderung("Vegetation: " + n + " Baumziele an Lot " + lot.Index + " geheftet");
+        }
+
+        /** Einmal nach dem Laden: Ziele, die ein Speichern vor dem Setzen ueberlebt haben, nachsetzen. */
+        private void SetzeGespeicherteBaumziele()
+        {
+            _baumzieleNachLadenGeprueft = true;
+            using var q = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ParkingLotBaumziel>(),
+                ComponentType.ReadOnly<Game.Objects.Tree>(), ComponentType.Exclude<Deleted>(), ComponentType.Exclude<Temp>());
+            using var baeume = q.ToEntityArray(Allocator.Temp);
+            if (baeume.Length == 0) return;
+            foreach (var baum in baeume)
+            {
+                var marke = EntityManager.GetComponentData<ParkingLotBaumziel>(baum);
+                var ist = EntityManager.GetComponentData<Game.Objects.Tree>(baum);
+                ist.m_State = marke.Zustand; ist.m_Growth = marke.Wuchs;
+                EntityManager.SetComponentData(baum, ist);
+                if (!EntityManager.HasComponent<BatchesUpdated>(baum)) EntityManager.AddComponent<BatchesUpdated>(baum);
+                EntityManager.RemoveComponent<ParkingLotBaumziel>(baum);
+            }
+            Mod.log.Info("PLT-Vegetation: Laden: " + baeume.Length + " gespeicherte Baumziele nachgesetzt.");
+        }
         private int _vegNachschauStufe;
         private readonly System.Collections.Generic.Dictionary<(Entity, float2),
             Game.Objects.Tree> _vegNachschauZiele = new();
@@ -270,12 +336,20 @@ namespace ParkingLotTool.Tools
          */
         internal void PflegeVegetationsnachschau()
         {
+            if (!_baumzieleNachLadenGeprueft) SetzeGespeicherteBaumziele();
             if (_vegNachschauLot == Entity.Null) return;
             if (UnityEngine.Time.frameCount < _vegNachschauFrame) return;
             var lot = _vegNachschauLot;
             if (!EntityManager.Exists(lot))
             {
                 _vegNachschauLot = Entity.Null;
+                return;
+            }
+            if (_vegNachschauStufe == 0)
+            {
+                HefteBaumziele(lot);
+                _vegNachschauStufe = 1;
+                _vegNachschauFrame = _vegNachschauSetzen;
                 return;
             }
             if (_vegNachschauStufe == 1)
@@ -312,6 +386,7 @@ namespace ParkingLotTool.Tools
                 }
                 getroffen++;
                 ziel = StumpfNurMitMesh(ziel, prefab);
+                if (EntityManager.HasComponent<ParkingLotBaumziel>(part)) EntityManager.RemoveComponent<ParkingLotBaumziel>(part);
                 var ist = EntityManager.GetComponentData<Game.Objects.Tree>(part);
                 if (ist.m_State == ziel.m_State && ist.m_Growth == ziel.m_Growth)
                     continue;
@@ -412,8 +487,11 @@ namespace ParkingLotTool.Tools
             foreach (var paar in _vegetationTreeStates)
                 _vegNachschauZiele[paar.Key] = paar.Value;
             _vegNachschauLot = lot;
-            _vegNachschauStufe = 1;
-            _vegNachschauFrame = UnityEngine.Time.frameCount + 30;
+            // Stufe 0: im naechsten Bild das Ziel an jeden fertigen Baum heften,
+            // damit es ein Speichern bis zum Setzen uebersteht (16.10.).
+            _vegNachschauStufe = 0;
+            _vegNachschauFrame = UnityEngine.Time.frameCount + 1;
+            _vegNachschauSetzen = UnityEngine.Time.frameCount + 30;
         }
         private string VegetationSignature(float2[][] grass, string options)
         {
