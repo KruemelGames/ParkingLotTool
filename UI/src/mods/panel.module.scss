@@ -1285,7 +1285,9 @@ $eck-reiter: 9rem;
 
 .text { @include textPlatz; }
 .textRest { @include textPlatz(1 1 0); }
-.textEinzeilig { @include textPlatz(1 1 0, true); }
+/* Steht in Knoepfen mit width:auto (Liste: Edit, Bauplan wiederherstellen).
+   Basis 0 liess den Knopf auf seine Polsterung schrumpfen - Text weg (16.10.). */
+.textEinzeilig { @include textPlatz(0 1 auto, true); }
 .explain > b, .pathBox > div { @include textPlatz; }
 
 .label {
@@ -2001,10 +2003,10 @@ $eck-reiter: 9rem;
  * Success (die bisherigen Debug-Meldungen) wird von diesem Selektor nie erfasst.
  */
 :global(body.pltEntranceHintActive [class*="row-item_"] [class*="warning_"]) {
-  flex: 1 1 0;
-  min-width: 0;
-  white-space: normal;
-  overflow-wrap: break-word;
+  /* Der Zeiger-Tooltip hat keine feste Breite, er misst seinen Inhalt.
+     Mit Basis 0 und min-width 0 (UI-Skalierung, 15.10.) fiel er auf eine
+     Spalte zusammen: jeder Buchstabe eine Zeile. Daher wie in 1.0.11. */
+  flex: 1;
   align-self: stretch;
   margin: -3rem -6rem;
   padding: 3rem 10rem;
