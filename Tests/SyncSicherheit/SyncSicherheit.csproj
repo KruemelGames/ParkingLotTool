@@ -6,9 +6,19 @@
     <WacheQuelle Condition="'$(WacheQuelle)' == ''">../../Geometry/SyncWache.cs</WacheQuelle>
     <AbschlussQuelle Condition="'$(AbschlussQuelle)' == ''">../../Tools/ParkingLotHintergrundAbschluss.cs</AbschlussQuelle>
     <TauschQuelle Condition="'$(TauschQuelle)' == ''">../../Tools/ParkingLotFahrwegTauschSystem.cs</TauschQuelle>
+    <LogQuelle Condition="'$(LogQuelle)' == ''">../../Tools/ParkingLotLogauszug.cs</LogQuelle>
+    <FahrwegAbschlussQuelle Condition="'$(FahrwegAbschlussQuelle)' == ''">../../Tools/ParkingLotFahrwegTausch.Abschluss.cs</FahrwegAbschlussQuelle>
+    <DispatcherQuelle Condition="'$(DispatcherQuelle)' == ''">../../Tools/ParkingLotSync.Abarbeiten.cs</DispatcherQuelle>
+    <StrassenAbschlussQuelle Condition="'$(StrassenAbschlussQuelle)' == ''">../../Tools/ParkingLotBuildingEconomy.Abschluss.cs</StrassenAbschlussQuelle>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" /><Compile Include="Stubs.cs" />
+    <Compile Include="Hardening.cs" /><Compile Include="HardeningContainer.cs" /><Compile Include="LogauszugTests.cs" />
+    <Compile Include="../../Tools/ParkingLotMeldepaket.Logs.cs" Link="ParkingLotMeldepaket.Logs.cs" />
+    <Compile Include="$(LogQuelle)" Link="ParkingLotLogauszug.cs" />
+    <Compile Include="$(FahrwegAbschlussQuelle)" Link="ParkingLotFahrwegTausch.Abschluss.cs" />
+    <Compile Include="$(DispatcherQuelle)" Link="ParkingLotSync.Abarbeiten.cs" />
+    <Compile Include="$(StrassenAbschlussQuelle)" Link="ParkingLotBuildingEconomy.Abschluss.cs" />
     <Compile Include="$(BegleiterQuelle)" Link="BegleiterAnbindung.cs" />
     <Compile Include="$(WacheQuelle)" Link="SyncWache.cs" />
     <Compile Include="$(TauschQuelle)" Link="ParkingLotFahrwegTauschSystem.cs" />

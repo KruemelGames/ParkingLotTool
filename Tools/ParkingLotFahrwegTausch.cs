@@ -92,8 +92,7 @@ namespace ParkingLotTool.Tools
             if (_stufe == Stufe.Pruefen)
             {
                 if (bild - _seit < 3) return;
-                var ok = Pruefe(out var text);
-                Beende(ok, text);
+                PruefeUndBeende();
                 return;
             }
             if (!_lief && bild - _seit < 10) return;
@@ -167,8 +166,7 @@ namespace ParkingLotTool.Tools
                     break;
                 case Stufe.Pruefen:
                     if (bild - _seit < 3) break;
-                    var ok = Pruefe(out var text);
-                    Beende(ok, text);
+                    PruefeUndBeende();
                     break;
             }
             return inputDeps;
@@ -273,32 +271,5 @@ namespace ParkingLotTool.Tools
             return eigene;
         }
 
-        private bool Pruefe(out string text)
-        {
-            int getauscht = 0, besitzOk = 0;
-            foreach (var (kante, ziel, besitzer) in _plan)
-            {
-                if (!EntityManager.Exists(kante) || EntityManager.HasComponent<Deleted>(kante)) continue;
-                if (EntityManager.GetComponentData<PrefabRef>(kante).m_Prefab == ziel) getauscht++;
-                if (EntityManager.HasComponent<Owner>(kante)
-                    && EntityManager.GetComponentData<Owner>(kante).m_Owner == besitzer) besitzOk++;
-            }
-            text = $"{getauscht}/{_plan.Count} Wege mit neuem Prefab, Besitzer erhalten {besitzOk}/{_plan.Count}";
-            return getauscht == _plan.Count && besitzOk == _plan.Count;
-        }
-
-        private void Beende(bool ok, string text)
-        {
-            foreach (var d in _definitionen)
-                if (EntityManager.Exists(d)) EntityManager.DestroyEntity(d);
-            _definitionen.Clear();
-            var lot = _lot;
-            _stufe = Stufe.Frei;
-            _lot = Entity.Null;
-            _plan.Clear();
-            Mod.log.Info($"PLT-Fahrwegtausch: Lot {lot.Index}: {(ok ? "fertig" : "abgebrochen")} - {text}.");
-            ParkingLotSchrittmarke.Aenderung("Fahrwegtausch: Lot " + lot.Index + (ok ? " fertig" : " abgebrochen"));
-            Fertig?.Invoke(lot, ok, text);
-        }
     }
 }

@@ -509,40 +509,6 @@ namespace ParkingLotTool.Tools
             foreach (var lot in _offen) Einreihen(lot);
         }
 
-        private void Abarbeiten()
-        {
-            if (_warteschlange.Count == 0) return;
-            // Waehrend eines Umbaus wird das alte Lot gleich ersetzt; seine
-            // Teile jetzt anzufassen waere verschwendet oder schlimmer.
-            if (_werkzeug.IsEditing) return;
-            var uhr = Stopwatch.StartNew();
-            _index ??= TeileJeLot();
-            do
-            {
-                var lot = _warteschlange[0];
-                _warteschlange.RemoveAt(0);
-                try { if (Synchronisiere(lot, _index)) _syncErfolge++; }
-                catch (System.Exception ex)
-                {
-                    _wartetAuf.Remove(lot); _fortsetzen.Remove(lot);
-                    Scheitern(lot, StandVon(lot), "Ausfuehrung", ex.ToString());
-                }
-                _erledigt++;
-            }
-            while (_warteschlange.Count > 0 && uhr.Elapsed.TotalMilliseconds < BudgetMs);
-            if (_warteschlange.Count == 0)
-            {
-                _index = null;
-                // In die Meldung nur, was von selbst lief - ein Klick in der
-                // Liste hat seine Rueckmeldung schon in der Liste.
-                if (Mod.Optionen?.AutomatischSynchronisieren ?? false)
-                {
-                    _meldungSync += _syncErfolge;
-                    if (_syncErfolge > 0) VeroeffentlicheMeldung();
-                }
-            }
-        }
-
         private bool Synchronisiere(Entity lot, Dictionary<Entity, List<Entity>> index)
         {
             _offen.Remove(lot);

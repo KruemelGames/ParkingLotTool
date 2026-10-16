@@ -8,13 +8,25 @@ using ParkingLotTool.Tools;
 using Unity.Entities;
 using Unity.Mathematics;
 
-internal static class Program
+internal static partial class Program
 {
     private static int _fehler, _pruefungen;
     private static void Pruefe(bool ok, string name)
     { _pruefungen++; if (!ok) { _fehler++; Console.WriteLine("FEHLER: " + name); } }
 
+    // Eine unbehandelte Ausnahme (etwa aus einer Mutation) waere ein Absturz mit
+    // Windows-Fehlerfenster. Hier wird sie ein gewoehnlicher Testfehler mit Exit 1.
     private static int Main()
+    {
+        try { return Ablauf(); }
+        catch (Exception x)
+        {
+            Console.WriteLine("FEHLER: unbehandelte Ausnahme: " + x);
+            return 1;
+        }
+    }
+
+    private static int Ablauf()
     {
         // 360 Richtungen, beidseitig, 6 Breiten bis 64 m. Gemessen wird
         // CS2s Eingang (+Z * Tiefe * 4), nicht der errechnete Mittelpunkt.
@@ -109,6 +121,8 @@ internal static class Program
         Pruefe(!ParkingLotHintergrundAbschluss.MerkeNebenarbeit(em, neu, neuerTraeger)
             && !ParkingLotHintergrundAbschluss.MerkeNebenarbeit(em, Entity.Null, Entity.Null), "totes und leeres Lot verhindern Abschluss");
         Pruefe(em.Adds + em.Sets == vorher, "ungueltige Abschluesse schreiben keinerlei Komponenten");
+        Hardening();
+        Logauszuege();
         Console.WriteLine($"SYNC-SICHERHEIT: {_pruefungen} Pruefungen, {_fehler} Fehler.");
         return _fehler == 0 ? 0 : 1;
     }

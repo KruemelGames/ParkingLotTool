@@ -11,6 +11,9 @@ namespace Unity.Entities
     {
         public readonly Dictionary<Entity, Dictionary<Type, object>> Data = new();
         public int Adds, Sets;
+        public Action<Entity> BeimZerstoeren;
+        public readonly List<Entity> Zerstoerversuche = new();
+        public void DestroyEntity(Entity e) { Zerstoerversuche.Add(e); BeimZerstoeren?.Invoke(e); Data.Remove(e); }
         public void Set<T>(Entity e, T c) { if (!Data.ContainsKey(e)) Data[e] = new(); Data[e][typeof(T)] = c; }
         public void SetComponentData<T>(Entity e, T c)
         {
@@ -95,15 +98,21 @@ namespace UnityEngine.Scripting { public class PreserveAttribute : Attribute { }
 namespace Colossal.Serialization.Entities { public struct Purpose { } }
 namespace ParkingLotTool.Tools
 {
-    public static class Mod { public static Logger log = new(); }
-    public class Logger { public void Info(string s) { } }
+    public static class Mod { public static Logger log = new(); public static Optionen Optionen = new(); }
+    public class Optionen { public bool AutomatischSynchronisieren; }
+    public class Logger
+    {
+        public bool InfoFehler, WarnFehler;
+        public void Info(string s) { if (InfoFehler) throw new InvalidOperationException("Logger"); }
+        public void Warn(string s) { if (WarnFehler) throw new InvalidOperationException("Logger"); }
+    }
     public struct ParkingLotCarrierReference { public Entity Carrier; }
     public struct ParkingLotBuildReceipt { }
     public struct ParkingLotDatenstand { public int Stand; }
     public struct ParkingLotNebenarbeitOffen { }
     public sealed partial class ParkingLotToolSystem : Game.Tools.ToolBaseSystem
     {
-        private bool IsEditing; private Entity _pendingEditLot;
+        internal bool IsEditing; private Entity _pendingEditLot;
         private readonly List<int> _points = new(); private BuildStage _buildStage;
         private object _buildTask; private enum BuildStage { Idle }
     }
@@ -112,20 +121,21 @@ namespace ParkingLotTool.Tools
         public readonly Dictionary<string, Entity> Ziele = new();
         public bool TryWeg(string n, out Entity e) => Ziele.TryGetValue(n, out e);
     }
-    public class ParkingLotFahrwegTauschWerkzeug : Game.Tools.ToolBaseSystem
+    public sealed partial class ParkingLotFahrwegTauschWerkzeug : Game.Tools.ToolBaseSystem
     {
-        public bool Beschaeftigt; public int Starts;
+        public bool Beschaeftigt => _stufe != Stufe.Frei; public int Starts;
         public Action<Entity, bool, string> Fertig;
-        public void Starte(Entity e, List<(Entity, Entity, Entity)> p) { Starts++; Beschaeftigt = true; }
-        public void Zuruecksetzen() => Beschaeftigt = false;
+        public void Starte(Entity e, List<(Entity, Entity, Entity)> p) { Starts++; _lot = e; _plan.Clear(); _plan.AddRange(p); _stufe = Stufe.Anlegen; }
+        public void Zuruecksetzen() { _stufe = Stufe.Frei; _lot = Entity.Null; _plan.Clear(); _definitionen.Clear(); }
         public void PflegeOhneWerkzeug() { }
     }
     public class ParkingLotBestandsTauschSystem : Game.GameSystemBase { public bool WerkzeugLaeuft; }
     public class ParkingLotBestandsTauschWerkzeug : Game.Tools.ToolBaseSystem { }
     public class ParkingLotFlaechenSyncSystem : Game.GameSystemBase { public bool Laeuft; }
-    public class ParkingLotSyncSystem : Game.GameSystemBase
+    public sealed partial class ParkingLotSyncSystem : Game.GameSystemBase
     {
         public readonly List<bool> Antworten = new();
-        public void MeldeHintergrundEnde(Entity e, Entity n, bool ok) => Antworten.Add(ok);
+        public bool AntwortFehler;
+        public void MeldeHintergrundEnde(Entity e, Entity n, bool ok) { Antworten.Add(ok); if (AntwortFehler) throw new InvalidOperationException("Empfaenger"); }
     }
 }

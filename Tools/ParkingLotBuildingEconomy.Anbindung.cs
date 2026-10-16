@@ -272,13 +272,5 @@ namespace ParkingLotTool.Tools
             World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().NeuAufnehmen();
         }
 
-        private void AnschlussBeendet(Entity lot, bool ok, string grund)
-        {
-            var a = _anschluesse[lot];
-            _anschluesse.Remove(lot);
-            Mod.log.Info($"PLT-Begleiteranschluss: Lot {lot.Index}, Erfolg={ok}: {grund}"
-                + (ok ? "." : $"; Stadtstrassen-Kandidaten {(Lebt(lot) ? Stadtstrassen(lot).Count : 0)}, Platzierungen {a.Versuche}."));
-            if (a.Sync) World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(lot, lot, ok);
-        }
     }
 }
