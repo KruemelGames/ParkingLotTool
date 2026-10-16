@@ -256,7 +256,18 @@ namespace ParkingLotTool.Tools
                 lauf.Soll++;
                 var teile = FindeKurs(em,eigeneKanten,alt,benutzt,out string grund);
                 if (teile != null && anschluesse && !SeitenanschluesseDa(em,lot,index,teile))
-                { grund = "seitlicher Anschluss/Parameter nicht beidseitig vorhanden"; teile = null; }
+                {
+                    grund = "seitlicher Anschluss/Parameter nicht beidseitig vorhanden";
+                    // Zaehler vor Theorie (2026-10-16, Spielstand vom 3.10.): Kante
+                    // lag exakt, der Anschluss fehlte - welcher und warum?
+                    if (diagnose && fehlmeldungen < 4)
+                    {
+                        var kursTeile = teile; int nr = index;
+                        ParkingLotHintergrundDiagnose.Sicher(() =>
+                            Melde($"Rueckweg Soll-Kurs {nr} Seitenanschluesse: {BeschreibeSeitenanschluesse(em,lot,nr,kursTeile)}"));
+                    }
+                    teile = null;
+                }
                 if (teile == null)
                 {
                     if (diagnose && fehlmeldungen++ < 4)
@@ -470,6 +481,20 @@ namespace ParkingLotTool.Tools
             foreach (var a in anschluesse)
             {
                 if (a.Kursindex != index) continue;
+                /*
+                 * ANSCHLUSS AM KANTENENDE IST KEIN SEITENANSCHLUSS (2026-10-16).
+                 *
+                 * Gemessen an einem Spielstand vom 3.10.: zwei gespeicherte
+                 * Anschluesse lagen bei Lage 0,000 und 1,000. CS2 hatte die
+                 * Kursenden beim Wiederaufbau zu einem gemeinsamen Endknoten
+                 * zusammengezogen; an der gespeicherten Stelle stand kein Knoten
+                 * mehr, die Kanten selbst lagen exakt. Ein Knoten "in der Mitte"
+                 * kann an einem Ende nie haengen - die Pruefung verlangte etwas
+                 * Unmoegliches, der Rueckweg hielt an und der Parkplatz blieb
+                 * gesperrt. Am Ende ist der Endknoten der Anschluss, und den
+                 * prueft der Kantenabgleich bereits.
+                 */
+                if (a.Lage <= .001f || a.Lage >= .999f) continue;
                 var knoten = Anschlussknoten(em,a);
                 bool gefunden = false;
                 foreach (var p in teile)
@@ -483,6 +508,43 @@ namespace ParkingLotTool.Tools
             }
             return true;
         }
+        /** Nur Diagnose: je gespeichertem Anschluss dieses Kurses, was gesucht wird und was an der Kante haengt. */
+        private static string BeschreibeSeitenanschluesse(EntityManager em, Entity lot, int index, List<ParkingLotKursabgleich.Teil> teile)
+        {
+            var sb = new System.Text.StringBuilder();
+            using var anschluesse = em.GetBuffer<ParkingLotRueckweganschluss>(lot,true).ToNativeArray(Allocator.Temp);
+            foreach (var a in anschluesse)
+            {
+                if (a.Kursindex != index) continue;
+                var knoten = Anschlussknoten(em,a);
+                sb.Append($"[Lage {a.Lage:0.000}, Soll-Knoten {(a.Knoten == Entity.Null ? "eigen/neu" : a.Knoten.ToString())}, Prefab {a.Prefab}, Besitzer {a.Besitzer}, Pos {a.Position}; gefunden {knoten}");
+                // Kandidaten an der Stelle, einmal streng, einmal ohne Prefab/Besitzer.
+                int streng = 0, lose = 0;
+                using (var q = em.CreateEntityQuery(ComponentType.ReadOnly<Game.Net.Node>(), ComponentType.Exclude<Deleted>(), ComponentType.Exclude<Game.Tools.Temp>()))
+                using (var alle = q.ToEntityArray(Allocator.Temp))
+                    foreach (var n in alle)
+                    {
+                        if (math.distance(em.GetComponentData<Game.Net.Node>(n).m_Position, a.Position) > .05f) continue;
+                        lose++;
+                        if (em.HasComponent<PrefabRef>(n) && em.GetComponentData<PrefabRef>(n).m_Prefab == a.Prefab
+                            && em.HasComponent<Owner>(n) && em.GetComponentData<Owner>(n).m_Owner == a.Besitzer) streng++;
+                        sb.Append($"; Knoten {n} Prefab {(em.HasComponent<PrefabRef>(n) ? em.GetComponentData<PrefabRef>(n).m_Prefab.ToString() : "-")}"
+                            + $" Besitzer {(em.HasComponent<Owner>(n) ? em.GetComponentData<Owner>(n).m_Owner.ToString() : "-")}");
+                    }
+                sb.Append($"; Kandidaten streng {streng}, an der Stelle {lose}");
+                foreach (var p in teile)
+                {
+                    if (!em.HasBuffer<ConnectedNode>(p.Kante)) continue;
+                    HintergrundAbgleich.Teilparameter(p.Bereich,a.Lage,out float t);
+                    sb.Append($"; Kante {p.Kante} enthaelt={Enthaelt(p,a.Lage)} t={t:0.000} verbunden={Verbunden(em,knoten,p.Kante)} haengt an:");
+                    foreach (var n in em.GetBuffer<ConnectedNode>(p.Kante,true))
+                        sb.Append($" {n.m_Node}@{n.m_CurvePosition:0.000}");
+                }
+                sb.Append("] ");
+            }
+            return sb.ToString();
+        }
+
         internal static void MeldeAnschluesse(EntityManager em, Entity lot)
         {
             if (!em.HasBuffer<ParkingLotRueckweganschluss>(lot)) return;
