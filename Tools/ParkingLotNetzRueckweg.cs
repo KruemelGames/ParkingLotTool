@@ -616,7 +616,7 @@ namespace ParkingLotTool.Tools
         }
 
         /** Darf ein Weg dieses Prefabs an diesen Knoten? Dieselbe Regel wie ParkingLotDauerkursSystem.Plane. */
-        private static bool KannAnschliessen(EntityManager em, Entity prefab, Entity n)
+        internal static bool KannAnschliessen(EntityManager em, Entity prefab, Entity n)
         {
             if (!em.HasComponent<PrefabRef>(n) || !em.HasComponent<NetData>(prefab)) return false;
             var ziel = em.GetComponentData<PrefabRef>(n).m_Prefab;
