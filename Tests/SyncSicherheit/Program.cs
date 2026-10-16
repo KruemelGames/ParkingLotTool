@@ -125,6 +125,7 @@ internal static partial class Program
         Pruefe(em.Adds + em.Sets == vorher, "ungueltige Abschluesse schreiben keinerlei Komponenten");
         AuftraegePruefen();
         RestlicheWorkerPruefen();
+        NebenarbeitPruefen();
         Hardening();
         Logauszuege();
         Console.WriteLine($"SYNC-SICHERHEIT: {_pruefungen} Pruefungen, {_fehler} Fehler.");

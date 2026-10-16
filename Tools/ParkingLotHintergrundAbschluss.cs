@@ -23,8 +23,7 @@ namespace ParkingLotTool.Tools
             var stand = new ParkingLotDatenstand { Stand = 7 };
             if (em.HasComponent<ParkingLotDatenstand>(lot)) em.SetComponentData(lot, stand);
             else em.AddComponentData(lot, stand);
-            if (!em.HasComponent<ParkingLotNebenarbeitOffen>(lot))
-                em.AddComponent<ParkingLotNebenarbeitOffen>(lot);
+            ParkingLotNebenarbeitDaten.Merke(em, lot, Mod.Optionen == null || Mod.Optionen.AutomatischVersorgung);
             return true;
         }
     }

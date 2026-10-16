@@ -381,6 +381,9 @@ namespace ParkingLotTool.Tools
                 Randzoning = k.Randzoning, FlaecheStrasse = k.FlaecheStrasse,
                 FlaecheDekoration = k.FlaecheDekoration, FlaecheZoning = k.FlaecheZoning };
             if (!SchreibeBauzettel(_lotOwner,q)) throw new InvalidOperationException("Neuer Bauzettel fehlt.");
+            _nebenarbeitLot = _lotOwner;
+            _nebenarbeitGeneration = World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().Register.Generation;
+            ParkingLotNebenarbeitDaten.Merke(EntityManager, _lotOwner, Mod.Optionen == null || Mod.Optionen.AutomatischVersorgung);
             if (!ParkingLotBaukontextLeser.TryRead(EntityManager,_lotOwner,out var gelesen,out var grund,melden:false))
                 throw new InvalidOperationException("Neuer Bauzettel unvollstaendig: " + grund);
             ParkingLotNetzRueckweg.Melde($"Neuer Bauzettel geschrieben/gelesen: Lot {_lotOwner.Index}, {gelesen.Punkte.Length} Punkte, {gelesen.Zugaenge.Length} Zugaenge, {gelesen.Bushalte.Count} Bushalte.");

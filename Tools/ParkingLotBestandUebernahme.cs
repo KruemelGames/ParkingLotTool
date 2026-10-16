@@ -30,7 +30,8 @@ namespace ParkingLotTool.Tools
                 relation.Lot = neu; relation.Carrier = traeger;
                 EntityManager.SetComponentData(e,relation); n++;
             }
-            ParkingLotNetzRueckweg.Melde($"Versorgungsbestand uebernommen: {n} dauerhafte Leitungskanten; 0 Kurven-/Prefab-/Owner-Aenderungen.");
+            UebertrageVersorgungsnachweise(alt, neu, traeger);
+            Nebenarbeitsdiagnose(() => ParkingLotNetzRueckweg.Melde($"Versorgungsbestand uebernommen: {n} dauerhafte Leitungskanten; 0 Kurven-/Prefab-/Owner-Aenderungen."));
         }
 
         private void UebertrageBushaltbestand(Entity alt, Entity neu, Entity traeger)

@@ -49,3 +49,11 @@ Unity.Mathematics kommt aus der lokalen Spiel-Toolchain. Native Entity-
 Remaps, PrefabReferences-Phasen und die Darstellung in Cohtml bleiben
 Ingame-Pruefungen. Die Tests beweisen keine pauschale Lesbarkeit beliebiger
 beschaedigter Saves und keine Rueckwaertskompatibilitaet neuer Saves mit alten Mods.
+
+## Nebenarbeit und Erzeugungsherkunft
+Fixturen/nebenarbeit.json friert die neuen Feldfolgen ein: NebenarbeitOffen V2,
+Erzeugungsauftrag V1 (Prefab-ID, Seed, Bezug, Lage) und Versorgungsnachweis V1
+(normale Kantenreferenzen). Jeweils zwei Datensaetze mit Endmarke.
+Der alte NebenarbeitOffen-V1-Leser bleibt exakt ein Feld lang; die damalige
+Versorgungswahl ist unbekannt und wird nicht aus heutigen Optionen erfunden.
+Der V2-Schreiber wird gegen die neue eingefrorene Feldfolge geprueft.

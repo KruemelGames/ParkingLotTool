@@ -1,0 +1,255 @@
+[
+  {
+    "Art": "NebenarbeitOffen",
+    "Version": 2,
+    "Quelle": "Speichersicherheit 9-11, Feldfolge eingefroren 2026-10-16",
+    "Datensaetze": [
+      [
+        {
+          "Name": "$version",
+          "Typ": "Int32",
+          "Wert": 2
+        },
+        {
+          "Name": "Offen",
+          "Typ": "Int32",
+          "Wert": 7
+        },
+        {
+          "Name": "VersorgungBekannt",
+          "Typ": "Boolean",
+          "Wert": true
+        }
+      ],
+      [
+        {
+          "Name": "$version",
+          "Typ": "Int32",
+          "Wert": 2
+        },
+        {
+          "Name": "Offen",
+          "Typ": "Int32",
+          "Wert": 7
+        },
+        {
+          "Name": "VersorgungBekannt",
+          "Typ": "Boolean",
+          "Wert": true
+        }
+      ]
+    ]
+  },
+  {
+    "Art": "Erzeugungsauftrag",
+    "Version": 1,
+    "Quelle": "Speichersicherheit 9-11, Feldfolge eingefroren 2026-10-16",
+    "Datensaetze": [
+      [
+        {
+          "Name": "$version",
+          "Typ": "Int32",
+          "Wert": 1
+        },
+        {
+          "Name": "Art",
+          "Typ": "Int32",
+          "Wert": 0
+        },
+        {
+          "Name": "Prefabname",
+          "Typ": "String",
+          "Wert": "StaticObjectPrefab/Bus%20Stop/1234567890abcdef1234567890abcdef"
+        },
+        {
+          "Name": "Seed",
+          "Typ": "Int32",
+          "Wert": 4711
+        },
+        {
+          "Name": "Bezug",
+          "Typ": "Entity",
+          "Wert": [
+            55,
+            4
+          ]
+        },
+        {
+          "Name": "Ergebnis",
+          "Typ": "Entity",
+          "Wert": [
+            66,
+            5
+          ]
+        },
+        {
+          "Name": "A",
+          "Typ": "float3",
+          "Wert": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "Name": "D",
+          "Typ": "float3",
+          "Wert": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "Name": "Erledigt",
+          "Typ": "Boolean",
+          "Wert": false
+        }
+      ],
+      [
+        {
+          "Name": "$version",
+          "Typ": "Int32",
+          "Wert": 1
+        },
+        {
+          "Name": "Art",
+          "Typ": "Int32",
+          "Wert": 0
+        },
+        {
+          "Name": "Prefabname",
+          "Typ": "String",
+          "Wert": "StaticObjectPrefab/Bus%20Stop/1234567890abcdef1234567890abcdef"
+        },
+        {
+          "Name": "Seed",
+          "Typ": "Int32",
+          "Wert": 4711
+        },
+        {
+          "Name": "Bezug",
+          "Typ": "Entity",
+          "Wert": [
+            55,
+            4
+          ]
+        },
+        {
+          "Name": "Ergebnis",
+          "Typ": "Entity",
+          "Wert": [
+            66,
+            5
+          ]
+        },
+        {
+          "Name": "A",
+          "Typ": "float3",
+          "Wert": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "Name": "D",
+          "Typ": "float3",
+          "Wert": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "Name": "Erledigt",
+          "Typ": "Boolean",
+          "Wert": false
+        }
+      ]
+    ]
+  },
+  {
+    "Art": "Versorgungsnachweis",
+    "Version": 1,
+    "Quelle": "Speichersicherheit 9-11, Feldfolge eingefroren 2026-10-16",
+    "Datensaetze": [
+      [
+        {
+          "Name": "$version",
+          "Typ": "Int32",
+          "Wert": 1
+        },
+        {
+          "Name": "Kante",
+          "Typ": "Entity",
+          "Wert": [
+            77,
+            6
+          ]
+        },
+        {
+          "Name": "Start",
+          "Typ": "float3",
+          "Wert": [
+            4,
+            -10,
+            5
+          ]
+        },
+        {
+          "Name": "Ziel",
+          "Typ": "float3",
+          "Wert": [
+            14,
+            -10,
+            15
+          ]
+        },
+        {
+          "Name": "Stadt",
+          "Typ": "Boolean",
+          "Wert": true
+        }
+      ],
+      [
+        {
+          "Name": "$version",
+          "Typ": "Int32",
+          "Wert": 1
+        },
+        {
+          "Name": "Kante",
+          "Typ": "Entity",
+          "Wert": [
+            77,
+            6
+          ]
+        },
+        {
+          "Name": "Start",
+          "Typ": "float3",
+          "Wert": [
+            4,
+            -10,
+            5
+          ]
+        },
+        {
+          "Name": "Ziel",
+          "Typ": "float3",
+          "Wert": [
+            14,
+            -10,
+            15
+          ]
+        },
+        {
+          "Name": "Stadt",
+          "Typ": "Boolean",
+          "Wert": true
+        }
+      ]
+    ]
+  }
+]

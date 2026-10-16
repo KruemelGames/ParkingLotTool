@@ -19,8 +19,23 @@
     <FlaechenAuftragQuelle Condition="'$(FlaechenAuftragQuelle)' == ''">../../Tools/ParkingLotFlaechenSync.Auftrag.cs</FlaechenAuftragQuelle>
     <HintergrundAuftragQuelle Condition="'$(HintergrundAuftragQuelle)' == ''">../../Tools/ParkingLotHintergrund.Auftrag.cs</HintergrundAuftragQuelle>
     <HintergrundAbschlussAdapterQuelle Condition="'$(HintergrundAbschlussAdapterQuelle)' == ''">../../Tools/ParkingLotHintergrund.Abschluss.cs</HintergrundAbschlussAdapterQuelle>
+    <HerkunftQuelle Condition="'$(HerkunftQuelle)' == ''">../../Tools/ParkingLotErzeugungsSystem.Herkunft.cs</HerkunftQuelle>
+    <ErzeugungsregelQuelle Condition="'$(ErzeugungsregelQuelle)' == ''">../../Geometry/Erzeugungsherkunft.cs</ErzeugungsregelQuelle>
+    <NebenMarkerQuelle Condition="'$(NebenMarkerQuelle)' == ''">../../Tools/ParkingLotNebenarbeitDaten.cs</NebenMarkerQuelle>
+    <VersorgungsApplyQuelle Condition="'$(VersorgungsApplyQuelle)' == ''">../../Tools/ParkingLotVersorgungsleitung.Apply.cs</VersorgungsApplyQuelle>
+    <VersorgungsnachweisQuelle Condition="'$(VersorgungsnachweisQuelle)' == ''">../../Tools/ParkingLotVersorgungsnachweis.cs</VersorgungsnachweisQuelle>
+    <VersorgungsGenerationQuelle Condition="'$(VersorgungsGenerationQuelle)' == ''">../../Tools/ParkingLotAutoVersorgung.Generation.cs</VersorgungsGenerationQuelle>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(NebenMarkerQuelle)" Link="ParkingLotNebenarbeitDaten.cs" />
+    <Compile Include="../../Tools/ParkingLotErzeugungsauftrag.cs" Link="ParkingLotErzeugungsauftrag.cs" />
+    <Compile Include="$(HerkunftQuelle)" Link="ParkingLotErzeugungsSystem.Herkunft.cs" />
+    <Compile Include="$(ErzeugungsregelQuelle)" Link="Erzeugungsherkunft.cs" />
+    <Compile Include="NebenarbeitTests.cs" />
+    <Compile Include="$(VersorgungsGenerationQuelle)" Link="ParkingLotAutoVersorgung.Generation.cs" />
+    <Compile Include="$(VersorgungsApplyQuelle)" Link="ParkingLotVersorgungsleitung.Apply.cs" />
+    <Compile Include="$(VersorgungsnachweisQuelle)" Link="ParkingLotVersorgungsnachweis.cs" />
+    <Compile Include="../../Tools/ParkingLotVersorgungsnachweis.Daten.cs" Link="ParkingLotVersorgungsnachweis.Daten.cs" />
     <Compile Include="WorkerContainer.cs" /><Compile Include="WorkerTests.cs" />
     <Compile Include="$(BestandsAuftragQuelle)" Link="ParkingLotBestandsTausch.Auftrag.cs" />
     <Compile Include="$(BestandsAbschlussQuelle)" Link="ParkingLotBestandsTausch.Abschluss.cs" />

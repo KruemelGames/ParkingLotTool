@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using ParkingLotTool.Geometry;
 using Unity.Entities;
 
@@ -6,6 +7,9 @@ namespace ParkingLotTool.Tools
 {
     internal sealed partial class ParkingLotHintergrundSystem
     {
+        internal bool IstErsatz(Entity lot) => _aktiv != null && !_aktiv.NurNebenarbeit && _aktiv.Neu == lot
+            || _queue.Any(a => !a.NurNebenarbeit && a.Neu == lot);
+
         private ParkingLotAuftragsSystem Auftraege => World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>();
 
         internal void Einreihen(Entity lot, bool rueckweg = false, int fruehestens = 0,
@@ -14,7 +18,11 @@ namespace ParkingLotTool.Tools
             // Ein schon vorgemerkter Auftrag behaelt beim Edit-Abbruch seine Kennung.
             if (_angehalten.Contains(lot)) { Sperrmeldung(lot); return; }
             var wartend = _queue.Find(a => a.Lot == lot);
-            if (rueckweg && wartend != null) { wartend.NurRueckweg = true; return; }
+            if (rueckweg && wartend != null)
+            {
+                if (wartend.NurNebenarbeit) { wartend.NurNebenarbeit = false; wartend.Neu = Entity.Null; }
+                wartend.NurRueckweg = true; return;
+            }
             if (_regel.Gesperrt(lot)) return;
             var id = Auftraege.Merke(lot, Auftragsarbeiter.Hintergrund,
                 grund ?? (rueckweg ? Auftragsgrund.Normalbau : Auftragsgrund.Repair));
@@ -48,6 +56,21 @@ namespace ParkingLotTool.Tools
             if (rueckweg) Diagnose(() => World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeRueckwegStart(erster));
             Diagnose(() => ParkingLotNetzRueckweg.Melde($"Auftrag {a.Id} Lot {lot.Index} eingereiht; Rueckweg={rueckweg}; Register {id}; offen {Offen}."));
             return true;
+        }
+
+        internal void EinreihenNebenarbeit(Entity lot)
+        {
+            if (_regel.Gesperrt(lot) || _angehalten.Contains(lot)
+                || !EntityManager.HasComponent<ParkingLotNebenarbeitOffen>(lot)) return;
+            var id = Auftraege.Merke(lot, Auftragsarbeiter.Hintergrund, Auftragsgrund.Wiederaufnahme);
+            Auftraege.Uebergib(id, kennung =>
+            {
+                if (!KannNeubauen(lot, out _) || !_regel.EinreihenRueckweg(lot)) return false;
+                if (!Auftraege.Annehmen(kennung, lot, Auftragsarbeiter.Hintergrund)) { _regel.Ende(lot); return false; }
+                _queue.Add(new Auftrag { Lot = lot, Neu = lot, Kennung = kennung, Id = ++_nummer, NurNebenarbeit = true });
+                Diagnose(() => ParkingLotNetzRueckweg.Melde($"Nebenarbeit Lot {lot.Index} wieder eingereiht; Register {kennung}; kein Parkplatz-Neubau."));
+                return true;
+            });
         }
 
         private bool Beginne(Auftrag a)

@@ -65,8 +65,11 @@ namespace ParkingLotTool.Tools
             if (!_nebenarbeitBegonnen)
             {
                 _nebenarbeitBegonnen = true;
+                _nebenarbeitLot = _lotOwner;
                 MerkeAutoVersorgung(_lotCarrier);
-                PlanBusStopBuild(_lotOwner,_lotCarrier);
+                BereiteVersorgungswiederaufnahme();
+                if (ParkingLotNebenarbeitDaten.Offen(EntityManager, _lotOwner, NebenarbeitPflicht.Bushalte))
+                    PlanBusStopBuild(_lotOwner,_lotCarrier);
                 // Erhaltene Halte bleiben Entity-genau erhalten. Nur die
                 // tatsaechlich fehlenden Positionen brauchen Definitionen.
                 var halte = new List<float2>();
@@ -80,8 +83,11 @@ namespace ParkingLotTool.Tools
                 // Mindestens 36 Bilder seit B und alter Abriss abgeschlossen:
                 // dieselbe Seiten-/Blockmessung und Benennung wie im Edit.
                 // Ihr Haltestellenerzeuger laeuft hier ebenfalls unter E1.
-                _zoningSeitenFrames = _zoningBlockFrames = 1;
-                PflegeZoningBlockmessung();
+                if (ParkingLotNebenarbeitDaten.Offen(EntityManager, _lotOwner, NebenarbeitPflicht.Zoning))
+                {
+                    _zoningSeitenFrames = _zoningBlockFrames = 1;
+                    PflegeZoningBlockmessung();
+                }
                 yield return 0;
             }
             if (!_busDefinitionenFertig)
@@ -128,6 +134,9 @@ namespace ParkingLotTool.Tools
                 bool gut = AvPruefeLeitungskollisionen() && AvPruefeTempAnschluesse();
                 if (!gut && vergangen < 30) return 0;
                 if (!gut) return 3;
+                World.GetOrCreateSystemManaged<ParkingLotErzeugungsSystem>().BindeErgebnisse();
+                MarkiereVersorgungVorApply(_lotOwner, _lotCarrier);
+                SichereVersorgungsverbindungen();
                 HintergrundNebenfluss();
                 AvStarteBilddiagnose("Permanent-Nebenbau");
                 foreach (var t in _avTrassen) AvMerkeAngewandt(t);
@@ -137,6 +146,10 @@ namespace ParkingLotTool.Tools
                 _avPhase = AvPhase.LotWarten;
                 return 1;
             }
+            PflegeZoningBlockmessung();
+            if (_zoningSeitenFrames > 0 || _zoningBlockFrames > 0 || _zoningNamenRest > 0) return 0;
+            if (!HintergrundNebenarbeitQuittiert())
+                throw new InvalidOperationException("Nebenarbeit nicht vollstaendig; gespeicherte Restpflicht bleibt erhalten.");
             return 2;
         }
 

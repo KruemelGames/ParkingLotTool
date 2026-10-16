@@ -32,7 +32,7 @@ namespace ParkingLotTool.Tools
         {
             internal Entity Lot, Neu, Traeger;
             internal Auftragskennung Kennung;
-            internal bool Fortsetzen, Erfolg;
+            internal bool Fortsetzen, Erfolg, NurNebenarbeit;
             internal int Id, Seit, Versuch, Rueckwegpruefungen, PrefabSeit = -1;
             internal int Fruehestens, NaechstePruefung, Kinderpruefungen;
             internal bool NurRueckweg, GateOffen, AnschlussAngestossen, RueckwegAusgegeben;
@@ -60,8 +60,6 @@ namespace ParkingLotTool.Tools
         internal int Offen => _queue.Count + (_aktiv != null ? 1 : 0) + _angehalten.Count;
         /** Arbeitet gerade etwas? Ohne angehaltene Rueckwege - die warten auf den Spieler, nicht auf Zeit. */
         internal bool Laeuft => _queue.Count > 0 || _aktiv != null;
-        internal bool IstErsatz(Entity lot) => _aktiv != null && _aktiv.Neu == lot
-            || _queue.Any(a => a.Neu == lot);
         internal string Fortschrittshinweis
         {
             get
@@ -204,13 +202,14 @@ namespace ParkingLotTool.Tools
                 }
                 _aktiv = next;
                 next.Seit = UnityEngine.Time.frameCount;
-                next.Versuch = next.NurRueckweg ? _regel.StartRueckweg(next.Lot) : _regel.Start(next.Lot);
+                next.Versuch = next.NurRueckweg || next.NurNebenarbeit ? _regel.StartRueckweg(next.Lot) : _regel.Start(next.Lot);
                 next.Phase = next.NurRueckweg ? (EntityManager.HasComponent<ParkingLotOffenerErsatz>(next.Lot)
                     || EntityManager.HasBuffer<ParkingLotStufeAKnoten>(next.Lot) ? Phase.Ruecknahme : Phase.Rueckweg) : Phase.Planung;
                 Diagnose(() => ParkingLotNetzRueckweg.Melde($"Start Lot {next.Lot.Index}, Versuch {next.Versuch}/3; Auftrag {next.Id}; ohne Werkzeugeinstieg."));
                 if (!next.NurRueckweg)
                 {
-                    try { Messe(next,"Start",() => { next.Bauer = ParkingLotToolSystem.Bauarbeiter(World); next.Rechnung = next.Bauer.BereiteHintergrund(next.Lot,next.Id); }); }
+                    try { Messe(next,"Start",() => { next.Bauer = ParkingLotToolSystem.Bauarbeiter(World); next.Rechnung = next.NurNebenarbeit ? next.Bauer.BereiteNebenarbeit(next.Lot,next.Id)
+                        : next.Bauer.BereiteHintergrund(next.Lot,next.Id); }); }
                     catch (Exception e) { Fehler(next,e); }
                 }
                 // Kein Start + Prefabvorbereitung/Abriss im selben Bild.
@@ -239,6 +238,11 @@ namespace ParkingLotTool.Tools
             {
                 case Phase.Planung:
                     if (!a.Rechnung.IsCompleted) return;
+                    if (a.NurNebenarbeit)
+                    {
+                        a.Bauer.BeginneNebenarbeit(a.Rechnung.GetAwaiter().GetResult());
+                        a.Phase = Phase.Nebenarbeit; a.Seit = bild; return;
+                    }
                     if (!a.Bauer.HintergrundPrefabs(a.Rechnung.GetAwaiter().GetResult()))
                     {
                         if (!a.Bauer.HintergrundVorbereitungFertig) return;
@@ -338,7 +342,7 @@ namespace ParkingLotTool.Tools
                     if (nebenstand == 4) { Exklusiv(a, () => a.Bauer.HintergrundMeldeNebenanschluesse()); return; }
                     a.Erfolg = true;
                     EntityManager.RemoveComponent<ParkingLotNebenarbeitOffen>(a.Neu);
-                    ParkingLotNetzRueckweg.Melde($"Abschluss Lot {a.Neu.Index}, Stand 8; offene Auftraege {Offen-1}.");
+                    Diagnose(() => ParkingLotNetzRueckweg.Melde($"Abschluss Lot {a.Neu.Index}, Nebenarbeit bestaetigt; offene Auftraege {Offen-1}."));
                     Ende(a);
                     break;
                 case Phase.Ruecknahme:
@@ -472,6 +476,7 @@ namespace ParkingLotTool.Tools
         {
             if (!_wiederaufnahmeOffen) return;
             _wiederaufnahmeOffen = false;
+            World.GetOrCreateSystemManaged<ParkingLotErzeugungsSystem>().BindeErgebnisse();
             using (var offenQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ParkingLotRueckwegsicherungOffen>()))
             using (var offen = offenQuery.ToEntityArray(Allocator.Temp))
                 foreach (var lot in offen) ParkingLotNetzRueckweg.VerwerfeOffeneSicherung(EntityManager,lot);
@@ -492,6 +497,12 @@ namespace ParkingLotTool.Tools
                 ParkingLotNetzRueckweg.Melde($"Lot {lot.Index}: Neubau nach verworfenem Rueckweg war offen; wird eingereiht.");
                 Einreihen(lot, fruehestens: UnityEngine.Time.frameCount + HintergrundTakt.Versuchspause, grund: Auftragsgrund.Wiederaufnahme);
             }
+            using var nebenQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ParkingLotNebenarbeitOffen>(),
+                ComponentType.Exclude<Deleted>(), ComponentType.Exclude<Game.Tools.Temp>(),
+                ComponentType.Exclude<ParkingLotRueckwegkurs>(), ComponentType.Exclude<ParkingLotNeubauFaellig>(),
+                ComponentType.Exclude<ParkingLotOffenerErsatz>());
+            using var neben = nebenQuery.ToEntityArray(Allocator.Temp);
+            foreach (var lot in neben) EinreihenNebenarbeit(lot);
         }
 
         private void RaumeGespeichertesA(Entity lot)

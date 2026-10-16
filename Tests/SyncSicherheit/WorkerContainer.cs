@@ -130,7 +130,7 @@ namespace ParkingLotTool.Tools
         {
             internal Entity Lot, Neu, Traeger;
             internal Auftragskennung Kennung;
-            internal bool NurRueckweg, Fortsetzen, Erfolg, Beendet, GateOffen;
+            internal bool NurNebenarbeit, NurRueckweg, Fortsetzen, Erfolg, Beendet, GateOffen;
             internal int Id, Fruehestens, Seit, Versuch, Rueckwegpruefungen, RueckIst, RueckSoll;
             internal Phase Phase;
             internal ParkingLotToolSystem Bauer;
@@ -155,7 +155,7 @@ namespace ParkingLotTool.Tools
             var a = _queue[0]; _queue.RemoveAt(0);
             if (!Beginne(a)) return false;
             _aktiv = a;
-            a.Versuch = a.NurRueckweg ? _regel.StartRueckweg(a.Lot) : _regel.Start(a.Lot);
+            a.Versuch = a.NurRueckweg || a.NurNebenarbeit ? _regel.StartRueckweg(a.Lot) : _regel.Start(a.Lot);
             a.Phase = a.NurRueckweg ? Phase.Rueckweg : Phase.Planung;
             return true;
         }
@@ -184,5 +184,14 @@ namespace ParkingLotTool.Tools
         public void TestRueckwegFehler()
         { _aktiv.Phase = Phase.Rueckweg; Fehler(_aktiv, new InvalidOperationException("Rueckweg")); }
         public void TestLaden() { _aktiv = null; _queue.Clear(); _angehalten.Clear(); _neubauStattSperre.Clear(); _regel = new(); }
+    }
+}
+
+namespace ParkingLotTool.Tools
+{
+    public static class ParkingLotTeilnetz
+    {
+        public static bool Lebt(Unity.Entities.EntityManager em, Unity.Entities.Entity e)
+            => e != Unity.Entities.Entity.Null && em.Exists(e) && !em.HasComponent<Game.Common.Deleted>(e);
     }
 }

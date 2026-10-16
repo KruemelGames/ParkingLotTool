@@ -14,6 +14,7 @@ namespace ParkingLotTool.Tools
 
         internal void MesseAutoVersorgungNachToolOutput()
         {
+            if (!AvGenerationGueltig()) return;
             if (_avPhase == AvPhase.ApplyWarten) AvMesseApply("nach ToolOutputBarrier");
             // Auch waehrend Netz 2 gebaut wird, die Entities von Netz 1 verfolgen.
             // Die alte Messung liess zwischen Apply und 120 Simulationsframes eine Luecke.

@@ -45,6 +45,18 @@ worker-mutationen.ps1 prueft zusaetzlich neun Fehler: falsche Bestandskennung,
 altes Task-Ergebnis, fehlende Freigabe bei Bestand/Flaechen/Hintergrund,
 fehlende Flaechengeneration, alter Gate-Rueckruf, vorzeitiger Abschluss einer
 Wiederholung und Migrationserfolg durch einen blossen Rueckweg.
-Die Leser aller Speicherformate bleiben unveraendert.
+Historische Leser bleiben kompatibel; NebenarbeitOffen schreibt jetzt V2 und liest weiter V1.
 Die native Aufrufreihenfolge beim Laden, Apply und Cohtml-Darstellung
 brauchen weiterhin Ingame-Abnahme. Es gibt keine neuen Fristen oder Abbrueche.
+
+## Speichersicherheit 9-11
+nebenarbeit-mutationen.ps1 prueft 16 weitere Fehler gegen produktive
+Herkunfts-/Schreibmethoden, Vor-Apply-Pruefung, Nachweis-Sicherung/-Laden,
+Markerquittung, Nebenarbeits-Aufnahme/-Fehler und neue Speicherformate.
+Abgedeckt: Nachbarkanten, Original/Cancel/Delete, falscher Seed, fremdes Schild
+an gleicher Lage/Kante, mehrdeutige Herkunft, senkrechte Anschlussstuecke,
+fehlender Nachweisteil, Edit-Uebernahme, Generationswechsel und werfender Logger.
+Die echte Bushalt-Soll/Ist-Zuordnung prueft alle Positionen, auch nahe Punkte
+und doppelte Schilder an nur einer Stelle.
+Native Erzeugung, Temp-Umwandlung und Save-Entity-Remapping bleiben Ingame.
+Der Pflichtlauf umfasst zusaetzlich Versorgungsabsturz und Versorgungsuebernahme.

@@ -42,6 +42,8 @@ namespace Unity.Entities
         public bool HasComponent<T>(Entity e) => _werte.ContainsKey((e, typeof(T)));
         public T GetComponentData<T>(Entity e) => (T)_werte[(e, typeof(T))];
         public void AddComponent<T>(Entity e) => Set(e, default(T));
+        public void AddComponentData<T>(Entity e, T v) => Set(e, v);
+        public void SetComponentData<T>(Entity e, T v) => Set(e, v);
         public void RemoveComponent<T>(Entity e) => _werte.Remove((e, typeof(T)));
     }
     public struct EntityCommandBuffer

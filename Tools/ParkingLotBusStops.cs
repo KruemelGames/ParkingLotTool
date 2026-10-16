@@ -458,6 +458,10 @@ namespace ParkingLotTool.Tools
                 var travel = BusStopSnap.TravelDirection(stop,
                     city != null && city.leftHandTraffic);
                 var direction3 = new float3(travel.x, 0f, travel.y);
+                var herkunft = World.GetOrCreateSystemManaged<ParkingLotErzeugungsSystem>();
+                var seed = herkunft.Bestelle(_pendingBusLot, _pendingBusCarrier, _busStopPrefab,
+                    ParkingLotErzeugungsart.Bushalt, point, point, edge);
+                if (seed == 0) { offen.Add(stop); continue; }
                 var definition = EntityManager.CreateEntity();
                 EntityManager.AddComponentData(definition, new CreationDefinition
                 {
@@ -480,7 +484,7 @@ namespace ParkingLotTool.Tools
                     m_Owner = Entity.Null,
                     m_Attached = edge,
                     m_Flags = CreationFlags.Attach | CreationFlags.Permanent,
-                    m_RandomSeed = math.max(1, definition.Index),
+                    m_RandomSeed = seed,
                 });
                 EntityManager.AddComponentData(definition, new ObjectDefinition
                 {
@@ -520,9 +524,9 @@ namespace ParkingLotTool.Tools
                 && _busStopBuildDeadline > 0
                 && --_busStopBuildDeadline == 0)
             {
-                Mod.log.Warn("PLT-Bushalt: " + _pendingBusStops.Length
+                Nebenarbeitsdiagnose(() => Mod.log.Warn("PLT-Bushalt: " + _pendingBusStops.Length
                     + " Platzierung(en) ohne fertige Zoning-Kanten nach 90 Frames; "
-                    + "kein Schild gebaut. Siehe Bauzettel.");
+                    + "kein Schild gebaut. Siehe Bauzettel."));
                 _pendingBusStops = Array.Empty<BusStopPlacement>();
                 _busStopBuildDeadline = -1;
             }
@@ -543,16 +547,13 @@ namespace ParkingLotTool.Tools
                 var entity = stops[i];
                 var attached = EntityManager.GetComponentData<Attached>(entity);
                 var edge = attached.m_Parent;
-                // UNSER Schild erkennt man an der Kante: sie ist eine
-                // Zoning-Kante dieses Parkplatzes (Owner = Lot). Einen
-                // eigenen Besitzer hat das Schild bis hierher nicht.
-                var unsere = ParkingLotTeilnetz.GehoertZu(EntityManager,
-                    edge, _pendingBusLot, _pendingBusCarrier);
                 var schonZugeordnet = EntityManager
                         .HasComponent<ParkingLotPartRelation>(entity)
                     && EntityManager.GetComponentData<ParkingLotPartRelation>(
                         entity).Lot == _pendingBusLot;
-                if (!unsere && !schonZugeordnet) continue;
+                // Herkunft kommt aus dem Erzeugungsauftrag; dieselbe Kante
+                // allein macht ein fremdes Vanilla-Schild nicht zu unserem.
+                if (!schonZugeordnet) continue;
                 /*
                  * KEIN BESITZER - WIE EINE FREI GESETZTE VANILLA-HALTESTELLE.
                  *
@@ -579,14 +580,6 @@ namespace ParkingLotTool.Tools
                         if (EntityManager.HasComponent<Game.Net.PedestrianLane>(lane)) walk++;
                     }
                 }
-                if (!EntityManager.HasComponent<ParkingLotPartRelation>(entity))
-                    ParkingLotSchrittmarke.Aenderung("Bushalte: Halt " + entity.Index + " dem Lot " + _pendingBusLot.Index + " zugeordnet");
-                if (!EntityManager.HasComponent<ParkingLotPartRelation>(entity))
-                    EntityManager.AddComponentData(entity, new ParkingLotPartRelation
-                    {
-                        Lot = _pendingBusLot,
-                        Carrier = _pendingBusCarrier,
-                    });
                 if (!finalAudit) continue;
                 var routeCount = EntityManager.HasBuffer<ConnectedRoute>(entity)
                     ? EntityManager.GetBuffer<ConnectedRoute>(entity, true).Length : 0;
@@ -608,18 +601,18 @@ namespace ParkingLotTool.Tools
                             && access.m_Lane != Entity.Null) connectedLanes++;
                     }
                 }
-                Mod.log.Info($"PLT-Bushalt gebaut: Entity {entity.Index}, "
+                Nebenarbeitsdiagnose(() => Mod.log.Info($"PLT-Bushalt gebaut: Entity {entity.Index}, "
                     + $"Kante {edge.Index}, CarLane={car}, PedestrianLane={walk}, "
                     + $"TransportStop=ja, Linien={routeCount}, "
                     + $"Linien mit RouteLane und AccessLane={connectedLanes}; "
                     + (routeCount == 0 ? "Linien-Spurverbindung erst nach Linienbau pruefbar"
                         : connectedLanes == routeCount ? "Linien-Spurverbindung=ja"
-                        : "WARNUNG: Linien-Spurverbindung fehlt"));
+                        : "WARNUNG: Linien-Spurverbindung fehlt")));
                 count++;
             }
             if (finalAudit)
-                Mod.log.Info("PLT-Bushalt Schlusspruefung: " + count
-                    + " TransportStop-Entities mit Teilrelation und Kantenanbindung.");
+                Nebenarbeitsdiagnose(() => Mod.log.Info("PLT-Bushalt Schlusspruefung: " + count
+                    + " TransportStop-Entities mit Teilrelation und Kantenanbindung."));
         }
     }
 }

@@ -75,7 +75,7 @@ internal static partial class Program
                 if ((fixture.Art == "Receipt" && fixture.Version == 6)
                     || (fixture.Art == "Rueckweg" || fixture.Art == "Erhaltener") && fixture.Version == 2
                     || fixture.Art == "Anschluss" && fixture.Version == -2
-                    || fixture.Art.StartsWith("StufeA") || fixture.Art.EndsWith("Offen")
+                    || fixture.Art.StartsWith("StufeA") || fixture.Art == "NebenarbeitOffen" && fixture.Version == 2
                     || fixture.Art == "NeubauFaellig" || fixture.Art == "Abrissabsicht")
                 {
                     var writer = new Schreiber();
@@ -89,6 +89,7 @@ internal static partial class Program
             reader.Read(out string ende);
             Pruefe(ende == "ENDE_PLT" && reader.Position == strom.Count, fixture.Art + "/" + fixture.Version + " Endmarke nach zwei Datensaetzen");
         }
+        NeueNebenformate();
         StufeA();
         EditAnzeige();
         InfoSektion();

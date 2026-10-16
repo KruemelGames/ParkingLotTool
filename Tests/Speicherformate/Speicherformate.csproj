@@ -9,11 +9,18 @@
     <StufeAQuelle Condition="'$(StufeAQuelle)' == ''">../../Tools/ParkingLotStufeAPrefabID.cs</StufeAQuelle>
     <EditSectionQuelle Condition="'$(EditSectionQuelle)' == ''">../../Tools/ParkingLotEditSection.Freigabe.cs</EditSectionQuelle>
     <EditQuelle Condition="'$(EditQuelle)' == ''">../../Geometry/EditFreigabe.cs</EditQuelle>
+    <NebenMarkerQuelle Condition="'$(NebenMarkerQuelle)' == ''">../../Tools/ParkingLotNebenarbeitDaten.cs</NebenMarkerQuelle>
+    <ErzeugungsdatenQuelle Condition="'$(ErzeugungsdatenQuelle)' == ''">../../Tools/ParkingLotErzeugungsauftrag.cs</ErzeugungsdatenQuelle>
+    <VersorgungsdatenQuelle Condition="'$(VersorgungsdatenQuelle)' == ''">../../Tools/ParkingLotVersorgungsnachweis.Daten.cs</VersorgungsdatenQuelle>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="EditContainer.cs" /><Compile Include="EditAnzeige.cs" />
     <Compile Include="../../Tools/ParkingLotEditSection.cs" Link="ParkingLotEditSection.cs" />
     <Compile Include="$(EditSectionQuelle)" Link="ParkingLotEditSection.Freigabe.cs" />
+    <Compile Include="$(NebenMarkerQuelle)" Link="ParkingLotNebenarbeitDaten.cs" />
+    <Compile Include="$(ErzeugungsdatenQuelle)" Link="ParkingLotErzeugungsauftrag.cs" />
+    <Compile Include="$(VersorgungsdatenQuelle)" Link="ParkingLotVersorgungsnachweis.Daten.cs" />
+    <Compile Include="NeueNebenformate.cs" />
     <Compile Include="Program.cs" /><Compile Include="Container.cs" /><Compile Include="Feldstrom.cs" />
     <Compile Include="../../Geometry/*.cs" Exclude="../../Geometry/EditFreigabe.cs" Link="Geometry/%(Filename)%(Extension)" />
     <Compile Include="../../Geometry/Zellen/*.cs" Link="Geometry/Zellen/%(Filename)%(Extension)" />
@@ -24,6 +31,7 @@
     <Compile Include="$(EditQuelle)" Link="EditFreigabe.cs" />
     <Compile Include="../../Tools/ParkingLotPrefabname.cs" Link="ParkingLotPrefabname.cs" />
     <Compile Include="../../Tools/ParkingLotAbrissabsicht.cs" Link="ParkingLotAbrissabsicht.cs" />
+    <Content Include="Fixturen/nebenarbeit.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Fixturen/historisch.json" CopyToOutputDirectory="PreserveNewest" />
     <Reference Include="Unity.Mathematics"><HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath></Reference>
   </ItemGroup>

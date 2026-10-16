@@ -6,6 +6,9 @@ using Unity.Entities;
 // Kein CS2-Job, Temp/Apply oder natives ECS wird hier nachgebildet.
 namespace Unity.Entities
 {
+    public interface IComponentData { }
+    public interface IBufferElementData { }
+    public class InternalBufferCapacityAttribute : Attribute { public InternalBufferCapacityAttribute(int n) { } }
     public readonly record struct Entity(int Index) { public static Entity Null => default; }
     public class EntityManager
     {
@@ -32,15 +35,18 @@ namespace Unity.Entities
         public bool Exists(Entity e) => Data.ContainsKey(e);
         public bool HasComponent<T>(Entity e) => Exists(e) && Data[e].ContainsKey(typeof(T));
         public T GetComponentData<T>(Entity e) => (T)Data[e][typeof(T)];
+        public Buffer<T> AddBuffer<T>(Entity e) { Set(e,new List<T>()); return GetBuffer<T>(e); }
         public bool HasBuffer<T>(Entity e) => HasComponent<List<T>>(e);
-        public Buffer<T> GetBuffer<T>(Entity e, bool _) => new(GetComponentData<List<T>>(e));
+        public Buffer<T> GetBuffer<T>(Entity e, bool _ = false) => new(GetComponentData<List<T>>(e));
     }
     public class Buffer<T>
     {
         private readonly List<T> _werte;
         public Buffer(List<T> werte) => _werte = werte;
         public int Length => _werte.Count;
-        public T this[int i] => _werte[i];
+        public T this[int i] { get => _werte[i]; set => _werte[i] = value; }
+        public void Add(T v) => _werte.Add(v);
+        public void RemoveAt(int i) => _werte.RemoveAt(i);
     }
     public class World
     {
@@ -71,9 +77,9 @@ namespace Game
         public void Preload() => OnGamePreload(default, GameMode.Game);
     }
 }
-namespace Game.Common { public struct Deleted { } public struct Owner { public Entity m_Owner; } }
+namespace Game.Common { public struct PseudoRandomSeed { public ushort m_Seed; } public struct Deleted { } public struct Owner { public Entity m_Owner; } }
 namespace Game.Areas { public struct Area { } }
-namespace Game.Net { public struct SubNet { public Entity m_SubNet; } public struct Edge { } }
+namespace Game.Net { public struct TestBezier { public Unity.Mathematics.float3 a, d; } public struct Curve { public TestBezier m_Bezier; } public struct SubNet { public Entity m_SubNet; } public struct Edge { } }
 namespace Game.SceneFlow
 {
     public class GameManager
@@ -81,7 +87,8 @@ namespace Game.SceneFlow
 }
 namespace Game.Tools
 {
-    public struct Temp { }
+    [Flags] public enum TempFlags { Create=1, Delete=2, Cancel=4 }
+    public struct Temp { public Entity m_Original; public TempFlags m_Flags; }
     public class ToolBaseSystem : Game.GameSystemBase { }
     public class ToolSystem : Game.GameSystemBase { public ToolBaseSystem activeTool; }
     public class DefaultToolSystem : ToolBaseSystem { }
@@ -100,11 +107,17 @@ namespace Game.Prefabs
 }
 namespace UnityEngine { public static class Time { public static int frameCount; public static float realtimeSinceStartup; } }
 namespace UnityEngine.Scripting { public class PreserveAttribute : Attribute { } }
-namespace Colossal.Serialization.Entities { public struct Purpose { } }
+namespace Colossal.Serialization.Entities
+{
+    public struct Purpose { }
+    public interface IWriter { void Write<T>(T value); }
+    public interface IReader { void Read<T>(out T value); }
+    public interface ISerializable { void Serialize<T>(T w) where T : IWriter; void Deserialize<T>(T r) where T : IReader; }
+}
 namespace ParkingLotTool.Tools
 {
     public static class Mod { public static Logger log = new(); public static Optionen Optionen = new(); }
-    public class Optionen { public bool AutomatischSynchronisieren; }
+    public class Optionen { public bool AutomatischSynchronisieren; public bool AutomatischVersorgung = true; }
     public class Logger
     {
         public bool InfoFehler, WarnFehler;
@@ -114,7 +127,6 @@ namespace ParkingLotTool.Tools
     public struct ParkingLotCarrierReference { public Entity Carrier; }
     public struct ParkingLotBuildReceipt { }
     public struct ParkingLotDatenstand { public int Stand; }
-    public struct ParkingLotNebenarbeitOffen { }
     public sealed partial class ParkingLotToolSystem : Game.Tools.ToolBaseSystem
     {
         internal bool IsEditing; private Entity _pendingEditLot;
@@ -143,5 +155,86 @@ namespace ParkingLotTool.Tools
         public bool AntwortFehler;
         public bool TestAntwort(ParkingLotTool.Geometry.Bauauftrag<Entity> a, Entity neu, bool ok)
         { Antworten.Add(ok); if (AntwortFehler) throw new InvalidOperationException("Empfaenger"); return ok; }
+    }
+}
+
+namespace Unity.Collections
+{
+    public readonly struct FixedString512Bytes
+    {
+        private readonly string _text;
+        public FixedString512Bytes(string s) => _text=s;
+        public override string ToString() => _text ?? "";
+    }
+}
+namespace Game.Objects
+{
+    public struct Transform { public Unity.Mathematics.float3 m_Position; }
+    public struct Attached { public Unity.Entities.Entity m_Parent; }
+}
+namespace Game.Routes { public struct TransportStop { } }
+namespace ParkingLotTool.Tools
+{
+    public struct ParkingLotPartRelation { public Unity.Entities.Entity Lot, Carrier; }
+    public struct ParkingLotVersorgungsleitung { public Unity.Entities.Entity Lot, Carrier; public bool Strom; }
+    internal static class ParkingLotPrefabname
+    { internal static Unity.Collections.FixedString512Bytes Fest(string s) => new(s); }
+    internal sealed partial class ParkingLotErzeugungsSystem : Game.GameSystemBase
+    {
+        public bool TestLeitung(Unity.Entities.Entity lot, Unity.Entities.Entity carrier, Unity.Entities.Entity prefab,
+            ParkingLotErzeugungsauftrag q, Unity.Entities.Entity e) => BindeLeitung(lot,carrier,prefab,q,e);
+        public bool TestBushalt(Unity.Entities.Entity lot, Unity.Entities.Entity carrier, Unity.Entities.Entity prefab,
+            ref ParkingLotErzeugungsauftrag q, params Unity.Entities.Entity[] e) => BindeBushalt(lot,carrier,prefab,ref q,new(e));
+    }
+}
+
+namespace ParkingLotTool.Tools
+{
+    public sealed partial class ParkingLotToolSystem
+    {
+        private sealed class TestTrasse { internal Unity.Mathematics.float3 Start, Ziel; internal Unity.Entities.Entity Zielkante; }
+        private sealed class AvKurs
+        {
+            internal readonly System.Collections.Generic.List<Unity.Entities.Entity> Kanten = new(), Anschlussstuecke = new();
+            internal TestTrasse Trasse;
+        }
+        private sealed class AvVerbindung { internal Unity.Mathematics.float3 Start, Ziel; internal bool ZielIstStadt; }
+        private readonly System.Collections.Generic.List<AvKurs> _avKurse = new();
+        private readonly System.Collections.Generic.List<AvVerbindung> _avVerbindungen = new();
+        private Unity.Entities.Entity _testLot;
+        private Unity.Entities.Entity AvZugehoerigesLot() => _testLot;
+        public void TestVorApply(Unity.Entities.Entity lot, Unity.Entities.Entity carrier, params Unity.Entities.Entity[] kanten)
+        {
+            _avKurse.Clear(); var k = new AvKurs(); k.Kanten.AddRange(kanten); _avKurse.Add(k);
+            MarkiereVersorgungVorApply(lot, carrier);
+        }
+        public void TestSichereVerbindungen(Unity.Entities.Entity lot, params Unity.Entities.Entity[] kanten)
+        {
+            _testLot=lot; _avKurse.Clear();
+            var k=new AvKurs { Trasse=new TestTrasse { Start=new(0,0,0), Ziel=new(10,0,0) } };
+            k.Kanten.AddRange(kanten); _avKurse.Add(k); SichereVersorgungsverbindungen();
+        }
+        public void TestUebertrageVerbindungen(Unity.Entities.Entity alt, Unity.Entities.Entity neu, Unity.Entities.Entity carrier)
+            => UebertrageVersorgungsnachweise(alt,neu,carrier);
+        public int TestLadeVerbindungen(Unity.Entities.Entity lot)
+        { _avVerbindungen.Clear(); LadeVersorgungsverbindungen(lot); return _avVerbindungen.Count; }
+    }
+}
+
+namespace ParkingLotTool.Tools
+{
+    public sealed partial class ParkingLotToolSystem
+    {
+        private enum AvPhase { Idle, LotWarten }
+        private AvPhase _avPhase;
+        private Unity.Entities.Entity _avTraeger;
+        private int _avNochOffeneNetze;
+        private readonly System.Collections.Generic.List<AvKurs> _avGebaut = new();
+        private readonly System.Collections.Generic.List<int> _avTrassen = new(), _avAusstehend = new();
+        private readonly System.Collections.Generic.Dictionary<int,int> _avNetzstand = new();
+        public void TestAvLauf(Unity.Entities.Entity carrier)
+        { _avGeneration=World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().Register.Generation; _avTraeger=carrier; _avPhase=AvPhase.LotWarten; _avKurse.Add(new()); }
+        public bool TestAvGueltig() => AvGenerationGueltig();
+        public bool TestAvLeer => _avKurse.Count==0 && _avTraeger==Unity.Entities.Entity.Null && _avPhase==AvPhase.Idle;
     }
 }

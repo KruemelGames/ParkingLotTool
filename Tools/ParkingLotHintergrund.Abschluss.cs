@@ -13,6 +13,11 @@ namespace ParkingLotTool.Tools
         {
             if (!Aktuell(a)) return;
             a.Erfolg = false;
+            if (a.NurNebenarbeit)
+            {
+                Diagnose(() => ParkingLotNetzRueckweg.Melde($"Nebenarbeit Lot {a.Lot.Index}: {e.Message}; Restpflicht gespeichert, kein Rueckweg und kein Neubau."));
+                Ende(a); return;
+            }
             bool uebernommen = a.Phase == Phase.Nebenarbeit
                 || a.Phase == Phase.Nachpruefung && ParkingLotNetzRueckweg.Lebt(EntityManager,a.Neu)
                     && EntityManager.HasComponent<ParkingLotBuildReceipt>(a.Neu)
