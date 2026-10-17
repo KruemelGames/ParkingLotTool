@@ -3,22 +3,22 @@
 ## 1.0.12 — October 17, 2026
 
 - Addition: Russian, Polish and Korean.
-- Improvement: saving at any moment while a parking lot is being built, edited or updated is now safe; unfinished work (service building road connection, utilities, bus stops, zoning, tree ages, lamps) continues after loading.
-- Improvement: all Parking Lot Tool windows follow the game's interface scaling and text size and never grow past the screen; with large text only the text gives way and the rest scrolls.
-- Improvement: the edit section stays visible and says why a parking lot can't be edited.
+- Improvement: saving is safe at any moment while a lot is being built, edited or updated; unfinished work continues after loading.
+- Improvement: all windows follow the game's UI scaling and text size and never grow past the screen.
+- Improvement: the edit section says why a parking lot can't be edited.
 - Improvement: sync reports stay small.
-- Improvement: the post probe also records the mail supplier, its queue and trucks, and leftovers from Parking Lot Tool in the save.
-- Change: the mod language now follows the game language by default ("Automatic", English if the game language isn't available); with this update every installation is switched to "Automatic" once, after that your choice in the mod settings stays.
-- Fix: saving while a parking lot is being demolished no longer leaves its remaining parts behind; the demolition continues after loading.
-- Fix: saving right after an edit has finished no longer undoes the edit.
-- Fix: when restoring an interrupted edit fails, the parking lot is rebuilt from its build plan instead of staying locked.
-- Fix: parking lots no longer stay locked when an update was saved and the save lost its path types; they are rebuilt from their build plan instead (thanks PlatinMartin).
-- Fix: restoring a parking lot after an interrupted edit no longer gets stuck on a connection point of the wrong path type.
-- Fix: a connection point shared with a city road no longer locks a parking lot.
-- Fix: utility lines and bus stops of a parking lot are always removed with it; bus stops you placed yourself are never taken over.
-- Fix: tooltips and the edit button in the list no longer break letter by letter.
-- Fix: a bus stop sign with an invalid position is skipped instead of being placed.
-- Fix: when the game can't write its log file, an error message no longer repeats every frame.
+- Improvement: the post probe also records the mail supplier, its trucks and leftovers in the save.
+- Change: the mod language follows the game language by default; every installation is switched to "Automatic" once.
+- Fix: saving during a demolition no longer leaves parts behind.
+- Fix: saving right after an edit no longer undoes it.
+- Fix: if restoring an interrupted edit fails, the lot is rebuilt from its build plan instead of staying locked.
+- Fix: lots no longer stay locked when a save lost their path types (thanks PlatinMartin).
+- Fix: restoring an interrupted edit no longer gets stuck on a connection point of the wrong path type.
+- Fix: a connection point shared with a city road no longer locks a lot.
+- Fix: a lot's utility lines and bus stops are always removed with it; your own bus stops are never taken over.
+- Fix: tooltips and the list's edit button no longer break letter by letter.
+- Fix: bus stop signs with an invalid position are skipped.
+- Fix: a log file the game can't write no longer repeats an error every frame.
 
 ## 1.0.11 — October 13, 2026
 
