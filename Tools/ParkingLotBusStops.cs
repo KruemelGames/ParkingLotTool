@@ -535,6 +535,10 @@ namespace ParkingLotTool.Tools
             if (finalAudit) _busStopAuditFrame = -1;
             if (_pendingBusLot == Entity.Null
                 || !EntityManager.Exists(_pendingBusLot)) return;
+            var herkunft = World.GetOrCreateSystemManaged<ParkingLotErzeugungsSystem>();
+            // Vor dem Zaehlen binden, damit die Pruefung nicht dem Bildtakt
+            // der Bindung hinterherlaeuft.
+            if (finalAudit) herkunft.BindeErgebnisse();
             using var query = EntityManager.CreateEntityQuery(
                 ComponentType.ReadOnly<Game.Routes.TransportStop>(),
                 ComponentType.ReadOnly<Attached>(),
@@ -611,8 +615,11 @@ namespace ParkingLotTool.Tools
                 count++;
             }
             if (finalAudit)
+            {
                 Nebenarbeitsdiagnose(() => Mod.log.Info("PLT-Bushalt Schlusspruefung: " + count
                     + " TransportStop-Entities mit Teilrelation und Kantenanbindung."));
+                Nebenarbeitsdiagnose(() => herkunft.MeldeOffeneBushalte(_pendingBusLot));
+            }
         }
     }
 }

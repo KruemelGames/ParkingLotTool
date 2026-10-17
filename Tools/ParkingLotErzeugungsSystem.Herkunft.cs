@@ -42,9 +42,12 @@ namespace ParkingLotTool.Tools
             if (q.Art == ParkingLotErzeugungsart.Bushalt)
                 return !temp && EntityManager.HasComponent<Game.Routes.TransportStop>(e)
                     && (!EntityManager.HasComponent<Owner>(e) || EntityManager.GetComponentData<Owner>(e).m_Owner == Entity.Null)
-                    && EntityManager.HasComponent<Attached>(e) && EntityManager.GetComponentData<Attached>(e).m_Parent == q.Bezug
+                    // Seed + Prefab sind die Herkunft; Lage nur als Plausibilitaet
+                    // in der Draufsicht. Kante und Hoehe darf CS2 nach dem
+                    // Erzeugen anpassen (Kantenwechsel beim Anschluss, Gelaende).
+                    && EntityManager.HasComponent<Attached>(e)
                     && EntityManager.HasComponent<Game.Objects.Transform>(e)
-                    && math.distancesq(EntityManager.GetComponentData<Game.Objects.Transform>(e).m_Position, q.A) < .000001f
+                    && math.distancesq(EntityManager.GetComponentData<Game.Objects.Transform>(e).m_Position.xz, q.A.xz) < .0625f
                     && (!EntityManager.HasComponent<ParkingLotPartRelation>(e)
                         || EntityManager.GetComponentData<ParkingLotPartRelation>(e).Lot == lot);
             if (!EntityManager.HasComponent<Edge>(e) || !EntityManager.HasComponent<Curve>(e)) return false;

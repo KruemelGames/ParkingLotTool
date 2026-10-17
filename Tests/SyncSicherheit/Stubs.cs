@@ -196,8 +196,9 @@ namespace ParkingLotTool.Tools
         private sealed class AvKurs
         {
             internal readonly System.Collections.Generic.List<Unity.Entities.Entity> Kanten = new(), Anschlussstuecke = new();
-            internal TestTrasse Trasse;
+            internal TestTrasse Trasse; internal string Name;
         }
+        private bool _bauarbeiter;
         private sealed class AvVerbindung { internal Unity.Mathematics.float3 Start, Ziel; internal bool ZielIstStadt; }
         private readonly System.Collections.Generic.List<AvKurs> _avKurse = new();
         private readonly System.Collections.Generic.List<AvVerbindung> _avVerbindungen = new();

@@ -10,7 +10,7 @@ $faelle = @(
  @('LeitungOhneQuelle','Tools/ParkingLotErzeugungsSystem.Herkunft.cs','HerkunftQuelle',
    'if (!Passt(e, q, prefab, lot, carrier)) return false;','','SyncSicherheit'),
  @('ApplyOhneZuordnung','Tools/ParkingLotVersorgungsleitung.Apply.cs','VersorgungsApplyQuelle',
-   'throw new System.InvalidOperationException("Leitung vor Apply ohne belegte PLT-Herkunft: " + e);','return;','SyncSicherheit'),
+   'return t.m_Original == Entity.Null && ','return ','SyncSicherheit'),
  @('AlleTeilpflichtenQuittiert','Tools/ParkingLotNebenarbeitDaten.cs','NebenMarkerQuelle',
    'm.Offen &= ~pflicht;','m.Offen = NebenarbeitPflicht.Keine;','SyncSicherheit'),
  @('AlteQuittungWirkt','Tools/ParkingLotNebenarbeitDaten.cs','NebenMarkerQuelle',

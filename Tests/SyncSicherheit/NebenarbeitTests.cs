@@ -97,11 +97,16 @@ internal static partial class Program
             "Quittung darf weder alte Generation noch unbereites Register treffen");
         var tool = w.GetOrCreateSystemManaged<ParkingLotToolSystem>();
         var eigeneKante = new Entity(9020);
-        tool.TestVorApply(lot, carrier, eigeneKante);
-        bool abgewiesen = false;
-        try { tool.TestVorApply(lot, carrier, new Entity(9021)); }
-        catch (InvalidOperationException) { abgewiesen = true; }
-        Pruefe(abgewiesen, "ohne belegte Zuordnung darf der Apply nicht beginnen");
+        // Seeds ueberleben ein Teilen nicht (kSplitEdge): die Marke kommt
+        // aus der Kurszuordnung, aber nur an frisch erzeugte eigene Temps.
+        var fremdeKante = new Entity(9023);
+        em.RemoveComponent<ParkingLotVersorgungsleitung>(fremdeKante);
+        tool.TestVorApply(lot, carrier, eigeneKante, fremdeKante);
+        Pruefe(em.HasComponent<ParkingLotVersorgungsleitung>(eigeneKante)
+            && em.GetComponentData<ParkingLotVersorgungsleitung>(eigeneKante).Lot == lot,
+            "eigene frische Leitung bekommt ihre Zuordnung vor dem Apply, auch ohne passenden Seed");
+        Pruefe(!em.HasComponent<ParkingLotVersorgungsleitung>(fremdeKante),
+            "veraenderte fremde Kante (Temp mit Original) wird vor dem Apply nicht vereinnahmt");
         tool.TestSichereVerbindungen(lot, eigeneKante, aux);
         tool.TestSichereVerbindungen(lot, eigeneKante, aux);
         Pruefe(em.GetBuffer<ParkingLotVersorgungsnachweis>(lot).Length == 2,

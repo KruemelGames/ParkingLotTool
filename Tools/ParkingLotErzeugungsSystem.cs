@@ -131,6 +131,34 @@ namespace ParkingLotTool.Tools
             }
         }
 
+        /** Diagnose: warum eine Haltbestellung kein Schild gefunden hat. */
+        internal void MeldeOffeneBushalte(Entity lot)
+        {
+            if (!EntityManager.Exists(lot) || !EntityManager.HasBuffer<ParkingLotErzeugungsauftrag>(lot)) return;
+            using var auftraege = EntityManager.GetBuffer<ParkingLotErzeugungsauftrag>(lot, true).ToNativeArray(Unity.Collections.Allocator.Temp);
+            using var halte = _halte.ToEntityArray(Unity.Collections.Allocator.Temp);
+            foreach (var q in auftraege)
+            {
+                if (q.Erledigt || q.Art != ParkingLotErzeugungsart.Bushalt) continue;
+                var prefab = ParkingLotPrefabname.Aufloesen(EntityManager, q.Prefabname);
+                var kandidaten = new List<string>();
+                foreach (var e in halte)
+                {
+                    if (!EntityManager.HasComponent<Game.Objects.Transform>(e)) continue;
+                    var p = EntityManager.GetComponentData<Game.Objects.Transform>(e).m_Position;
+                    float d = math.distance(p.xz, q.A.xz);
+                    if (d > 3f || kandidaten.Count >= 4) continue;
+                    var parent = EntityManager.HasComponent<Attached>(e) ? EntityManager.GetComponentData<Attached>(e).m_Parent : Entity.Null;
+                    kandidaten.Add($"{e.Index}: Prefab {(EntityManager.GetComponentData<PrefabRef>(e).m_Prefab == prefab ? "gleich" : "anders")}, "
+                        + $"Seed {EntityManager.GetComponentData<PseudoRandomSeed>(e).m_Seed}, Abstand {d:F2} m, dy {p.y - q.A.y:F2} m, "
+                        + $"Kante {(parent == q.Bezug ? "gleich" : parent.Index.ToString())}, Owner {(EntityManager.HasComponent<Owner>(e) ? EntityManager.GetComponentData<Owner>(e).m_Owner.Index : 0)}, "
+                        + $"Temp {(EntityManager.HasComponent<Temp>(e) ? 1 : 0)}");
+                }
+                Mod.log.Warn($"PLT-Bushalt Herkunft OFFEN: Lot {lot.Index}, Seed {q.Seed}, Kante {q.Bezug.Index}; "
+                    + (kandidaten.Count == 0 ? "kein TransportStop im Umkreis von 3 m." : string.Join(" | ", kandidaten)));
+            }
+        }
+
         private void EntferneQuittierte(Entity lot)
         {
             if (!EntityManager.HasBuffer<ParkingLotErzeugungsauftrag>(lot)) return;
