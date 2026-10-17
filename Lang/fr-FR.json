@@ -498,6 +498,8 @@
   "ui.flaecheStrasse": "Sol routier",
   "ui.flaecheStrasseAn": "Poser le sol routier",
   "ui.flaechenKeineTreffer": "Aucun revêtement",
+  "ui.surfacePreview": "Aperçu du sol",
+  "ui.tooltipSurfacePreview": "Pose un véritable échantillon de sol de 40 m au premier point du contour pendant la sélection, puis le retire. Le sélecteur reste ouvert.",
   "ui.flaechenSuche": "Chercher un sol…",
   "ui.gebuehrAus": "Non",
   "ui.geschriebenNach": "Écrit dans : {pfad}",

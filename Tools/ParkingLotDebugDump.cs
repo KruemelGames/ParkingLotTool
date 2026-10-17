@@ -63,6 +63,7 @@ namespace ParkingLotTool.Tools
                 },
                 None = new[]
                 {
+                    ComponentType.ReadOnly<ParkingLotMusterflaeche>(),
                     ComponentType.ReadOnly<Game.Tools.Temp>(),
                     ComponentType.ReadOnly<Deleted>(),
                 },

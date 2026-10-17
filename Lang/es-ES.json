@@ -498,6 +498,8 @@
   "ui.flaecheStrasse": "Superficie vial",
   "ui.flaecheStrasseAn": "Colocar pavimento",
   "ui.flaechenKeineTreffer": "Sin superficies",
+  "ui.surfacePreview": "Vista de suelo",
+  "ui.tooltipSurfacePreview": "Coloca una muestra real de superficie de 40 m en el primer punto del contorno mientras eliges y después la retira. El selector permanece abierto.",
   "ui.flaechenSuche": "Buscar superficies…",
   "ui.gebuehrAus": "No",
   "ui.geschriebenNach": "Guardado en: {pfad}",

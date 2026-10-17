@@ -134,5 +134,13 @@
       [{"Name":"$version","Typ":"Int32","Wert":1}],
       [{"Name":"$version","Typ":"Int32","Wert":1}]
     ]
+  },
+  {
+    "Art": "Musterflaeche", "Version": 1,
+    "Quelle": "Surface Preview: eigene Komponente mit Versionsfeld, ohne Verweise",
+    "Datensaetze": [
+      [{"Name":"$version","Typ":"Int32","Wert":1}],
+      [{"Name":"$version","Typ":"Int32","Wert":1}]
+    ]
   }
 ]

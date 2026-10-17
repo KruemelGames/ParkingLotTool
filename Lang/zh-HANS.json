@@ -498,6 +498,8 @@
   "ui.flaecheStrasse": "道路表面",
   "ui.flaecheStrasseAn": "放置道路表面",
   "ui.flaechenKeineTreffer": "未找到表面",
+  "ui.surfacePreview": "表面预览",
+  "ui.tooltipSurfacePreview": "选择表面时，在轮廓的第一个点铺设40米见方的真实样板，之后将其移除。切换表面时选择窗口保持打开。",
   "ui.flaechenSuche": "搜索表面...",
   "ui.gebuehrAus": "关",
   "ui.geschriebenNach": "已写入: {pfad}",

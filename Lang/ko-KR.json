@@ -498,6 +498,8 @@
   "ui.flaecheStrasse": "도로 표면",
   "ui.flaecheStrasseAn": "도로 표면 배치",
   "ui.flaechenKeineTreffer": "표면 없음",
+  "ui.surfacePreview": "표면 미리보기",
+  "ui.tooltipSurfacePreview": "표면을 선택하는 동안 윤곽선의 첫 지점에 실제 40m 견본을 놓았다가 제거합니다. 표면을 선택해도 선택 창은 열린 상태로 유지됩니다.",
   "ui.flaechenSuche": "표면 검색...",
   "ui.gebuehrAus": "끔",
   "ui.geschriebenNach": "저장 위치: {pfad}",

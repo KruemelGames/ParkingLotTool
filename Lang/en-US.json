@@ -498,6 +498,8 @@
   "ui.flaecheStrasse": "Road surface",
   "ui.flaecheStrasseAn": "Place road surface",
   "ui.flaechenKeineTreffer": "No surface found",
+  "ui.surfacePreview": "Surface Preview",
+  "ui.tooltipSurfacePreview": "Places a real 40 m surface sample at the first outline point while the picker is open, then removes it. The picker stays open when choosing surfaces.",
   "ui.flaechenSuche": "Search surfaces…",
   "ui.gebuehrAus": "Off",
   "ui.geschriebenNach": "Written to: {pfad}",

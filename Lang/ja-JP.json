@@ -498,6 +498,8 @@
   "ui.flaecheStrasse": "道路表面",
   "ui.flaecheStrasseAn": "道路表面を設置",
   "ui.flaechenKeineTreffer": "表面なし",
+  "ui.surfacePreview": "表面プレビュー",
+  "ui.tooltipSurfacePreview": "表面の選択中、輪郭の最初の点に40mの実物の見本を設置し、選択後に撤去します。表面を選んでも選択画面は開いたままです。",
   "ui.flaechenSuche": "表面を検索...",
   "ui.gebuehrAus": "切",
   "ui.geschriebenNach": "保存先: {pfad}",

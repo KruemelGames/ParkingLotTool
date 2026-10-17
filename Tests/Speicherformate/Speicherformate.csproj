@@ -3,6 +3,7 @@
     <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <NoWarn>$(NoWarn);CS0649</NoWarn>
+    <MusterMarkerQuelle Condition="'$(MusterMarkerQuelle)' == ''">../../Tools/ParkingLotMusterflaeche.cs</MusterMarkerQuelle>
     <ReceiptQuelle Condition="'$(ReceiptQuelle)' == ''">../../Tools/ParkingLotBuildReceipt.cs</ReceiptQuelle>
     <RueckwegQuelle Condition="'$(RueckwegQuelle)' == ''">../../Tools/ParkingLotRueckwegDaten.cs</RueckwegQuelle>
     <ZwischenbauQuelle Condition="'$(ZwischenbauQuelle)' == ''">../../Tools/ParkingLotGespeicherterZwischenbau.cs</ZwischenbauQuelle>
@@ -21,6 +22,7 @@
     <Compile Include="$(ErzeugungsdatenQuelle)" Link="ParkingLotErzeugungsauftrag.cs" />
     <Compile Include="$(VersorgungsdatenQuelle)" Link="ParkingLotVersorgungsnachweis.Daten.cs" />
     <Compile Include="NeueNebenformate.cs" />
+    <Compile Include="$(MusterMarkerQuelle)" Link="ParkingLotMusterflaeche.cs" />
     <Compile Include="Program.cs" /><Compile Include="Container.cs" /><Compile Include="Feldstrom.cs" />
     <Compile Include="../../Geometry/*.cs" Exclude="../../Geometry/EditFreigabe.cs" Link="Geometry/%(Filename)%(Extension)" />
     <Compile Include="../../Geometry/Zellen/*.cs" Link="Geometry/Zellen/%(Filename)%(Extension)" />

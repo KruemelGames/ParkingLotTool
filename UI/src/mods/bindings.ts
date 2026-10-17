@@ -202,6 +202,10 @@ export const setSurfaceDecorationOn = (v: boolean) => trigger(MOD, "SetSurfaceDe
  * Der Belag laeuft ueber den Fussgaengerweg der Strasse bis an den Asphalt.
  * EIN Schalter fuer alle Zufahrten - so vom Nutzer entschieden.
  */
+export const surfacePreview$ = bindValue<boolean>(MOD, "SurfacePreview", false);
+export const setSurfacePreview = (an: boolean) => trigger(MOD, "SetSurfacePreview", an);
+export const setSurfacePreviewSlot = (slot: string) => trigger(MOD, "SetSurfacePreviewSlot", slot);
+
 export const surfaceApronOn$ = bindValue<boolean>(MOD, "SurfaceApronOn", true);
 
 /**

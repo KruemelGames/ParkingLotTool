@@ -498,6 +498,8 @@
   "ui.flaecheStrasse": "Fahrfläche",
   "ui.flaecheStrasseAn": "Fahrfläche setzen",
   "ui.flaechenKeineTreffer": "Keine Fläche gefunden",
+  "ui.surfacePreview": "Flächenvorschau",
+  "ui.tooltipSurfacePreview": "Legt bei offener Flächenauswahl ein echtes 40-m-Muster am ersten Umrisspunkt und entfernt es wieder. Die Auswahl bleibt beim Durchschalten geöffnet.",
   "ui.flaechenSuche": "Flächen suchen…",
   "ui.gebuehrAus": "Aus",
   "ui.geschriebenNach": "Geschrieben nach: {pfad}",

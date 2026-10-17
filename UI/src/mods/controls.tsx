@@ -1,7 +1,7 @@
 import { Children, isValidElement, useCallback, useContext, useEffect, useRef, useState } from "react";
 import styles from "./panel.module.scss";
 import {
-  icon, FANGOPTIONEN, fangGewaehlt$, fangVerfuegbar$, setzeFang,
+  surfacePreview$, setSurfacePreviewSlot, icon, FANGOPTIONEN, fangGewaehlt$, fangVerfuegbar$, setzeFang,
 } from "./bindings";
 import { useValue } from "cs2/api";
 import { useTexte } from "./texte";
@@ -469,9 +469,9 @@ interface ToggleProps {
   tooltip: string;
   value: boolean;
   onChange: (value: boolean) => void;
-  differsFromDefault: boolean;
-  onReset: () => void;
-  onSetDefault: () => void;
+  differsFromDefault?: boolean;
+  onReset?: () => void;
+  onSetDefault?: () => void;
   /** Blinkt gelb: hier liegt die Loesung fuer eine fehlende Vorschau. */
   blinkt?: boolean;
 }
@@ -500,12 +500,12 @@ export const Toggle = ({ label, tooltip, value, onChange, differsFromDefault,
         </button>
       </div>
     </MitTooltip>
-    <SettingActions
+    {onReset && onSetDefault ? <SettingActions
       label={label}
-      active={differsFromDefault}
+      active={differsFromDefault === true}
       onReset={onReset}
       onSetDefault={onSetDefault}
-    />
+    /> : null}
   </div>
 );
 
@@ -735,6 +735,7 @@ interface AuswahlProps {
      Parzellenboden verlangt: leer heisst dort AUS, nicht "wie
      Dekoration", und das muss man sehen koennen. */
   ausLabel?: string;
+  surfaceSlot?: "road" | "deco" | "zoning";
 }
 
 /**
@@ -772,10 +773,11 @@ let schliesseOffeneAuswahl: (() => void) | null = null;
 
 export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton, onChange, differsFromDefault,
                          onReset, onSetDefault,
-                         kopfSchalter, ausLabel }: AuswahlProps) => {
+                         kopfSchalter, ausLabel, surfaceSlot }: AuswahlProps) => {
   const [offen, setOffen] = useState(false);
   const [suche, setSuche] = useState("");
   const t = useTexte();
+  const preview = useValue(surfacePreview$);
   const gewaehlt = options.find((f) => f.name === value);
   const gesucht = suche.trim().toLowerCase();
   const sichtbar = gesucht === ""
@@ -790,7 +792,9 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
     sichtbar.length + (ausLabel ? 1 : 0));
   useEffect(() => {
     if (!offen) { setSuche(""); return; }
+    if (surfaceSlot) setSurfacePreviewSlot(surfaceSlot);
     const schliessen = () => setOffen(false);
+    const taste = (e: KeyboardEvent) => { if (e.key === "Escape") schliessen(); };
     if (schliesseOffeneAuswahl) schliesseOffeneAuswahl();
     schliesseOffeneAuswahl = schliessen;
     const klick = (e: MouseEvent) => {
@@ -798,11 +802,14 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
       if (!wurzel.current?.contains(ziel) && !liste.current?.contains(ziel)) schliessen();
     };
     window.addEventListener("mousedown", klick);
+    window.addEventListener("keydown", taste);
     return () => {
+      if (surfaceSlot) setSurfacePreviewSlot("-" + surfaceSlot);
+      window.removeEventListener("keydown", taste);
       window.removeEventListener("mousedown", klick);
       if (schliesseOffeneAuswahl === schliessen) schliesseOffeneAuswahl = null;
     };
-  }, [offen]);
+  }, [offen, surfaceSlot]);
   return (
     <div ref={wurzel} className={`${styles.control} ${styles.auswahl}`}>
       <div className={styles.flaechenFunktionsZeile}>
@@ -851,10 +858,10 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
               onSetDefault={onSetDefault}
             />
           ) : null}
-          {kopfSchalter ? (
+          {kopfSchalter?.onReset && kopfSchalter.onSetDefault ? (
             <SettingActions
               label={kopfSchalter.label}
-              active={kopfSchalter.differsFromDefault}
+              active={kopfSchalter.differsFromDefault === true}
               onReset={kopfSchalter.onReset}
               onSetDefault={kopfSchalter.onSetDefault}
             />
@@ -873,7 +880,7 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
                 className={`${styles.flaecheKachel} ${
                   value ? "" : styles[`flaecheAktiv${ton}`]}`}
                 title={ausLabel}
-                onClick={() => { onChange(""); setOffen(false); }}
+                onClick={() => { onChange(""); if (!preview || !surfaceSlot) setOffen(false); }}
               >
                 <span className={styles.flaecheOhneBild} />
                 <span className={styles.flaecheName}>{ausLabel}</span>
@@ -885,7 +892,7 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
                 className={`${styles.flaecheKachel} ${
                   flaeche.name === value ? styles[`flaecheAktiv${ton}`] : ""}`}
                 title={flaeche.titel}
-                onClick={() => { onChange(flaeche.name); setOffen(false); }}
+                onClick={() => { onChange(flaeche.name); if (!preview || !surfaceSlot) setOffen(false); }}
               >
                 {flaeche.bild
                   ? <img className={styles.flaecheBild} src={flaeche.bild} />

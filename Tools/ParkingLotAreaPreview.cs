@@ -255,6 +255,7 @@ namespace ParkingLotTool.Tools
             var vorflaecheAn = belagAn && (_baukontext?.Zettel.SurfaceApronOn ?? _uiSystem?.VorflaecheAn ?? true);
 
             var netz = Flaechennetz;
+            netz.SetzeMuster(_surfaceMusterMitte);
             netz.BeginneFlaechen();
             if (layout != null)
             {
@@ -307,6 +308,7 @@ namespace ParkingLotTool.Tools
 
         private void ClearAreaPreviewLayout(string context)
         {
+            EntferneSurfacePreview(context);
             // Kein Layout, keine Fuellung. Steht hier und nicht an den elf
             // Aufrufstellen: `_overlay.ClearLayout()` und diese Methode laufen
             // immer zusammen, und eine von beiden vergisst man sonst.

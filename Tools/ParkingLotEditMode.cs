@@ -183,6 +183,7 @@ namespace ParkingLotTool.Tools
         /** Wird im ersten Werkzeugframe nach dem UI-Klick ausgefuehrt. */
         private bool TryBeginPendingEdit()
         {
+            if (_pendingEditLot != Unity.Entities.Entity.Null) EntferneSurfacePreview("Edit-Start");
             if (_pendingEditLot == Entity.Null) return false;
             var lot = _pendingEditLot;
             _pendingEditLot = Entity.Null;
@@ -691,6 +692,7 @@ namespace ParkingLotTool.Tools
         {
             if (start)
             {
+                EntferneSurfacePreview("Speicherstart");
                 _speicherLaeuft = true;
                 _speicherSeit = UnityEngine.Time.realtimeSinceStartup;
                 if (!IsEditing) return;
@@ -752,6 +754,7 @@ namespace ParkingLotTool.Tools
             Colossal.Serialization.Entities.Purpose purpose, GameMode mode)
         {
             if (_bauarbeiter) return;
+            EntferneSurfacePreview("Laden");
             base.OnGamePreload(purpose, mode);
             _baumzieleNachLadenGeprueft = false;
             _pendingEditLot = Entity.Null;

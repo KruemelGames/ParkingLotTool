@@ -524,6 +524,8 @@
   "ui.flaecheStrasse": "Дор. покр.",
   "ui.flaecheStrasseAn": "Укладка дороги",
   "ui.flaechenKeineTreffer": "Нет покрытий",
+  "ui.surfacePreview": "Вид покрытия",
+  "ui.tooltipSurfacePreview": "Размещает настоящий образец покрытия размером 40 м у первой точки контура на время выбора, затем удаляет его. Список покрытий остаётся открытым.",
   "ui.flaechenSuche": "Поиск покрытий…",
   "ui.gebuehrAus": "Вык",
   "ui.geschriebenNach": "Записано: {pfad}",

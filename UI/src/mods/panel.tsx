@@ -32,7 +32,7 @@ import {
   panelDiagnose, panelHome$, surfaceRoad$, surfaceDecoration$, surfaceList$, bayIcons$,
   bayIconsDefault$, surfaceRoadOnDefault$, surfaceDecorationOnDefault$,
   surfaceRoadDefault$, surfaceDecorationDefault$,
-  surfaceRoadOn$, surfaceDecorationOn$, setSurfaceRoadOn, setSurfaceDecorationOn,
+  surfacePreview$, setSurfacePreview, surfaceRoadOn$, surfaceDecorationOn$, setSurfaceRoadOn, setSurfaceDecorationOn,
   surfaceApronOn$, surfaceApronOnDefault$, setSurfaceApronOn,
   setSurfaceRoad, setSurfaceDecoration, setBayIcons,
   togglePanel, toolActive$,
@@ -154,6 +154,7 @@ export const ParkingLotPanel = () => {
   const surfaceApronOnDefault = useValue(surfaceApronOnDefault$);
   const surfaceRoadDefault = useValue(surfaceRoadDefault$);
   const surfaceDecorationDefault = useValue(surfaceDecorationDefault$);
+  const surfacePreview = useValue(surfacePreview$);
   const surfaceRoadOn = useValue(surfaceRoadOn$);
   const surfaceDecorationOn = useValue(surfaceDecorationOn$);
   const bayIconsDefault = useValue(bayIconsDefault$);
@@ -1506,8 +1507,10 @@ export const ParkingLotPanel = () => {
         </Spalte>
 
         <Spalte title={t.spalteFlaechen} ton="Zufahrt" {...abschnitt("Flaechen")} titleTooltip={t.tooltipFlaechen}>
+          <Toggle label={t.surfacePreview} tooltip={t.tooltipSurfacePreview}
+            value={surfacePreview} onChange={setSurfacePreview} />
           <Auswahl
-            scrollSchluessel="flaeche.fahr"
+            scrollSchluessel="flaeche.fahr" surfaceSlot="road"
             label={t.flaecheStrasse}
             tooltip={t.tooltipFlaecheStrasse}
             value={surfaceRoad}
@@ -1528,7 +1531,7 @@ export const ParkingLotPanel = () => {
             }}
           />
           <Auswahl
-            scrollSchluessel="flaeche.deko"
+            scrollSchluessel="flaeche.deko" surfaceSlot="deco"
             label={t.flaecheDeko}
             tooltip={t.tooltipFlaecheDeko}
             value={surfaceDecoration}

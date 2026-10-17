@@ -108,6 +108,8 @@ namespace ParkingLotTool.Tools
              */
             [JsonProperty("SurfaceApronOn", Required = Required.Default)]
             public bool? SurfaceApronOn { get; set; }
+            [JsonProperty("SurfacePreview", Required = Required.Default)]
+            public bool SurfacePreview { get; set; }
 
             [JsonProperty("BayIcons", Required = Required.Default)]
             public bool? BayIcons { get; set; }
@@ -211,6 +213,7 @@ namespace ParkingLotTool.Tools
                 SurfaceRoadOn = SurfaceRoadOn,
                 SurfaceDecorationOn = SurfaceDecorationOn,
                 SurfaceApronOn = SurfaceApronOn,
+                SurfacePreview = SurfacePreview,
                 BayIcons = BayIcons,
                 CrossSpacing = CrossSpacing,
                 RowAngle = RowAngle,
@@ -852,6 +855,7 @@ namespace ParkingLotTool.Tools
             AddBinding(_flaecheDekoAnStd = new ValueBinding<bool>(
                 Group, "SurfaceDecorationOnDefault",
                 _defaults.SurfaceDecorationOn ?? true));
+            InitialisiereSurfacePreview();
             AddBinding(_vorflaecheAn = new ValueBinding<bool>(
                 Group, "SurfaceApronOn", _defaults.SurfaceApronOn ?? true));
             AddBinding(_vorflaecheAnStd = new ValueBinding<bool>(
@@ -1958,6 +1962,7 @@ namespace ParkingLotTool.Tools
             changed |= Neu(_flaecheDeko, values.SurfaceDecoration);
             changed |= UpdateValue(_flaecheStrasseAn, values.SurfaceRoadOn ?? true);
             changed |= UpdateValue(_vorflaecheAn, values.SurfaceApronOn ?? true);
+            changed |= UpdateValue(_surfacePreview, values.SurfacePreview);
             changed |= UpdateValue(_flaecheDekoAn,
                 values.SurfaceDecorationOn ?? true);
             changed |= UpdateValue(_buchtsymbole, values.BayIcons ?? true);

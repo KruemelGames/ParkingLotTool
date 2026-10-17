@@ -159,6 +159,8 @@ const baue = (d: Record<string, string>) => {
     spalteFlaechen: tx("spalteFlaechen"),
     flaecheStrasse: tx("flaecheStrasse"),
     flaecheDeko: tx("flaecheDeko"),
+    surfacePreview: tx("surfacePreview"),
+    tooltipSurfacePreview: tx("tooltipSurfacePreview"),
     flaechenSuche: tx("flaechenSuche"),
     flaechenKeineTreffer: tx("flaechenKeineTreffer"),
     vorflaeche: tx("vorflaeche"),

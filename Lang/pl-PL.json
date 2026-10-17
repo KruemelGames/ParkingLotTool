@@ -524,6 +524,8 @@
   "ui.flaecheStrasse": "Nawierzchnia",
   "ui.flaecheStrasseAn": "Ułóż nawierzchnię",
   "ui.flaechenKeineTreffer": "Brak nawierzchni",
+  "ui.surfacePreview": "Podgląd podłoża",
+  "ui.tooltipSurfacePreview": "Układa prawdziwą próbkę nawierzchni o boku 40 m przy pierwszym punkcie obrysu na czas wyboru, a potem ją usuwa. Lista pozostaje otwarta.",
   "ui.flaechenSuche": "Szukaj podłoża…",
   "ui.gebuehrAus": "Wył",
   "ui.geschriebenNach": "Zapisano w: {pfad}",

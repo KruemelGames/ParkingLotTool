@@ -1597,6 +1597,7 @@ namespace ParkingLotTool.Tools
 
         private JobHandle RenderOverlayGemessen(JobHandle inputDeps)
         {
+            PflegeSurfacePreview();
             /*
              * DIE VERWALTUNG ZEIGT FERTIGE PARKPLAETZE, KEINEN ENTWURF.
              *

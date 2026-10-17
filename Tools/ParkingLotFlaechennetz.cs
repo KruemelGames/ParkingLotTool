@@ -589,7 +589,7 @@ namespace ParkingLotTool.Tools
                 _flaechen.Add(new Netzgruppe());
             var gruppe = _flaechen[_flaechenAktiv];
 
-            var signatur = Unterschrift(ringe);
+            var signatur = MitMustermaske(Unterschrift(ringe));
             if (gruppe.Netz == null || gruppe.Signatur != signatur)
             {
                 gruppe.Signatur = signatur;
@@ -640,7 +640,7 @@ namespace ParkingLotTool.Tools
             var gruppe = _teilnetze[_teilAktiv];
 
             var einer = new[] { umriss };
-            var signatur = Unterschrift(einer);
+            var signatur = MitMustermaske(Unterschrift(einer));
             if (gruppe.Netz == null || gruppe.Signatur != signatur)
             {
                 gruppe.Signatur = signatur;
@@ -766,8 +766,13 @@ namespace ParkingLotTool.Tools
                 for (var i = 0; i + 2 < netz.Length; i += 3)
                 {
                     if (dreiecke.Count / 3 >= MaxDreiecke) break;
-                    Unterteile(ring[netz[i]], ring[netz[i + 1]],
-                        ring[netz[i + 2]], ref hoehen, punkte, dreiecke);
+                    if (!_musterMitte.HasValue)
+                        Unterteile(ring[netz[i]], ring[netz[i + 1]],
+                            ring[netz[i + 2]], ref hoehen, punkte, dreiecke);
+                    else
+                        foreach (var rest in OberflaechenMuster.Ausserhalb(
+                            ring[netz[i]], ring[netz[i + 1]], ring[netz[i + 2]], _musterMitte.Value))
+                            Unterteile(rest[0], rest[1], rest[2], ref hoehen, punkte, dreiecke);
                 }
                 if (messen) teilTicks += Stopwatch.GetTimestamp() - vorTeil;
             }

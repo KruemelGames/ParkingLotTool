@@ -498,6 +498,8 @@
   "ui.flaecheStrasse": "Superfície da via",
   "ui.flaecheStrasseAn": "Colocar superfície da via",
   "ui.flaechenKeineTreffer": "Nenhuma superfície encontrada",
+  "ui.surfacePreview": "Prévia do piso",
+  "ui.tooltipSurfacePreview": "Coloca uma amostra real de piso de 40 m no primeiro ponto do contorno durante a seleção e depois a remove. O seletor permanece aberto.",
   "ui.flaechenSuche": "Procurar superfícies…",
   "ui.gebuehrAus": "Desligado",
   "ui.geschriebenNach": "Gravado em: {pfad}",
