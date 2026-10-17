@@ -42,6 +42,8 @@ artifacts/
 /*.md
 !/README.md
 !/CHANGELOG.md
+# Codex-Abschlussberichte (17.10. aus dem Wurzelverzeichnis verschoben).
+/Berichte/
 
 # ---------------------------------------------------------------------------
 # DIE FERTIG GESCHNUERTEN DESIGN-LEINWAENDE BLEIBEN DRAUSSEN.
