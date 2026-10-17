@@ -198,6 +198,8 @@ namespace ParkingLotTool.Tools
                 foreach (var e in akt)
                     if (e.Key.StartsWith("ui.", StringComparison.Ordinal))
                         aus[e.Key.Substring(3)] = Sprachtexte.Roh(e.Key);
+            var mehrzahl = Sprachtexte.Mehrzahltabelle(Sprachtexte.Aktiv);
+            if (mehrzahl != null) aus["#mehrzahl"] = mehrzahl;
             return JsonConvert.SerializeObject(aus);
         }
     }

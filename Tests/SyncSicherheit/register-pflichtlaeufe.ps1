@@ -22,3 +22,7 @@ foreach ($name in @('Versorgungsabsturz','Versorgungsuebernahme')) {
     if ($LASTEXITCODE -ne 0) { throw "$name fehlgeschlagen." }
     Write-Output "$name : Exit 0"
 }
+
+# Neue Sprachen und ihre produktive Mehrzahlregel, einschliesslich UI-Gegenproben.
+& pwsh -NoProfile -File Tests/Language/pflichtlaeufe.ps1 -GrundlaeufeBereitsGeprueft
+if ($LASTEXITCODE -ne 0) { throw 'Sprachgegenproben fehlgeschlagen.' }

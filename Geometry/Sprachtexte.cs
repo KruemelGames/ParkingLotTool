@@ -47,16 +47,45 @@ namespace ParkingLotTool.Geometry
             => Format(RohIn(sprache, schluessel), werte);
 
         /**
-         * Mehrzahl: `schluessel.one` fuer genau 1, sonst `schluessel.other`.
-         * Sprachen ohne Mehrzahl tragen in beiden denselben Text. Die Zahl
-         * steht als `{n}` zur Verfuegung.
+         * Ganze Anzahlen: Russisch/Polnisch nutzen .one/.few/.many; sonst
+         * bleibt .one fuer genau 1 und .other fuer alle anderen Werte.
+         * Fehlendes .few/.many faellt auf .other zurueck. `{n}` ist immer da.
          */
         public static string Anzahl(string schluessel, long n, params (string Name, object Wert)[] werte)
         {
             var alle = new (string Name, object Wert)[(werte?.Length ?? 0) + 1];
             alle[0] = ("n", n);
             if (werte != null) Array.Copy(werte, 0, alle, 1, werte.Length);
-            return Format(Roh(schluessel + (n == 1 ? ".one" : ".other")), alle);
+            return Format(Roh(MehrzahlSchluessel(Aktiv, schluessel, n)), alle);
+        }
+
+        /** CLDR fuer ganze Zahlen; bestehende Sprachen behalten ihre bisherige Regel. */
+        public static string Mehrzahlform(string sprache, long n)
+        {
+            var ru = string.Equals(sprache, "ru-RU", StringComparison.OrdinalIgnoreCase);
+            var pl = string.Equals(sprache, "pl-PL", StringComparison.OrdinalIgnoreCase);
+            if (!ru && !pl) return n == 1 ? ".one" : ".other";
+            // Rest zuerst: Math.Abs(long.MinValue) waere ein Ueberlauf.
+            var rest = Math.Abs(n % 100);
+            var ende = rest % 10;
+            if (ru ? ende == 1 && rest != 11 : n == 1 || n == -1) return ".one";
+            return ende >= 2 && ende <= 4 && (rest < 12 || rest > 14) ? ".few" : ".many";
+        }
+
+        private static string MehrzahlSchluessel(string sprache, string schluessel, long n)
+        {
+            var form = Mehrzahlform(sprache, n);
+            if ((form == ".few" || form == ".many") && !Hat(sprache, schluessel + form)) form = ".other";
+            return schluessel + form;
+        }
+
+        /** Die UI liest dieselbe Regel als Tabelle: genau +/-1 separat, sonst Rest modulo 100. */
+        public static string Mehrzahltabelle(string sprache)
+        {
+            if (Mehrzahlform(sprache, 0) == ".other") return null;
+            var formen = new string[100];
+            for (var i = 0; i < formen.Length; i++) formen[i] = Mehrzahlform(sprache, 100 + i);
+            return string.Join(",", formen);
         }
 
         /**
@@ -199,7 +228,11 @@ namespace ParkingLotTool.Geometry
             {
                 var treffer = muster.Match(text);
                 if (!treffer.Success) continue;
-                var werte = new (string Name, object Wert)[namen.Length];
+                // EN/DE schreiben im Singular teils woertlich "1"/"ein".
+                // Neue Zielvorlagen brauchen dafuer trotzdem den gelieferten Zaehler.
+                var eins = schluessel.EndsWith(".one") && Array.IndexOf(namen, "n") < 0;
+                var werte = new (string Name, object Wert)[namen.Length + (eins ? 1 : 0)];
+                if (eins) werte[namen.Length] = ("n", 1L);
                 var ziel = schluessel;
                 for (var i = 0; i < namen.Length; i++)
                 {
@@ -207,9 +240,14 @@ namespace ParkingLotTool.Geometry
                     werte[i] = (namen[i], Umsetzen(wert, alt, von, nach, tiefe + 1));
                     // Mehrzahl nach der Zahl waehlen, nicht nach dem Wortlaut:
                     // "species" ist im Englischen beides, "Art/Arten" nicht.
-                    if (namen[i] == "n" && (schluessel.EndsWith(".one") || schluessel.EndsWith(".other")))
-                        ziel = schluessel.Substring(0, schluessel.LastIndexOf('.'))
-                            + (wert.Trim() == "1" ? ".one" : ".other");
+                    if (namen[i] == "n" && (schluessel.EndsWith(".one") || schluessel.EndsWith(".other")
+                        || schluessel.EndsWith(".few") || schluessel.EndsWith(".many")))
+                    {
+                        var basis = schluessel.Substring(0, schluessel.LastIndexOf('.'));
+                        ziel = long.TryParse(wert.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var zahl)
+                            ? MehrzahlSchluessel(nach, basis, zahl)
+                            : basis + (wert.Trim() == "1" ? ".one" : ".other");
+                    }
                 }
                 return Format(RohIn(nach, ziel), werte);
             }

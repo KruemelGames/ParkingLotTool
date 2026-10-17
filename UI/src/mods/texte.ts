@@ -1,5 +1,6 @@
 import { useValue } from "cs2/api";
 import { sprachtexte$ } from "./bindings";
+import { mehrzahlEndung } from "./mehrzahl";
 
 /**
  * Alle sichtbaren Texte des Panels - aus den Sprachdateien.
@@ -11,8 +12,8 @@ import { sprachtexte$ } from "./bindings";
  * vorher als `t.<name>` benutzt haben.
  *
  * Platzhalter heissen `{name}`, ein woertliches `{` schreibt sich `{{` -
- * dieselbe Regel wie `Geometry/Sprachtexte.cs`. Mehrzahl: `<name>.one` fuer
- * genau 1, sonst `<name>.other`, die Zahl als `{n}`. Ein fehlender Schluessel
+ * dieselbe Regel wie `Geometry/Sprachtexte.cs`. Dessen Mehrzahltabelle
+ * waehlt .one/.few/.many bzw. .other; die Zahl steht als `{n}` bereit. Ein fehlender Schluessel
  * erscheint als `[name]` - sichtbar, nie still leer.
  *
  * Zusammengesetzte Zeilen bleiben EIN Stueck Text: Cohtml zieht
@@ -52,8 +53,12 @@ const baue = (d: Record<string, string>) => {
     const t = d[k];
     return t === undefined ? "[" + k + "]" : format(t, werte);
   };
-  const tz = (k: string, n: number, werte?: Werte): string =>
-    tf(k + (n === 1 ? ".one" : ".other"), { n, ...(werte ?? {}) });
+  const mehrzahl = d["#mehrzahl"]?.split(",");
+  const tz = (k: string, n: number, werte?: Werte): string => {
+    let form = mehrzahlEndung(mehrzahl, n);
+    if ((form === ".few" || form === ".many") && d[k + form] === undefined) form = ".other";
+    return tf(k + form, { n, ...(werte ?? {}) });
+  };
   /** Satz mit Ortsnamen: `{ort}` wird zum anklickbaren Teil. */
   const satz = (k: string, werte: Werte, ort?: string): Satzteil[] => {
     const t = d[k];

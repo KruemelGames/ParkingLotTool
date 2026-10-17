@@ -5,6 +5,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <SprachtexteQuelle Condition="'$(SprachtexteQuelle)' == ''">..\..\..\Geometry\Sprachtexte.cs</SprachtexteQuelle>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
@@ -16,6 +17,7 @@
     <Compile Include="Program.Statusmeldungen.cs" />
     <Compile Include="Program.Sprachdateien.cs" />
     <Compile Include="Program.Sprache.cs" />
+    <Compile Include="Program.Mehrzahl.cs" />
     <Compile Include="Program.Kreuzungsmessung.cs" />
     <Compile Include="Program.Berichtsfall.cs" />
     <Compile Include="Program.Laternen.cs" />
@@ -92,7 +94,8 @@
     <Compile Include="Program.Teilen.cs" />
     <Compile Include="Program.SchmalerArm.cs" />
     <Compile Include="Dump.cs" />
-    <Compile Include="..\..\..\Geometry\*.cs" Link="Geometry\%(Filename)%(Extension)" />
+    <Compile Include="..\..\..\Geometry\*.cs" Exclude="..\..\..\Geometry\Sprachtexte.cs" Link="Geometry\%(Filename)%(Extension)" />
+    <Compile Include="$(SprachtexteQuelle)" Link="Geometry\Sprachtexte.cs" />
     <Compile Include="..\..\..\Geometry\Zellen\*.cs" Link="Geometry\Zellen\%(Filename)%(Extension)" />
     <Reference Include="Unity.Mathematics">
       <HintPath>$(CSII_TOOLPATH)\UnityModsProject\Library\ScriptAssemblies\Unity.Mathematics.dll</HintPath>
