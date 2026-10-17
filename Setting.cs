@@ -473,6 +473,9 @@ namespace ParkingLotTool
             Portugues,
             Spanisch,
             Franzoesisch,
+            Russisch,
+            Polnisch,
+            Koreanisch,
         }
 
         /**
@@ -536,6 +539,9 @@ namespace ParkingLotTool
             if (Sprache == Sprachwahl.Portugues) return "pt-BR";
             if (Sprache == Sprachwahl.Spanisch) return "es-ES";
             if (Sprache == Sprachwahl.Franzoesisch) return "fr-FR";
+            if (Sprache == Sprachwahl.Russisch) return "ru-RU";
+            if (Sprache == Sprachwahl.Polnisch) return "pl-PL";
+            if (Sprache == Sprachwahl.Koreanisch) return "ko-KR";
             if (Sprache == Sprachwahl.English) return Geometry.Sprachtexte.Rueckfall;
             try
             {
@@ -1109,6 +1115,15 @@ namespace ParkingLotTool
                 {
                     _setting.GetEnumValueLocaleID(Setting.Sprachwahl.Franzoesisch),
                     S("settings.enum.Sprachwahl.Franzoesisch")},
+                {
+                    _setting.GetEnumValueLocaleID(Setting.Sprachwahl.Russisch),
+                    S("settings.enum.Sprachwahl.Russisch")},
+                {
+                    _setting.GetEnumValueLocaleID(Setting.Sprachwahl.Polnisch),
+                    S("settings.enum.Sprachwahl.Polnisch")},
+                {
+                    _setting.GetEnumValueLocaleID(Setting.Sprachwahl.Koreanisch),
+                    S("settings.enum.Sprachwahl.Koreanisch")},
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeTasten + "]",
                     S("settings.group.Tasten")},

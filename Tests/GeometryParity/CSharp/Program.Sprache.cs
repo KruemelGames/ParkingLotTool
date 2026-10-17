@@ -41,11 +41,17 @@ internal static partial class Program
         {
             foreach (var (k, v) in texte)
             {
-                if (!en.ContainsKey(k)) Fehler($"{sprache}: '{k}' gibt es auf Englisch nicht");
+                var vergleich = k;
+                var zusatz = k.EndsWith(".few") || k.EndsWith(".many");
+                if (zusatz && (sprache == "ru-RU" || sprache == "pl-PL"))
+                    vergleich = k.Substring(0, k.LastIndexOf('.')) + ".other";
+                if (zusatz && sprache != "ru-RU" && sprache != "pl-PL")
+                    Fehler($"{sprache}: '{k}' ist eine fremde Mehrzahlform");
+                if (!en.ContainsKey(vergleich)) Fehler($"{sprache}: '{k}' gibt es auf Englisch nicht");
                 // Japanische/chinesische Satzstellung kann Namen umordnen.
                 // Verglichen werden dieselben Namen, nicht ihre Reihenfolge.
-                else if (string.Join(",", Sprachtexte.Platzhalter(v).Distinct().OrderBy(x => x, StringComparer.Ordinal))
-                         != string.Join(",", Sprachtexte.Platzhalter(en[k]).Distinct().OrderBy(x => x, StringComparer.Ordinal)))
+                else if (Sprachplatzhalter(v, k, sprache, en[vergleich])
+                         != Sprachplatzhalter(en[vergleich], k, sprache, en[vergleich]))
                     Fehler($"{sprache}: '{k}' hat andere Platzhalter als Englisch: '{v}'");
                 if (!KlammernOk(v)) Fehler($"{sprache}: '{k}' hat eine offene oder leere Klammer: '{v}'");
                 if (string.IsNullOrWhiteSpace(v) && !k.EndsWith("listentrenner")) Fehler($"{sprache}: '{k}' ist leer");
@@ -67,7 +73,7 @@ internal static partial class Program
         else Fehler("de-DE.json fehlt");
         // Neue Sprachen sind optional; eine vorhandene Datei darf aber
         // keinen englischen Rueckfall wegen fehlender Schluessel brauchen.
-        foreach (var sprache in new[] { "ja-JP", "zh-HANS", "pt-BR", "es-ES", "fr-FR" })
+        foreach (var sprache in new[] { "ja-JP", "zh-HANS", "pt-BR", "es-ES", "fr-FR", "ru-RU", "pl-PL", "ko-KR" })
             if (Sprachtexte.Sprachen.TryGetValue(sprache, out var uebersetzung))
                 foreach (var k in en.Keys)
                     if (!uebersetzung.ContainsKey(k)) Fehler($"{sprache}: '{k}' fehlt");
@@ -78,6 +84,8 @@ internal static partial class Program
             if (k.EndsWith(".other") && !en.ContainsKey(k.Substring(0, k.Length - 6) + ".one"))
                 Fehler($"'{k}' ohne .one");
         }
+
+        PruefeMehrzahl(Fehler, wurzel);
 
         // --- 2. Benutzt <-> vorhanden ---------------------------------------
         var benutzt = BenutzteSprachschluessel(wurzel, en, out var stellen);

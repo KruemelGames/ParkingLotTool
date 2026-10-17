@@ -1,27 +1,33 @@
-# Japanisch und vereinfachtes Chinesisch
+# Sprachdateien und kompakte Beschriftungen
 
-Ausgangsstand: `972e8e7` plus aktuelle englische Sprachdatei vom 11.10.2026.
+Stand 17.10.2026: Basis `ac9b609`, 970 Basisschluessel plus drei neue Sprachnamen.
+RU/PL haben je 35 zusaetzliche .few/.many-Paare; KO hat identische Formen.
 `Lang/en-US.json` ist die einzige Quelle fuer Schluessel und Platzhalter.
 
 ## Pruefen
 
 ```powershell
+pwsh -NoProfile -File Tests/Language/pflichtlaeufe.ps1
+# Einzeln:
 dotnet build -c Release --project Tests/GeometryParity/CSharp/GeometryParity.csproj
 dotnet run -c Release --no-build --project Tests/GeometryParity/CSharp/GeometryParity.csproj -- --sprache
 python Tests/Language/check_cjk.py --report
 ```
 
 Nur das Testprojekt bauen; der Mod-Build installiert ins Spiel.
-`--sprache` verlangt vollstaendiges Deutsch sowie vollstaendige japanische
-und chinesische Dateien, sofern diese vorhanden sind. Platzhalternamen
-werden unabhaengig von ihrer Satzreihenfolge verglichen.
+`--sprache` prueft alle zehn Dateien; RU/PL muessen .few/.many fuer jede
+Mehrzahlgruppe liefern. Andere Sprachen duerfen diese Formen nicht haben.
+Platzhalternamen werden unabhaengig von der Satzreihenfolge verglichen.
+Die stets gelieferte Zahl n darf in neuen .one-Vorlagen stehen, wo Englisch
+woertlich 1 sagt: RU braucht sie fuer 21/101, KO fuer identische Vorlagen.
+Alle anderen Namen bleiben unveraendert; RU darf diese Zahl nicht verlieren.
 
-`check_cjk.py` prueft die 315 Schluessel aus `cjk-width-keys.json`:
+`check_cjk.py` prueft die 316 Basisschluessel aus `cjk-width-keys.json`:
 ostasiatische breite/vollbreite Zeichen zaehlen 2, alle anderen 1.
-Kompakte JA-/ZH-Texte duerfen die englische Breite nicht ueberschreiten.
+Kompakte JA-/ZH-/RU-/PL-/KO-Texte duerfen die englische Breite nicht ueberschreiten.
 Auch Pfeil-/Symbolbloecke und das Ersatzzeichen U+FFFD werden abgewiesen.
 Gradzeichen, Quadratmeter, Waehrung und uebliche CJK-Interpunktion bleiben
-erlaubt. Die vollstaendige Tabelle mit Texten und EN-/JA-/ZH-Breiten entsteht
+erlaubt. Die vollstaendige Tabelle mit Texten und EN-/JA-/ZH-/RU-/PL-/KO-Breiten entsteht
 in `artifacts/cjk-localization-widths.csv` (UTF-8 mit BOM fuer Tabellenprogramme).
 
 ## Warum diese Texte kompakt bleiben muessen
@@ -51,12 +57,13 @@ und echte Tooltips sind ausgenommen: `.explain`, `.statusText`, `.frageText`,
 `.listeHinweis` und `.waiseText` erlauben Umbruch. Die Hinweise der
 Vegetationsfenster haben `min-height`, keine abschneidende Maximalhoehe.
 Eigene Set-/Parkplatznamen, Prefab-Namen und Zahlen sind dynamische Werte;
-sie werden nicht uebersetzt. Platzhalter tragen in allen Vorlagen denselben
-Beitrag; kurze eingesetzte Infothemen/Sortierwerte werden ebenfalls geprueft.
+sie werden nicht uebersetzt. Platzhalter bleiben als Text in der Messung,
+auch das zusaetzliche n der RU-/KO-Singularvorlagen. Kurze eingesetzte
+Infothemen/Sortierwerte werden ebenfalls geprueft.
 
 **Bei neuen UI-Texten oder geaenderten Breiten das Manifest mitziehen.**
 Dies ist eine nachvollziehbare Breitenrechnung, keine Messung der Spielschrift.
-Die Ingame-Abnahme beider Sprachen in horizontalem und hochkantem Layout
+Die Ingame-Abnahme der neuen Sprachen in horizontalem und hochkantem Layout
 bleibt erforderlich; dieser Auftrag erlaubt keinen Spiel-Build/Deploy.
 
 ## Terminologie
@@ -73,3 +80,36 @@ verifiziert. Verwendet werden gebraeuchliche Begriffe: 野生の低木 / 野生�
 苗木・若木・成木・老木・枯死・切株 bzw. 树苗・幼树・成树・老树・枯死・树桩.
 Kurze Werte bei sehr kleinen englischen Labels: Fee = 料 / 费,
 On/Off = 入/切 / 开/关; Erklaerungen stehen unverkuerzt im Tooltip.
+
+## Russisch, Polnisch, Koreanisch (17.10.)
+
+Die Kennungen ru-RU/pl-PL/ko-KR stehen sowohl im Dateinamen als auch im
+Header ihrer .loc-Dateien in Cities2_Data/Content/Game/Locale.cok (ZIP).
+Nur lesend ausgewertet. Beispiele der Schluessel: Assets.NAME[ParkingLot01],
+Assets.NAME[Bus Stop], Assets.NAME[Bulldoze Tool], Services.NAME[Zones],
+Services.NAME[Electricity], Services.NAME[Water & Sewage],
+Assets.NAME[Alley], Assets.NAME[Gravel Road], SelectedInfoPanel.PARKING_FEE.
+
+Begriffe: парковка / parking / 주차장; зоны / strefy / 구역;
+автобусная остановка / przystanek autobusowy / 버스 정류장;
+электричество / elektryczność / 전기; водоснабжение и канализация /
+wodociągi i kanalizacja / 상하수도; бульдозер / buldożer / 불도저.
+Die schmalen Labels kuerzen z. B. Переулок/Uliczka/골목길 auf Пер./Ulic./골목.
+Eigene Begriffe fuer Bauplan, Traeger und Zoning-Strasse haben kein direktes
+Vanilla-Gegenstueck. KO-Baumalter sind bewusst fachlich: 묘목/어린/성목/노목;
+Vanilla schreibt 샘플링/청년/어른/노인. Die Kurzform 그루 meint den Baumstumpf.
+
+Sprachtexte.Mehrzahlform ist die einzige Sprachregel. Fuer die UI kommt
+zusaetzlich #mehrzahl als 100er-Tabelle in die bestehende JSON-Bindung:
+genau +/-1 separat, sonst abs(n) modulo 100. Die Tabelle braucht keinen
+neuen Sprachschluessel. Fehlendes .few/.many nutzt .other in derselben Sprache.
+Bestehende Sprachen behalten genau 1/.other, auch fuer negative Werte.
+Umsetzen waehlt nach der Zielsprache und ergaenzt n=1 bei woertlichem Singular.
+Dimensionsvorlagen benutzen neutrale Mengenlabels statt numerusabhaengiger Nomen.
+
+check_plural.cjs laedt die echten UI-Dateien mit minimalem API-Ersatz und
+prueft die vom produktiven C#-Kern geschriebenen Faelle. gegenproben.py
+verlangt 18 echte Fehler (keine Compilerfehler), restauriert JSON/TS bytegenau
+und baut C#-Mutationen mit SprachtexteQuelle ausserhalb der Produktionsquellen.
+Der Register-Pflichtlauf nimmt diese Tests mit. Main/Node/Python liefern bei
+Fehlern Exit 1. Keine dieser Pruefungen baut oder installiert die Mod.
