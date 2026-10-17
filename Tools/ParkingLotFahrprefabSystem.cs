@@ -148,8 +148,13 @@ namespace ParkingLotTool.Tools
                     + ", Spawn=" + spawn + ", Editor=" + editor + ", Asset=" + asset
                     + ", Placeholder=" + platzhalter + ", Placeholder-Pool=" + inPool
                     + ", FindIt-Ausschluss=" + findIt + ".";
-                if (fehler) Mod.log.Error(text); else Mod.log.Info(text);
+                // Erst abhaken, dann loggen: kann CS2 die Logdatei nicht oeffnen,
+                // wirft sein Logger eine NullReferenceException (UnityLogger.Open
+                // schluckt den Fehler, Internal_WriteStream nutzt den leeren
+                // Schreiber). Ohne Abhaken kaeme sie jedes Bild wieder (Forum, 16.10.).
                 abgeschlossen.Add(entity);
+                try { if (fehler) Mod.log.Error(text); else Mod.log.Info(text); }
+                catch (Exception) { }
             }
             foreach (var entity in abgeschlossen) _waechter.Remove(entity);
         }
