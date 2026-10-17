@@ -14,66 +14,6 @@ using SubNet = Game.Net.SubNet;
 
 namespace ParkingLotTool.Tools
 {
-    /** Vor dem ersten Abriss vollstaendig sichern. Ein Save mitten in der
-     *  Kopie darf keinen halben Rueckweg als fertigen Plan behandeln. */
-    public struct ParkingLotRueckwegsicherungOffen : IComponentData, ISerializable
-    {
-        public void Serialize<TWriter>(TWriter w) where TWriter : IWriter { w.Write(1); }
-        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); }
-    }
-    /** Liegt bis zum Erfolg am ALTEN Lot, auch im Save. Keine Temp-ID wird
-     *  gespeichert. Eigene entfernte Knoten bekommen im Rueckweg neue IDs. */
-    [InternalBufferCapacity(0)]
-    public struct ParkingLotRueckwegkurs : IBufferElementData, ISerializable
-    {
-        public Entity Kante, Prefab, Besitzer, Start, Ende;
-        /** PrefabID des Prefabs (ParkingLotPrefabname); ueberlebt das Laden auch ohne Umbiegen (Issue #17). */
-        public FixedString512Bytes PrefabName;
-        public NetCourse Kurs;
-        public bool HatUpgrade;
-        public Upgraded Upgrade;
-        public void Serialize<TWriter>(TWriter w) where TWriter : IWriter
-        {
-            w.Write(2); w.Write(Kante); w.Write(Prefab); w.Write(Besitzer);
-            w.Write(Start); w.Write(Ende);
-            w.Write(Kurs.m_Curve.a); w.Write(Kurs.m_Curve.b);
-            w.Write(Kurs.m_Curve.c); w.Write(Kurs.m_Curve.d);
-            w.Write(Kurs.m_Length); w.Write(Kurs.m_Elevation); w.Write(HatUpgrade);
-            w.Write((uint)Upgrade.m_Flags.m_General);
-            w.Write((uint)Upgrade.m_Flags.m_Left); w.Write((uint)Upgrade.m_Flags.m_Right);
-            SchreibePos(w, Kurs.m_StartPosition); SchreibePos(w, Kurs.m_EndPosition);
-            w.Write(PrefabName.ToString());
-        }
-        private static void SchreibePos<TWriter>(TWriter w, CoursePos p) where TWriter : IWriter
-        {
-            w.Write(p.m_Position); w.Write(p.m_Rotation); w.Write(p.m_Elevation);
-            w.Write((uint)p.m_Flags);
-        }
-        public void Deserialize<TReader>(TReader r) where TReader : IReader
-        {
-            r.Read(out int version); if (version != 1 && version != 2) throw new InvalidOperationException("Rueckwegversion");
-            r.Read(out Kante); r.Read(out Prefab); r.Read(out Besitzer);
-            r.Read(out Start); r.Read(out Ende);
-            r.Read(out float3 a); r.Read(out float3 b); r.Read(out float3 c); r.Read(out float3 d);
-            r.Read(out float laenge); r.Read(out float2 elevation); r.Read(out HatUpgrade);
-            r.Read(out uint general); r.Read(out uint links); r.Read(out uint rechts);
-            Upgrade = new Upgraded { m_Flags = new CompositionFlags((CompositionFlags.General)general,
-                (CompositionFlags.Side)links, (CompositionFlags.Side)rechts) };
-            Kurs = new NetCourse { m_Curve = new Bezier4x3(a,b,c,d), m_Length = laenge,
-                m_Elevation = elevation, m_FixedIndex = -1,
-                m_StartPosition = LiesPos(r, Start, true), m_EndPosition = LiesPos(r, Ende, false) };
-            PrefabName = default;
-            if (version >= 2) { r.Read(out string name); PrefabName = ParkingLotPrefabname.Fest(name); }
-        }
-        private static CoursePos LiesPos<TReader>(TReader r, Entity original, bool start) where TReader : IReader
-        {
-            r.Read(out float3 p); r.Read(out quaternion q); r.Read(out float2 e); r.Read(out uint flags);
-            return new CoursePos { m_Entity = original, m_Position = p, m_Rotation = q,
-                m_Elevation = e, m_Flags = (CoursePosFlags)flags, m_ParentMesh = -1,
-                m_CourseDelta = start ? 0 : 1 };
-        }
-    }
-
     internal static class ParkingLotNetzRueckweg
     {
         internal static void Sichere(EntityManager em, Entity lot, IEnumerable<Entity> teile,
@@ -228,6 +168,7 @@ namespace ParkingLotTool.Tools
             weiter = anfang;
             var uhr = System.Diagnostics.Stopwatch.StartNew();
             if (!em.HasBuffer<ParkingLotRueckwegkurs>(lot)) return 0;
+            if (anfang == 0) ErsetzeToteAnschlussknoten(em, lot);
             // Strukturveraenderungen invalidieren DynamicBuffer: ZUERST kopieren.
             var kopie = em.GetBuffer<ParkingLotRueckwegkurs>(lot, true).ToNativeArray(Allocator.Temp);
             try
@@ -316,7 +257,18 @@ namespace ParkingLotTool.Tools
                 lauf.Soll++;
                 var teile = FindeKurs(em,eigeneKanten,alt,benutzt,out string grund);
                 if (teile != null && anschluesse && !SeitenanschluesseDa(em,lot,index,teile))
-                { grund = "seitlicher Anschluss/Parameter nicht beidseitig vorhanden"; teile = null; }
+                {
+                    grund = "seitlicher Anschluss/Parameter nicht beidseitig vorhanden";
+                    // Zaehler vor Theorie (2026-10-16, Spielstand vom 3.10.): Kante
+                    // lag exakt, der Anschluss fehlte - welcher und warum?
+                    if (diagnose && fehlmeldungen < 4)
+                    {
+                        var kursTeile = teile; int nr = index;
+                        ParkingLotHintergrundDiagnose.Sicher(() =>
+                            Melde($"Rueckweg Soll-Kurs {nr} Seitenanschluesse: {BeschreibeSeitenanschluesse(em,lot,nr,kursTeile)}"));
+                    }
+                    teile = null;
+                }
                 if (teile == null)
                 {
                     if (diagnose && fehlmeldungen++ < 4)
@@ -440,18 +392,7 @@ namespace ParkingLotTool.Tools
              * wieder. Hier gilt dieselbe Regel wie dort: CanConnect, oder der
              * erlaubte direkte Pathway-an-Road-Anschluss.
              */
-            bool Anschliessbar(Entity n)
-            {
-                if (!em.HasComponent<PrefabRef>(n) || !em.HasComponent<NetData>(prefab)) return false;
-                var ziel = em.GetComponentData<PrefabRef>(n).m_Prefab;
-                if (!em.HasComponent<NetData>(ziel)) return false;
-                var eigen = em.GetComponentData<NetData>(prefab);
-                var anderer = em.GetComponentData<NetData>(ziel);
-                if (NetUtils.CanConnect(eigen, anderer)) return true;
-                return em.HasComponent<PathwayData>(prefab)
-                    && (!em.HasBuffer<AuxiliaryNet>(prefab) || em.GetBuffer<AuxiliaryNet>(prefab,true).Length == 0)
-                    && (anderer.m_RequiredLayers & Layer.Road) != 0;
-            }
+            bool Anschliessbar(Entity n) => KannAnschliessen(em, prefab, n);
         }
 
         private static NetCourse Eingabekurs(ParkingLotRueckwegkurs alt)
@@ -530,6 +471,20 @@ namespace ParkingLotTool.Tools
             foreach (var a in anschluesse)
             {
                 if (a.Kursindex != index) continue;
+                /*
+                 * ANSCHLUSS AM KANTENENDE IST KEIN SEITENANSCHLUSS (2026-10-16).
+                 *
+                 * Gemessen an einem Spielstand vom 3.10.: zwei gespeicherte
+                 * Anschluesse lagen bei Lage 0,000 und 1,000. CS2 hatte die
+                 * Kursenden beim Wiederaufbau zu einem gemeinsamen Endknoten
+                 * zusammengezogen; an der gespeicherten Stelle stand kein Knoten
+                 * mehr, die Kanten selbst lagen exakt. Ein Knoten "in der Mitte"
+                 * kann an einem Ende nie haengen - die Pruefung verlangte etwas
+                 * Unmoegliches, der Rueckweg hielt an und der Parkplatz blieb
+                 * gesperrt. Am Ende ist der Endknoten der Anschluss, und den
+                 * prueft der Kantenabgleich bereits.
+                 */
+                if (a.Lage <= .001f || a.Lage >= .999f) continue;
                 var knoten = Anschlussknoten(em,a);
                 bool gefunden = false;
                 foreach (var p in teile)
@@ -543,6 +498,43 @@ namespace ParkingLotTool.Tools
             }
             return true;
         }
+        /** Nur Diagnose: je gespeichertem Anschluss dieses Kurses, was gesucht wird und was an der Kante haengt. */
+        private static string BeschreibeSeitenanschluesse(EntityManager em, Entity lot, int index, List<ParkingLotKursabgleich.Teil> teile)
+        {
+            var sb = new System.Text.StringBuilder();
+            using var anschluesse = em.GetBuffer<ParkingLotRueckweganschluss>(lot,true).ToNativeArray(Allocator.Temp);
+            foreach (var a in anschluesse)
+            {
+                if (a.Kursindex != index) continue;
+                var knoten = Anschlussknoten(em,a);
+                sb.Append($"[Lage {a.Lage:0.000}, Soll-Knoten {(a.Knoten == Entity.Null ? "eigen/neu" : a.Knoten.ToString())}, Prefab {a.Prefab}, Besitzer {a.Besitzer}, Pos {a.Position}; gefunden {knoten}");
+                // Kandidaten an der Stelle, einmal streng, einmal ohne Prefab/Besitzer.
+                int streng = 0, lose = 0;
+                using (var q = em.CreateEntityQuery(ComponentType.ReadOnly<Game.Net.Node>(), ComponentType.Exclude<Deleted>(), ComponentType.Exclude<Game.Tools.Temp>()))
+                using (var alle = q.ToEntityArray(Allocator.Temp))
+                    foreach (var n in alle)
+                    {
+                        if (math.distance(em.GetComponentData<Game.Net.Node>(n).m_Position, a.Position) > .05f) continue;
+                        lose++;
+                        if (em.HasComponent<PrefabRef>(n) && em.GetComponentData<PrefabRef>(n).m_Prefab == a.Prefab
+                            && em.HasComponent<Owner>(n) && em.GetComponentData<Owner>(n).m_Owner == a.Besitzer) streng++;
+                        sb.Append($"; Knoten {n} Prefab {(em.HasComponent<PrefabRef>(n) ? em.GetComponentData<PrefabRef>(n).m_Prefab.ToString() : "-")}"
+                            + $" Besitzer {(em.HasComponent<Owner>(n) ? em.GetComponentData<Owner>(n).m_Owner.ToString() : "-")}");
+                    }
+                sb.Append($"; Kandidaten streng {streng}, an der Stelle {lose}");
+                foreach (var p in teile)
+                {
+                    if (!em.HasBuffer<ConnectedNode>(p.Kante)) continue;
+                    HintergrundAbgleich.Teilparameter(p.Bereich,a.Lage,out float t);
+                    sb.Append($"; Kante {p.Kante} enthaelt={Enthaelt(p,a.Lage)} t={t:0.000} verbunden={Verbunden(em,knoten,p.Kante)} haengt an:");
+                    foreach (var n in em.GetBuffer<ConnectedNode>(p.Kante,true))
+                        sb.Append($" {n.m_Node}@{n.m_CurvePosition:0.000}");
+                }
+                sb.Append("] ");
+            }
+            return sb.ToString();
+        }
+
         internal static void MeldeAnschluesse(EntityManager em, Entity lot)
         {
             if (!em.HasBuffer<ParkingLotRueckweganschluss>(lot)) return;
@@ -557,6 +549,86 @@ namespace ParkingLotTool.Tools
                     && ParkingLotBesitz.GehoertZu(em,em.GetComponentData<Owner>(e).m_Owner,lot)) em.AddComponent<Updated>(e);
             Melde($"Rueckweg: {knoten.Count} seitliche Knoten mit eigenen Kanten bei Vanilla angemeldet; 0 direkte Netzeintraege.");
         }
+        /**
+         * ERSETZTE ANSCHLUSSKNOTEN AN IHRER STELLE WIEDERFINDEN (2026-10-16).
+         *
+         * Gemessen: F5 nach dem Uebernehmen eines Edit-Neubaus. Der neue
+         * Parkplatz hatte sich an eine Stadtstrasse angeschlossen, und CS2
+         * hatte deren Knoten 430590 dabei durch einen neuen an derselben
+         * Stelle ersetzt. Der Rueckweg kannte nur die alte Nummer ("Gesicherter
+         * Anschlussknoten fehlt") und sperrte den Parkplatz. Ein gesicherter
+         * Knoten, der nicht mehr lebt, wird deshalb an seiner gespeicherten
+         * Lage gesucht: genau EIN lebender Knoten in 5 cm, an den der Weg
+         * anschliessen darf. Gibt es keinen oder mehrere, bleibt der alte
+         * Verweis stehen und die bisherige Pruefung meldet es wie vorher.
+         * Der Fund wird in den Schnappschuss geschrieben, damit auch die
+         * Nachpruefung und ein spaeteres Laden ihn kennen.
+         */
+        private static void ErsetzeToteAnschlussknoten(EntityManager em, Entity lot)
+        {
+            bool Tot(Entity n) => n != Entity.Null && !Lebt(em, n);
+            bool brauchtSuche = false;
+            foreach (var k in em.GetBuffer<ParkingLotRueckwegkurs>(lot, true))
+                if (Tot(k.Start) || Tot(k.Ende)) { brauchtSuche = true; break; }
+            if (!brauchtSuche && em.HasBuffer<ParkingLotRueckweganschluss>(lot))
+                foreach (var a in em.GetBuffer<ParkingLotRueckweganschluss>(lot, true))
+                    if (Tot(a.Knoten)) { brauchtSuche = true; break; }
+            if (!brauchtSuche) return;
+
+            Entity[] knoten;
+            using (var q = em.CreateEntityQuery(ComponentType.ReadOnly<Game.Net.Node>(), ComponentType.ReadOnly<PrefabRef>(),
+                ComponentType.Exclude<Deleted>(), ComponentType.Exclude<Temp>()))
+            using (var alle = q.ToEntityArray(Allocator.Temp)) knoten = alle.ToArray();
+            Entity Finde(float3 lage, Entity prefab)
+            {
+                Entity treffer = Entity.Null;
+                foreach (var n in knoten)
+                {
+                    if (math.distance(em.GetComponentData<Game.Net.Node>(n).m_Position, lage) > .05f) continue;
+                    if (!KannAnschliessen(em, prefab, n)) continue;
+                    if (treffer != Entity.Null) return Entity.Null;
+                    treffer = n;
+                }
+                return treffer;
+            }
+            int ersetzt = 0, offen = 0;
+            var kurse = em.GetBuffer<ParkingLotRueckwegkurs>(lot);
+            for (int i = 0; i < kurse.Length; i++)
+            {
+                var k = kurse[i];
+                if (Tot(k.Start)) { var n = Finde(k.Kurs.m_StartPosition.m_Position, k.Prefab); if (n != Entity.Null) { k.Start = n; k.Kurs.m_StartPosition.m_Entity = n; ersetzt++; } else offen++; }
+                if (Tot(k.Ende)) { var n = Finde(k.Kurs.m_EndPosition.m_Position, k.Prefab); if (n != Entity.Null) { k.Ende = n; k.Kurs.m_EndPosition.m_Entity = n; ersetzt++; } else offen++; }
+                kurse[i] = k;
+            }
+            if (em.HasBuffer<ParkingLotRueckweganschluss>(lot))
+            {
+                var anschluesse = em.GetBuffer<ParkingLotRueckweganschluss>(lot);
+                for (int i = 0; i < anschluesse.Length; i++)
+                {
+                    var a = anschluesse[i];
+                    if (!Tot(a.Knoten)) continue;
+                    var n = Finde(a.Position, a.Prefab);
+                    if (n != Entity.Null) { a.Knoten = n; anschluesse[i] = a; ersetzt++; } else offen++;
+                }
+            }
+            Melde($"Rueckweg Lot {lot.Index}: {ersetzt} ersetzte(r) Anschlussknoten an der gespeicherten Stelle wiedergefunden"
+                + (offen > 0 ? $", {offen} nicht eindeutig auffindbar" : "") + ".");
+        }
+
+        /** Darf ein Weg dieses Prefabs an diesen Knoten? Dieselbe Regel wie ParkingLotDauerkursSystem.Plane. */
+        internal static bool KannAnschliessen(EntityManager em, Entity prefab, Entity n)
+        {
+            if (!em.HasComponent<PrefabRef>(n) || !em.HasComponent<NetData>(prefab)) return false;
+            var ziel = em.GetComponentData<PrefabRef>(n).m_Prefab;
+            if (!em.HasComponent<NetData>(ziel)) return false;
+            var eigen = em.GetComponentData<NetData>(prefab);
+            var anderer = em.GetComponentData<NetData>(ziel);
+            if (NetUtils.CanConnect(eigen, anderer)) return true;
+            return em.HasComponent<PathwayData>(prefab)
+                && (!em.HasBuffer<AuxiliaryNet>(prefab) || em.GetBuffer<AuxiliaryNet>(prefab,true).Length == 0)
+                && (anderer.m_RequiredLayers & Layer.Road) != 0;
+        }
+
         private static Entity Anschlussknoten(EntityManager em, ParkingLotRueckweganschluss a)
         {
             if (a.Knoten != Entity.Null) return a.Knoten;

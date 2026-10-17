@@ -12,7 +12,17 @@ namespace ParkingLotTool.Tools
 {
     public sealed partial class ParkingLotToolSystem
     {
-        private void HintergrundKnotenanschluss(ref Anschluss anschluss, ref float3 lage)
+        /*
+         * NUR KNOTEN, AN DIE DER WEG DARF (16.10.).
+         *
+         * Beide Suchen unten nahmen den naechsten Knoten in 5 cm ohne Blick auf
+         * den Wegtyp. PLT legt aber verschiedene Wege an dieselben Punkte;
+         * ParkingLotDauerkursSystem.Plane lehnte den Anschluss danach ab
+         * ("unvereinbare Layer"), und der Hintergrund-Neubau scheiterte dreimal
+         * an derselben Stelle. Dieselbe Regel wie der Rueckweg
+         * (ParkingLotNetzRueckweg.KannAnschliessen).
+         */
+        private void HintergrundKnotenanschluss(ref Anschluss anschluss, ref float3 lage, Entity prefab)
         {
             if (EntityManager.HasComponent<Game.Net.Node>(anschluss.Entity))
             {
@@ -24,7 +34,8 @@ namespace ParkingLotTool.Tools
             // Eine bereits vorhandene Doppel-ID darf nicht gewinnen.
             var kandidaten = new List<(int Id,float3 Lage)>();
             foreach (var e in _erhalteneNetzteile)
-                if (ParkingLotNetzRueckweg.Lebt(EntityManager,e) && EntityManager.HasComponent<Game.Net.Node>(e))
+                if (ParkingLotNetzRueckweg.Lebt(EntityManager,e) && EntityManager.HasComponent<Game.Net.Node>(e)
+                    && ParkingLotNetzRueckweg.KannAnschliessen(EntityManager,prefab,e))
                     kandidaten.Add((e.Index,EntityManager.GetComponentData<Game.Net.Node>(e).m_Position));
             int index = HintergrundAbgleich.ErhaltenerKnoten(lage.xz,kandidaten);
             if (index == -2) throw new InvalidOperationException($"Mehrdeutiger erhaltener Anschluss bei {lage}; 0 Ausgabe dieses Kurses.");
@@ -42,7 +53,8 @@ namespace ParkingLotTool.Tools
             for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++)
                 if (_hintergrundKnoten.TryGetValue((key.Item1+x,key.Item2+z),out var liste))
                     foreach (var n in liste)
-                        if (ParkingLotNetzRueckweg.Lebt(EntityManager,n) && EntityManager.HasComponent<Game.Net.Node>(n))
+                        if (ParkingLotNetzRueckweg.Lebt(EntityManager,n) && EntityManager.HasComponent<Game.Net.Node>(n)
+                            && ParkingLotNetzRueckweg.KannAnschliessen(EntityManager,prefab,n))
                             neue.Add((n,EntityManager.GetComponentData<Game.Net.Node>(n).m_Position));
             var knoten = HintergrundAbgleich.Knoten(lage,neue,Entity.Null);
             if (knoten != Entity.Null)

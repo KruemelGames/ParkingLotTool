@@ -15,17 +15,6 @@ namespace ParkingLotTool.Tools
 {
     public sealed partial class ParkingLotBuildingEconomySystem
     {
-        private sealed class Anschluss
-        {
-            internal int Seit = UnityEngine.Time.frameCount;
-            internal int NaechstePruefung;
-            internal bool Sync;
-            internal bool Platziert;
-            internal int Versuche;
-            internal int NaechstePlatzierung;
-        }
-
-        private readonly Dictionary<Entity, Anschluss> _anschluesse = new();
         private EntityQuery _zoningAnker;
         private bool _zoningAnkerBereit;
         internal int OffeneStrassensyncs
@@ -38,6 +27,7 @@ namespace ParkingLotTool.Tools
         {
             base.OnGamePreload(purpose, mode);
             _anschluesse.Clear();
+            _wiederaufnahmeGeprueft = false;
             _strassenWartet.Clear();
             _strassenGemeldet.Clear();
             _announcedCompanions.Clear();
@@ -57,17 +47,6 @@ namespace ParkingLotTool.Tools
             // erledigt, sobald die Suche nichts fand. Jetzt endet das als
             // sichtbarer Fehlschlag mit der Kandidatenzahl im Log.
             return !HatStrasse(BegleiterVon(lot));
-        }
-
-        internal void StrassensyncEinreihen(Entity lot)
-        {
-            if (!_anschluesse.TryGetValue(lot, out var a))
-                _anschluesse.Add(lot, a = new Anschluss());
-            a.Sync = true;
-            a.Seit = UnityEngine.Time.frameCount;
-            a.NaechstePruefung = 0;
-            a.Platziert = false;
-            a.Versuche = a.NaechstePlatzierung = 0;
         }
 
         private Entity BegleiterVon(Entity lot)
@@ -215,19 +194,24 @@ namespace ParkingLotTool.Tools
             foreach (var lot in new List<Entity>(_anschluesse.Keys))
             {
                 var a = _anschluesse[lot];
+                if (!AnschlussDarfArbeiten(lot, a)) continue;
                 if (bild < a.NaechstePruefung) continue;
                 a.NaechstePruefung = bild + 30;
                 var traeger = Lebt(lot) && EntityManager.HasComponent<ParkingLotCarrierReference>(lot)
                     ? EntityManager.GetComponentData<ParkingLotCarrierReference>(lot).Carrier : Entity.Null;
                 if (!Lebt(lot) || !Lebt(traeger) || !Mod.WirtschaftAn)
-                { AnschlussBeendet(lot, false, "Parkplatz/Traeger nicht mehr gueltig oder Wirtschaft aus"); continue; }
+                { AnschlussBeendet(lot, a.Auftrag, false, "Parkplatz/Traeger nicht mehr gueltig oder Wirtschaft aus"); continue; }
                 begleiterJeLot.TryGetValue(lot, out var begleiter);
                 if (HatStrasse(begleiter))
-                { AnschlussBeendet(lot, true, "CS2 bestaetigt RoadEdge und ConnectedBuilding"); continue; }
+                {
+                    SchliesseAnschlussOffen(begleiter);
+                    AnschlussBeendet(lot, a.Auftrag, true, "CS2 bestaetigt RoadEdge und ConnectedBuilding"); continue;
+                }
                 if (bild - a.Seit >= 600)
                 {
-                    AnschlussBeendet(lot, false, "nach 600 Bildern keine bestaetigte Strassenanbindung");
-                    if (!a.Sync) BrauchtWiederSync(lot);
+                    AnschlussBeendet(lot, a.Auftrag, false, "nach 600 Bildern keine bestaetigte Strassenanbindung");
+                    // Die Pflicht geht an den Datenstand ueber: der Sync holt sie nach.
+                    if (!a.Sync) { BrauchtWiederSync(lot); SchliesseAnschlussOffen(begleiter); }
                     continue;
                 }
                 // Kein Updated fuer das alte, unvollstaendige Building-Skelett.
@@ -272,13 +256,5 @@ namespace ParkingLotTool.Tools
             World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().NeuAufnehmen();
         }
 
-        private void AnschlussBeendet(Entity lot, bool ok, string grund)
-        {
-            var a = _anschluesse[lot];
-            _anschluesse.Remove(lot);
-            Mod.log.Info($"PLT-Begleiteranschluss: Lot {lot.Index}, Erfolg={ok}: {grund}"
-                + (ok ? "." : $"; Stadtstrassen-Kandidaten {(Lebt(lot) ? Stadtstrassen(lot).Count : 0)}, Platzierungen {a.Versuche}."));
-            if (a.Sync) World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(lot, lot, ok);
-        }
     }
 }

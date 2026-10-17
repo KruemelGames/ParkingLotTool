@@ -56,7 +56,7 @@ namespace ParkingLotTool.Tools
         private const float MindestDeckung = 0.98f;
         private const float MindestAufkleber = 0.95f;
 
-        private readonly List<(Entity Lot, Tauschart Art)> _warteschlange = new();
+        private readonly List<(Entity Lot, Tauschart Art, Auftragskennung Kennung)> _warteschlange = new();
         private ToolSystem _toolSystem;
         private ParkingLotBestandsTauschWerkzeug _werkzeug;
         private ParkingLotToolSystem _plt;
@@ -72,12 +72,26 @@ namespace ParkingLotTool.Tools
             internal LaternenPlan Laternen;
             internal string Fehler;
             internal string Messung;
+            /*
+             * BEWUSST UEBERSPRUNGEN (2026-10-16).
+             *
+             * Weicht der Bestand vom Bauzettel ab (Move It, eine quer gebaute
+             * Strasse), tauscht der Schritt aus Vorsicht nichts. Als Fehler
+             * gemeldet wurde der Schritt aber nie fertig: Parkplatz 461043
+             * eines Spielstands vom 3.10. stand bei jedem Laden wieder auf
+             * "braucht Sync". Die Entscheidung "nicht anfassen" ist endgueltig,
+             * also gilt der Schritt als erledigt; der Bestand bleibt unveraendert.
+             * Wer die Laternen/Pflanzen trotzdem will, baut den Parkplatz per
+             * Edit neu. Es wird nichts erfunden, auch kein Laternenzettel.
+             */
+            internal bool Uebersprungen;
         }
 
         private sealed class Vorbereitung
         {
             internal Entity Lot, Traeger;
             internal Tauschart Art;
+            internal Auftragskennung Kennung;
             internal VegetationOptions Vegetation;
             internal VegetationAsset[] Arten = Array.Empty<VegetationAsset>();
             internal LaternenOptionen Laternen;
@@ -117,20 +131,11 @@ namespace ParkingLotTool.Tools
             _werkzeug = World.GetOrCreateSystemManaged<ParkingLotBestandsTauschWerkzeug>();
             _plt = World.GetOrCreateSystemManaged<ParkingLotToolSystem>();
             _ui = World.GetOrCreateSystemManaged<ParkingLotUISystem>();
-            _werkzeug.Fertig = Fertig;
             _teile = GetEntityQuery(new EntityQueryDesc
             {
                 All = new[] { ComponentType.ReadOnly<ParkingLotPartRelation>(), ComponentType.ReadOnly<PrefabRef>() },
                 None = new[] { ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Deleted>() },
             });
-        }
-
-        internal void Einreihen(Entity lot, Tauschart art)
-        {
-            if (_warteschlange.Contains((lot, art)) || (_laeuft?.Lot == lot && _laeuft.Art == art)
-                || (_imWerkzeug.HasValue && _imWerkzeug.Value.Lot == lot && _imWerkzeug.Value.Art == art)) return;
-            _warteschlange.Add((lot, art));
-            Mod.log.Info($"PLT-Bestandstausch: Lot {lot.Index} ({art}) eingereiht; offen {Offen}.");
         }
 
         [Preserve]
@@ -144,8 +149,10 @@ namespace ParkingLotTool.Tools
             if (_laeuft == null)
             {
                 if (_warteschlange.Count == 0 || UnityEngine.Time.frameCount < _ruheBis) return;
-                var (lot, art) = _warteschlange[0];
+                var (lot, art, id) = _warteschlange[0];
                 _warteschlange.RemoveAt(0);
+                if (!Auftraege.Starte(id)) return;
+                _kennung = id;
                 /*
                  * ERST UEBERNEHMEN, WENN DIE RECHNUNG LAEUFT (Sync-Haenger, 2026-10-12).
                  * `out _laeuft` schrieb direkt ins Feld: warf `Bereite` nach dem
@@ -159,20 +166,25 @@ namespace ParkingLotTool.Tools
                 try { fehler = Bereite(lot, art, out neu); }
                 catch (Exception x) { fehler = "Vorbereitung fehlgeschlagen: " + x.Message; }
                 if (fehler == null && neu?.Rechnung == null) fehler = "Vorbereitung ohne Rechnung";
-                if (fehler != null) { Fertig(lot, false, fehler); return; }
+                if (fehler != null) { Fertig(lot, id, false, fehler); return; }
+                neu.Kennung = id;
                 _laeuft = neu;
                 return;
             }
-            if (!_laeuft.Rechnung.IsCompleted) return;
             var v = _laeuft;
+            if (!RechnungLesen(v, out var e)) return;
             // Das Rechnen laeuft ohne ECS. Danach kann der Nutzer den
             // Parkplatz schon abgerissen oder der Ladepfad ihn ersetzt haben.
             if (!ParkingLotSyncGueltigkeit.Bestand(EntityManager, v.Lot, v.Traeger))
-            { _laeuft = null; Fertig(v.Lot, false, "Bestand waehrend der Vorbereitung verschwunden"); return; }
-            var e = v.Rechnung.IsFaulted
-                ? new Ergebnis { Fehler = "Rechnung fehlgeschlagen: " + v.Rechnung.Exception?.GetBaseException().Message }
-                : v.Rechnung.Result;
-            if (e.Fehler != null) { _laeuft = null; Fertig(v.Lot, false, e.Fehler); return; }
+            { _laeuft = null; Fertig(v.Lot, v.Kennung, false, "Bestand waehrend der Vorbereitung verschwunden"); return; }
+            if (e.Fehler != null)
+            {
+                _laeuft = null;
+                Fertig(v.Lot, v.Kennung, e.Uebersprungen, e.Uebersprungen
+                    ? "bewusst uebersprungen, Schritt gilt als erledigt (neue Laternen/Pflanzen per Edit) - " + e.Fehler
+                    : e.Fehler);
+                return;
+            }
             // Ein Werkzeugwechsel wuerde einen laufenden Entwurf verwerfen.
             if (_toolSystem.activeTool == _plt && _plt.ArbeitetGerade) return;
             // Nie zwei Tauschwerkzeuge gleichzeitig: jedes setzt das aktive Werkzeug.
@@ -189,31 +201,42 @@ namespace ParkingLotTool.Tools
             try
             {
                 auftrag = v.Art == Tauschart.Pflanzen ? PflanzenAuftrag(v, e) : LaternenAuftrag(v, e);
+                auftrag.Kennung = v.Kennung;
                 Mod.log.Info($"PLT-Bestandstausch: Lot {v.Lot.Index} ({v.Art}): {e.Messung}; loeschen {auftrag.Loeschen.Count}.");
             }
-            catch (Exception x) { Fertig(v.Lot, false, "Auftrag fehlgeschlagen: " + x.Message); return; }
+            catch (Exception x) { Fertig(v.Lot, v.Kennung, false, "Auftrag fehlgeschlagen: " + x.Message); return; }
             if (auftrag.Loeschen.Count == 0 && auftrag.NichtsAnzulegen)
             {
                 // Nichts in der Welt zu tun - nur der Zettel.
                 string bericht;
                 try { bericht = auftrag.Nachsetzen(); }
-                catch (Exception x) { Fertig(v.Lot, false, x.Message); return; }
-                Fertig(v.Lot, true, bericht);
+                catch (Exception x) { Fertig(v.Lot, v.Kennung, false, x.Message); return; }
+                Fertig(v.Lot, v.Kennung, true, bericht);
                 return;
             }
             try
             {
                 if (_toolSystem.activeTool != _werkzeug) _vorher = _toolSystem.activeTool;
                 _imWerkzeug = (v.Lot, v.Art);
+                _werkzeug.Fertig = Fertig;
+                /*
+                 * LATERNENZETTEL VOR DEM APPLY (16.10.). Er stand erst im Nachsetzen,
+                 * 3+30 Bilder nach dem Apply. Ein Speichern dazwischen behielt die
+                 * Laternen ohne Zettel - und weil Laternen standen, holte Schritt 11
+                 * ihn nie nach; ein spaeteres Edit nahm den Standard statt der Wahl.
+                 * Jetzt zuerst: kommt der Tausch nicht zum Apply, sagt der Zettel
+                 * "an" ohne Laterne, und genau das baut Schritt 12 nach.
+                 */
+                if (v.Art == Tauschart.Laternen && v.Laternen != null) _plt.SchreibeLaternenZettel(v.Lot, v.Laternen);
                 _werkzeug.Starte(auftrag);
                 _toolSystem.activeTool = _werkzeug;
             }
             catch (Exception x)
             {
-                Mod.log.Warn("PLT-Bestandstausch: Uebergabe ans Werkzeug fehlgeschlagen: " + x);
+                Diagnose(() => Mod.log.Warn("PLT-Bestandstausch: Uebergabe ans Werkzeug fehlgeschlagen: " + x));
                 // Laeuft das Werkzeug schon, meldet es selbst; sonst hier.
                 if (!_werkzeug.BrichAb("Uebergabe fehlgeschlagen: " + x.Message))
-                    Fertig(v.Lot, false, "Uebergabe fehlgeschlagen: " + x.Message);
+                    Fertig(v.Lot, v.Kennung, false, "Uebergabe fehlgeschlagen: " + x.Message);
             }
         }
 
@@ -233,6 +256,7 @@ namespace ParkingLotTool.Tools
             _warteschlange.Clear();
             _laeuft = null;
             _imWerkzeug = null;
+            _kennung = default;
             _vorher = null;
             _alleOk = true;
             _ruheBis = 0;
@@ -289,7 +313,7 @@ namespace ParkingLotTool.Tools
                     var gras = layout.GrassForVegetation ?? Array.Empty<float2[]>();
                     var deckung = Anteil(altePositionen, p => gras.Any(r => r != null && r.Length >= 3 && InRing(p, r)));
                     if (deckung < MindestDeckung)
-                        return new Ergebnis { Fehler = $"nur {deckung:P0} der alten Pflanzen liegen im nachgerechneten Gruen - "
+                        return new Ergebnis { Uebersprungen = true, Fehler = $"nur {deckung:P0} der alten Pflanzen liegen im nachgerechneten Gruen - "
                             + "die Geometrie hat sich seit dem Bau geaendert; Parkplatz bleibt unveraendert" };
                     var plan = ParkingVegetation.Plan(gras, optionen, species, laternen);
                     return new Ergebnis { Pflanzen = plan, Messung = $"{altePositionen.Count} alte Pflanzen, {plan.Plants.Count} neue geplant, "
@@ -306,7 +330,7 @@ namespace ParkingLotTool.Tools
                     var aufkleber = ParkingBayDecals.Plan(layout, settings).Placements.Select(p => (float2)p.Center).ToList();
                     var treffer = Anteil(aufkleber, p => objekte.Any(o => math.distancesq(o, p) < 0.36f));
                     if (aufkleber.Count > 0 && treffer < MindestAufkleber)
-                        return new Ergebnis { Fehler = $"nur {treffer:P0} der nachgerechneten Buchten treffen einen gebauten Aufkleber - "
+                        return new Ergebnis { Uebersprungen = true, Fehler = $"nur {treffer:P0} der nachgerechneten Buchten treffen einen gebauten Aufkleber - "
                             + "die Geometrie hat sich seit dem Bau geaendert; Parkplatz bleibt unveraendert" };
                     var plan = ParkingLotToolSystem.LaternenPlanFuer(layout, optionen);
                     return new Ergebnis { Laternen = plan, Messung = $"{plan.Laternen.Count} Laternen geplant, "
@@ -410,12 +434,10 @@ namespace ParkingLotTool.Tools
             return a;
         }
 
-        private void Fertig(Entity lot, bool ok, string text)
+        private void Freigeben(bool ok)
         {
             if (!ok) _alleOk = false;
             _imWerkzeug = null;
-            Mod.log.Info($"PLT-Bestandstausch: Lot {lot.Index}: {(ok ? "fertig" : "nicht getauscht")} - {text}.");
-            World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(lot, lot, ok);
             _ruheBis = UnityEngine.Time.frameCount + 10;
             if (_warteschlange.Count > 0 || _laeuft != null) return;
             // Alles erledigt: voriges Werkzeug zurueck (oeffnet ein vorher offenes
@@ -440,6 +462,7 @@ namespace ParkingLotTool.Tools
         internal sealed class Auftrag
         {
             internal Entity Lot, Traeger;
+            internal Auftragskennung Kennung;
             internal string Name;
             internal List<Entity> Loeschen = new();
             /** Prefabs der neuen Objekte - daran erkennt der Tausch seine Vorschau. */
@@ -463,7 +486,7 @@ namespace ParkingLotTool.Tools
         private EntityQuery _fremdeDefinitionen, _alteDefinitionen, _temps, _teile;
         private ParkingLotToolSystem _plt;
         private TerrainSystem _terrain;
-        internal Action<Entity, bool, string> Fertig;
+        internal Action<Entity, Auftragskennung, bool, string> Fertig;
 
         internal bool Beschaeftigt => _stufe != Stufe.Frei;
 
@@ -486,6 +509,7 @@ namespace ParkingLotTool.Tools
 
         internal void Starte(Auftrag auftrag)
         {
+            if (!World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().DarfAnwenden(auftrag.Kennung)) return;
             _a = auftrag;
             _loeschMenge.Clear(); foreach (var e in auftrag.Loeschen) _loeschMenge.Add(e);
             _definitionen.Clear(); _geplant = 0;
@@ -511,7 +535,7 @@ namespace ParkingLotTool.Tools
          */
         internal void PflegeOhneWerkzeug()
         {
-            if (_stufe == Stufe.Frei || m_ToolSystem.activeTool == this) return;
+            if (VerwirfVeraltetenAuftrag() || _stufe == Stufe.Frei || m_ToolSystem.activeTool == this) return;
             try { PflegeOhneWerkzeugKern(); }
             catch (Exception x) { BrichAbNachAusnahme(x); }
         }
@@ -537,6 +561,7 @@ namespace ParkingLotTool.Tools
 
         private void NachDemApply(int bild)
         {
+            if (VerwirfVeraltetenAuftrag()) return;
             if (_a == null || !ParkingLotSyncGueltigkeit.Bestand(EntityManager, _a.Lot, _a.Traeger))
             { Beende(false, "Bestand nach Apply verschwunden; kein Nachsetzen"); return; }
             switch (_stufe)
@@ -574,7 +599,9 @@ namespace ParkingLotTool.Tools
          */
         private void BrichAbNachAusnahme(Exception x)
         {
-            Mod.log.Warn("PLT-Bestandstausch: Ausnahme in Stufe " + _stufe + ": " + x);
+            if (VerwirfVeraltetenAuftrag()) return;
+            try { Mod.log.Warn("PLT-Bestandstausch: Ausnahme in Stufe " + _stufe + ": " + x); }
+            catch (Exception) { }
             if (_stufe == Stufe.Anlegen || _stufe == Stufe.Warten || _stufe == Stufe.Uebernehmen)
                 applyMode = ApplyMode.Clear;
             BrichAb("Ausnahme: " + x.Message);
@@ -591,6 +618,7 @@ namespace ParkingLotTool.Tools
 
         private void Schritt()
         {
+            if (VerwirfVeraltetenAuftrag()) return;
             var bild = UnityEngine.Time.frameCount;
             // Nur noch der Fall "im selben Bild umgeschaltet"; den Wechsel
             // davor faengt PflegeOhneWerkzeug ab.
@@ -766,25 +794,6 @@ namespace ParkingLotTool.Tools
                 gesetzt++;
             }
             return gesetzt;
-        }
-
-        private void Beende(bool ok, string text)
-        {
-            // Erst freigeben, dann raeumen (Sync-Haenger, 2026-10-12): warf das
-            // Raeumen, blieb `Beschaeftigt` wahr und die Meldung kam nie.
-            var lot = _a?.Lot ?? Entity.Null;
-            var name = _a?.Name ?? "Bestandstausch";
-            _stufe = Stufe.Frei;
-            _a = null;
-            // Je Definition einzeln: ein Fehler laesst die uebrigen nicht liegen.
-            foreach (var d in _definitionen)
-            {
-                try { if (EntityManager.Exists(d)) EntityManager.DestroyEntity(d); }
-                catch (Exception x) { Mod.log.Warn("PLT-Bestandstausch: Raeumen einer Definition fehlgeschlagen: " + x); }
-            }
-            _definitionen.Clear();
-            ParkingLotSchrittmarke.Aenderung(name + ": Lot " + lot.Index + (ok ? " fertig" : " abgebrochen"));
-            Fertig?.Invoke(lot, ok, text);
         }
     }
 }

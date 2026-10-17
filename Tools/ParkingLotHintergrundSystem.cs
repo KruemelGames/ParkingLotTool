@@ -31,6 +31,8 @@ namespace ParkingLotTool.Tools
         private sealed class Auftrag
         {
             internal Entity Lot, Neu, Traeger;
+            internal Auftragskennung Kennung;
+            internal bool Fortsetzen, Erfolg, NurNebenarbeit;
             internal int Id, Seit, Versuch, Rueckwegpruefungen, PrefabSeit = -1;
             internal int Fruehestens, NaechstePruefung, Kinderpruefungen;
             internal bool NurRueckweg, GateOffen, AnschlussAngestossen, RueckwegAusgegeben;
@@ -49,7 +51,7 @@ namespace ParkingLotTool.Tools
         }
         private readonly List<Auftrag> _queue = new List<Auftrag>();
         private readonly HashSet<Entity> _angehalten = new HashSet<Entity>();
-        private readonly List<ParkingLotToolSystem> _flussbeobachter = new List<ParkingLotToolSystem>();
+        private readonly List<(ParkingLotToolSystem Bauer, long Generation)> _flussbeobachter = new List<(ParkingLotToolSystem, long)>();
         private HintergrundAuftragsregel<Entity> _regel = new HintergrundAuftragsregel<Entity>();
         private Auftrag _aktiv;
         private int _nummer;
@@ -58,8 +60,6 @@ namespace ParkingLotTool.Tools
         internal int Offen => _queue.Count + (_aktiv != null ? 1 : 0) + _angehalten.Count;
         /** Arbeitet gerade etwas? Ohne angehaltene Rueckwege - die warten auf den Spieler, nicht auf Zeit. */
         internal bool Laeuft => _queue.Count > 0 || _aktiv != null;
-        internal bool IstErsatz(Entity lot) => _aktiv != null && _aktiv.Neu == lot
-            || _queue.Any(a => a.Neu == lot);
         internal string Fortschrittshinweis
         {
             get
@@ -140,44 +140,17 @@ namespace ParkingLotTool.Tools
             }
             return false;
         }
+        internal string Sperrgrund(Entity lot)
+            => !Gesperrt(lot, out bool angehalten) ? string.Empty
+                : angehalten ? RueckwegHinweis : ParkingLotTexte.T("hintergrundSystem.thisParkingLotIsBeingRebuilt");
+
         internal bool Sperrmeldung(Entity lot)
         {
-            if (!Gesperrt(lot,out bool angehalten)) return false;
-            var text = angehalten ? RueckwegHinweis : ParkingLotTexte.T("hintergrundSystem.thisParkingLotIsBeingRebuilt");
+            var text = Sperrgrund(lot);
+            if (string.IsNullOrEmpty(text)) return false;
             World.GetOrCreateSystemManaged<ParkingLotUISystem>().SetStatus(text);
             ParkingLotNetzRueckweg.Melde($"Lotsperre {lot.Index}: {text}; offene Auftraege {Offen}.");
             return true;
-        }
-
-        internal void Einreihen(Entity lot, bool rueckweg = false, int fruehestens = 0)
-        {
-            if (_angehalten.Contains(lot)) { Sperrmeldung(lot); return; }
-            // 450157 war schon vor Repair ohne wiederherstellbare Bauwerte.
-            // Keine Sperre/Versuchszahl fuer einen Auftrag ohne lesbaren Plan.
-            if (!rueckweg && !KannNeubauen(lot,out var grund))
-            { World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeBauplanFehlt(lot,grund); return; }
-            bool erster = Offen == 0;
-            if (rueckweg)
-            {
-                var wartend = _queue.Find(a => a.Lot == lot);
-                if (wartend != null) { wartend.NurRueckweg = true; return; }
-                if (!_regel.EinreihenRueckweg(lot)) return;
-            }
-            else if (!_regel.Einreihen(lot))
-            {
-                if (!_regel.Gesperrt(lot))
-                    World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(lot,Entity.Null,false);
-                return;
-            }
-            var auftrag = new Auftrag { Lot = lot, Id = ++_nummer, NurRueckweg = rueckweg, Fruehestens = fruehestens };
-            if (EntityManager.HasComponent<ParkingLotOffenerErsatz>(lot))
-            {
-                var ersatz = EntityManager.GetComponentData<ParkingLotOffenerErsatz>(lot);
-                auftrag.Neu = ersatz.Lot; auftrag.Traeger = ersatz.Traeger;
-            }
-            _queue.Add(auftrag);
-            if (rueckweg) World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeRueckwegStart(erster);
-            ParkingLotNetzRueckweg.Melde($"Auftrag {_nummer} Lot {lot.Index} eingereiht; Rueckweg={rueckweg}; offen {Offen}.");
         }
 
         [Preserve]
@@ -194,7 +167,8 @@ namespace ParkingLotTool.Tools
             _letztesArbeitsbild = bild;
             for (int i = _flussbeobachter.Count-1; i >= 0; i--)
             {
-                var b = _flussbeobachter[i];
+                var (b, generation) = _flussbeobachter[i];
+                if (!Auftraege.Register.Bereit || generation != Auftraege.Register.Generation) continue;
                 try { b.HintergrundPflegeFluss(); }
                 catch (Exception e)
                 {
@@ -214,29 +188,35 @@ namespace ParkingLotTool.Tools
                 // Andere Lots bleiben frei; 0/0 regelt nur Definitionsbilder.
                 if (World.GetOrCreateSystemManaged<ParkingLotToolSystem>().BearbeitetLot(next.Lot)) return;
                 _queue.Remove(next);
+                if (!Beginne(next)) return;
                 if (!next.NurRueckweg && !KannNeubauen(next.Lot,out var grund))
                 {
                     _regel.Ende(next.Lot);
-                    World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeBauplanFehlt(next.Lot,grund);
-                    _naechsterStart = bild + HintergrundTakt.Auftragspause;
+                    try { World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeBauplanFehlt(next.Lot,grund); }
+                    finally
+                    {
+                        _naechsterStart = bild + HintergrundTakt.Auftragspause;
+                        Auftraege.Beende(next.Kennung, Entity.Null, false);
+                    }
                     return;
                 }
                 _aktiv = next;
                 next.Seit = UnityEngine.Time.frameCount;
-                next.Versuch = next.NurRueckweg ? _regel.StartRueckweg(next.Lot) : _regel.Start(next.Lot);
+                next.Versuch = next.NurRueckweg || next.NurNebenarbeit ? _regel.StartRueckweg(next.Lot) : _regel.Start(next.Lot);
                 next.Phase = next.NurRueckweg ? (EntityManager.HasComponent<ParkingLotOffenerErsatz>(next.Lot)
                     || EntityManager.HasBuffer<ParkingLotStufeAKnoten>(next.Lot) ? Phase.Ruecknahme : Phase.Rueckweg) : Phase.Planung;
-                ParkingLotNetzRueckweg.Melde($"Start Lot {next.Lot.Index}, Versuch {next.Versuch}/3; Auftrag {next.Id}; ohne Werkzeugeinstieg.");
+                Diagnose(() => ParkingLotNetzRueckweg.Melde($"Start Lot {next.Lot.Index}, Versuch {next.Versuch}/3; Auftrag {next.Id}; ohne Werkzeugeinstieg."));
                 if (!next.NurRueckweg)
                 {
-                    try { Messe(next,"Start",() => { next.Bauer = ParkingLotToolSystem.Bauarbeiter(World); next.Rechnung = next.Bauer.BereiteHintergrund(next.Lot,next.Id); }); }
+                    try { Messe(next,"Start",() => { next.Bauer = ParkingLotToolSystem.Bauarbeiter(World); next.Rechnung = next.NurNebenarbeit ? next.Bauer.BereiteNebenarbeit(next.Lot,next.Id)
+                        : next.Bauer.BereiteHintergrund(next.Lot,next.Id); }); }
                     catch (Exception e) { Fehler(next,e); }
                 }
                 // Kein Start + Prefabvorbereitung/Abriss im selben Bild.
                 return;
             }
             var a = _aktiv;
-            if (a == null || a.GateOffen) return;
+            if (!Aktuell(a) || a.GateOffen) return;
             if (a.BildMs > 0)
             {
                 a.Bauer?.HintergrundBildzeit(a.BildMs); a.Tempo.MeldeBild(a.BildMs); a.BildMs = 0;
@@ -250,24 +230,19 @@ namespace ParkingLotTool.Tools
             catch (Exception e) { Fehler(a,e); }
         }
 
-        private void Exklusiv(Auftrag a, Func<int> arbeit)
-        {
-            a.GateOffen = true;
-            _gate.Erwarte(a.Lot, _ =>
-            {
-                a.GateOffen = false;
-                try { int n = 0; Messe(a,"Exklusiv",() => n = arbeit()); return n; }
-                catch (Exception e) { Fehler(a,e); return 0; }
-            });
-        }
-
         private void Pflege(Auftrag a)
         {
+            if (!Aktuell(a)) return;
             int bild = UnityEngine.Time.frameCount;
             switch (a.Phase)
             {
                 case Phase.Planung:
                     if (!a.Rechnung.IsCompleted) return;
+                    if (a.NurNebenarbeit)
+                    {
+                        a.Bauer.BeginneNebenarbeit(a.Rechnung.GetAwaiter().GetResult());
+                        a.Phase = Phase.Nebenarbeit; a.Seit = bild; return;
+                    }
                     if (!a.Bauer.HintergrundPrefabs(a.Rechnung.GetAwaiter().GetResult()))
                     {
                         if (!a.Bauer.HintergrundVorbereitungFertig) return;
@@ -365,9 +340,9 @@ namespace ParkingLotTool.Tools
                         return;
                     }
                     if (nebenstand == 4) { Exklusiv(a, () => a.Bauer.HintergrundMeldeNebenanschluesse()); return; }
-                    World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(a.Lot,a.Neu,true);
+                    a.Erfolg = true;
                     EntityManager.RemoveComponent<ParkingLotNebenarbeitOffen>(a.Neu);
-                    ParkingLotNetzRueckweg.Melde($"Abschluss Lot {a.Neu.Index}, Stand 8; offene Auftraege {Offen-1}.");
+                    Diagnose(() => ParkingLotNetzRueckweg.Melde($"Abschluss Lot {a.Neu.Index}, Nebenarbeit bestaetigt; offene Auftraege {Offen-1}."));
                     Ende(a);
                     break;
                 case Phase.Ruecknahme:
@@ -404,6 +379,11 @@ namespace ParkingLotTool.Tools
                     break;
                 case Phase.Rueckweg:
                     if (!EntityManager.HasBuffer<ParkingLotRueckwegkurs>(a.Lot)) { RueckwegFertig(a,0,0); return; }
+                    // Erst wenn der Aufraeumer fertig ist (16.10.): nach F5 hinter dem
+                    // Uebernehmen reisst er noch den neuen Parkplatz ab, und dessen
+                    // Anschluesse an Stadtstrassen sind dann noch nicht wieder frei.
+                    if (a.RueckwegIndex == 0 && !a.RueckwegAusgegeben
+                        && World.GetOrCreateSystemManaged<ParkingLotCleanupSystem>().AbrissLaeuft) return;
                     if (a.RueckwegIndex == 0 && !a.RueckwegAusgegeben && VerwirfUnbaubarenRueckweg(a)) return;
                     if (!a.RueckwegAusgegeben)
                     {
@@ -443,136 +423,6 @@ namespace ParkingLotTool.Tools
             }
         }
 
-        private void Fehler(Auftrag a, Exception e)
-        {
-            bool uebernommen = a.Phase == Phase.Nebenarbeit
-                || a.Phase == Phase.Nachpruefung && ParkingLotNetzRueckweg.Lebt(EntityManager,a.Neu)
-                    && EntityManager.HasComponent<ParkingLotBuildReceipt>(a.Neu)
-                    && (!EntityManager.Exists(a.Lot) || !EntityManager.HasComponent<Game.Areas.Area>(a.Lot)
-                        || EntityManager.HasComponent<Deleted>(a.Lot));
-            ParkingLotNetzRueckweg.Melde($"Fehler Auftrag {a.Id}, Phase {a.Phase}: {e.Message}; "
-                + (uebernommen ? "dauerhafter Neubau bleibt auf Stand 7 erhalten." : "Rueckweg erforderlich."));
-            a.GateOffen = false;
-            a.Bauer?.HintergrundPortionenBeenden();
-            ParkingLotNetzRueckweg.VerwerfeOffeneSicherung(EntityManager,a.Lot);
-            if (uebernommen)
-            {
-                // Auch bei einer Ausnahme NACH der irreversiblen Uebernahme
-                // niemals den geprueften Neubau samt Zoningbesitzern loeschen.
-                if (!ParkingLotHintergrundAbschluss.MerkeNebenarbeit(EntityManager, a.Neu, a.Traeger))
-                    ParkingLotNetzRueckweg.Melde($"Neubau {a.Neu} oder Traeger {a.Traeger} nicht mehr gueltig; keine Abschlusskomponenten geschrieben.");
-                if (EntityManager.Exists(a.Lot))
-                {
-                    EntityManager.RemoveComponent<ParkingLotErhaltenerKurs>(a.Lot);
-                    EntityManager.RemoveComponent<ParkingLotRueckwegkurs>(a.Lot);
-                    EntityManager.RemoveComponent<ParkingLotRueckweganschluss>(a.Lot);
-                    EntityManager.RemoveComponent<ParkingLotOffenerErsatz>(a.Lot);
-                    EntityManager.RemoveComponent<ParkingLotStufeAKnoten>(a.Lot);
-                    EntityManager.RemoveComponent<ParkingLotStufeAPrefab>(a.Lot);
-                }
-                World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(a.Lot,a.Neu,false);
-                Ende(a); return;
-            }
-            if (a.Phase == Phase.Ruecknahme || a.Phase == Phase.Ruhe
-                || a.Phase == Phase.Rueckweg || a.Phase == Phase.Rueckabschluss)
-            {
-                HalteRueckwegAn(a); return;
-            }
-            a.Phase = Phase.Ruecknahme;
-        }
-
-        /**
-         * Issue #17: Ein Rueckweg, dessen Prefabs es nicht mehr gibt, kann die
-         * alten Kanten nie bauen. Statt den Parkplatz fuer immer zu sperren,
-         * wird der Schnappschuss verworfen und SOFORT ein voller Neubau aus
-         * dem Bauplan eingereiht - ein normaler Sync baut fehlende eigene
-         * Kanten nicht nach (Schritt 9 tauscht nur vorhandene). Der Neubau
-         * sichert vor seinem Abriss einen neuen, vollstaendigen Rueckweg.
-         * Nur vor der ersten Ausgabe und nur mit lesbarem Bauplan - ohne Plan
-         * bleibt es bei der Sperre wie bisher.
-         */
-        private bool VerwirfUnbaubarenRueckweg(Auftrag a)
-        {
-            int fehlen = ParkingLotNetzRueckweg.FehlendePrefabs(EntityManager, a.Lot);
-            if (fehlen == 0) return false;
-            if (EntityManager.HasComponent<ParkingLotOffenerErsatz>(a.Lot))
-            {
-                ParkingLotNetzRueckweg.Melde($"Rueckweg Lot {a.Lot.Index}: {fehlen} Prefab(s) fehlen, offener Ersatz vorhanden; nicht verworfen.");
-                return false;
-            }
-            if (!KannNeubauen(a.Lot, out var grund))
-            {
-                ParkingLotNetzRueckweg.Melde($"Rueckweg Lot {a.Lot.Index}: {fehlen} Prefab(s) fehlen, kein Bauplan ({grund}); Sperre bleibt.");
-                return false;
-            }
-            // Erst die gespeicherte Pflicht, dann den alten Schnappschuss weg:
-            // ein Speichern bis zur neuen Sicherung darf den Neubau nicht verlieren.
-            if (!EntityManager.HasComponent<ParkingLotNeubauFaellig>(a.Lot))
-                EntityManager.AddComponent<ParkingLotNeubauFaellig>(a.Lot);
-            EntityManager.RemoveComponent<ParkingLotRueckwegkurs>(a.Lot);
-            ParkingLotNetzRueckweg.Melde($"Rueckweg Lot {a.Lot.Index} VERWORFEN: {fehlen} gesicherte Prefab(s) fehlen nach dem Laden; "
-                + "Neubau aus dem Bauplan wird eingereiht.");
-            var lot = a.Lot;
-            RueckwegFertig(a, 0, 0);
-            if (!a.Beendet) return true;
-            Einreihen(lot, fruehestens: UnityEngine.Time.frameCount + HintergrundTakt.Versuchspause);
-            return true;
-        }
-
-        private void HalteRueckwegAn(Auftrag a)
-        {
-            // Keine Freigabe bei 20/22 und keine neue Definitionsserie. Der
-            // serialisierte Schnappschuss bleibt auch nach World-Wechsel erhalten.
-            _angehalten.Add(a.Lot);
-            World.GetOrCreateSystemManaged<ParkingLotUISystem>().SetStatus(RueckwegHinweis);
-            ParkingLotNetzRueckweg.Melde($"Rueckweg ANGEHALTEN Lot {a.Lot.Index}, nach {a.Rueckwegpruefungen} Messfenstern; "
-                + "Schnappschuss und Sperre erhalten. " + RueckwegHinweis);
-            World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(a.Lot,Entity.Null,false);
-            Ende(a);
-        }
-
-        private void RueckwegFertig(Auftrag a, int ist, int soll)
-        {
-            bool gesichert = EntityManager.HasBuffer<ParkingLotRueckwegkurs>(a.Lot);
-            if (gesichert)
-            {
-                a.Bauer ??= ParkingLotToolSystem.Bauarbeiter(World);
-                if (!a.Bauer.HintergrundRueckwegFlussPortion(a.Lot))
-                { a.RueckIst = ist; a.RueckSoll = soll; a.Phase = Phase.Rueckabschluss; return; }
-            }
-            ParkingLotNetzRueckweg.Melde(gesichert
-                ? $"Rueckweg geprueft: Kanten {ist}/{soll}, Lage-/Anschlussabweichungen 0 (Enden 3D, innen gemaess Vanilla-Regel); Versuch {a.Versuch}/3."
-                : $"Auftrag vor eigenem Abriss beendet; kein Rueckweg erforderlich; Versuch {a.Versuch}/3.");
-            if (EntityManager.HasBuffer<ParkingLotErhaltenerKurs>(a.Lot)) EntityManager.RemoveComponent<ParkingLotErhaltenerKurs>(a.Lot);
-            if (EntityManager.HasBuffer<ParkingLotRueckwegkurs>(a.Lot)) EntityManager.RemoveComponent<ParkingLotRueckwegkurs>(a.Lot);
-            if (EntityManager.HasComponent<ParkingLotOffenerErsatz>(a.Lot)) EntityManager.RemoveComponent<ParkingLotOffenerErsatz>(a.Lot);
-            if (EntityManager.HasBuffer<ParkingLotRueckweganschluss>(a.Lot)) EntityManager.RemoveComponent<ParkingLotRueckweganschluss>(a.Lot);
-            if (EntityManager.HasBuffer<ParkingLotStufeAKnoten>(a.Lot)) EntityManager.RemoveComponent<ParkingLotStufeAKnoten>(a.Lot);
-            if (EntityManager.HasComponent<ParkingLotStufeAPrefab>(a.Lot)) EntityManager.RemoveComponent<ParkingLotStufeAPrefab>(a.Lot);
-            bool wieder = !a.NurRueckweg && gesichert && _regel.Wiederholen(a.Lot,true);
-            if (!a.NurRueckweg && !wieder) World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(a.Lot,Entity.Null,false);
-            if (!a.NurRueckweg && !wieder)
-                World.GetOrCreateSystemManaged<ParkingLotUISystem>().SetStatus(gesichert ? ParkingLotTexte.T("hintergrundSystem.backgroundRebuildStoppedAfterThreeAttempts") : ParkingLotTexte.T("hintergrundSystem.backgroundPlanningStoppedNoOldPaths"));
-            Ende(a);
-            if (a.NurRueckweg) World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeRueckwegEnde();
-            if (wieder) Einreihen(a.Lot,fruehestens:UnityEngine.Time.frameCount + HintergrundTakt.Versuchspause);
-        }
-        private void Ende(Auftrag a)
-        {
-            a.Beendet = true;
-            a.Ersatzabriss?.Dispose(); a.Ersatzabriss = null;
-            _regel.Ende(a.Lot);
-            a.Rueckpruefung?.Dispose(); a.Rueckpruefung = null;
-            a.Bauer?.HintergrundPortionenBeenden();
-            if (a.Bauer != null)
-            {
-                if (a.Phase == Phase.Nebenarbeit && a.Bauer.HintergrundBeobachtetFluss) _flussbeobachter.Add(a.Bauer);
-                else World.DestroySystemManaged(a.Bauer);
-            }
-            _aktiv = null;
-            _naechsterStart = UnityEngine.Time.frameCount + HintergrundTakt.Auftragspause;
-        }
-
         internal bool KannNeubauen(Entity lot, out string grund)
         {
             grund = "Lot fehlt oder ist kein dauerhafter Parkplatz; Reparatur/Bauplan erforderlich";
@@ -605,6 +455,8 @@ namespace ParkingLotTool.Tools
             }
         }
 
+        private bool _wiederaufnahmeOffen;
+
         protected override void OnGameLoaded(Context context)
         {
             base.OnGameLoaded(context);
@@ -612,10 +464,19 @@ namespace ParkingLotTool.Tools
             _aktiv?.Ersatzabriss?.Dispose();
             _aktiv?.Rueckpruefung?.Dispose();
             if (_aktiv?.Bauer != null) World.DestroySystemManaged(_aktiv.Bauer);
-            foreach (var b in _flussbeobachter) World.DestroySystemManaged(b);
+            foreach (var b in _flussbeobachter) World.DestroySystemManaged(b.Bauer);
             _flussbeobachter.Clear();
-            _aktiv = null; _queue.Clear(); _angehalten.Clear(); _regel = new HintergrundAuftragsregel<Entity>();
+            _aktiv = null; _queue.Clear(); _angehalten.Clear(); _neubauStattSperre.Clear(); _regel = new HintergrundAuftragsregel<Entity>();
             _naechsterStart = 0; _letztesArbeitsbild = -1;
+            _wiederaufnahmeOffen = true;
+        }
+
+        // BayObjects ruft erst nach den nativen Traeger-Puffern auf.
+        internal void NimmNachLadenWiederAuf()
+        {
+            if (!_wiederaufnahmeOffen) return;
+            _wiederaufnahmeOffen = false;
+            World.GetOrCreateSystemManaged<ParkingLotErzeugungsSystem>().BindeErgebnisse();
             using (var offenQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ParkingLotRueckwegsicherungOffen>()))
             using (var offen = offenQuery.ToEntityArray(Allocator.Temp))
                 foreach (var lot in offen) ParkingLotNetzRueckweg.VerwerfeOffeneSicherung(EntityManager,lot);
@@ -623,9 +484,9 @@ namespace ParkingLotTool.Tools
             using var lots = query.ToEntityArray(Allocator.Temp);
             foreach (var lot in lots)
             {
-                Einreihen(lot,true);
-                var a = _queue[_queue.Count-1];
-                if (EntityManager.HasComponent<ParkingLotOffenerErsatz>(lot)) a.Phase = Phase.Ruecknahme;
+                Einreihen(lot, true, grund: Auftragsgrund.Wiederaufnahme);
+                var a = _queue.Find(x => x.Lot == lot);
+                if (a != null && EntityManager.HasComponent<ParkingLotOffenerErsatz>(lot)) a.Phase = Phase.Ruecknahme;
             }
             // Issue #17: verworfener Rueckweg, Neubau noch nicht gesichert.
             using var faelligQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ParkingLotNeubauFaellig>(),
@@ -634,19 +495,31 @@ namespace ParkingLotTool.Tools
             foreach (var lot in faellig)
             {
                 ParkingLotNetzRueckweg.Melde($"Lot {lot.Index}: Neubau nach verworfenem Rueckweg war offen; wird eingereiht.");
-                Einreihen(lot, fruehestens: UnityEngine.Time.frameCount + HintergrundTakt.Versuchspause);
+                Einreihen(lot, fruehestens: UnityEngine.Time.frameCount + HintergrundTakt.Versuchspause, grund: Auftragsgrund.Wiederaufnahme);
             }
+            using var nebenQuery = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<ParkingLotNebenarbeitOffen>(),
+                ComponentType.Exclude<Deleted>(), ComponentType.Exclude<Game.Tools.Temp>(),
+                ComponentType.Exclude<ParkingLotRueckwegkurs>(), ComponentType.Exclude<ParkingLotNeubauFaellig>(),
+                ComponentType.Exclude<ParkingLotOffenerErsatz>());
+            using var neben = nebenQuery.ToEntityArray(Allocator.Temp);
+            foreach (var lot in neben) EinreihenNebenarbeit(lot);
         }
 
         private void RaumeGespeichertesA(Entity lot)
         {
             if (EntityManager.HasComponent<ParkingLotOffenerErsatz>(lot)
                 || !EntityManager.HasBuffer<ParkingLotStufeAKnoten>(lot)
-                || !EntityManager.HasComponent<ParkingLotStufeAPrefab>(lot)) return;
+                || (!EntityManager.HasComponent<ParkingLotStufeAPrefab>(lot)
+                    && !EntityManager.HasComponent<ParkingLotStufeAPrefabID>(lot))) return;
             var stufeA = EntityManager.GetBuffer<ParkingLotStufeAKnoten>(lot,true);
             var punkte = new Unity.Mathematics.float3[stufeA.Length];
             for (var i = 0; i < stufeA.Length; i++) punkte[i] = stufeA[i].Position;
-            var prefab = EntityManager.GetComponentData<ParkingLotStufeAPrefab>(lot).Prefab;
+            var prefab = ParkingLotStufeA.Prefab(EntityManager, lot);
+            if (prefab == Entity.Null)
+            {
+                ParkingLotNetzRueckweg.Melde($"Stufe A Lot {lot.Index}: Prefab nicht aufloesbar; keine Flaeche auf Verdacht geloescht.");
+                return;
+            }
             using var q = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<Game.Areas.Area>(),
                 ComponentType.ReadOnly<Game.Areas.Node>(), ComponentType.ReadOnly<Game.Prefabs.PrefabRef>(),
                 ComponentType.Exclude<Game.Tools.Temp>(),ComponentType.Exclude<Deleted>());

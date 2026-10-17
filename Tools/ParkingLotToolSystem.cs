@@ -177,6 +177,7 @@ namespace ParkingLotTool.Tools
             _nacharbeitWartetGemeldet = false;
             PflegeZoningBlockmessung();
             AuditBuiltBusStops();
+            PflegeNebenarbeitQuittung();
             // Erst wenn die Nacharbeit des letzten Baus durch ist, kommt der
             // naechste Sync-Neubau dran (er wartet selbst auf den Abriss).
 
@@ -1866,6 +1867,9 @@ namespace ParkingLotTool.Tools
             RecordPreviewDiagnostic("Info", "Vegetation: " + (_vegetationReceipt?.Options ?? "aus") + "; neu=" + _vegetationCount + "; uebernehmen=" + _vegetationPreserve);
             WriteVorbauDump();
             ProtokolliereBauschritt("ApplyMode.Apply — Übergabe an CS2");
+            _nebenarbeitLot = _lotOwner;
+            _nebenarbeitGeneration = World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().Register.Generation;
+            ParkingLotNebenarbeitDaten.Merke(EntityManager, _lotOwner, Mod.Optionen == null || Mod.Optionen.AutomatischVersorgung);
             applyMode = ApplyMode.Apply;
             /*
              * HIER, WEIL HIER JEDER BAU VORBEIKOMMT.

@@ -171,11 +171,14 @@ namespace ParkingLotTool.Tools
         {
             _areaTransferRecords.Clear();
             var height = _editHeightSnapshot.isCreated ? _editHeightSnapshot : _terrainSystem.GetHeightData(true);
+            if (!TryResolveLotOwnerPrefab(out var prefab)) return 0;
+            var prefabName = ParkingLotPrefabname.Von(EntityManager, prefab);
+            if (prefabName.IsEmpty) throw new InvalidOperationException("Stufe A ohne speicherbare PrefabID; keine Definition ausgegeben.");
             int n = CreateLotOwnerDefinition(ref height);
             if (n == 1)
             {
                 var r = _areaTransferRecords[0];
-                EntityManager.AddComponentData(_editLot,new ParkingLotStufeAPrefab { Prefab = r.Prefab });
+                EntityManager.AddComponentData(_editLot,new ParkingLotStufeAPrefabID { PrefabName = prefabName, Prefab = r.Prefab });
                 var b = EntityManager.AddBuffer<ParkingLotStufeAKnoten>(_editLot);
                 foreach (var p in r.SentNodes) b.Add(new ParkingLotStufeAKnoten { Position = p });
             }
@@ -378,6 +381,9 @@ namespace ParkingLotTool.Tools
                 Randzoning = k.Randzoning, FlaecheStrasse = k.FlaecheStrasse,
                 FlaecheDekoration = k.FlaecheDekoration, FlaecheZoning = k.FlaecheZoning };
             if (!SchreibeBauzettel(_lotOwner,q)) throw new InvalidOperationException("Neuer Bauzettel fehlt.");
+            _nebenarbeitLot = _lotOwner;
+            _nebenarbeitGeneration = World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().Register.Generation;
+            ParkingLotNebenarbeitDaten.Merke(EntityManager, _lotOwner, Mod.Optionen == null || Mod.Optionen.AutomatischVersorgung);
             if (!ParkingLotBaukontextLeser.TryRead(EntityManager,_lotOwner,out var gelesen,out var grund,melden:false))
                 throw new InvalidOperationException("Neuer Bauzettel unvollstaendig: " + grund);
             ParkingLotNetzRueckweg.Melde($"Neuer Bauzettel geschrieben/gelesen: Lot {_lotOwner.Index}, {gelesen.Punkte.Length} Punkte, {gelesen.Zugaenge.Length} Zugaenge, {gelesen.Bushalte.Count} Bushalte.");

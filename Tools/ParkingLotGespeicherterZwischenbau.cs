@@ -13,11 +13,6 @@ namespace ParkingLotTool.Tools
         public void Serialize<TWriter>(TWriter w) where TWriter : IWriter => w.Write(1);
         public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); }
     }
-    public struct ParkingLotNebenarbeitOffen : IComponentData, ISerializable
-    {
-        public void Serialize<TWriter>(TWriter w) where TWriter : IWriter => w.Write(1);
-        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); }
-    }
     // Vor dem Generator ist dessen Ergebnis-ID noch unbekannt. Die gesendete
     // Lot-Kontur identifiziert nach Laden auch die Luecke A -> Besitzerfund.
     public struct ParkingLotStufeAPrefab : IComponentData, ISerializable

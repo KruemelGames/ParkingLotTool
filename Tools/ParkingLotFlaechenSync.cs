@@ -47,30 +47,6 @@ namespace ParkingLotTool.Tools
         private const int Pruefabstand = 30;
         private const int Hoechstwartezeit = 600;
 
-        private sealed class Lauf
-        {
-            internal Entity Lot;
-            internal Entity Traeger;
-            internal readonly List<Entity> Alt = new();
-            internal readonly HashSet<Entity> Vorher = new();
-            internal int Neu;
-            internal int Seit;
-            internal double Verloren;
-        }
-
-        private readonly List<Entity> _warteschlange = new();
-        private Lauf _lauf;
-
-        internal int Offen => _warteschlange.Count + (_lauf != null ? 1 : 0);
-        internal bool Laeuft => _lauf != null;
-
-        internal void Einreihen(Entity lot)
-        {
-            if (_warteschlange.Contains(lot) || _lauf?.Lot == lot) return;
-            _warteschlange.Add(lot);
-            Mod.log.Info($"PLT-Flaechensync: Lot {lot.Index} eingereiht; offen {Offen}.");
-        }
-
         /**
          * Hat dieser Parkplatz eine Flaeche, die CS2 verwirft? Gerechnet mit
          * dem bitgenauen Nachbau (`Cs2Triangulierung`) auf den gespeicherten
@@ -139,6 +115,7 @@ namespace ParkingLotTool.Tools
 
             if (_lauf != null)
             {
+                if (!LaufGueltig()) { _lauf = null; return; }
                 if (bild - _lauf.Seit < Pruefabstand) return;
                 try { Pruefe(bild); }
                 catch (System.Exception x) { BeendeNachAusnahme("Pruefung", x); }
@@ -156,27 +133,16 @@ namespace ParkingLotTool.Tools
                 && plt.ArbeitetGerade) return;
             if (World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().WerkzeugLaeuft
                 || World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().WerkzeugLaeuft) return;
-            var lot = _warteschlange[0];
+            var (lot, id) = _warteschlange[0];
             _warteschlange.RemoveAt(0);
+            if (!Beginne(lot, id, bild)) return;
             try { Starte(lot, bild); }
             catch (System.Exception x) { BeendeNachAusnahme("Start", x); }
         }
 
-        /*
-         * JEDE AUSNAHME BEENDET DEN LAUF (Sync-Haenger, 2026-10-12).
-         * Warf Starte oder Pruefe, blieb `_lauf` stehen: der Schritt meldete
-         * sich nie fertig und der Sync wartete fuer immer. Hat Beende schon
-         * gemeldet (`_lauf` ist dann null), wird nicht ein zweites Mal gemeldet.
-         */
-        private void BeendeNachAusnahme(string wo, System.Exception x)
-        {
-            Mod.log.Warn($"PLT-Flaechensync: Ausnahme beim {wo}: {x}");
-            if (_lauf != null) Beende(false, wo + " fehlgeschlagen: " + x.Message);
-        }
-
         private void Starte(Entity lot, int bild)
         {
-            _lauf = new Lauf { Lot = lot, Seit = bild };
+            if (!LaufGueltig()) return;
             var traeger = EntityManager.Exists(lot) && EntityManager.HasComponent<ParkingLotCarrierReference>(lot)
                 ? EntityManager.GetComponentData<ParkingLotCarrierReference>(lot).Carrier : Entity.Null;
             if (!ParkingLotSyncGueltigkeit.Bestand(EntityManager, lot, traeger))
@@ -252,6 +218,7 @@ namespace ParkingLotTool.Tools
 
         private void Pruefe(int bild)
         {
+            if (!LaufGueltig()) return;
             var lot = _lauf.Lot;
             if (!ParkingLotSyncGueltigkeit.Bestand(EntityManager, lot, _lauf.Traeger))
             { Beende(false, "Bestand waehrend des Wartens verschwunden"); return; }
@@ -279,14 +246,6 @@ namespace ParkingLotTool.Tools
             }
             if (bild - _lauf.Seit < Hoechstwartezeit) return;
             Beende(false, $"alte weg {altWeg}, neue Flaechen {entstanden.Count}/{_lauf.Neu}, noch verworfen {nochVerworfen}, ohne Dreiecke {ohneDreiecke}");
-        }
-
-        private void Beende(bool ok, string text)
-        {
-            var lot = _lauf?.Lot ?? Entity.Null;
-            _lauf = null;
-            Mod.log.Info($"PLT-Flaechensync: Lot {lot.Index}: {(ok ? "fertig" : "nicht abgeschlossen")} - {text}.");
-            World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(lot, lot, ok);
         }
 
         private static double Flaeche(float2[] ring)

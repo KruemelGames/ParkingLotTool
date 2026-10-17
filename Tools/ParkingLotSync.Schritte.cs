@@ -27,6 +27,8 @@ namespace ParkingLotTool.Tools
             internal bool Hintergrund;
             /** Wartet wie Hintergrund auf eine Rueckmeldung, braucht aber keinen Neubau-Bauplan. */
             internal bool Tausch;
+            internal Auftragsarbeiter? Arbeiter;
+            internal System.Func<Entity, Auftragskennung, bool> Uebergabe;
         }
 
         private Dictionary<string, Ausfuehrung> _ausfuehrungen;
@@ -119,7 +121,8 @@ namespace ParkingLotTool.Tools
                 ["Fahrwege25Tauschen"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().BrauchtTausch(lot),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().Einreihen(lot),
+                    Arbeiter = Auftragsarbeiter.Fahrweg,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().Einreihen(lot, id),
                     Tausch = true,
                 },
                 /*
@@ -131,7 +134,8 @@ namespace ParkingLotTool.Tools
                 ["PflanzenNachWuchs"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => _werkzeug.BrauchtPflanzenNachWuchs(lot),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Pflanzen),
+                    Arbeiter = Auftragsarbeiter.Bestand,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Pflanzen, id),
                     Tausch = true,
                 },
                 /*
@@ -142,7 +146,8 @@ namespace ParkingLotTool.Tools
                 ["LaternenNachruesten"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => _werkzeug.BrauchtLaternenNachruesten(lot, teile),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Laternen),
+                    Arbeiter = Auftragsarbeiter.Bestand,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Laternen, id),
                     Tausch = true,
                 },
                 /*
@@ -152,7 +157,8 @@ namespace ParkingLotTool.Tools
                 ["LaternenNachZettel"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => _werkzeug.BrauchtLaternenNachZettel(lot, teile),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Laternen),
+                    Arbeiter = Auftragsarbeiter.Bestand,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().Einreihen(lot, Tauschart.Laternen, id),
                     Tausch = true,
                 },
                 /*
@@ -163,13 +169,15 @@ namespace ParkingLotTool.Tools
                 ["FlaechenFuerCs2"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Braucht(lot),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Einreihen(lot),
+                    Arbeiter = Auftragsarbeiter.Flaechen,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Einreihen(lot, id),
                     Tausch = true,
                 },
                 ["BegleiterAnStrasse"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBuildingEconomySystem>().BrauchtStrassensync(lot),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBuildingEconomySystem>().StrassensyncEinreihen(lot),
+                    Arbeiter = Auftragsarbeiter.Strasse,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotBuildingEconomySystem>().StrassensyncEinreihen(lot, id),
                     Tausch = true,
                 },
                 // Dieselbe Pruefung noch einmal fuer Parkplaetze, die Schritt 14
@@ -177,7 +185,8 @@ namespace ParkingLotTool.Tools
                 ["BegleiterAnStrasseNachpruefen"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBuildingEconomySystem>().BrauchtStrassensync(lot),
-                    Ausfuehren = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBuildingEconomySystem>().StrassensyncEinreihen(lot),
+                    Arbeiter = Auftragsarbeiter.Strasse,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotBuildingEconomySystem>().StrassensyncEinreihen(lot, id),
                     Tausch = true,
                 },
                 ["Fahrwege25MitKosten"] = new Ausfuehrung

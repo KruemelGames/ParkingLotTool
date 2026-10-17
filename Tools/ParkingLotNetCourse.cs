@@ -41,8 +41,8 @@ namespace ParkingLotTool.Tools
                 // Erhaltenes Zoning gehoert noch dem alten Anker. Ein Endpunkt
                 // auf dessen Knoten braucht die echte ID und volle Weltlage;
                 // blosses NodeMap-Matching nach Lage beweist diesen Anschluss nicht.
-                HintergrundKnotenanschluss(ref anschlussAnfang,ref a);
-                HintergrundKnotenanschluss(ref anschlussEnde,ref b);
+                HintergrundKnotenanschluss(ref anschlussAnfang,ref a,prefab);
+                HintergrundKnotenanschluss(ref anschlussEnde,ref b,prefab);
             }
             if (_bauarbeiter && (EntityManager.HasComponent<Edge>(anschlussAnfang.Entity)
                 || EntityManager.HasComponent<Edge>(anschlussEnde.Entity)))

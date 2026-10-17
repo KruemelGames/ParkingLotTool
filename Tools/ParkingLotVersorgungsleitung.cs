@@ -83,9 +83,9 @@ namespace ParkingLotTool.Tools
         /**
          * Schreibt die Zuordnung an alle dauerhaft gewordenen Leitungskanten.
          *
-         * Aufgerufen wird das erst, wenn `AvMesseApply` die Dauerhaftigkeit
-         * bestaetigt hat - eine Temp-Kante zu markieren waere sinnlos, denn
-         * sie kann noch verworfen werden.
+         * Die Zuordnung entsteht aus dem gespeicherten Erzeugungsauftrag
+         * vor Apply. Dieser spaete Weg frischt nur vorhandene Marken auf;
+         * allein die Kurslage darf niemanden zum PLT-Bestand machen.
          *
          * Markiert wird die KANTE, nicht ihre Knoten. Ein Knoten kann zu
          * mehreren Kanten gehoeren, darunter fremden; ihn als "unsere Leitung"
@@ -119,6 +119,10 @@ namespace ParkingLotTool.Tools
                     if (!EntityManager.HasComponent<Game.Net.Edge>(kante))
                         continue;
 
+                    // Keine nachtraegliche Vereinnahmung anhand der Kurslage.
+                    if (!EntityManager.HasComponent<ParkingLotVersorgungsleitung>(kante)) continue;
+                    var bisher = EntityManager.GetComponentData<ParkingLotVersorgungsleitung>(kante);
+                    if (bisher.Lot != lot || bisher.Carrier != carrier) continue;
                     var zuordnung = new ParkingLotVersorgungsleitung
                     {
                         Lot = lot,

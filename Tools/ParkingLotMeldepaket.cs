@@ -41,11 +41,8 @@ namespace ParkingLotTool.Tools
      * WAS NICHT HINEINGEHOERT: der Spielstand. Er ist gross, er gehoert dem
      * Nutzer, und bisher hat ihn kein einziger Befund gebraucht.
      */
-    internal static class ParkingLotMeldepaket
+    internal static partial class ParkingLotMeldepaket
     {
-        /** Soviel vom Ende des Modlogs kommt mit. */
-        private const int LogzeilenAmEnde = 2000;
-
         /** Die Kennung des Pakets, das gerade geschnuert wird. */
         private static string _kennung = string.Empty;
 
@@ -241,7 +238,7 @@ namespace ParkingLotTool.Tools
                      */
                     if (File.Exists(log))
                         LegeText(archiv, anlass == Anlass.Sync ? "modlog-sync.txt" : "modlog-tail.txt",
-                            anlass == Anlass.Sync ? Syncauszug(log) : Logende(log));
+                            anlass == Anlass.Sync ? Syncauszug(log) : Logende(log), logauszug: true);
 
                     /*
                      * BEIM ABSTURZ KOMMEN DIE LOGS DES VORIGEN LAUFS DAZU.
@@ -272,7 +269,7 @@ namespace ParkingLotTool.Tools
                             // uns heraus, was gebraucht wird. Siehe Auszug.
                             if (name.StartsWith("Player",
                                     StringComparison.OrdinalIgnoreCase))
-                                LegeText(archiv, name, Auszug(pfad));
+                                LegeText(archiv, name, Auszug(pfad), logauszug: true);
                             else
                                 Lege(archiv, pfad, name);
                         }
@@ -327,16 +324,11 @@ namespace ParkingLotTool.Tools
         {
             // Text statt Bytes, weil zwischen Lesen und Schreiben die
             // persoenlichen Angaben herausfallen. Siehe Anonymisiere.
-            LegeText(archiv, name, Anonymisiere(LiesBegrenzt(pfad)));
-        }
-
-        private static void LegeText(ZipArchive archiv, string name,
-            string inhalt)
-        {
-            var eintrag = archiv.CreateEntry(name, System.IO.Compression.CompressionLevel.Optimal);
-            using var hinein = new StreamWriter(eintrag.Open(),
-                new UTF8Encoding(false));
-            hinein.Write(Anonymisiere(inhalt));
+            var logauszug = string.Equals(Path.GetExtension(pfad), ".log", StringComparison.OrdinalIgnoreCase);
+            var text = logauszug
+                ? ParkingLotLogauszug.Lesen(pfad, LogzeilenAmEnde, "Logauszug: " + Path.GetFileName(pfad))
+                : LiesBegrenzt(pfad);
+            LegeText(archiv, name, text, logauszug);
         }
 
         /** Liest eine Datei, bei Ueberlaenge nur deren Ende. */
@@ -353,232 +345,6 @@ namespace ParkingLotTool.Tools
             }
             using var leser = new StreamReader(quelle);
             return leser.ReadToEnd();
-        }
-
-        /**
-         * HOLT AUS `Player.log`, WAS GEBRAUCHT WIRD - UND SONST NICHTS.
-         *
-         * Der Nutzer am 2026-09-15, nachdem der erste Anlauf die ganze Datei
-         * eingepackt und hinterher gewischt hatte: *"Ehm ernsthaft warum wird
-         * das ueberhaupt abgegriffen? Du behebst wieder Symptome anstatt die
-         * Wurzel."*
-         *
-         * Er hat recht. Die Datei gehoert dem Spiel, sie ist voller Pfade,
-         * Kennungen und Ladegeraeusch - und gebraucht wird daraus dreierlei:
-         *
-         *   - der Kopf: Spielversion, Betriebssystem, CPU, Grafikkarte,
-         *     Speicher. Fuer "laeuft das nur bei ihm so?"
-         *   - der Absturzblock samt Stacktrace. Bei dieser Absturzsorte gibt
-         *     CS2 KEINEN managed Stacktrace aus, deshalb ist die native
-         *     Meldung das Einzige, was es gibt.
-         *   - die Zeilen unmittelbar DAVOR. Genau die haben am 2026-09-14 den
-         *     Absturz erklaert ("UpdateFrame added to unsupported type").
-         *
-         * Eine Modliste steht hier uebrigens NICHT drin - nachgesehen. Die
-         * holen wir beim Spiel selbst, siehe Umgebung.
-         *
-         * Was nicht auf die Liste passt, kommt gar nicht erst ins Paket. Das
-         * ist der Unterschied zum Wischen: was nie eingesammelt wird, kann
-         * auch nicht durchrutschen.
-         */
-        private const int ZeilenVorDemAbsturz = 200;
-
-        private static string Auszug(string pfad)
-        {
-            string[] zeilen;
-            try { zeilen = File.ReadAllLines(pfad); }
-            catch (Exception ausnahme)
-            {
-                return "Diese Datei war nicht lesbar: " + ausnahme.Message;
-            }
-
-            var kopfmerkmale = new[]
-            {
-                "Initialize engine version", "Game version:", "Type:", "OS:",
-                "System memory:", "Graphics device:", "Graphics memory:",
-                "CPU:", "Core count:", "Screen resolution:",
-                "Rendering Threading Mode:", "Modding runtime:",
-                "Scripting runtime:", "Shader level:",
-            };
-
-            var text = new StringBuilder();
-            text.AppendLine("Extract from " + Path.GetFileName(pfad)
-                + " - system details and the crash only.");
-            text.AppendLine("Paths, identifiers and the loading log are left "
-                + "out; they are not needed to track this down.");
-            text.AppendLine(new string('-', 70));
-
-            foreach (var zeile in zeilen)
-                foreach (var merkmal in kopfmerkmale)
-                    if (zeile.StartsWith(merkmal, StringComparison.Ordinal))
-                    { text.AppendLine(zeile); break; }
-
-            var absturz = -1;
-            for (var i = 0; i < zeilen.Length; i++)
-                if (zeilen[i].Contains("Native Crash Reporting")
-                    || zeilen[i].Contains("Crash!!!")
-                    || (zeilen[i].Contains("* Assertion at ")
-                        && zeilen[i].Contains("reflection_bind_generic_method_parameters")))
-                { absturz = i; break; }
-
-            text.AppendLine();
-            if (absturz < 0)
-            {
-                text.AppendLine("NO crash block in this file. Last lines "
-                    + "follow:");
-                text.AppendLine(new string('-', 70));
-                for (var i = Math.Max(0, zeilen.Length - ZeilenVorDemAbsturz);
-                     i < zeilen.Length; i++)
-                    text.AppendLine(zeilen[i]);
-                return text.ToString();
-            }
-
-            text.AppendLine("Crash from line " + (absturz + 1) + "; "
-                + ZeilenVorDemAbsturz + " lines of run-up before it:");
-            text.AppendLine(new string('-', 70));
-            for (var i = Math.Max(0, absturz - ZeilenVorDemAbsturz);
-                 i < zeilen.Length; i++)
-                text.AppendLine(zeilen[i]);
-            return text.ToString();
-        }
-
-        /**
-         * NIMMT DIE PERSOENLICHEN ANGABEN AUS DEM PAKET.
-         *
-         * Ansage des Nutzers am 2026-09-15, nachdem der Hinweistext im Issue
-         * sie noch aufgezaehlt hatte: *"Windows User name geht gar nicht
-         * finde ich. Sehr persoenlich. Besonders weil meiner Meinung nach
-         * brauchen wir die Infos nicht!"*
-         *
-         * Er hat recht, und das ist nachgemessen und nicht geschaetzt: an
-         * der Absturzsuche vom 2026-09-14 waren das Modlog, die Schrittspur,
-         * der Absturzblock aus `Player.log`, die Modliste und die
-         * Spielversion beteiligt. Benutzername und Steam-ID kein einziges
-         * Mal. Sie tragen nichts bei und gehoeren damit nicht in ein Paket,
-         * das oeffentlich in einem GitHub-Issue landet.
-         *
-         * GESCHRIEBEN HAT SIE NICHT DIESE MOD, sondern CS2 beziehungsweise
-         * Unity:
-         *
-         *     Logs at C:/Users/<nutzer>/AppData/LocalLow/...
-         *     SteamInternal_SetMinidumpSteamID: Caching Steam ID: 7656119...
-         *
-         * ES REICHT NICHT, NUR `Player.log` ANZUFASSEN. Der Benutzername
-         * steckt auch in UNSEREN Dateien: das Startlog schreibt DLL- und
-         * Asset-Pfad, und der Bauzettel fuehrt einen ganzen Abschnitt
-         * `Framework` mit `OutputPath`, `LatestPath`, `DllPath`. Deshalb
-         * laeuft JEDE Datei des Archivs hier durch - auch die, die wir
-         * selbst erzeugen.
-         *
-         * WAS BLEIBT: die Namen der Spielstaende. Ein Stadtname ist keine
-         * persoenliche Angabe, und er sagt gelegentlich etwas aus - etwa,
-         * dass jemand auf einer Mod-Karte gebaut hat.
-         *
-         * Die Ersetzung ist bewusst stumpf und damit verlaesslich: der
-         * Benutzername ist eine bekannte Zeichenkette, keine Vermutung.
-         */
-        internal static string Anonymisiere(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return text;
-
-            /*
-             * Steam64-Kennungen beginnen alle mit 7656119 und sind 17
-             * Stellen lang. Eng genug, dass keine Messzahl aus unseren
-             * eigenen Logs versehentlich getroffen wird.
-             */
-            text = System.Text.RegularExpressions.Regex.Replace(
-                text, @"\b7656119\d{10}\b", "<steamid>");
-
-            /*
-             * Ein sehr kurzer Benutzername koennte als Silbe mitten in
-             * fremden Woertern stehen. Ab drei Zeichen ist das Risiko klein
-             * und der Gewinn gross; darunter wird lieber nichts ersetzt als
-             * das halbe Log zerschossen.
-             */
-            var nutzer = Environment.UserName;
-            if (!string.IsNullOrEmpty(nutzer) && nutzer.Length >= 3)
-                text = text.Replace(nutzer, "<nutzer>");
-
-            return text;
-        }
-
-        /**
-         * Der Schluss des Modlogs.
-         *
-         * `FileShare.ReadWrite`, weil CS2 dieselbe Datei offen haelt -
-         * ohne das schlaegt das Oeffnen fehl, und zwar genau dann, wenn man
-         * die Datei braucht.
-         */
-        /** Diese Zeilen gehoeren in den Sync-Bericht. */
-        private static readonly string[] Syncmarken =
-        {
-            "PLT-Sync", "PLT-Hintergrund", "PLT-Prefabverweise", "PLT-Laden", "PLT-Fahrweg",
-            "PLT-Bestand", "PLT-Flaechensync", "PLT-Begleiter", "PLT-Waisen", "[WARN]", "[ERROR]", "Exception",
-        };
-        private const int SyncauszugZeilen = 800;
-
-        /** Die letzten Sync-Zeilen des Modlogs, als Ring wie in `Logende`. */
-        private static string Syncauszug(string pfad)
-        {
-            using var strom = new FileStream(pfad, FileMode.Open,
-                FileAccess.Read, FileShare.ReadWrite);
-            using var leser = new StreamReader(strom);
-            var ring = new string[SyncauszugZeilen];
-            int schreib = 0, anzahl = 0;
-            string zeile;
-            while ((zeile = leser.ReadLine()) != null)
-            {
-                var passt = false;
-                foreach (var marke in Syncmarken)
-                    if (zeile.IndexOf(marke, StringComparison.Ordinal) >= 0) { passt = true; break; }
-                if (!passt) continue;
-                ring[schreib] = zeile;
-                schreib = (schreib + 1) % ring.Length;
-                if (anzahl < ring.Length) anzahl++;
-            }
-            var text = new StringBuilder();
-            text.AppendLine("Sync-related lines of ParkingLotTool.Mod.log (last " + anzahl + ").");
-            text.AppendLine(new string('-', 70));
-            for (var i = 0; i < anzahl; i++)
-                text.AppendLine(ring[(schreib - anzahl + i + ring.Length) % ring.Length]);
-            return text.ToString();
-        }
-
-        private static string Logende(string pfad)
-        {
-            using var strom = new FileStream(pfad, FileMode.Open,
-                FileAccess.Read, FileShare.ReadWrite);
-            using var leser = new StreamReader(strom);
-
-            /*
-             * EIGENER RING STATT `Queue<T>`.
-             *
-             * Seit dem Verweis auf `System.IO.Compression` liegt `Queue<T>`
-             * in ZWEI Assemblies, und der Uebersetzer weigert sich zu Recht.
-             * Ein Feld mit Schreibzeiger ist hier ohnehin genauer: es steht
-             * sofort da, dass nur die letzten Zeilen gehalten werden.
-             */
-            var ring = new string[LogzeilenAmEnde];
-            var naechste = 0;
-            var gesamt = 0;
-            string zeile;
-            while ((zeile = leser.ReadLine()) != null)
-            {
-                ring[naechste] = zeile;
-                naechste = (naechste + 1) % LogzeilenAmEnde;
-                gesamt++;
-            }
-
-            var gehalten = Math.Min(gesamt, LogzeilenAmEnde);
-            var zeilen = new string[gehalten];
-            var anfang = gesamt <= LogzeilenAmEnde ? 0 : naechste;
-            for (var i = 0; i < gehalten; i++)
-                zeilen[i] = ring[(anfang + i) % LogzeilenAmEnde];
-
-            var kopf = $"Die letzten {gehalten} von {gesamt} Zeilen aus "
-                + "ParkingLotTool.Mod.log." + Environment.NewLine
-                + new string('-', 70) + Environment.NewLine;
-            return kopf + string.Join(Environment.NewLine, zeilen);
         }
 
         private static string Umgebung()

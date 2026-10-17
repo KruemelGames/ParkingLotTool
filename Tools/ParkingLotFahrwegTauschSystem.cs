@@ -5,6 +5,7 @@ using Game.Net;
 using Game.Prefabs;
 using Game.SceneFlow;
 using Game.Tools;
+using ParkingLotTool.Geometry;
 using Unity.Entities;
 using UnityEngine.Scripting;
 
@@ -24,6 +25,7 @@ namespace ParkingLotTool.Tools
     {
         private readonly List<Entity> _warteschlange = new();
         private readonly Dictionary<Entity, int> _wartetSeit = new();
+        private readonly Dictionary<Entity, Auftragskennung> _auftraege = new();
         private ToolSystem _toolSystem;
         private ParkingLotFahrwegTauschWerkzeug _werkzeug;
         private ParkingLotToolSystem _plt;
@@ -45,15 +47,16 @@ namespace ParkingLotTool.Tools
             _werkzeug = World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschWerkzeug>();
             _plt = World.GetOrCreateSystemManaged<ParkingLotToolSystem>();
             _prefabs = World.GetOrCreateSystemManaged<PrefabSystem>();
-            _werkzeug.Fertig = Fertig;
         }
 
-        internal void Einreihen(Entity lot)
+        internal bool Einreihen(Entity lot, Auftragskennung id)
         {
-            if (_warteschlange.Contains(lot)) return;
+            if (_auftraege.ContainsKey(lot)) return false;
+            if (!World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().Annehmen(id, lot, Auftragsarbeiter.Fahrweg)) return false;
+            _auftraege.Add(lot, id);
             _warteschlange.Add(lot);
             _wartetSeit[lot] = UnityEngine.Time.frameCount;
-            Mod.log.Info($"PLT-Fahrwegtausch: Lot {lot.Index} eingereiht; offen {Offen}.");
+            return true;
         }
 
         /** Die alten Vanilla-Fahrwege eines Lots samt Ziel-Klon und Besitzer. */
@@ -111,6 +114,7 @@ namespace ParkingLotTool.Tools
                     + $"{(_werkzeug.Beschaeftigt ? "beschaeftigt" : "frei")} verworfen.");
             _warteschlange.Clear();
             _wartetSeit.Clear();
+            _auftraege.Clear();
             _vorher = null;
             _alleOk = true;
             _ruheBis = 0;
@@ -131,26 +135,63 @@ namespace ParkingLotTool.Tools
             // Ein Werkzeugwechsel wuerde einen laufenden Entwurf verwerfen.
             if (_toolSystem.activeTool == _plt && _plt.ArbeitetGerade) return;
             var lot = _warteschlange[0];
-            var plan = Plan(lot);
+            var id = _auftraege[lot];
+            var auftraege = World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>();
+            if (!auftraege.Gilt(id))
+            {
+                _warteschlange.RemoveAt(0); _wartetSeit.Remove(lot); _auftraege.Remove(lot);
+                return;
+            }
+            List<(Entity Kante, Entity Ziel, Entity Besitzer)> plan = null;
+            System.Exception planFehler = null;
+            try { plan = Plan(lot); }
+            catch (System.Exception x) { planFehler = x; }
+            if (planFehler != null)
+            {
+                _warteschlange.RemoveAt(0); _wartetSeit.Remove(lot);
+                auftraege.Starte(id);
+                Fertig(id, lot, false, "Planung fehlgeschlagen: " + planFehler.Message);
+                return;
+            }
             if (plan == null)
             {
                 if (UnityEngine.Time.frameCount - _wartetSeit[lot] < 600) return;
                 _warteschlange.RemoveAt(0); _wartetSeit.Remove(lot);
-                Fertig(lot, false, "Ziel-Prefab nach 600 Bildern nicht bereit; kein Weg ersetzt");
+                auftraege.Starte(id);
+                Fertig(id, lot, false, "Ziel-Prefab nach 600 Bildern nicht bereit; kein Weg ersetzt");
                 return;
             }
             _warteschlange.RemoveAt(0); _wartetSeit.Remove(lot);
-            if (plan.Count == 0) { Fertig(lot, true, "nichts zu tauschen"); return; }
+            if (!auftraege.Starte(id)) return;
+            if (plan.Count == 0) { Fertig(id, lot, true, "nichts zu tauschen"); return; }
             if (_toolSystem.activeTool != _werkzeug) _vorher = _toolSystem.activeTool;
-            _werkzeug.Starte(lot, plan);
-            _toolSystem.activeTool = _werkzeug;
+            try
+            {
+                _werkzeug.Fertig = (e, ok, text) => Fertig(id, e, ok, text);
+                _werkzeug.Starte(lot, plan, id);
+                _toolSystem.activeTool = _werkzeug;
+            }
+            catch (System.Exception x)
+            {
+                _werkzeug.Zuruecksetzen();
+                Fertig(id, lot, false, "Uebergabe fehlgeschlagen: " + x.Message);
+            }
         }
 
-        private void Fertig(Entity lot, bool ok, string text)
+        private void Fertig(Auftragskennung id, Entity lot, bool ok, string text)
         {
-            Mod.log.Info($"PLT-Fahrwegtausch: Lot {lot.Index}, Erfolg={ok}: {text}.");
+            var auftraege = World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>();
+            if (!_auftraege.TryGetValue(lot, out var erwartet) || erwartet != id || !auftraege.DarfAnwenden(id)) return;
+            _auftraege.Remove(lot);
+            try { Mod.log.Info($"PLT-Fahrwegtausch: Lot {lot.Index}, Erfolg={ok}: {text}."); }
+            catch (System.Exception) { }
             if (!ok) _alleOk = false;
-            World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().MeldeHintergrundEnde(lot, lot, ok);
+            try { auftraege.Beende(id, lot, ok); }
+            finally { WerkzeugFreigeben(); }
+        }
+
+        private void WerkzeugFreigeben()
+        {
             _ruheBis = UnityEngine.Time.frameCount + 10;
             if (_warteschlange.Count > 0) return;
             // Alles erledigt: voriges Werkzeug zurueck (oeffnet ein vorher

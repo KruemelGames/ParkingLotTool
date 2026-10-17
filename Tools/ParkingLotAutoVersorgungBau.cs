@@ -81,6 +81,7 @@ namespace ParkingLotTool.Tools
         internal void MerkeAutoVersorgung(Entity traeger,
             Entity altesLot = default, Entity alterTraeger = default)
         {
+            if (!AvGenerationGueltig()) return;
             if (_avPhase == AvPhase.Nachmessen) MesseVersorgungsfluss(true);
             AvEntferneDefinitionen();
             _avKurse.Clear();
@@ -97,7 +98,10 @@ namespace ParkingLotTool.Tools
             AvMerkeAbriss(altesLot, alterTraeger);
             AvMeldeDiagnoseschalter();
             _avGesamtzeit = System.Diagnostics.Stopwatch.StartNew();
-            if (Mod.Optionen != null && !Mod.Optionen.AutomatischVersorgung) return;
+            bool an = Mod.Optionen == null || Mod.Optionen.AutomatischVersorgung;
+            if (EntityManager.Exists(_nebenarbeitLot) && EntityManager.HasComponent<ParkingLotNebenarbeitOffen>(_nebenarbeitLot))
+                an = ParkingLotNebenarbeitDaten.Offen(EntityManager, _nebenarbeitLot, NebenarbeitPflicht.Versorgung);
+            if (!an) return;
             if (traeger == Entity.Null) return;
             _avTraeger = traeger;
             _avPhase = AvPhase.LotWarten;
@@ -132,8 +136,8 @@ namespace ParkingLotTool.Tools
             foreach (int n in WaehleVersorgungstrassenSchritte(traeger)) yield return n;
             _avAusstehend.AddRange(_avWahlTrassen);
             MeldeVorplanung(_avAusstehend.Count > 0 ? _avAusstehend[0] : default);
-            Mod.log.Info($"PLT-Autoversorgung ZEIT: Planung {planzeit.Elapsed.TotalMilliseconds:F1} ms; "
-                + $"seit Bauauftrag {_avGesamtzeit?.Elapsed.TotalMilliseconds:F1} ms.");
+            Nebenarbeitsdiagnose(() => Mod.log.Info($"PLT-Autoversorgung ZEIT: Planung {planzeit.Elapsed.TotalMilliseconds:F1} ms; "
+                + $"seit Bauauftrag {_avGesamtzeit?.Elapsed.TotalMilliseconds:F1} ms."));
             _avHatPlan = _avAusstehend.Count > 0;
             _avTrassen.Clear();
             if (_avAusstehend.Count == 0) { AvNaechsteTrasse(); yield break; }
@@ -143,18 +147,18 @@ namespace ParkingLotTool.Tools
             {
                 var lokal = EntityManager.GetComponentData<LocalConnectData>(prefab);
                 var daten = EntityManager.GetComponentData<NetData>(prefab);
-                Mod.log.Info($"PLT-Autoversorgung PREFAB '{PrefabAssetName(prefab)}': "
+                Nebenarbeitsdiagnose(() => Mod.log.Info($"PLT-Autoversorgung PREFAB '{PrefabAssetName(prefab)}': "
                     + $"LocalConnect-Suchweite {lokal.m_SearchDistance:F2}, "
                     + $"Hoehenfenster {lokal.m_HeightRange.min:F2}/{lokal.m_HeightRange.max:F2}, "
-                    + $"Layer {lokal.m_Layers}, ConnectLayers {daten.m_ConnectLayers}.");
+                    + $"Layer {lokal.m_Layers}, ConnectLayers {daten.m_ConnectLayers}."));
             }
             var sb = EntityManager.GetComponentData<NetGeometryData>(strom).m_DefaultWidth;
             var wb = EntityManager.GetComponentData<NetGeometryData>(wasser).m_DefaultWidth;
             var abstand = VersorgungskursPruefung.Achsabstand(sb, wb);
-            Mod.log.Info($"PLT-Autoversorgung ABSTAND: Strombreite {sb:F2} m, "
+            Nebenarbeitsdiagnose(() => Mod.log.Info($"PLT-Autoversorgung ABSTAND: Strombreite {sb:F2} m, "
                 + $"Wasserbreite {wb:F2} m, Achsabstand {abstand:F2} m, "
                 + $"Randabstand {abstand - (sb + wb) * 0.5f:F2} m. "
-                + "Fremdobjekte und materialisierte Geometrie prueft Vanilla vor Apply.");
+                + "Fremdobjekte und materialisierte Geometrie prueft Vanilla vor Apply."));
             foreach (var trasse in _avTrassen)
             {
                 foreach (var istStrom in new[] { true, false })
@@ -214,10 +218,15 @@ namespace ParkingLotTool.Tools
             var start = kurs.Punkte[abschnitt - 1];
             var ende = kurs.Punkte[abschnitt];
             var kurve = NetUtils.StraightCurve(start, ende);
+            var lot = AvZugehoerigesLot();
+            var seed = World.GetOrCreateSystemManaged<ParkingLotErzeugungsSystem>().Bestelle(
+                lot, _avTraeger, kurs.Prefab, kurs.Name != null && kurs.Name.EndsWith("Strom")
+                    ? ParkingLotErzeugungsart.Strom : ParkingLotErzeugungsart.Wasser, start, ende);
+            if (seed == 0) throw new InvalidOperationException("Versorgung ohne eindeutige gespeicherte Herkunft.");
             var d = EntityManager.CreateEntity();
             kurs.Definitionen.Add(d);
             EntityManager.AddComponentData(d, new CreationDefinition {
-                m_Prefab = kurs.Prefab, m_RandomSeed = Environment.TickCount });
+                m_Prefab = kurs.Prefab, m_RandomSeed = seed });
             EntityManager.AddComponent<Updated>(d);
             EntityManager.AddComponentData(d, new NetCourse {
                 m_Curve = kurve, m_Length = math.distance(start, ende),
@@ -227,10 +236,10 @@ namespace ParkingLotTool.Tools
                 m_EndPosition = AvCoursePos(ende,
                     NetUtils.GetNodeRotation(MathUtils.EndTangent(kurve)), false) });
             SchliesseDefinition(d, _bauarbeiter ? _lotCarrier : Entity.Null);
-            Mod.log.Info($"PLT-Autoversorgung KURS [{kurs.Name}, Teil {abschnitt}/{kurs.Punkte.Count - 1}]: Definition {d}, "
+            Nebenarbeitsdiagnose(() => Mod.log.Info($"PLT-Autoversorgung KURS [{kurs.Name}, Teil {abschnitt}/{kurs.Punkte.Count - 1}]: Definition {d}, "
                 + $"{math.distance(start, ende):F2} m, "
                 + $"Welt-Y {start.y:F2}/{ende.y:F2}, Elevation -10/-10, "
-                + $"Prefab '{PrefabAssetName(kurs.Prefab)}'. Ausgangsfluss neue Leitung = 0.");
+                + $"Prefab '{PrefabAssetName(kurs.Prefab)}'. Ausgangsfluss neue Leitung = 0."));
         }
 
         private static CoursePos AvCoursePos(float3 p, quaternion r, bool erste)
@@ -242,6 +251,7 @@ namespace ParkingLotTool.Tools
         // true reserviert den Werkzeugdurchlauf bis einschliesslich Apply/Clear.
         private bool PflegeAutoVersorgung()
         {
+            if (!AvGenerationGueltig()) return false;
             MeldePhase();
             if (_avPhase == AvPhase.Idle) return false;
             var frame = UnityEngine.Time.frameCount;
@@ -268,9 +278,9 @@ namespace ParkingLotTool.Tools
                     if (vergangen > AutoVersorgungLotFrames)
                     {
                         VerwerfeRestvorplan("Apply nicht bestaetigt");
-                        Mod.log.Warn($"PLT-Autoversorgung: Apply nach {vergangen} Frames noch offen; "
+                        Nebenarbeitsdiagnose(() => Mod.log.Warn($"PLT-Autoversorgung: Apply nach {vergangen} Frames noch offen; "
                             + $"{_avNochOffeneNetze} weitere Netze koennen nicht starten. "
-                            + "Werkzeug wird freigegeben; Abnahme der angewandten Kurse bleibt offen.");
+                            + "Werkzeug wird freigegeben; Abnahme der angewandten Kurse bleibt offen."));
                         // Angewandt ist angewandt - kein zweiter Anschluss,
                         // auch wenn der Zyklus hier abbricht.
                         foreach (var trasse in _avTrassen) AvMerkeAngewandt(trasse);
@@ -293,23 +303,10 @@ namespace ParkingLotTool.Tools
                 if (zustand != VersorgungsapplyZustand.Dauerhaft)
                 {
                     VerwerfeRestvorplan("Apply nicht dauerhaft");
-                    Mod.log.Warn("PLT-Autoversorgung: Temp-Zyklus beendet, aber Dauerhaftigkeit "
-                        + "NICHT bestaetigt; Einzelzustand siehe APPLY-NACHWEIS. Kein blinder Neubau.");
+                    Nebenarbeitsdiagnose(() => Mod.log.Warn("PLT-Autoversorgung: Temp-Zyklus beendet, aber Dauerhaftigkeit "
+                        + "NICHT bestaetigt; Einzelzustand siehe APPLY-NACHWEIS. Kein blinder Neubau."));
                 }
-                else
-                    /*
-                     * ERST JETZT DIE ZUORDNUNG SCHREIBEN.
-                     *
-                     * Eine Temp-Kante zu markieren waere sinnlos - sie kann
-                     * noch verworfen werden, und dann truege eine Leiche den
-                     * Namen dieses Parkplatzes. `Dauerhaft` ist der erste
-                     * Zeitpunkt, an dem die Kante wirklich in der Welt steht.
-                     *
-                     * Ohne diese Zeile weiss nach dem naechsten Speichern
-                     * niemand mehr, dass die Leitung zu diesem Parkplatz
-                     * gehoert - und beim Abriss bliebe sie stehen.
-                     */
-                    MarkiereVersorgungsleitungen(AvZugehoerigesLot(), _avTraeger);
+                // Die Zuordnung steht bereits vor dem Apply an unseren Temps.
                 AvEntferneDefinitionen();
                 AvNaechsteTrasse();
                 // Auch der Abschlussdurchlauf gehoert noch dieser Transaktion.
@@ -339,8 +336,8 @@ namespace ParkingLotTool.Tools
                 {
                     if (vergangen > AutoVersorgungLotFrames)
                     {
-                        Mod.log.Warn($"PLT-Autoversorgung: {_avNochOffeneNetze} weitere Netze "
-                            + "ohne freien Bauzyklus nicht begonnen.");
+                        Nebenarbeitsdiagnose(() => Mod.log.Warn($"PLT-Autoversorgung: {_avNochOffeneNetze} weitere Netze "
+                            + "ohne freien Bauzyklus nicht begonnen."));
                         _avAusstehend.Clear();
                         AvFehler($"nach {vergangen} Frames noch kein freier Bauzyklus mit dauerhaften Strassen");
                     }
@@ -405,13 +402,26 @@ namespace ParkingLotTool.Tools
             AvStarteBilddiagnose("vor Apply");
             // Die Identitaeten bleiben beim Vanilla-Create erhalten: ApplyNetSystem
             // entfernt Temp und setzt Created, Applied, Updated auf derselben Entity.
+            // ApplyNetSystem.Create entfernt Temp auf derselben Entity (693-704).
+            // Die Quellenbindung liegt damit vor dem ersten dauerhaften Bild.
+            try
+            {
+                World.GetOrCreateSystemManaged<ParkingLotErzeugungsSystem>().BindeErgebnisse();
+                MarkiereVersorgungVorApply(AvZugehoerigesLot(), _avTraeger);
+                SichereVersorgungsverbindungen();
+            }
+            catch (InvalidOperationException x)
+            {
+                AvFehler("Herkunft vor Apply nicht bestaetigt: " + x.Message);
+                return true;
+            }
             applyMode = ApplyMode.Apply;
             _avGebaut.AddRange(_avKurse);
             _avPhase = AvPhase.ApplyWarten;
             _avFrame = frame;
             _avLetzterApplyBefund = null;
-            Mod.log.Info($"PLT-Autoversorgung APPLY: {_avKurse.Count}/{_avKurse.Count} "
-                + "Kurse vollstaendig, Vanilla-Fehler 0. Dauerhaftigkeit und Fluss noch NICHT bestaetigt.");
+            Nebenarbeitsdiagnose(() => Mod.log.Info($"PLT-Autoversorgung APPLY: {_avKurse.Count}/{_avKurse.Count} "
+                + "Kurse vollstaendig, Vanilla-Fehler 0. Dauerhaftigkeit und Fluss noch NICHT bestaetigt."));
             return true;
         }
 
@@ -419,6 +429,7 @@ namespace ParkingLotTool.Tools
         // ruft auch das staendig aktive Aktivierungssystem diese reine Messung.
         internal void PflegeAutoVersorgungsmessung()
         {
+            if (!AvGenerationGueltig()) return;
             if (_avPhase != AvPhase.Nachmessen) return;
             var frame = World.GetOrCreateSystemManaged<Game.Simulation.SimulationSystem>().frameIndex;
             if (frame - _avSimLetzteMessung < AutoVersorgungMessenFrames) return;
@@ -454,7 +465,11 @@ namespace ParkingLotTool.Tools
          */
         private void NimmOffeneVersorgungWiederAuf()
         {
-            if (Mod.Optionen != null && !Mod.Optionen.AutomatischVersorgung) return;
+            if (!AvGenerationGueltig()) return;
+            bool an = Mod.Optionen == null || Mod.Optionen.AutomatischVersorgung;
+            if (EntityManager.Exists(_nebenarbeitLot) && EntityManager.HasComponent<ParkingLotNebenarbeitOffen>(_nebenarbeitLot))
+                an = ParkingLotNebenarbeitDaten.Offen(EntityManager, _nebenarbeitLot, NebenarbeitPflicht.Versorgung);
+            if (!an) return;
             if (_avTraeger == Unity.Entities.Entity.Null) return;
             if (!EntityManager.Exists(_avTraeger)) { _avTraeger = Unity.Entities.Entity.Null; return; }
             if (_avPhase != AvPhase.Idle) return;
@@ -463,13 +478,13 @@ namespace ParkingLotTool.Tools
 
             VerwerfeRestvorplan("Werkzeug zwischen Anlaeufen geschlossen");
 
-            Mod.log.Info("PLT-Autoversorgung: Werkzeug wieder geoeffnet, "
+            Nebenarbeitsdiagnose(() => Mod.log.Info("PLT-Autoversorgung: Werkzeug wieder geoeffnet, "
                 + $"{_avNochOffeneNetze} offene(s) Netz(e) werden fortgesetzt"
                 + (gescheitert > 0
                     ? $"; {gescheitert} Kante(n) aus gescheiterten Netzen bekommen "
                         + "einen neuen Anlauf, weil sich die Lage seit dem Fehlschlag "
                         + "geaendert haben kann."
-                    : "."));
+                    : ".")));
             _avNetzstand.Clear();
             _avHatPlan = true;
             _avPhase = AvPhase.LotWarten;
@@ -533,7 +548,7 @@ namespace ParkingLotTool.Tools
             var text = $"PLT-Autoversorgung TEMP OHNE ORIGINAL {anlass}: {zahl} von "
                 + $"{temp.Length} Temp-Entities"
                 + (beispiele.Count > 0 ? ": " + string.Join("; ", beispiele) : "");
-            if (zahl > 0) Mod.log.Warn(text); else Mod.log.Info(text);
+            Nebenarbeitsdiagnose(() => { if (zahl > 0) Mod.log.Warn(text); else Mod.log.Info(text); });
             if (zahl > 0)
                 ParkingLotSchrittmarke.Setze($"Versorgung: {zahl} Temp ohne Original {anlass}");
         }
@@ -560,9 +575,9 @@ namespace ParkingLotTool.Tools
             using var betroffene = m_ErrorQuery.ToEntityArray(Allocator.Temp);
             if (betroffene.Length == 0)
             {
-                Mod.log.Warn("PLT-Autoversorgung BAUFEHLER: kein Fehler-Entity, aber "
+                Nebenarbeitsdiagnose(() => Mod.log.Warn("PLT-Autoversorgung BAUFEHLER: kein Fehler-Entity, aber "
                     + "GetAllowApply() ist falsch - CS2 verweigert den Apply aus einem "
-                    + "anderen Grund (geloeschtes Original).");
+                    + "anderen Grund (geloeschtes Original)."));
                 AvMeldeTempOhneOriginal("bei der Ablehnung", unsereKurse);
                 return;
             }
@@ -609,9 +624,9 @@ namespace ParkingLotTool.Tools
                     }
                     if (namen.Count > 0) art = string.Join(", ", namen);
                 }
-                Mod.log.Warn($"PLT-Autoversorgung BAUFEHLER: {e} ({wem}), Original {original}, "
+                Nebenarbeitsdiagnose(() => Mod.log.Warn($"PLT-Autoversorgung BAUFEHLER: {e} ({wem}), Original {original}, "
                     + $"Prefab '{AvFehlerprefab(e)}', Ort {AvFehlerort(e)}"
-                    + AvFehlertiefe(e) + beruehrung + $", Art: {art}.");
+                    + AvFehlertiefe(e) + beruehrung + $", Art: {art}."));
             }
         }
 
@@ -678,17 +693,17 @@ namespace ParkingLotTool.Tools
                  * Oeffnen des Werkzeugs weiter. Der Nutzer sieht es auch:
                  * die Zeile sagt, was noch aussteht und was es braucht.
                  */
-                Mod.log.Warn($"PLT-Autoversorgung: Werkzeug gewechselt; {_avNochOffeneNetze} "
+                Nebenarbeitsdiagnose(() => Mod.log.Warn($"PLT-Autoversorgung: Werkzeug gewechselt; {_avNochOffeneNetze} "
                     + "noch nicht begonnene Netze. Bereits angewandte Kurse werden weiter "
                     + "gemessen; der Rest wird beim naechsten Oeffnen des Werkzeugs "
-                    + "fortgesetzt.");
+                    + "fortgesetzt."));
                 _uiSystem?.SetStatus(ParkingLotTexte.TN("autoVersorgungBau.offeneNetze", _avNochOffeneNetze));
                 _avAusstehend.Clear();
             }
             _avKurse.AddRange(_avGebaut);
-            Mod.log.Info($"PLT-Autoversorgung ZEIT: Bauphase beendet nach "
+            Nebenarbeitsdiagnose(() => Mod.log.Info($"PLT-Autoversorgung ZEIT: Bauphase beendet nach "
                 + $"{_avGesamtzeit?.Elapsed.TotalMilliseconds:F1} ms, {_avGebaut.Count} angewandte Kurse; "
-                + "Versorgungsfluss wird separat geprueft.");
+                + "Versorgungsfluss wird separat geprueft."));
             _avPhase = _avKurse.Count > 0 ? AvPhase.Nachmessen : AvPhase.Idle;
             _avSimStart = _avSimLetzteMessung = World.GetOrCreateSystemManaged<
                 Game.Simulation.SimulationSystem>().frameIndex;
@@ -711,9 +726,9 @@ namespace ParkingLotTool.Tools
             AvEntferneDefinitionen();
             if (!_bauarbeiter && _avPhase == AvPhase.TempWarten && m_ToolSystem.activeTool == this)
                 applyMode = ApplyMode.Clear;
-            Mod.log.Warn("PLT-Autoversorgung: " + grund
+            Nebenarbeitsdiagnose(() => Mod.log.Warn("PLT-Autoversorgung: " + grund
                 + $". Aktuelle Trasse vollstaendig verworfen; {_avGebaut.Count} bereits angewandte Kurse, "
-                + $"{_avNochOffeneNetze} weitere Netze. Der Parkplatz bleibt gebaut.");
+                + $"{_avNochOffeneNetze} weitere Netze. Der Parkplatz bleibt gebaut."));
             AvNaechsteTrasse();
         }
         /**
@@ -743,7 +758,7 @@ namespace ParkingLotTool.Tools
                     && EntityManager.HasComponent<NetGeometryData>(p)
                     && EntityManager.HasComponent<LocalConnectData>(p)) return p;
             }
-            Mod.log.Warn($"PLT-Autoversorgung: exaktes Prefab '{name}' mit Geometrie/LocalConnect fehlt.");
+            Nebenarbeitsdiagnose(() => Mod.log.Warn($"PLT-Autoversorgung: exaktes Prefab '{name}' mit Geometrie/LocalConnect fehlt."));
             return Entity.Null;
         }
 

@@ -177,6 +177,11 @@
   }
 }
 
+.editButtonGesperrt {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Hinweis fuer verwaiste Parkplaetze im Auswahlfenster. */
 .waiseTitel {
   flex: 0 1 auto;

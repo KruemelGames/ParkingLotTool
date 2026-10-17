@@ -4,6 +4,7 @@ using Game;
 using Game.Common;
 using Game.Net;
 using Game.Prefabs;
+using ParkingLotTool.Geometry;
 using Game.Tools;
 using Unity.Collections;
 using Unity.Entities;
@@ -67,8 +68,9 @@ namespace ParkingLotTool.Tools
             _temps = GetEntityQuery(ComponentType.ReadOnly<Temp>());
         }
 
-        internal void Starte(Entity lot, List<(Entity Kante, Entity Ziel, Entity Besitzer)> plan)
+        internal void Starte(Entity lot, List<(Entity Kante, Entity Ziel, Entity Besitzer)> plan, Auftragskennung auftrag)
         {
+            _auftrag = auftrag;
             _lot = lot;
             _plan.Clear();
             _plan.AddRange(plan);
@@ -86,14 +88,14 @@ namespace ParkingLotTool.Tools
          */
         internal void PflegeOhneWerkzeug()
         {
+            if (VerwirfVeraltetenAuftrag()) return;
             if (_stufe == Stufe.Frei || m_ToolSystem.activeTool == this) return;
             if (!BestandGueltig()) { Beende(false, "Bestand verschwunden"); return; }
             var bild = UnityEngine.Time.frameCount;
             if (_stufe == Stufe.Pruefen)
             {
                 if (bild - _seit < 3) return;
-                var ok = Pruefe(out var text);
-                Beende(ok, text);
+                PruefeUndBeende();
                 return;
             }
             if (!_lief && bild - _seit < 10) return;
@@ -106,6 +108,7 @@ namespace ParkingLotTool.Tools
             _definitionen.Clear();
             _plan.Clear();
             _stufe = Stufe.Frei;
+            _auftrag = default;
             _lot = Entity.Null;
             _lief = false;
         }
@@ -114,6 +117,7 @@ namespace ParkingLotTool.Tools
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             applyMode = ApplyMode.None;
+            if (VerwirfVeraltetenAuftrag()) return inputDeps;
             var bild = UnityEngine.Time.frameCount;
             // Nur noch der Fall "im selben Bild umgeschaltet"; den Wechsel
             // davor faengt PflegeOhneWerkzeug ab (abgeschaltete Systeme
@@ -167,8 +171,7 @@ namespace ParkingLotTool.Tools
                     break;
                 case Stufe.Pruefen:
                     if (bild - _seit < 3) break;
-                    var ok = Pruefe(out var text);
-                    Beende(ok, text);
+                    PruefeUndBeende();
                     break;
             }
             return inputDeps;
@@ -273,32 +276,5 @@ namespace ParkingLotTool.Tools
             return eigene;
         }
 
-        private bool Pruefe(out string text)
-        {
-            int getauscht = 0, besitzOk = 0;
-            foreach (var (kante, ziel, besitzer) in _plan)
-            {
-                if (!EntityManager.Exists(kante) || EntityManager.HasComponent<Deleted>(kante)) continue;
-                if (EntityManager.GetComponentData<PrefabRef>(kante).m_Prefab == ziel) getauscht++;
-                if (EntityManager.HasComponent<Owner>(kante)
-                    && EntityManager.GetComponentData<Owner>(kante).m_Owner == besitzer) besitzOk++;
-            }
-            text = $"{getauscht}/{_plan.Count} Wege mit neuem Prefab, Besitzer erhalten {besitzOk}/{_plan.Count}";
-            return getauscht == _plan.Count && besitzOk == _plan.Count;
-        }
-
-        private void Beende(bool ok, string text)
-        {
-            foreach (var d in _definitionen)
-                if (EntityManager.Exists(d)) EntityManager.DestroyEntity(d);
-            _definitionen.Clear();
-            var lot = _lot;
-            _stufe = Stufe.Frei;
-            _lot = Entity.Null;
-            _plan.Clear();
-            Mod.log.Info($"PLT-Fahrwegtausch: Lot {lot.Index}: {(ok ? "fertig" : "abgebrochen")} - {text}.");
-            ParkingLotSchrittmarke.Aenderung("Fahrwegtausch: Lot " + lot.Index + (ok ? " fertig" : " abgebrochen"));
-            Fertig?.Invoke(lot, ok, text);
-        }
     }
 }

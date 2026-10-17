@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using ParkingLotTool.Geometry;
 
+try
+{
 var tests = 0;
 void Check(bool ok, string name)
 {
@@ -46,3 +48,10 @@ for (var run=0;run<500;run++)
     Check(Versorgungsuebernahme.Finde(graph,seeds.Reverse()).SetEquals(expected),"Reihenfolge "+run);
 }
 Console.WriteLine($"Versorgungsuebernahme: {tests} Pruefungen, 0 Fehler.");
+    return 0;
+}
+catch (Exception x)
+{
+    Console.WriteLine("FEHLER: " + x);
+    return 1;
+}
