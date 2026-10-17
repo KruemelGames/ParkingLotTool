@@ -17,7 +17,8 @@ namespace ParkingLotTool.Geometry
             {
                 for (int i = 0; i < vorhanden.Count; i++)
                 {
-                    if (!(math.distance(geplant[plan], vorhanden[i]) < .5f) || !besucht.Add(i)) continue;
+                    // CS2 setzt Schilder nach dem Erzeugen um (gemessen 0,70 m).
+                    if (!(math.distance(geplant[plan], vorhanden[i]) < 2f) || !besucht.Add(i)) continue;
                     if (zuordnung[i] < 0 || Ordne(zuordnung[i], besucht))
                     { zuordnung[i] = plan; return true; }
                 }

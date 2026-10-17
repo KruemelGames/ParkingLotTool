@@ -42,12 +42,14 @@ namespace ParkingLotTool.Tools
             if (q.Art == ParkingLotErzeugungsart.Bushalt)
                 return !temp && EntityManager.HasComponent<Game.Routes.TransportStop>(e)
                     && (!EntityManager.HasComponent<Owner>(e) || EntityManager.GetComponentData<Owner>(e).m_Owner == Entity.Null)
-                    // Seed + Prefab sind die Herkunft; Lage nur als Plausibilitaet
-                    // in der Draufsicht. Kante und Hoehe darf CS2 nach dem
-                    // Erzeugen anpassen (Kantenwechsel beim Anschluss, Gelaende).
+                    // Seed + Prefab sind die Herkunft (Seed gegen alle Schilder
+                    // dieses Prefabs reserviert); Lage nur als Plausibilitaet.
+                    // CS2 setzt das Schild nach dem Erzeugen um: im Spiel 0,70 m
+                    // und -0,17 m Hoehe an derselben Kante (17.10.).
                     && EntityManager.HasComponent<Attached>(e)
                     && EntityManager.HasComponent<Game.Objects.Transform>(e)
-                    && math.distancesq(EntityManager.GetComponentData<Game.Objects.Transform>(e).m_Position.xz, q.A.xz) < .0625f
+                    && (EntityManager.GetComponentData<Attached>(e).m_Parent == q.Bezug
+                        || math.distancesq(EntityManager.GetComponentData<Game.Objects.Transform>(e).m_Position.xz, q.A.xz) < 4f)
                     && (!EntityManager.HasComponent<ParkingLotPartRelation>(e)
                         || EntityManager.GetComponentData<ParkingLotPartRelation>(e).Lot == lot);
             if (!EntityManager.HasComponent<Edge>(e) || !EntityManager.HasComponent<Curve>(e)) return false;

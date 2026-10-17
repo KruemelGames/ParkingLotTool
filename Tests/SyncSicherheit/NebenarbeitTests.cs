@@ -65,6 +65,13 @@ internal static partial class Program
         Pruefe(s.TestBushalt(lot, carrier, prefab, ref bus, eigen) && bus.Ergebnis == eigen && bus.Erledigt
             && em.GetComponentData<ParkingLotPartRelation>(eigen).Lot == lot && !em.HasComponent<Owner>(eigen),
             "eindeutiger Erzeugungsauftrag bindet Schild bei leerem Vanilla-Owner");
+        var bus2 = new ParkingLotErzeugungsauftrag { Art = ParkingLotErzeugungsart.Bushalt, Seed = 25, Bezug = edge, A = new float3(3, 2, 1) };
+        var versetzt = Schild(9073, 25);
+        em.Set(versetzt, new Transform { m_Position = bus.A + new float3(.7f, -.17f, 0) });
+        Pruefe(s.TestBushalt(lot, carrier, prefab, ref bus2, versetzt) && bus2.Ergebnis == versetzt,
+            "von CS2 umgesetztes eigenes Schild (0,70 m, gleiche Kante) wird gebunden");
+        Pruefe(Erzeugungsherkunft.BushalteVollstaendig(new[] { new float2(0,0) }, new[] { new float2(.7f,0) }),
+            "umgesetztes Schild quittiert seine geplante Stelle");
         var doppelt = Schild(9072, 23);
         Pruefe(!s.TestBushalt(lot, carrier, prefab, ref bus, eigen, doppelt)
             && !em.HasComponent<ParkingLotPartRelation>(doppelt), "mehrdeutige Herkunft baut keine Zuordnung auf Verdacht");
