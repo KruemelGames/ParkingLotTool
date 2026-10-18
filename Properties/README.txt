@@ -70,4 +70,4 @@ Also shipped with this mod:
   A small helper from React, MIT licence - see
   ParkingLotTool.mjs.LICENSE.txt.
 
-Copyright (c) 2026 KruemelGames.
+Copyright (c) 2026 Torbi (KruemelGames).

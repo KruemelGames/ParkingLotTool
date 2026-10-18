@@ -143,7 +143,7 @@ the harness and post the numbers.
 
 [GPL-3.0](LICENSE).
 
-Copyright (c) 2026 KruemelGames.
+Copyright (c) 2026 Torbi (KruemelGames).
 
 You may use, study, change and share this — but anything you publish that is
 built on it has to be free software under the same licence, with its source
