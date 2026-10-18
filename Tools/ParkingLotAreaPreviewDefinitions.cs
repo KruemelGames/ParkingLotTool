@@ -24,8 +24,9 @@ namespace ParkingLotTool.Tools
         {
             var strasseAn = _baukontext?.Zettel.SurfaceRoadOn ?? _uiSystem?.FlaecheStrasseAn ?? true;
             var dekoAn = _baukontext?.Zettel.SurfaceDecorationOn ?? _uiSystem?.FlaecheDekoAn ?? true;
-            layout.SurfacesForPlacement(
-                strasseAn, dekoAn, out var gras, out var asphalt);
+            var vorflaechenPrefab = _vorflaechenPrefab;
+            GeplanteBauflaechen(layout, strasseAn, dekoAn, vorflaechenPrefab != Entity.Null,
+                out var gras, out var asphalt, out var verschmolzen, out var einzelneVorflaechen);
             if (!dekoAn && layout.GrassForVegetation?.Length > 0)
                 RecordPreviewDiagnostic("Warning", "Dekoflaeche AUS: "
                     + "Gelaendebaeume im Gruenstreifen bleiben sichtbar, "
@@ -33,38 +34,6 @@ namespace ParkingLotTool.Tools
             if (!strasseAn && layout.AsphaltSurface?.Length > 0)
                 RecordPreviewDiagnostic("Warning", "Strassenflaeche AUS: "
                     + "Gelaendebaeume abseits der Wege bleiben sichtbar.");
-            /*
-             * Die Vorflaeche braucht ihr eigenes Prefab (Decal-Ebene `Roads`,
-             * siehe ParkingLotApronPrefab). Wenn es hier eine Vorflaeche gibt,
-             * ist ihr Prefab bereits samt eigenem Materialstapel geprueft;
-             * andernfalls haette SyncAreaPreview vor diesem Aufruf gewartet.
-             */
-            var vorflaechenPrefab = _vorflaechenPrefab;
-            var vorflaechen = vorflaechenPrefab != Entity.Null
-                ? _vorflaechen : Array.Empty<float2[]>();
-
-            /*
-             * EINE FLAECHE, NICHT ZWEI - HIER WIRD SIE ES.
-             *
-             * Die Vorflaeche wird in den Asphaltring eingesetzt, statt an ihn
-             * angelegt. Danach gibt es an der Polygonkante keine zwei Raender
-             * mehr, die aneinanderstossen koennten. Was sich nicht einsetzen
-             * laesst, bleibt eigenstaendig - das steht dann in der Meldung
-             * und ist nicht still.
-             *
-             * Der verschmolzene Ring reicht ueber die Polygonkante hinaus bis
-             * auf die Strasse. Er braucht deshalb das Vorflaechen-Prefab mit
-             * der Decal-Ebene `Roads`; der Vanilla-Belag wuerde dort
-             * unsichtbar bleiben. Der uebrige Asphalt behaelt sein Prefab.
-             */
-            var verschmolzen = Array.Empty<float2[]>();
-            var einzelneVorflaechen = vorflaechen;
-            if (vorflaechen.Length > 0)
-            {
-                VerschmelzeVorflaechen(asphalt, out verschmolzen,
-                    out var uebrigerAsphalt, out einzelneVorflaechen, out _);
-                asphalt = uebrigerAsphalt;
-            }
 
             BeginAreaTransfer(layout, gras, asphalt);
             // Im Nutzerfall lagen zwischen Abriss und Hoehenlesen nur 45 ms;

@@ -1,7 +1,7 @@
 param([Parameter(Mandatory=$true)][string]$GameDllQuellen)
 $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
-$ablage = Join-Path $repo '.codex-build/surface-preview-3-20261017'
+$ablage = Join-Path $repo '.codex-build/surface-preview-4-20261018'
 New-Item -ItemType Directory -Force -Path $ablage | Out-Null
 Set-Location -LiteralPath $repo
 python Tests/SurfacePreview/permanent_befund.py $GameDllQuellen --report (Join-Path $ablage 'permanent.json')
@@ -16,11 +16,18 @@ $quelle = [IO.File]::ReadAllText((Join-Path $repo 'Geometry/OberflaechenMuster.c
 $faelle = @(
     @('Bauphase-ignoriert', '&& !bauphase', '&& true'),
     @('Bauarbeiter-ignoriert', '&& !bauarbeiter', '&& true'),
-    @('Mehrfachmuster-bleibt', 'if (muster > 1) return Aktion.Entfernen;', 'if (muster > 1) return Aktion.Behalten;'),
-    @('Offene-Ausgabe-ignoriert', '(muster == 1 || ausgabeOffen)', '(muster == 1)'),
-    @('Farbmaske-entfaellt', 'return Array.Empty<float2[]>();', 'return new[] { new[] { a,b,c } };'),
-    @('Quadrat-entartet', 'public const float Kantenlaenge = 40f;', 'public const float Kantenlaenge = 0f;'),
-    @('NaN-Mitte-erlaubt', 'if (!math.all(math.isfinite(mitte)))', 'if (false)')
+    @('Offene-Shape-erlaubt', 'an && geschlossen', 'an && true'),
+    @('Altes-Layout-erlaubt', '&& layoutAktuell', '&& true'),
+    @('Ziehen-erlaubt', '&& !ziehen', '&& true'),
+    @('Alte-Antwort-erlaubt', 'stand == Stand', 'true'),
+    @('ESC-ignoriert', '&& !_abgebrochen', '&& true'),
+    @('Wahlwechsel-ignoriert', 'wahl != _wahl', 'false'),
+    @('Layoutwechsel-ignoriert', '!ReferenceEquals(layout, _layout)', 'false'),
+    @('Falscher-Anteil', 'public const double Anteil = .25;', 'public const double Anteil = .5;'),
+    @('Farbmaske-entfaellt', 'var draussen = Halbebene(rest,achse,grenze,-vorzeichen);', 'var draussen = new List<float2>(rest);'),
+    @('Annahme-entfaellt', '|| Cs2Triangulierung.Dreiecke(sauber) != sauber.Length-2', '|| false'),
+    @('Verkleinern-entfaellt', 'if (!voll)', 'if (true)'),
+    @('NaN-Lot-erlaubt', '|| lot.Any(p => !math.all(math.isfinite(p)))', '|| false')
 )
 foreach ($fall in $faelle) {
     if (!$quelle.Contains($fall[1])) { throw "Mutationsstelle fehlt: $($fall[0])" }
@@ -44,4 +51,4 @@ foreach ($fall in @(@('Marker-Version-fehlt','w.Write(1)','w.Write(0)'), @('Mark
 Kontrolle
 dotnet run -c Release --project Tests/Speicherformate/Speicherformate.csproj *> (Join-Path $ablage 'formate.log')
 if ($LASTEXITCODE -ne 0) { throw 'Produktiver Speicherformat-Abschlusslauf fehlgeschlagen.' }
-Write-Output 'Muster/Masken/Entscheidungen/Marker: produktiv gruen, 9 Gegenproben erkannt.'
+Write-Output 'Muster/Masken/Entscheidungen/Marker: produktiv gruen, 16 Gegenproben erkannt.'

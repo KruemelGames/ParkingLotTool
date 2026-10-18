@@ -417,7 +417,7 @@ namespace ParkingLotTool.Tools
                 && _buildStage == BuildStage.Idle;
             _hasHover = _reiter != Werkzeugreiter.Liste
                 && (worldInputAllowed || _dragPoint >= 0 || _dragEdge >= 0
-                          || _dragEntrance >= 0)
+                          || _dragEntrance >= 0 || _musterGriff.Zieht)
                 && TryGetGroundPoint(out _hoverPosition);
             /**
              * DIE LETZTE GUELTIGE WELTPOSITION MERKEN.
@@ -444,6 +444,9 @@ namespace ParkingLotTool.Tools
                 && secondaryApplyAction.WasPressedThisFrame();
             var escapePressed = cancelAction != null
                 && cancelAction.WasPressedThisFrame() && !secondaryPressed;
+
+            if (HandleMustergriff(worldInputAllowed,secondaryPressed,escapePressed))
+                return RenderOverlay(deps);
 
             /*
              * DIE LINIENAUSWAHL KOMMT VOR ALLEM ANDEREN.
@@ -1736,6 +1739,7 @@ namespace ParkingLotTool.Tools
                     ? (randA, randB, randZustand)
                     : ((float2, float2, int)?)null);
             DrawBusStops(new ParkingLotPreviewBuffer(buffer));
+            ZeichneMustergriff(new ParkingLotPreviewBuffer(buffer));
             ParkingLotMessung.Ende(
                 ParkingLotMessung.Punkt.Zeichnen, uhrZeichnen);
             return deps;
@@ -2011,6 +2015,7 @@ namespace ParkingLotTool.Tools
 
             // Zuruecksetzen OHNE ClearAreaPreviewLayout - dessen
             // ApplyMode.Clear wuerde das eben Gebaute verwerfen.
+            VergissMustergriff();
             _points.Clear();
             _worldPoints.Clear();
             _pointAxes.Clear();
@@ -2062,6 +2067,7 @@ namespace ParkingLotTool.Tools
 
         private void ResetSelection()
         {
+            VergissMustergriff();
             // Ein halb fertiger Bauvorgang darf nicht ueber das Zuruecksetzen
             // hinweg weiterlaufen - sonst wendet er im naechsten Frame ein
             // Layout an, das es nicht mehr gibt.

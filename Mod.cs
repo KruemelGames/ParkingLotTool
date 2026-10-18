@@ -310,6 +310,8 @@ namespace ParkingLotTool
             updateSystem.UpdateAt<ParkingLotAutoVersorgungApplySystem>(SystemUpdatePhase.PostTool);
             updateSystem.UpdateAt<ParkingLotErzeugungsSystem>(SystemUpdatePhase.ModificationEnd);
             updateSystem.UpdateAt<ParkingLotMusterSystem>(SystemUpdatePhase.ModificationEnd);
+            updateSystem.UpdateBefore<ParkingLotMusterSpeicherschutzSystem, Game.Serialization.SerializerSystem>(SystemUpdatePhase.Serialize);
+            updateSystem.UpdateBefore<ParkingLotMusterobjektPrefabSystem, Game.Prefabs.PrefabInitializeSystem>(SystemUpdatePhase.PrefabUpdate);
             // Laeuft unabhaengig vom aktiven Werkzeug: der Nutzer schliesst
             // es nach dem Bau, um Zoning zu malen und Haeuser zu setzen.
             updateSystem.UpdateAt<ParkingLotSurfaceWatchSystem>(

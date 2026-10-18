@@ -553,7 +553,7 @@ namespace ParkingLotTool.Tools
                 {
                     if (bauteil == null) continue;
                     // Muster erbt nur Material, niemals Terraforming, Kosten, Effekte oder Unterteile.
-                    if (eintrag.Prioritaetsaufschlag == ParkingLotPreviewStyle.MusterPrioritaet
+                    if (ParkingLotPreviewStyle.IstMusterPrioritaet(eintrag.Prioritaetsaufschlag)
                         && !eintrag.Raeumt && !(bauteil is RenderedArea)) continue;
 
                     /*
@@ -628,7 +628,7 @@ namespace ParkingLotTool.Tools
                     klon.AddComponentFrom(bauteil);
                 }
 
-                if (eintrag.Prioritaetsaufschlag == ParkingLotPreviewStyle.MusterPrioritaet && !eintrag.Raeumt)
+                if (ParkingLotPreviewStyle.IstMusterPrioritaet(eintrag.Prioritaetsaufschlag) && !eintrag.Raeumt)
                     klon.AddComponent<ParkingLotMusterkennung>();
 
                 var originalGerendert = original.GetComponent<RenderedArea>();

@@ -80,7 +80,8 @@ namespace ParkingLotTool.Tools
                 ParkingLotMessung.Zaehle(
                     ParkingLotMessung.Zaehler.Pflanzen, _vegetation.Count);
                 foreach(var plant in _vegetation)
-                    buffer.DrawCircle(VegetationColor,plant.Position,plant.Tree ? VegetationTreeDiameter : VegetationShrubDiameter);
+                    if (EchteMusterArt != EchteVorschauArt.Vegetation || !EchteMusterBereich.HasValue
+                        || !EchteVorschau.Enthaelt(EchteMusterBereich.Value,plant.Position.xz)) buffer.DrawCircle(VegetationColor,plant.Position,plant.Tree ? VegetationTreeDiameter : VegetationShrubDiameter);
             }
             /*
              * DIE STRASSENBAENDER WERDEN GAR NICHT MEHR GEZEICHNET.

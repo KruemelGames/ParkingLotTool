@@ -89,6 +89,9 @@ namespace ParkingLotTool.Tools
                 _vorschauPflanzenplaetze = plan.Plants.Count;
             }
             _overlay.SetVegetation(plan,species,_terrainSystem);
+            _musterVegetation=plan; _musterPflanzen=assets; _musterVegetationswahl=options;
+            _musterLaternen=laternen; _musterLaternenwahl=laternenOptionen;
+            _musterObjektLayout=layout; _musterObjektStand++;
         }
         private int _vorschauPflanzenkandidaten, _vorschauPflanzenplaetze;
         // Nur eigene neu erzeugte Temp-Baeume: Alter unmittelbar vor Apply festlegen.

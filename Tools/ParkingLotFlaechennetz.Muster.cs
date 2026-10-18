@@ -5,8 +5,8 @@ namespace ParkingLotTool.Tools
 {
     public sealed partial class ParkingLotFlaechennetzSystem
     {
-        private float2? _musterMitte;
-        internal bool SetzeMuster(float2? mitte)
+        private OberflaechenMuster.Bereich? _musterMitte;
+        internal bool SetzeMuster(OberflaechenMuster.Bereich? mitte)
         {
             if (_musterMitte.HasValue == mitte.HasValue
                 && (!mitte.HasValue || _musterMitte.Value.Equals(mitte.Value))) return false;
@@ -18,8 +18,9 @@ namespace ParkingLotTool.Tools
         {
             if (!_musterMitte.HasValue) return signatur;
             unchecked {
-                return ((signatur * 31 + _musterMitte.Value.x.GetHashCode()) * 31
-                    + _musterMitte.Value.y.GetHashCode()) * 31 + 1;
+                return (((signatur * 31 + _musterMitte.Value.Mitte.x.GetHashCode()) * 31
+                    + _musterMitte.Value.Mitte.y.GetHashCode()) * 31 + _musterMitte.Value.Halbseite.GetHashCode()) * 31
+                    + _musterMitte.Value.Richtung.GetHashCode();
             }
         }
     }

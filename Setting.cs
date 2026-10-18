@@ -387,6 +387,10 @@ namespace ParkingLotTool
         [SettingsUIHidden]
         public string Flaechenklone { get; set; } = string.Empty;
 
+        /** Darstellungsklone vor dem Lesen verbliebener Vorschaumarker wieder anmelden. */
+        [SettingsUIHidden]
+        public string MusterObjektklone { get; set; } = string.Empty;
+
         /**
          * Baustandard fuer neue Parkplaetze. 0 heisst kostenlos.
          *

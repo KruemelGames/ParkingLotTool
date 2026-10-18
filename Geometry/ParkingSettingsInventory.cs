@@ -56,7 +56,7 @@ namespace ParkingLotTool.Geometry
             "SetAltEngineOhneWarnung", "SetAsDefault", "SetAutoEntryMode",
             "SetEntranceKind", "SetEntranceMode", "SetBusStopMode", "SetMarkerMode",
             "SetPanelOpen", "SetPanelPosition", "SetPanelStil",
-            "SetSurfacePreview", "SetSurfacePreviewSlot",
+            "SetSurfacePreview", "SetEchteVorschau",
             "SetSelectedParkingFee", "SetTab", "SetZoningLinienwahl",
             "SetZoningModus", "SetZoningSeitenModus",
         };

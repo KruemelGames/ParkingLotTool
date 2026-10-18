@@ -1,7 +1,7 @@
 import { Children, isValidElement, useCallback, useContext, useEffect, useRef, useState } from "react";
 import styles from "./panel.module.scss";
 import {
-  surfacePreview$, setSurfacePreviewSlot, icon, FANGOPTIONEN, fangGewaehlt$, fangVerfuegbar$, setzeFang,
+  surfacePreview$, icon, FANGOPTIONEN, fangGewaehlt$, fangVerfuegbar$, setzeFang,
 } from "./bindings";
 import { useValue } from "cs2/api";
 import { useTexte } from "./texte";
@@ -792,7 +792,6 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
     sichtbar.length + (ausLabel ? 1 : 0));
   useEffect(() => {
     if (!offen) { setSuche(""); return; }
-    if (surfaceSlot) setSurfacePreviewSlot(surfaceSlot);
     const schliessen = () => setOffen(false);
     const taste = (e: KeyboardEvent) => { if (e.key === "Escape") schliessen(); };
     if (schliesseOffeneAuswahl) schliesseOffeneAuswahl();
@@ -804,7 +803,6 @@ export const Auswahl = ({ scrollSchluessel, label, tooltip, value, options, ton,
     window.addEventListener("mousedown", klick);
     window.addEventListener("keydown", taste);
     return () => {
-      if (surfaceSlot) setSurfacePreviewSlot("-" + surfaceSlot);
       window.removeEventListener("keydown", taste);
       window.removeEventListener("mousedown", klick);
       if (schliesseOffeneAuswahl === schliessen) schliesseOffeneAuswahl = null;
