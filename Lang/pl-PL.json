@@ -1,4 +1,5 @@
 {
+  "preview.moveArea": "Przeciągnij, aby przesunąć obszar podglądu",
   "absturz.abbild": "Zrzut awarii {zeit}: {art} w wątku {thread}.",
   "absturz.abbildMitJob": "Zrzut awarii {zeit}: {art} w wątku {thread}, zadanie Burst {job}.",
   "absturz.art.ausfuehren": "wykonanie pod adresem 0x{adresse}",
@@ -524,6 +525,12 @@
   "ui.flaecheStrasse": "Nawierzchnia",
   "ui.flaecheStrasseAn": "Ułóż nawierzchnię",
   "ui.flaechenKeineTreffer": "Brak nawierzchni",
+  "ui.lanternPreview": "Podgląd lamp",
+  "ui.tooltipLanternPreview": "Pokazuje planowane lampy we fragmencie jako modele bez zużycia prądu. Potem je usuwa i wyłącza inne rzeczywiste podglądy.",
+  "ui.vegetationPreview": "Podgląd roślin",
+  "ui.tooltipVegetationPreview": "Pokazuje planowane rośliny i wybrany wiek we fragmencie, bez wzrostu ani symulacji. Potem je usuwa i wyłącza inne rzeczywiste podglądy.",
+  "ui.surfacePreview": "Podgląd podłoża",
+  "ui.tooltipSurfacePreview": "Po zamknięciu obrysu pokazuje fragment gotowego parkingu przy pierwszym punkcie. Tworzy prawdziwe nawierzchnie, a następnie je usuwa.",
   "ui.flaechenSuche": "Szukaj podłoża…",
   "ui.gebuehrAus": "Wył",
   "ui.geschriebenNach": "Zapisano w: {pfad}",

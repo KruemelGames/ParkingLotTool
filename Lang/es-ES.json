@@ -1,4 +1,5 @@
 {
+  "preview.moveArea": "Arrastra para mover el área de vista previa",
   "absturz.abbild": "Volcado de fallo {zeit}: {art} en el hilo {thread}.",
   "absturz.abbildMitJob": "Volcado de fallo {zeit}: {art} en el hilo {thread}, tarea Burst {job}.",
   "absturz.art.ausfuehren": "ejecución en 0x{adresse}",
@@ -498,6 +499,12 @@
   "ui.flaecheStrasse": "Superficie vial",
   "ui.flaecheStrasseAn": "Colocar pavimento",
   "ui.flaechenKeineTreffer": "Sin superficies",
+  "ui.lanternPreview": "Vista de farolas",
+  "ui.tooltipLanternPreview": "Muestra las farolas previstas en el recorte como modelos sin consumo eléctrico. Después las retira y desactiva las otras vistas reales.",
+  "ui.vegetationPreview": "Vista de vegetación",
+  "ui.tooltipVegetationPreview": "Muestra las plantas previstas y sus edades en el recorte sin crecimiento ni simulación. Después las retira y desactiva las otras vistas reales.",
+  "ui.surfacePreview": "Vista de suelo",
+  "ui.tooltipSurfacePreview": "Con el contorno cerrado, muestra parte del aparcamiento terminado cerca del primer punto. Coloca superficies reales y luego las retira.",
   "ui.flaechenSuche": "Buscar superficies…",
   "ui.gebuehrAus": "No",
   "ui.geschriebenNach": "Guardado en: {pfad}",

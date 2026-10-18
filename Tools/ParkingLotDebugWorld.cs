@@ -279,6 +279,7 @@ namespace ParkingLotTool.Tools
         private DebugExistingArea CaptureArea(Entity entity, float2[] polygon)
         {
             if (!EntityManager.Exists(entity)
+                || EntityManager.HasComponent<ParkingLotMusterflaeche>(entity)
                 || EntityManager.HasComponent<Temp>(entity)
                 || EntityManager.HasComponent<Deleted>(entity)
                 || !EntityManager.HasComponent<Game.Areas.Area>(entity)

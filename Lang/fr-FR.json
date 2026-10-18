@@ -1,4 +1,5 @@
 {
+  "preview.moveArea": "Faites glisser pour déplacer la zone d’aperçu",
   "absturz.abbild": "Rapport de plantage {zeit} : {art} dans le thread {thread}.",
   "absturz.abbildMitJob": "Rapport de plantage {zeit} : {art} dans le thread {thread}, tâche Burst {job}.",
   "absturz.art.ausfuehren": "exécution à 0x{adresse}",
@@ -498,6 +499,12 @@
   "ui.flaecheStrasse": "Sol routier",
   "ui.flaecheStrasseAn": "Poser le sol routier",
   "ui.flaechenKeineTreffer": "Aucun revêtement",
+  "ui.lanternPreview": "Aperçu des lampadaires",
+  "ui.tooltipLanternPreview": "Montre les lampadaires prévus dans la zone, sans consommation électrique. Les retire ensuite et désactive les autres aperçus réels.",
+  "ui.vegetationPreview": "Aperçu de la végétation",
+  "ui.tooltipVegetationPreview": "Montre les plantes prévues et les âges choisis dans la zone, sans croissance ni simulation. Les retire ensuite et désactive les autres aperçus réels.",
+  "ui.surfacePreview": "Aperçu du sol",
+  "ui.tooltipSurfacePreview": "Une fois le contour fermé, montre une partie du parking terminé près du premier point. Pose de vraies surfaces, puis les retire.",
   "ui.flaechenSuche": "Chercher un sol…",
   "ui.gebuehrAus": "Non",
   "ui.geschriebenNach": "Écrit dans : {pfad}",

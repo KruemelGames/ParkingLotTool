@@ -1,3 +1,4 @@
+import { EchteVorschauSchalter } from "./echte-vorschau";
 import React, { useEffect, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { useTexte } from "./texte";
@@ -67,6 +68,7 @@ export const LaternenSchalter = ({ onOeffnen }: { onOeffnen: (an: boolean) => vo
     </button>
    </MitTooltip>
   </div>
+  <EchteVorschauSchalter art={2} />
  </div>;
 };
 

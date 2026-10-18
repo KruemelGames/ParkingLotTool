@@ -552,6 +552,9 @@ namespace ParkingLotTool.Tools
                 foreach (var bauteil in original.components)
                 {
                     if (bauteil == null) continue;
+                    // Muster erbt nur Material, niemals Terraforming, Kosten, Effekte oder Unterteile.
+                    if (ParkingLotPreviewStyle.IstMusterPrioritaet(eintrag.Prioritaetsaufschlag)
+                        && !eintrag.Raeumt && !(bauteil is RenderedArea)) continue;
 
                     /*
                      * `SpawnableArea` NICHT MITKOPIEREN - DAS IST DIE
@@ -624,6 +627,9 @@ namespace ParkingLotTool.Tools
                     if (!ParkingLotKlonregel.Erben(bauteil)) continue;
                     klon.AddComponentFrom(bauteil);
                 }
+
+                if (ParkingLotPreviewStyle.IstMusterPrioritaet(eintrag.Prioritaetsaufschlag) && !eintrag.Raeumt)
+                    klon.AddComponent<ParkingLotMusterkennung>();
 
                 var originalGerendert = original.GetComponent<RenderedArea>();
                 var klonGerendert = klon.GetComponent<RenderedArea>();

@@ -1,4 +1,5 @@
 {
+  "preview.moveArea": "드래그하여 미리보기 영역 이동",
   "absturz.abbild": "충돌 덤프 {zeit}: 스레드 {thread}에서 {art}.",
   "absturz.abbildMitJob": "충돌 덤프 {zeit}: 스레드 {thread}, Burst 작업 {job}에서 {art}.",
   "absturz.art.ausfuehren": "0x{adresse}에서 실행",
@@ -498,6 +499,12 @@
   "ui.flaecheStrasse": "도로 표면",
   "ui.flaecheStrasseAn": "도로 표면 배치",
   "ui.flaechenKeineTreffer": "표면 없음",
+  "ui.lanternPreview": "가로등 미리보기",
+  "ui.tooltipLanternPreview": "일부 구역에 계획된 가로등을 전력 소비 없는 모델로 표시합니다. 나중에 제거하며 다른 실제 미리보기는 끕니다.",
+  "ui.vegetationPreview": "식생 미리보기",
+  "ui.tooltipVegetationPreview": "일부 구역에 계획된 식물과 선택한 성장 단계를 성장이나 시뮬레이션 없이 표시합니다. 나중에 제거하며 다른 실제 미리보기는 끕니다.",
+  "ui.surfacePreview": "표면 미리보기",
+  "ui.tooltipSurfacePreview": "윤곽선을 닫으면 첫 지점 근처에 완성될 주차장의 일부를 표시합니다. 실제 표면을 배치한 뒤 다시 제거합니다.",
   "ui.flaechenSuche": "표면 검색...",
   "ui.gebuehrAus": "끔",
   "ui.geschriebenNach": "저장 위치: {pfad}",

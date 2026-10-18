@@ -250,6 +250,7 @@ namespace ParkingLotTool.Tools
                 // Auch wenn die Wiederherstellung wirft: ein nie bereites
                 // Register liesse danach JEDEN Sync- und Bauauftrag scheitern.
                 World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>().PufferWiederhergestellt();
+                World.GetOrCreateSystemManaged<ParkingLotMusterSystem>().NachLaden();
             }
             World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>().NimmNachLadenWiederAuf();
             ParkingLotSchrittmarke.Setze("Laden: Traeger-SubNet wiederherstellen beendet; Decal-Prefabs aufloesen");

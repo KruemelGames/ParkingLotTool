@@ -1,4 +1,5 @@
 {
+  "preview.moveArea": "Arraste para mover a área de prévia",
   "absturz.abbild": "Despejo de falha {zeit}: {art} no thread {thread}.",
   "absturz.abbildMitJob": "Despejo de falha {zeit}: {art} no thread {thread}, job Burst {job}.",
   "absturz.art.ausfuehren": "execução em 0x{adresse}",
@@ -498,6 +499,12 @@
   "ui.flaecheStrasse": "Superfície da via",
   "ui.flaecheStrasseAn": "Colocar superfície da via",
   "ui.flaechenKeineTreffer": "Nenhuma superfície encontrada",
+  "ui.lanternPreview": "Prévia de postes",
+  "ui.tooltipLanternPreview": "Mostra os postes planejados no recorte como modelos sem consumo de energia. Depois os remove e desativa as outras prévias reais.",
+  "ui.vegetationPreview": "Prévia de vegetação",
+  "ui.tooltipVegetationPreview": "Mostra as plantas planejadas e as idades escolhidas no recorte, sem crescimento ou simulação. Depois as remove e desativa as outras prévias reais.",
+  "ui.surfacePreview": "Prévia do piso",
+  "ui.tooltipSurfacePreview": "Com o contorno fechado, mostra parte do estacionamento pronto perto do primeiro ponto. Coloca superfícies reais e depois as remove.",
   "ui.flaechenSuche": "Procurar superfícies…",
   "ui.gebuehrAus": "Desligado",
   "ui.geschriebenNach": "Gravado em: {pfad}",

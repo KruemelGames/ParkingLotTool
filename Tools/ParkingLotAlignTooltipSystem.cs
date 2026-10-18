@@ -35,6 +35,11 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            if (_tool?.MustergriffHinweis==true)
+            {
+                _hinweis.value=ParkingLotTexte.T("preview.moveArea");
+                AddMouseTooltip(_hinweis); return;
+            }
             if (_tool == null || !_tool.AusrichtWahlAktiv) return;
             // Der Hinweis muss den SCHRITT nennen, nicht den Vorgang - sonst
             // stuende bei der Flaechenwahl "eine Linie anklicken".

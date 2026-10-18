@@ -1,4 +1,5 @@
 {
+  "preview.moveArea": "拖动以移动预览区域",
   "absturz.abbild": "崩溃转储 {zeit}: {art}，线程 {thread}。",
   "absturz.abbildMitJob": "崩溃转储 {zeit}: {art}，线程 {thread}，Burst 作业 {job}。",
   "absturz.art.ausfuehren": "在 0x{adresse} 执行",
@@ -498,6 +499,12 @@
   "ui.flaecheStrasse": "道路表面",
   "ui.flaecheStrasseAn": "放置道路表面",
   "ui.flaechenKeineTreffer": "未找到表面",
+  "ui.lanternPreview": "路灯预览",
+  "ui.tooltipLanternPreview": "在局部区域显示规划路灯的模型，不消耗电力，之后会将其移除。开启时会关闭其他实物预览。",
+  "ui.vegetationPreview": "植被预览",
+  "ui.tooltipVegetationPreview": "在局部区域显示规划植物及所选树龄，不生长、不参与模拟，之后会将其移除。开启时会关闭其他实物预览。",
+  "ui.surfacePreview": "表面预览",
+  "ui.tooltipSurfacePreview": "闭合轮廓后，在起点附近显示停车场建成后的局部效果。会铺设真实地表，随后将其移除。",
   "ui.flaechenSuche": "搜索表面...",
   "ui.gebuehrAus": "关",
   "ui.geschriebenNach": "已写入: {pfad}",

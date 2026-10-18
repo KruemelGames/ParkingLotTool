@@ -33,6 +33,7 @@ internal static partial class Program
         "StufeANeu" => Lies<ParkingLotStufeAPrefabID>(r),
         "NeubauFaellig" => Lies<ParkingLotNeubauFaellig>(r),
         "Abrissabsicht" => Lies<ParkingLotAbrissabsicht>(r),
+        "Musterflaeche" => Lies<ParkingLotMusterflaeche>(r),
         "NebenarbeitOffen" => Lies<ParkingLotNebenarbeitOffen>(r),
         _ => throw new InvalidOperationException("Fixturart: " + art),
     };
@@ -76,7 +77,7 @@ internal static partial class Program
                     || (fixture.Art == "Rueckweg" || fixture.Art == "Erhaltener") && fixture.Version == 2
                     || fixture.Art == "Anschluss" && fixture.Version == -2
                     || fixture.Art.StartsWith("StufeA") || fixture.Art == "NebenarbeitOffen" && fixture.Version == 2
-                    || fixture.Art == "NeubauFaellig" || fixture.Art == "Abrissabsicht")
+                    || fixture.Art == "NeubauFaellig" || fixture.Art == "Abrissabsicht" || fixture.Art == "Musterflaeche")
                 {
                     var writer = new Schreiber();
                     wert.Serialize(writer);

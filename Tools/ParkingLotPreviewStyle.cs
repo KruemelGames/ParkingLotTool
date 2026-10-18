@@ -6,6 +6,10 @@ namespace ParkingLotTool.Tools
     // Meter im Weltraum, keine Pixel. Siehe PREVIEW-DESIGN.md fuer Abnahme.
     internal static class ParkingLotPreviewStyle
     {
+        // Eigener Klonschluessel, eine Stufe ueber der bewaehrten Vorflaeche (-90).
+        internal const int MusterPrioritaet = Geometry.Flaechenklonname.Vorflaeche + 1;
+        internal const int MusterBodenPrioritaet = Geometry.Flaechenklonname.Zoning + 1;
+        internal static bool IstMusterPrioritaet(int p) => p == MusterPrioritaet || p == MusterBodenPrioritaet;
         internal static readonly Color VegetationColor = new Color(.49f,.83f,.33f,.75f);
         /**
          * Laternen wie im Design "PLT Laternenplanung": warmes Gelb fuer die
@@ -66,6 +70,8 @@ namespace ParkingLotTool.Tools
         internal const float HandleOutlineWidth = 0.24f;
         internal const float EdgeArrowGap = 2.4f;
         internal const float EdgeArrowReach = 7f;
+        internal const float MusterPfeilspitze = 1.5f;
+        internal const float MusterPfeilbreite = 1f;
         internal const float ChargerDiameter = 1.8f;
         internal const float MarkerDiameter = 4.8f;
         internal const float EntranceHandleDiameter = PointDiameter;

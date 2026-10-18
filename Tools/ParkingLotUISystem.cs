@@ -41,7 +41,7 @@ namespace ParkingLotTool.Tools
          * abgeschalteter Streifen seine gemerkte Tiefe nicht verlieren darf.
          */
         [JsonObject(MemberSerialization.OptIn)]
-        private sealed class UserDefaults
+        private sealed partial class UserDefaults
         {
             [JsonProperty("version", Required = Required.Always)]
             public int Version { get; set; }
@@ -211,6 +211,7 @@ namespace ParkingLotTool.Tools
                 SurfaceRoadOn = SurfaceRoadOn,
                 SurfaceDecorationOn = SurfaceDecorationOn,
                 SurfaceApronOn = SurfaceApronOn,
+                EchteVorschau = (int)GeleseneVorschau,
                 BayIcons = BayIcons,
                 CrossSpacing = CrossSpacing,
                 RowAngle = RowAngle,
@@ -852,6 +853,7 @@ namespace ParkingLotTool.Tools
             AddBinding(_flaecheDekoAnStd = new ValueBinding<bool>(
                 Group, "SurfaceDecorationOnDefault",
                 _defaults.SurfaceDecorationOn ?? true));
+            InitialisiereSurfacePreview();
             AddBinding(_vorflaecheAn = new ValueBinding<bool>(
                 Group, "SurfaceApronOn", _defaults.SurfaceApronOn ?? true));
             AddBinding(_vorflaecheAnStd = new ValueBinding<bool>(
@@ -1153,6 +1155,7 @@ namespace ParkingLotTool.Tools
                 }
 
                 var loaded = JsonConvert.DeserializeObject<UserDefaults>(json);
+                if (loaded != null) loaded.EchteVorschau = (int)loaded.GeleseneVorschau;
                 MigriereAufBuchten(loaded);
                 if (!ValidDefaults(loaded, out var reason))
                 {
@@ -1958,6 +1961,7 @@ namespace ParkingLotTool.Tools
             changed |= Neu(_flaecheDeko, values.SurfaceDecoration);
             changed |= UpdateValue(_flaecheStrasseAn, values.SurfaceRoadOn ?? true);
             changed |= UpdateValue(_vorflaecheAn, values.SurfaceApronOn ?? true);
+            changed |= UebernimmEchteVorschau(values.GeleseneVorschau);
             changed |= UpdateValue(_flaecheDekoAn,
                 values.SurfaceDecorationOn ?? true);
             changed |= UpdateValue(_buchtsymbole, values.BayIcons ?? true);

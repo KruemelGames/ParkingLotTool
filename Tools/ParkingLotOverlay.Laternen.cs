@@ -18,6 +18,10 @@ namespace ParkingLotTool.Tools
          */
         /** Lichtkreise zeigen - Schalter im Laternenfenster, Standard aus. */
         internal bool LichtkreiseZeigen;
+        internal EchteVorschauArt EchteMusterArt;
+        internal OberflaechenMuster.Bereich? EchteMusterBereich;
+        private bool ImLaternenmuster(float3 pos) => EchteMusterArt == EchteVorschauArt.Laternen
+            && EchteMusterBereich.HasValue && EchteVorschau.Enthaelt(EchteMusterBereich.Value,pos.xz);
 
         private void ZeichneLaternen(ParkingLotPreviewBuffer buffer)
         {
@@ -25,9 +29,10 @@ namespace ParkingLotTool.Tools
             ParkingLotMessung.Zaehle(ParkingLotMessung.Zaehler.Sonstige, _laternen.Count);
             if (LichtkreiseZeigen)
                 foreach (var (pos, platz, bauart, reichweite) in _laternen)
-                    buffer.DrawRing(LaterneLichtColor, pos, 2f * reichweite, .3f);
+                    if (!ImLaternenmuster(pos)) buffer.DrawRing(LaterneLichtColor, pos, 2f * reichweite, .3f);
             foreach (var (pos, platz, bauart, _) in _laternen)
             {
+                if (ImLaternenmuster(pos)) continue;
                 var vorn = LaternenKatalog.Vorwaerts(platz, bauart);
                 if (bauart == LaternenBauart.Einseitig)
                     Arm(buffer, pos, vorn);

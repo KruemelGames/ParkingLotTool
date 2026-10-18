@@ -60,6 +60,7 @@ namespace ParkingLotTool.Tools
                     ComponentType.ReadOnly<Deleted>(),
                     ComponentType.ReadOnly<Temp>(),
                     ComponentType.ReadOnly<ParkingLotAbrissabsicht>(),
+                    ComponentType.ReadOnly<ParkingLotMusterflaeche>(),
                     ComponentType.ReadOnly<Game.Objects.Transform>(),
                     ComponentType.ReadOnly<Game.Net.Node>(),
                     ComponentType.ReadOnly<Game.Net.Edge>(),

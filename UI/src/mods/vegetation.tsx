@@ -1,3 +1,4 @@
+import { EchteVorschauSchalter } from "./echte-vorschau";
 import React, { useEffect, useState } from "react";
 import { bindValue, trigger, useValue } from "cs2/api";
 import { useTexte } from "./texte";
@@ -74,6 +75,7 @@ export const VegetationSchalter = ({ onOeffnen }: {
     </button>
    </MitTooltip>
   </div>
+  <EchteVorschauSchalter art={3} />
  </div>;
 };
 

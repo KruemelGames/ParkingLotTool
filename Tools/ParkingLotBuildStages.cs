@@ -108,6 +108,7 @@ namespace ParkingLotTool.Tools
                     var requestedNow = BuildRequested() || _panelBuildRequest;
                     _panelBuildRequest = false;
                     if (!requestedNow && !_buildRequestedWhenReady) return false;
+                    EntferneSurfacePreview("Bauwunsch");
                     if (requestedNow)
                     {
                         if (!_closed)

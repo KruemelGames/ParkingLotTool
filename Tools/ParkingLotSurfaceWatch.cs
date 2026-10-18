@@ -187,7 +187,8 @@ namespace ParkingLotTool.Tools
             var gefunden = new System.Collections.Generic.List<string>();
             var abfrage = GetEntityQuery(
                 ComponentType.ReadOnly<Game.Areas.Area>(),
-                ComponentType.ReadOnly<PrefabRef>());
+                ComponentType.ReadOnly<PrefabRef>(),
+                ComponentType.Exclude<ParkingLotMusterflaeche>());
             using var alle = abfrage.ToEntityArray(
                 Unity.Collections.Allocator.Temp);
             for (var i = 0; i < alle.Length; i++)

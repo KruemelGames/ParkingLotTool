@@ -1,4 +1,5 @@
 {
+  "preview.moveArea": "Drag to move the preview area",
   "absturz.abbild": "Crash dump {zeit}: {art} in thread {thread}.",
   "absturz.abbildMitJob": "Crash dump {zeit}: {art} in thread {thread}, Burst job {job}.",
   "absturz.art.ausfuehren": "execute at 0x{adresse}",
@@ -498,6 +499,12 @@
   "ui.flaecheStrasse": "Road surface",
   "ui.flaecheStrasseAn": "Place road surface",
   "ui.flaechenKeineTreffer": "No surface found",
+  "ui.lanternPreview": "Lantern preview",
+  "ui.tooltipLanternPreview": "Shows the planned lanterns in the cutout as models without power use. Removes them afterward and switches off other real previews.",
+  "ui.vegetationPreview": "Vegetation preview",
+  "ui.tooltipVegetationPreview": "Shows the planned plants and selected ages in the cutout without growth or simulation. Removes them afterward and switches off other real previews.",
+  "ui.surfacePreview": "Surface Preview",
+  "ui.tooltipSurfacePreview": "Shows a section of the finished parking lot near the first point once the shape is closed. Places real surfaces and removes them afterward.",
   "ui.flaechenSuche": "Search surfaces…",
   "ui.gebuehrAus": "Off",
   "ui.geschriebenNach": "Written to: {pfad}",

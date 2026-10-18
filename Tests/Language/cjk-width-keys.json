@@ -1,4 +1,7 @@
 [
+  "ui.surfacePreview",
+  "ui.lanternPreview",
+  "ui.vegetationPreview",
   "laternenSet.gewerbe",
   "laternenSet.industrie",
   "laternenSet.strasse",

@@ -418,11 +418,15 @@ namespace ParkingLotTool.Tools
             }
             BaueRechteck();
             _striche.Netz = _rechteck;
-            _striche.Material ??= new Material(_vorlage)
+            if (_striche.Material == null)
             {
-                hideFlags = HideFlags.HideAndDontSave,
-                name = "PLT Buchtlinien",
-            };
+                _striche.Material = new Material(_vorlage)
+                {
+                    hideFlags = HideFlags.HideAndDontSave,
+                    name = "PLT Buchtlinien",
+                };
+                Tiefentest(_striche.Material);
+            }
 
             var anzahl = math.min(striche.Count, MaxStriche);
             var daten = new Game.Rendering.OverlayRenderSystem
@@ -589,7 +593,7 @@ namespace ParkingLotTool.Tools
                 _flaechen.Add(new Netzgruppe());
             var gruppe = _flaechen[_flaechenAktiv];
 
-            var signatur = Unterschrift(ringe);
+            var signatur = MitMustermaske(Unterschrift(ringe));
             if (gruppe.Netz == null || gruppe.Signatur != signatur)
             {
                 gruppe.Signatur = signatur;
@@ -640,7 +644,7 @@ namespace ParkingLotTool.Tools
             var gruppe = _teilnetze[_teilAktiv];
 
             var einer = new[] { umriss };
-            var signatur = Unterschrift(einer);
+            var signatur = MitMustermaske(Unterschrift(einer));
             if (gruppe.Netz == null || gruppe.Signatur != signatur)
             {
                 gruppe.Signatur = signatur;
@@ -659,15 +663,61 @@ namespace ParkingLotTool.Tools
 
         // ------------------------------------------------------------------
 
+        /**
+         * OBJEKTE MUESSEN DIE FARBFLAECHE VERDECKEN.
+         *
+         * Spieltest 18.10.: die Farbflaeche schien durch die Muster-Baeume und
+         * -Laternen der echten Vorschau. CS2s Overlay-Material (Shader Graphs/
+         * OverlayObject) liegt in Queue 3900, HDRP zeichnet es nach dem
+         * Postprocessing ohne Tiefentest. Nur `_ZTestTransparent` auf
+         * LessEqual zu setzen aenderte nichts; erst mit Queue 3000 (HDRP
+         * Transparent) verdecken Objekte die Flaeche. Gemessen per
+         * Umschalttaste an fuenf Varianten; 3000 ohne ZWrite ist die kleinste,
+         * die wirkt. Die Transparenz bleibt dabei schwaecher als in 3900 -
+         * der Nutzer hat das so abgenommen. Nur unsere Kopien des Materials, nie CS2s Vorlage.
+         *
+         * Die Pflanzenscheiben bleiben beim Original: sie liegen flach auf
+         * dem Gelaende und flimmerten mit Tiefentest (Z-Fighting).
+         */
+        private static void Tiefentest(Material material)
+        {
+            try
+            {
+                var shader = material.shader;
+                for (int i = 0; i < shader.GetPropertyCount(); i++)
+                {
+                    var name = shader.GetPropertyName(i);
+                    if (name.IndexOf("ZTest", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                        material.SetFloat(name, (float)UnityEngine.Rendering.CompareFunction.LessEqual);
+                    // Ab Queue 3000 wuerden die Stencil-Masken der Vorlage (6/9/43)
+                    // echte Kamera-Stencilbits schreiben (Codex-Recherche 18.10.).
+                    else if (name.StartsWith("_StencilWriteMask", System.StringComparison.Ordinal))
+                        material.SetFloat(name, 0f);
+                }
+                // Mischart bleibt One wie in der Vorlage: SrcAlpha machte die
+                // Flaeche im Spieltest doppelt blass.
+                material.renderQueue = 3000;
+            }
+            catch (System.Exception e)
+            {
+                ParkingLotHintergrundDiagnose.Sicher(() => Mod.log.Info(
+                    "PLT-Flaechennetz Tiefentest Fehler: " + e.GetType().Name + ": " + e.Message));
+            }
+        }
+
         /** Material und Farbpuffer einer Gruppe auf den Stand bringen. */
         private void RichteGruppe(Netzgruppe gruppe, Color farbe,
                                   float sortierung)
         {
-            gruppe.Material ??= new Material(_vorlage)
+            if (gruppe.Material == null)
             {
-                hideFlags = HideFlags.HideAndDontSave,
-                name = "PLT Flaechennetz",
-            };
+                gruppe.Material = new Material(_vorlage)
+                {
+                    hideFlags = HideFlags.HideAndDontSave,
+                    name = "PLT Flaechennetz",
+                };
+                Tiefentest(gruppe.Material);
+            }
             if (gruppe.Puffer != null && gruppe.Farbe.Equals(farbe)
                 && math.abs(gruppe.Sortierung - sortierung) < 0.001f) return;
             gruppe.Farbe = farbe;
@@ -766,8 +816,13 @@ namespace ParkingLotTool.Tools
                 for (var i = 0; i + 2 < netz.Length; i += 3)
                 {
                     if (dreiecke.Count / 3 >= MaxDreiecke) break;
-                    Unterteile(ring[netz[i]], ring[netz[i + 1]],
-                        ring[netz[i + 2]], ref hoehen, punkte, dreiecke);
+                    if (!_musterMitte.HasValue)
+                        Unterteile(ring[netz[i]], ring[netz[i + 1]],
+                            ring[netz[i + 2]], ref hoehen, punkte, dreiecke);
+                    else
+                        foreach (var rest in OberflaechenMuster.Ausserhalb(
+                            ring[netz[i]], ring[netz[i + 1]], ring[netz[i + 2]], _musterMitte.Value))
+                            Unterteile(rest[0], rest[1], rest[2], ref hoehen, punkte, dreiecke);
                 }
                 if (messen) teilTicks += Stopwatch.GetTimestamp() - vorTeil;
             }

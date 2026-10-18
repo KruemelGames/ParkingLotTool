@@ -5,10 +5,14 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <MusterQuelle Condition="'$(MusterQuelle)' == ''">..\..\..\Geometry\OberflaechenMuster.cs</MusterQuelle>
     <SprachtexteQuelle Condition="'$(SprachtexteQuelle)' == ''">..\..\..\Geometry\Sprachtexte.cs</SprachtexteQuelle>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="Program.SurfacePreview.cs" />
+    <Compile Include="Program.SurfacePreview.Logik.cs" />
+    <Compile Include="$(MusterQuelle)" Link="Geometry/OberflaechenMuster.cs" />
     <Compile Include="Program.Zettel.cs" />
     <Compile Include="Program.BusStops.cs" />
     <Compile Include="Program.Klonnamen.cs" />
@@ -94,7 +98,7 @@
     <Compile Include="Program.Teilen.cs" />
     <Compile Include="Program.SchmalerArm.cs" />
     <Compile Include="Dump.cs" />
-    <Compile Include="..\..\..\Geometry\*.cs" Exclude="..\..\..\Geometry\Sprachtexte.cs" Link="Geometry\%(Filename)%(Extension)" />
+    <Compile Include="..\..\..\Geometry\*.cs" Exclude="..\..\..\Geometry\Sprachtexte.cs;..\..\..\Geometry\OberflaechenMuster.cs" Link="Geometry\%(Filename)%(Extension)" />
     <Compile Include="$(SprachtexteQuelle)" Link="Geometry\Sprachtexte.cs" />
     <Compile Include="..\..\..\Geometry\Zellen\*.cs" Link="Geometry\Zellen\%(Filename)%(Extension)" />
     <Reference Include="Unity.Mathematics">

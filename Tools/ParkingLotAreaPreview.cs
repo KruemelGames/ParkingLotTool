@@ -207,7 +207,14 @@ namespace ParkingLotTool.Tools
         private void FuettereePflanzen()
         {
             if (Flaechennetz == null) return;
-            Flaechennetz.FuegePflanzen(_overlay.Pflanzen,
+            var pflanzen = _overlay.Pflanzen;
+            if (_objektMusterArt == EchteVorschauArt.Vegetation && _objektMusterBereich.HasValue)
+            {
+                var rest = new System.Collections.Generic.List<(float3 Position, bool Tree)>();
+                foreach (var p in pflanzen) if (!EchteVorschau.Enthaelt(_objektMusterBereich.Value,p.Position.xz)) rest.Add(p);
+                pflanzen = rest;
+            }
+            Flaechennetz.FuegePflanzen(pflanzen,
                 ParkingLotPreviewStyle.VegetationTreeColor,
                 ParkingLotPreviewStyle.VegetationShrubColor,
                 ParkingLotPreviewStyle.VegetationTreeDiameter,
@@ -255,6 +262,7 @@ namespace ParkingLotTool.Tools
             var vorflaecheAn = belagAn && (_baukontext?.Zettel.SurfaceApronOn ?? _uiSystem?.VorflaecheAn ?? true);
 
             var netz = Flaechennetz;
+            netz.SetzeMuster(_surfaceMusterMitte);
             netz.BeginneFlaechen();
             if (layout != null)
             {
@@ -307,6 +315,7 @@ namespace ParkingLotTool.Tools
 
         private void ClearAreaPreviewLayout(string context)
         {
+            EntferneSurfacePreview(context);
             // Kein Layout, keine Fuellung. Steht hier und nicht an den elf
             // Aufrufstellen: `_overlay.ClearLayout()` und diese Methode laufen
             // immer zusammen, und eine von beiden vergisst man sonst.

@@ -58,6 +58,7 @@ namespace ParkingLotTool.Tools
             if (_anlegen != null) throw new InvalidOperationException(
                 "Der exklusive Erzeugungspunkt ist bereits belegt.");
             if (lot == Entity.Null) throw new ArgumentException("Lot fehlt.", nameof(lot));
+            World.GetExistingSystemManaged<ParkingLotToolSystem>()?.EntferneSurfacePreview("exklusiver Auftrag");
             _anlegen = anlegen ?? throw new ArgumentNullException(nameof(anlegen));
             _lot = lot;
             _wartendeBilder = 0;

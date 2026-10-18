@@ -1,4 +1,5 @@
 {
+  "preview.moveArea": "Перетащите, чтобы переместить область предпросмотра",
   "absturz.abbild": "Дамп сбоя {zeit}: {art} в потоке {thread}.",
   "absturz.abbildMitJob": "Дамп сбоя {zeit}: {art} в потоке {thread}, задание Burst {job}.",
   "absturz.art.ausfuehren": "выполнение по адресу 0x{adresse}",
@@ -524,6 +525,12 @@
   "ui.flaecheStrasse": "Дор. покр.",
   "ui.flaecheStrasseAn": "Укладка дороги",
   "ui.flaechenKeineTreffer": "Нет покрытий",
+  "ui.lanternPreview": "Вид фонарей",
+  "ui.tooltipLanternPreview": "Показывает запланированные фонари в выбранной части как модели без расхода электричества. Затем удаляет их и отключает другие реальные предпросмотры.",
+  "ui.vegetationPreview": "Вид растений",
+  "ui.tooltipVegetationPreview": "Показывает запланированные растения выбранного возраста в выбранной части без роста и симуляции. Затем удаляет их и отключает другие реальные предпросмотры.",
+  "ui.surfacePreview": "Вид покрытия",
+  "ui.tooltipSurfacePreview": "Показывает часть готовой парковки у первой точки после замыкания контура. Создаёт настоящие покрытия и затем удаляет их.",
   "ui.flaechenSuche": "Поиск покрытий…",
   "ui.gebuehrAus": "Вык",
   "ui.geschriebenNach": "Записано: {pfad}",

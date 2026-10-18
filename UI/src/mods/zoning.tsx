@@ -197,7 +197,7 @@ export const ZoningTab = () => {
             Nutzers. */}
         <div className={styles.explain}>{t.zoningFlaecheHinweis}</div>
         <Auswahl
-          scrollSchluessel="flaeche.bauland"
+          scrollSchluessel="flaeche.bauland" surfaceSlot="zoning"
           label={t.zoningFlaeche}
           tooltip={t.tooltipZoningFlaeche}
           value={flaeche}
