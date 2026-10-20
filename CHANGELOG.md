@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0 — October 20, 2026
+
+- Addition: support for curved roads. Just click along a curved road and the parking lot follows.
+- Addition: real preview of surfaces, lamps and plants in a movable cut-out.
+- Improvement: faster preview.
+- Improvement: an entrance with no road nearby gets an 8 m alley stub.
+- Improvement: the panel shows "Opening parking lot …" while a lot opens for editing.
+- Change: lots without any city road no longer ask to synchronize.
+- Fix: lamps switch on at night and off in the morning (thanks NCC1701py).
+- Fix: no more gaps in perimeter roads.
+- Fix: large surfaces with many corners are no longer dropped.
+
 ## 1.0.12 — October 17, 2026
 
 - Addition: Russian, Polish and Korean.
