@@ -181,6 +181,17 @@ namespace ParkingLotTool
                 log.Info("PLT-Sprache: einmalig von " + vorher
                     + " auf Automatic umgestellt (neuer Standard).");
             }
+            // Einmal je Installation: Kurve folgen an (siehe
+            // Setting.StrassenkurveFolgenEingeschaltet).
+            if (!_setting.StrassenkurveFolgenEingeschaltet)
+            {
+                var vorher = _setting.StrassenkurveFolgen;
+                _setting.StrassenkurveFolgen = true;
+                _setting.StrassenkurveFolgenEingeschaltet = true;
+                _setting.ApplyAndSave();
+                log.Info("PLT-Kurve: \"Kurve folgen\" einmalig eingeschaltet (vorher "
+                    + (vorher ? "an" : "aus") + ", neuer Standard).");
+            }
             /*
              * TEXTE ERST NACH DEN GESPEICHERTEN EINSTELLUNGEN ANMELDEN.
              *

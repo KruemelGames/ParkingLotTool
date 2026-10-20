@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ParkingLotTool.Geometry.Zellen
 {
@@ -18,13 +19,17 @@ namespace ParkingLotTool.Geometry.Zellen
             IReadOnlyList<Zoningvorgabe> bauland = null,
             IReadOnlyList<(Punkt A, Punkt B)> randzoning = null,
             double randzoningachstiefe = 0,
-            double randzoninghalbebreite = 0)
+            double randzoninghalbebreite = 0,
+            bool[] kurvenkanten = null,
+            double[] tiefenzugaben = null,
+            IReadOnlyList<Randbuchtplan> kurvenbuchten = null)
         {
             zufahrten = zufahrten ?? Array.Empty<Zufahrtsvorgabe>();
             var buchten = new List<Randbuchtplan>();
             var schnitte = new List<Randreihenschnitt>();
             for (var kante = 0; kante < areal.Count; kante++)
             {
+                if (kurvenkanten != null && kurvenkanten[kante]) continue;
                 var ursprung = areal[kante];
                 var richtung = areal[(kante + 1) % areal.Count] - ursprung;
                 var laenge = Geometrie.Laenge(richtung);
@@ -134,9 +139,9 @@ namespace ParkingLotTool.Geometry.Zellen
                     {
                         var entlang = buchtanfang + grenze * buchtbreite;
                         var aussen = ursprung + tangente * entlang
-                            + innennormale * randabstand;
+                            + innennormale * (randabstand + (tiefenzugaben?[kante] ?? 0));
                         var innen = ursprung + tangente * entlang
-                            + innennormale * strassenkantentiefe;
+                            + innennormale * (strassenkantentiefe + (tiefenzugaben?[kante] ?? 0));
                         schnitte.Add(new Randreihenschnitt
                         {
                             Linie = linienregister.Randbuchtgrenze(
@@ -160,14 +165,16 @@ namespace ParkingLotTool.Geometry.Zellen
                         var pruefEcken = new[]
                         {
                             ursprung + tangente * von
-                                + innennormale * randabstand,
+                                + innennormale * (randabstand + (tiefenzugaben?[kante] ?? 0)),
                             ursprung + tangente * bis
-                                + innennormale * randabstand,
+                                + innennormale * (randabstand + (tiefenzugaben?[kante] ?? 0)),
                             ursprung + tangente * bis
-                                + innennormale * strassenkantentiefe,
+                                + innennormale * (strassenkantentiefe + (tiefenzugaben?[kante] ?? 0)),
                             ursprung + tangente * von
-                                + innennormale * strassenkantentiefe,
+                                + innennormale * (strassenkantentiefe + (tiefenzugaben?[kante] ?? 0)),
                         };
+                        if (kurvenbuchten != null && kurvenbuchten.Any(b => Kurvenrandspur.Ueberlappt(b.Ecken, pruefEcken)))
+                            continue;
                         if (Layoutplanung.BeruehrtBauland(pruefEcken, bauland))
                             continue;
                         // Und nicht in die Fahrbahn der Randzoning-Strasse -
@@ -183,13 +190,13 @@ namespace ParkingLotTool.Geometry.Zellen
                             Ecken = new[]
                             {
                                 ursprung + tangente * von
-                                    + innennormale * randabstand,
+                                    + innennormale * (randabstand + (tiefenzugaben?[kante] ?? 0)),
                                 ursprung + tangente * bis
-                                    + innennormale * randabstand,
+                                    + innennormale * (randabstand + (tiefenzugaben?[kante] ?? 0)),
                                 ursprung + tangente * bis
-                                    + innennormale * strassenkantentiefe,
+                                    + innennormale * (strassenkantentiefe + (tiefenzugaben?[kante] ?? 0)),
                                 ursprung + tangente * von
-                                    + innennormale * strassenkantentiefe,
+                                    + innennormale * (strassenkantentiefe + (tiefenzugaben?[kante] ?? 0)),
                             },
                         });
                     }

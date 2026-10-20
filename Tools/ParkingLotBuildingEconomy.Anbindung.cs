@@ -46,7 +46,9 @@ namespace ParkingLotTool.Tools
             // gefunden" setzte der Sync einen unverbundenen Begleiter still auf
             // erledigt, sobald die Suche nichts fand. Jetzt endet das als
             // sichtbarer Fehlschlag mit der Kandidatenzahl im Log.
-            return !HatStrasse(BegleiterVon(lot));
+            // Ohne JEDE Stadtstrasse am Parkplatz (Zufahrt ins Leere, Stummel)
+            // kann kein Sync etwas anschliessen - Nutzer 20.10.: dann nicht fragen.
+            return !HatStrasse(BegleiterVon(lot)) && Stadtstrassen(lot).Count > 0;
         }
 
         private Entity BegleiterVon(Entity lot)
@@ -251,6 +253,12 @@ namespace ParkingLotTool.Tools
             if (schritt == 0) return;
             var stand = EntityManager.GetComponentData<ParkingLotDatenstand>(lot).Stand;
             if (stand < schritt) return;
+            if (Stadtstrassen(lot).Count == 0)
+            {
+                Mod.log.Info($"PLT-Begleiteranschluss: Lot {lot.Index} ohne Stadtstrasse am Parkplatz - kein Sync, "
+                    + "erst eine angeschlossene Strasse (danach Edit) gibt dem Begleiter eine Anbindung.");
+                return;
+            }
             EntityManager.SetComponentData(lot, new ParkingLotDatenstand { Stand = schritt - 1 });
             Mod.log.Info($"PLT-Begleiteranschluss: Lot {lot.Index} ohne Strasse - Datenstand {stand} -> {schritt - 1}, braucht Sync.");
             World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().NeuAufnehmen();

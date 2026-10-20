@@ -89,6 +89,10 @@ export const altEngineOhneWarnung$ =
 export const autoEntryMode$ = bindValue<boolean>(MOD, "AutoEntryMode", true);
 export const setAutoEntryMode = (v: boolean) =>
   trigger(MOD, "SetAutoEntryMode", v);
+/** Strassenkurve folgen - gespeicherte Einstellung, Standard aus. */
+export const followCurves$ = bindValue<boolean>(MOD, "FollowCurves", false);
+export const setFollowCurves = (v: boolean) =>
+  trigger(MOD, "SetFollowCurves", v);
 
 export const edgeSetbackDefault$ = bindValue<number>(MOD, "EdgeSetbackDefault", 1);
 export const aisleWidthDefault$ = bindValue<number>(MOD, "AisleWidthDefault", 7);
@@ -147,6 +151,8 @@ export const siteArea$ = bindValue<string>(MOD, "SiteArea", "");
 export const status$ = bindValue<string>(MOD, "Status", "");
 /** "", "zuKlein" oder "zuKleinRandstrassen" - Grund fuer eine fehlende Vorschau. */
 export const vorschaufehler$ = bindValue<string>(MOD, "Vorschaufehler", "");
+/** Edit wartet auf seine erste Vorschau - das Panel ist so lange gesperrt. */
+export const editOeffnet$ = bindValue<boolean>(MOD, "EditOeffnet", false);
 
 /**
  * Angezeigte Sprache als Kennung des Spiels ("en-US", "de-DE", ...).

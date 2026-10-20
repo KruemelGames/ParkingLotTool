@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace ParkingLotTool.Geometry.Zellen
 {
-    internal static class Layoutbauer
+    internal static partial class Layoutbauer
     {
         private static Punkt NaechsterPunkt(Punkt p, Punkt a, Punkt b)
         {
@@ -88,7 +88,7 @@ namespace ParkingLotTool.Geometry.Zellen
         {
             var kappen = new List<int>();
             for (var i = 0; i < zellen.Count; i++)
-                if (zellen[i].Art == Zellart.Kappe) kappen.Add(i);
+                if (zellen[i].Art == Zellart.Kappe && !zellen[i].GemeinsamerBoden) kappen.Add(i);
             var kanten = new Dictionary<(long, long, long, long), int>();
             var eltern = new int[zellen.Count];
             for (var i = 0; i < eltern.Length; i++) eltern[i] = i;
@@ -194,6 +194,15 @@ namespace ParkingLotTool.Geometry.Zellen
         private sealed class Ringabschnittsplan
         {
             internal IReadOnlyList<Punkt>[] Abschnitte { get; set; }
+            internal IReadOnlyList<Punkt>[] ErweiterteAbschnitte { get; set; }
+            internal IReadOnlyList<(Linie Linie, Punkt Aussen, Punkt Innen)> Erweiterungsstoesse
+                { get; set; } = Array.Empty<(Linie, Punkt, Punkt)>();
+            internal int ErweiterterAbschnittBei(Punkt punkt)
+            {
+                for (int i = 0; i < ErweiterteAbschnitte.Length; i++)
+                    if (Geometrie.Enthaelt(ErweiterteAbschnitte[i], punkt)) return i;
+                throw new InvalidOperationException("Kurvenkeil liegt ausserhalb seines konstruierten Materialbands.");
+            }
             internal IReadOnlyList<(Linie Linie, Punkt Aussen, Punkt Innen)> Stoesse
                 { get; set; }
 
@@ -210,7 +219,8 @@ namespace ParkingLotTool.Geometry.Zellen
         internal static Bauergebnis Baue(
             Formdefinition form,
             Zelleneinstellungen einstellungen,
-            IReadOnlyList<Zufahrtsvorgabe> zufahrten = null)
+            IReadOnlyList<Zufahrtsvorgabe> zufahrten = null,
+            VorschauVorbereitung vorbereitung = null)
         {
             var uhr = Stopwatch.StartNew();
             /*
@@ -309,16 +319,47 @@ namespace ParkingLotTool.Geometry.Zellen
 
             var knotenfabrik = new Knotenfabrik();
             var linienregister = new Linienregister();
-            var areal = Polygonfabrik.Areal(
-                lokalpunkte, knotenfabrik, linienregister);
-            var zerlegung = new Konvexzerlegung(knotenfabrik, linienregister);
-            var teile = zerlegung.Zerlege(areal);
+            Polygon areal;
+            List<Polygon> teile;
+            if (vorbereitung != null)
+                vorbereitung.Zerlege(lokalpunkte, knotenfabrik, linienregister, out areal, out teile);
+            else
+            {
+                areal = Polygonfabrik.Areal(lokalpunkte, knotenfabrik, linienregister);
+                teile = new Konvexzerlegung(knotenfabrik, linienregister).Zerlege(areal);
+            }
+            var kurvenrand = einstellungen.Kurvenlaeufe.Length == 0 ? null
+                : new Kurvenrandplan(lokalpunkte, rahmen, einstellungen, lokaleZufahrten, linienregister);
+            IReadOnlyList<Punkt> AlterInnenrand(double abstand) => vorbereitung == null
+                ? Layoutplanung.Innenrand(lokalpunkte, abstand)
+                : vorbereitung.Innenrand(lokalpunkte, abstand);
+            IReadOnlyList<Punkt> Innenrand(double abstand) => kurvenrand == null
+                ? AlterInnenrand(abstand) : kurvenrand.Innenrand(abstand, AlterInnenrand);
             if (teile.Any(teil => !Geometrie.IstKonvex(teil)))
                 throw new InvalidOperationException(
                     "Not all sub-polygons are convex.");
 
-            var innenrand = Layoutplanung.Innenrand(
-                lokalpunkte, einstellungen.Randabstand);
+            var innenrand = Innenrand(einstellungen.Randabstand);
+            // Die Zufahrt endet nach es + sl = 6,9 m bei den gemessenen
+            // CS2-Werten an der bereits vorhandenen Aussenkante der
+            // Randstrasse. Diese Grenze gehoert zum Grundnetz; eine Zufahrt
+            // fuegt deshalb nur ihre zwei Seitenlinien hinzu.
+            var randstrassenrand = !einstellungen.Randstrassen
+                ? innenrand : Innenrand(einstellungen.Zufahrtstiefe);
+            // Die 7,0-m-Randstrasse liegt zwischen 6,9 und 13,9 m. Ihre
+            // Mittellinie bei 10,4 m wird spaeter als Netzachse ausgegeben;
+            // nur die beiden Fahrbahnkanten teilen die Materialzellen.
+            var randstrassenmittellinie = !einstellungen.Randstrassen && randzoningLokal.Length == 0
+                ? innenrand : Innenrand(einstellungen.Randstrassenmittellinientiefe);
+            var randstrasseninnenrand = !einstellungen.Randstrassen
+                ? innenrand : Innenrand(einstellungen.Randstrasseninnentiefe);
+            // Wo die Achse in einem schmalen Arm zusammenklappt, endet auch die
+            // Fahrbahn dort (Issue #10): keine Randreihe an Fahrbahn ohne Weg.
+            if (einstellungen.Randstrassen && randstrassenmittellinie != innenrand)
+                randstrassenrand = Layoutplanung.KappeAnSpitzen(randstrassenrand,
+                    randstrassenmittellinie, einstellungen.Randstrassenmittellinientiefe
+                        - einstellungen.Zufahrtstiefe);
+
             // Eine geplante Zufahrt schneidet das aeussere Gruenband bereits
             // vor der Vereinigung auf. Ohne Zufahrt braucht auch dieser Ring
             // zwei konstruierte Abschnitte; im Lauf ueber 203 baubare Formen
@@ -326,34 +367,16 @@ namespace ParkingLotTool.Geometry.Zellen
             // Ringlos teilen bereits die Gassenachsen die Flaechen. Der alte
             // Eckstoss erzeugte am Nutzerpolygon zusaetzlich einen 0,000008-m-
             // Ring am Innenrand; ohne diesen redundanten Schnitt: 0 Kurzringe.
+            // Der Kappenrand folgt dem endgueltigen Fahrbahnrand. Eine an
+            // Nullkanten gekappte Achse zieht ihn hinter den reinen Versatz
+            // zurueck; dort gehoert das Dreieck zur Kappe (Stand 54: 5,9 cm).
             var randbandabschnitte = einstellungen.Randstrassen && lokaleZufahrten.Length == 0
                 ? PlaneRingabschnitte(
                     lokalpunkte,
                     innenrand,
-                    linienregister.Randbandstoss)
+                    linienregister.Randbandstoss,
+                    erweitertInnen: kurvenrand == null ? null : randstrassenrand)
                 : null;
-            // Die Zufahrt endet nach es + sl = 6,9 m bei den gemessenen
-            // CS2-Werten an der bereits vorhandenen Aussenkante der
-            // Randstrasse. Diese Grenze gehoert zum Grundnetz; eine Zufahrt
-            // fuegt deshalb nur ihre zwei Seitenlinien hinzu.
-            var randstrassenrand = !einstellungen.Randstrassen
-                ? innenrand : Layoutplanung.Innenrand(
-                    lokalpunkte, einstellungen.Zufahrtstiefe);
-            // Die 7,0-m-Randstrasse liegt zwischen 6,9 und 13,9 m. Ihre
-            // Mittellinie bei 10,4 m wird spaeter als Netzachse ausgegeben;
-            // nur die beiden Fahrbahnkanten teilen die Materialzellen.
-            var randstrassenmittellinie = !einstellungen.Randstrassen && randzoningLokal.Length == 0
-                ? innenrand : Layoutplanung.Innenrand(
-                    lokalpunkte, einstellungen.Randstrassenmittellinientiefe);
-            var randstrasseninnenrand = !einstellungen.Randstrassen
-                ? innenrand : Layoutplanung.Innenrand(
-                    lokalpunkte, einstellungen.Randstrasseninnentiefe);
-            // Wo die Achse in einem schmalen Arm zusammenklappt, endet auch die
-            // Fahrbahn dort (Issue #10): keine Randreihe an Fahrbahn ohne Weg.
-            if (einstellungen.Randstrassen && randstrassenmittellinie != innenrand)
-                randstrassenrand = Layoutplanung.KappeAnSpitzen(randstrassenrand,
-                    randstrassenmittellinie, einstellungen.Randstrassenmittellinientiefe
-                        - einstellungen.Zufahrtstiefe);
 
             /*
              * DIE RZ-STRASSE IST BREITER ALS DIE RANDSTRASSE.
@@ -371,16 +394,17 @@ namespace ParkingLotTool.Geometry.Zellen
             var rzHalb = ParkingGeometry.ZoningStrassenbreite / 2;
             var rzAchse = einstellungen.Randstrassenmittellinientiefe;
             var randzoningAussen = !einstellungen.Randstrassen || randzoningLokal.Length == 0 ? null
-                : Layoutplanung.Innenrand(lokalpunkte, rzAchse - rzHalb);
+                : Innenrand(rzAchse - rzHalb);
             var randzoningInnen = !einstellungen.Randstrassen || randzoningLokal.Length == 0 ? null
-                : Layoutplanung.Innenrand(lokalpunkte, rzAchse + rzHalb);
+                : Innenrand(rzAchse + rzHalb);
             // `rzAbschnitte` entsteht erst NACH dem Bandplan - die Gassen
             // sind die Randzoning-Strasse, also muessen sie zuerst stehen.
             // Siehe PLAN-RZ-an-Fahrgassen.md.
             var randstrassenabschnitte = !einstellungen.Randstrassen ? null : PlaneRingabschnitte(
                 randstrassenrand,
                 randstrasseninnenrand,
-                linienregister.Randstrassenstoss);
+                linienregister.Randstrassenstoss,
+                erweitertAussen: kurvenrand == null ? null : lokalpunkte);
             var rasterrand = einstellungen.Randstrassen ? randstrasseninnenrand : innenrand;
             var minX = rasterrand.Min(punkt => punkt.X);
             var maxX = rasterrand.Max(punkt => punkt.X);
@@ -555,7 +579,11 @@ namespace ParkingLotTool.Geometry.Zellen
                     ? null
                     : randzoningLokal.Select(l => (l.A, l.B)).ToArray(),
                 einstellungen.Randstrassenmittellinientiefe,
-                ParkingGeometry.ZoningStrassenbreite / 2);
+                ParkingGeometry.ZoningStrassenbreite / 2,
+                kurvenrand?.Kanten, kurvenrand?.Zugaben, kurvenrand?.Buchten);
+            if (kurvenrand != null)
+                ErgaenzeKurvenplan(kurvenrand, randreihenplan,
+                    teilflaechenlayout?.Buchtenzahl ?? gueltigeBuchten.Count, linienregister);
 
             // Flaechenabschnitte an den Gassenachsen statt an jeder Material-
             // grenze: Nutzerpolygon 91 -> 18 Grasringe. Jede Achse wird selbst
@@ -665,13 +693,14 @@ namespace ParkingLotTool.Geometry.Zellen
                     stoss.Linie,
                     stoss.Aussen,
                     stoss.Innen);
+            if (kurvenrand != null)
+                fragmente = SchneideKurvenraster(fragmente, teiler, kurvenrand, randreihenplan,
+                    (randbandabschnitte?.Erweiterungsstoesse ?? Array.Empty<(Linie Linie, Punkt Aussen, Punkt Innen)>())
+                        .Concat(randstrassenabschnitte?.Erweiterungsstoesse ?? Array.Empty<(Linie Linie, Punkt Aussen, Punkt Innen)>()),
+                    linienregister);
             foreach (var schnitt in randreihenplan.Schnittlinien)
-                fragmente = TeileAlleSegment(
-                    fragmente,
-                    teiler,
-                    schnitt.Linie,
-                    schnitt.Aussen,
-                    schnitt.Innen);
+                if (schnitt.EndenGerastert)
+                    fragmente = TeileAlleSegment(fragmente, teiler, schnitt.Linie, schnitt.Aussen, schnitt.Innen);
             if (ringlos != null)
                 foreach (var weg in ringlos.Korridore)
                 {
@@ -902,6 +931,7 @@ namespace ParkingLotTool.Geometry.Zellen
             foreach (var fragment in fragmente)
             {
                 var mitte = Geometrie.Mittelwert(fragment);
+                var kurvenbucht = kurvenrand?.BuchtBei(mitte);
                 var art = Zellart.Randband;
                 int? buchtId = null;
                 int? querstrassenId = null;
@@ -1156,6 +1186,24 @@ namespace ParkingLotTool.Geometry.Zellen
                 {
                     art = Zellart.Restgruen;
                 }
+                else if (kurvenbucht != null)
+                {
+                    var bucht = kurvenbucht;
+                    art = Zellart.Bucht;
+                    buchtId = bucht.Id;
+                    flaechenabschnitt = 30000 + bucht.Id;
+                }
+                else if (kurvenrand != null && kurvenrand.IstGraskeil(mitte))
+                {
+                    // Dies ist der geplante aeussere Boden, kein offener
+                    // Reihenrest fuer die alte Ueberlappungsbehandlung.
+                    art = Zellart.Randband;
+                }
+                else if (kurvenrand != null && kurvenrand.IstAnschluss(mitte))
+                {
+                    art = Zellart.Randstrasse;
+                    flaechenabschnitt = randstrassenabschnitte.ErweiterterAbschnittBei(mitte);
+                }
                 else if (Geometrie.Enthaelt(rasterrand, mitte))
                 {
                     if (teilflaechenlayout != null)
@@ -1255,6 +1303,8 @@ namespace ParkingLotTool.Geometry.Zellen
                     else
                     {
                         art = Zellart.Kappe;
+                        if (kurvenrand != null && randbandabschnitte != null)
+                            flaechenabschnitt = randbandabschnitte.ErweiterterAbschnittBei(mitte);
                     }
                 }
                 else if (randbandabschnitte != null)
@@ -1280,6 +1330,9 @@ namespace ParkingLotTool.Geometry.Zellen
                         flaechenabschnitt = mitte.Y < ringloseAbschnittsgrenzen[ringloseAbschnittsgrenzen.Length / 2]
                             ? 20000 : 20001;
                 }
+                int bodenabschnitt = kurvenrand == null ? -1
+                    : kurvenrand.MaterialsektorBei(mitte);
+                if (bodenabschnitt >= 0) flaechenabschnitt = 50000 + bodenabschnitt;
                 var zellId = zellen.Count;
                 zellen.Add(new Zelle
                 {
@@ -1294,6 +1347,7 @@ namespace ParkingLotTool.Geometry.Zellen
                     QuerstrassenId = querstrassenId,
                     Zugangsart = ringlos?.Fusswege.Concat(ringlos.Zufahrten).FirstOrDefault(w => Geometrie.EnthaeltOderRand(w.Ecken, mitte))?.Art,
                     Flaechenabschnitt = flaechenabschnitt,
+                    GemeinsamerBoden = bodenabschnitt >= 0,
                 });
             }
 
@@ -1332,7 +1386,9 @@ namespace ParkingLotTool.Geometry.Zellen
                 einstellungen.Zufahrtstiefe,
                 knotenfabrik,
                 linienregister,
-                teiler);
+                teiler,
+                kurvenrand == null ? null : new Func<Zufahrtsgeometrie, Punkt[]>(
+                    z => kurvenrand.Zufahrtskontur(z, randstrassenrand, randstrassenmittellinie)));
             zellen = zufahrtsbau.Zellen;
             if (einstellungen.Randstrassen)
                 GrasAufRandstrasseZuBelag(zellen, randstrassenmittellinie,
@@ -1358,6 +1414,7 @@ namespace ParkingLotTool.Geometry.Zellen
                     + " | " + string.Join(" ", phasen));
             return new Bauergebnis
             {
+                Kurvenrand = kurvenrand,
                 Schnittwarnungen = teiler.Warnungen.ToArray(),
                 Randstrassen = einstellungen.Randstrassen,
                 Ringlos = ringlos,
@@ -1418,7 +1475,9 @@ namespace ParkingLotTool.Geometry.Zellen
         private static Ringabschnittsplan PlaneRingabschnitte(
             IReadOnlyList<Punkt> aussen,
             IReadOnlyList<Punkt> innen,
-            Func<Punkt, Punkt, int, Linie> stosslinie)
+            Func<Punkt, Punkt, int, Linie> stosslinie,
+            IReadOnlyList<Punkt> erweitertAussen = null,
+            IReadOnlyList<Punkt> erweitertInnen = null)
         {
             if (aussen.Count != innen.Count || aussen.Count < 3)
                 throw new InvalidOperationException(
@@ -1466,6 +1525,35 @@ namespace ParkingLotTool.Geometry.Zellen
                 return punkte;
             }
 
+            IReadOnlyList<Punkt> Erweitert(int anfang, int ende)
+            {
+                var a = erweitertAussen ?? aussen;
+                var b = erweitertInnen ?? innen;
+                var punkte = new List<Punkt>();
+                for (int i = anfang;; i = (i + 1) % a.Count)
+                {
+                    punkte.Add(a[i]);
+                    if (i == ende) break;
+                }
+                if (erweitertAussen != null) punkte.Add(aussen[ende]);
+                if (erweitertInnen != null) punkte.Add(innen[ende]);
+                for (int i = ende;; i = Geometrie.Mod(i - 1, b.Count))
+                {
+                    punkte.Add(b[i]);
+                    if (i == anfang) break;
+                }
+                if (erweitertInnen != null) punkte.Add(innen[anfang]);
+                if (erweitertAussen != null) punkte.Add(aussen[anfang]);
+                return punkte;
+            }
+            var erweiterungen = new List<(Linie Linie, Punkt Aussen, Punkt Innen)>();
+            foreach (int i in new[] { ersterStoss, zweiterStoss })
+            {
+                Punkt a = erweitertAussen == null ? innen[i] : erweitertAussen[i];
+                Punkt b = erweitertAussen == null ? (erweitertInnen ?? innen)[i] : aussen[i];
+                if (Geometrie.Laenge(b - a) == 0) continue;
+                erweiterungen.Add((stosslinie(a, b, i + aussen.Count), a, b));
+            }
             var stoesse = new[] { ersterStoss, zweiterStoss }
                 .Select((ecke, nummer) =>
                     (Linie: stosslinie(aussen[ecke], innen[ecke], nummer),
@@ -1480,6 +1568,8 @@ namespace ParkingLotTool.Geometry.Zellen
                     Abschnitt(zweiterStoss, ersterStoss),
                 },
                 Stoesse = stoesse,
+                ErweiterteAbschnitte = new[] { Erweitert(ersterStoss, zweiterStoss), Erweitert(zweiterStoss, ersterStoss) },
+                Erweiterungsstoesse = erweiterungen,
             };
         }
 

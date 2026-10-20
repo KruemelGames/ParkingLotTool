@@ -278,7 +278,8 @@ namespace ParkingLotTool.Tools
                 ParkingLotNetzRueckweg.Melde($"Zufahrt {index}: neue Stadtteilung waere erforderlich: Kante {p.Anschluss.Entity}, t={p.Anschluss.Teilung:F6}, Lage {p.Mitte}; 0 Teilungen, Kurs nicht ausgegeben, Rueckweg erforderlich.");
                 return 0;
             }
-            MerkeHoehe(p.Mitte,p.Hoehe,heights);
+            // Ein Stummel endet frei im Gelaende; nur ein Strassenanschluss hat eine Zielhoehe.
+            if (p.Strasse != Entity.Null) MerkeHoehe(p.Mitte,p.Hoehe,heights);
             if (!CreateCourseDefinition("entrance-gasse",index,p.Von,p.Nach,p.Prefab,
                     ref heightData,heights,ref random,
                     anschlussAnfang: Zufahrtsarten.FaehrtHinaus(piece.Art) ? default : p.Anschluss,
@@ -286,6 +287,11 @@ namespace ParkingLotTool.Tools
             {
                 bericht.Add($"Zufahrt {index}: Gassenkurs abgelehnt ({p.Laenge:F2} m)");
                 return 0;
+            }
+            if (p.Strasse == Entity.Null)
+            {
+                bericht.Add($"Zufahrt {index}: Stummel {p.Laenge:F2} m bis zur Fahrgasse gebaut, Ende frei.");
+                return 1;
             }
             bericht.Add($"Zufahrt {index}: Gasse {p.Laenge:F2} m in einem Kurs ab Strassenmitte "
                 + $"bis zur Fahrgasse, Fahrbahnrand bei {p.HalbeBreite:F2} m, Ueberstand {p.Laenge-p.HalbeBreite:F2} m"

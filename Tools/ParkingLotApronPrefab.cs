@@ -320,13 +320,17 @@ namespace ParkingLotTool.Tools
                     + "gemerkten Flaechenklonen beim Start angefordert.");
                 return;
             }
-            Mod.log.Error($"PLT-Vorflaeche: {gefunden} von {gemerkt.Count} "
-                + "gemerkten Flaechenklonen angefordert; NICHT GEFUNDEN nach "
+            // Die Liste gilt fuer ALLE Spielstaende: ob dieser hier das Vorbild
+            // ueberhaupt benutzt, ist an dieser Stelle unbekannt. Am 19.10. war
+            // ein abgeschaltetes Asset-Pack nirgends mehr verbaut - die alte
+            // Fehlermeldung behauptete trotzdem kaputte Flaechen.
+            Mod.log.Warn($"PLT-Vorflaeche: {gefunden} von {gemerkt.Count} "
+                + "gemerkten Flaechenklonen angefordert; Vorbild NICHT GEFUNDEN nach "
                 + _saeversuche + " Zyklen: " + string.Join(", ", offen)
-                + ". Flaechen dieser Vorbilder zeigen im Spielstand auf ein "
-                + "totes Prefab und erscheinen ohne Material (hell, kein "
-                + "Gras). Liefert ein Mod dieses Vorbild, ist er nicht "
-                + "geladen oder heisst inzwischen anders.");
+                + ". Nutzt ein Spielstand Vorflaechen aus diesem Vorbild, "
+                + "erscheinen sie ohne Material (hell, kein Gras) - dann ist "
+                + "der liefernde Mod nicht geladen oder heisst inzwischen "
+                + "anders. Ist es nirgends verbaut, ist das harmlos.");
         }
 
         private bool _prioritaetenGemeldet;

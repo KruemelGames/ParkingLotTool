@@ -183,6 +183,7 @@ namespace ParkingLotTool.Geometry
                 Art = zellen[index].Art,
                 Material = zellen[index].Material,
                 Flaechenabschnitt = zellen[index].Flaechenabschnitt,
+                GemeinsamerBoden = zellen[index].GemeinsamerBoden,
             }).ToArray();
             var flaechen = Vereinigung.Vereinige(kopien).Flaechen;
             if (flaechen.Count != 1 || flaechen[0].Loecher.Count != 0)

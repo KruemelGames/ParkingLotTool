@@ -25,10 +25,17 @@ namespace ParkingLotTool.Tools
      * Strasse, damit nicht alle Strassen im selben Moment angehen; wir je
      * Parkplatz - seine Laternen schalten zusammen, wie an einer Zeitschaltuhr.
      * Gleiches Intervall wie Vanilla (16 Bilder).
+     *
+     * DER ZUSTAND ALLEIN SCHALTET NICHTS (Spielermeldung 20.10.: "die
+     * Laternen gehen nachts nicht an"). Der Lichteffekt wird nur neu
+     * bewertet, wenn die Laterne `EffectsUpdated` traegt; Vanilla haengt es
+     * bei jedem Umschalten ueber den EndFrameBarrier an (StreetLightSystem,
+     * UpdateStreetLightObjects). Ohne blieb das Licht so, wie es beim Bau war.
      */
     public sealed partial class ParkingLotLaternenSchalterSystem : GameSystemBase
     {
         private LightingSystem _licht;
+        private EndFrameBarrier _barriere;
         private EntityQuery _laternen;
 
         public override int GetUpdateInterval(SystemUpdatePhase phase) => 16;
@@ -38,6 +45,7 @@ namespace ParkingLotTool.Tools
         {
             base.OnCreate();
             _licht = World.GetOrCreateSystemManaged<LightingSystem>();
+            _barriere = World.GetOrCreateSystemManaged<EndFrameBarrier>();
             _laternen = GetEntityQuery(new EntityQueryDesc
             {
                 All = new[] { ComponentType.ReadWrite<StreetLight>(), ComponentType.ReadOnly<ParkingLotPartRelation>() },
@@ -52,6 +60,8 @@ namespace ParkingLotTool.Tools
             var helligkeit = (int)math.round(_licht.dayLightBrightness * 1000f);
             using var alle = _laternen.ToEntityArray(Allocator.Temp);
             int an = 0, ausgeschaltet = 0;
+            EntityCommandBuffer befehle = default;
+            bool hatBefehle = false;
             foreach (var e in alle)
             {
                 var lot = EntityManager.GetComponentData<ParkingLotPartRelation>(e).Lot;
@@ -61,6 +71,8 @@ namespace ParkingLotTool.Tools
                 if (((licht.m_State & StreetLightState.TurnedOff) != 0) == aus) continue;
                 licht.m_State = aus ? licht.m_State | StreetLightState.TurnedOff : licht.m_State & ~StreetLightState.TurnedOff;
                 EntityManager.SetComponentData(e, licht);
+                if (!hatBefehle) { befehle = _barriere.CreateCommandBuffer(); hatBefehle = true; }
+                befehle.AddComponent(e, default(EffectsUpdated));
                 if (aus) ausgeschaltet++; else an++;
             }
             if (an + ausgeschaltet > 0)

@@ -17,6 +17,13 @@ namespace ParkingLotTool.Tools
         {
             foreach (var plan in _gassenplan)
             {
+                // Ein Stummel muendet nirgends ein; es gibt keine Einmuendung zu pruefen.
+                if (plan.Strasse == Entity.Null)
+                {
+                    ParkingLotNetzRueckweg.Melde($"Einmuendung {plan.Index}: Stummel ohne Stadtstrasse, nichts zu pruefen.");
+                    yield return 0;
+                    continue;
+                }
                 Entity gasse = Entity.Null, knoten = Entity.Null;
                 var kandidaten = new HashSet<Entity>(_eigeneDauerteile);
                 kandidaten.UnionWith(_erhalteneNetzteile);

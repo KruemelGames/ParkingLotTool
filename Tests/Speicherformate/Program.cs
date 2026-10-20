@@ -91,6 +91,7 @@ internal static partial class Program
             Pruefe(ende == "ENDE_PLT" && reader.Position == strom.Count, fixture.Art + "/" + fixture.Version + " Endmarke nach zwei Datensaetzen");
         }
         NeueNebenformate();
+        Kurvenformate();
         StufeA();
         EditAnzeige();
         InfoSektion();

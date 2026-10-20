@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
+    <LayoutQuelle Condition="'$(LayoutQuelle)' == ''">../../Geometry/Zellen/Layout.cs</LayoutQuelle>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems><Nullable>disable</Nullable>
+    <KurvenzufahrtenQuelle Condition="'$(KurvenzufahrtenQuelle)' == ''">../../Geometry/Zellen/Kurvenrand.Zufahrten.cs</KurvenzufahrtenQuelle>
+    <ZufahrtsQuelle Condition="'$(ZufahrtsQuelle)' == ''">../../Geometry/Zellen/Zufahrt.cs</ZufahrtsQuelle>
+    <KurvenzielQuelle Condition="'$(KurvenzielQuelle)' == ''">../../Geometry/ParkingGeometry.Kurvenzufahrten.cs</KurvenzielQuelle>
+    <TeilerQuelle Condition="'$(TeilerQuelle)' == ''">../../Geometry/Zellen/Zerlegung.cs</TeilerQuelle>
+    <ZellenAdapterQuelle Condition="'$(ZellenAdapterQuelle)' == ''">../../Geometry/Zellen/ParkingGeometry.Zellen.cs</ZellenAdapterQuelle>
+    <VereinigungQuelle Condition="'$(VereinigungQuelle)' == ''">../../Geometry/Zellen/Vereinigung.cs</VereinigungQuelle>
+    <RanddatenQuelle Condition="'$(RanddatenQuelle)' == ''">../../Geometry/ParkingGeometry.Kurvenrand.cs</RanddatenQuelle>
+    <RandplanQuelle Condition="'$(RandplanQuelle)' == ''">../../Geometry/Zellen/Kurvenrand.cs</RandplanQuelle>
+    <RandsektorenQuelle Condition="'$(RandsektorenQuelle)' == ''">../../Geometry/Zellen/Kurvenrand.Sektoren.cs</RandsektorenQuelle>
+    <RandrasterQuelle Condition="'$(RandrasterQuelle)' == ''">../../Geometry/Zellen/Kurvenrand.Anpassung.cs</RandrasterQuelle>
+    <KurvenflaechenQuelle Condition="'$(KurvenflaechenQuelle)' == ''">../../Geometry/ParkingGeometry.Kurvenflaechen.cs</KurvenflaechenQuelle>
+    <KurvenlampenQuelle Condition="'$(KurvenlampenQuelle)' == ''">../../Geometry/ParkingGeometry.Kurvenlaternen.cs</KurvenlampenQuelle>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs"/><Compile Include="Schlusszug.cs"/><Compile Include="Schlusszug.Geometrie.cs"/><Compile Include="Kurvenzufahrten.cs"/><Compile Include="RandkurvenMessung.cs"/><Compile Include="RandmaterialGeraden.cs"/><Compile Include="../Zufahrtsvorschau/Vergleich.cs" Link="Vergleich.cs"/><Compile Include="Formen.cs"/><Compile Include="RandkurvenTests.cs"/><Compile Include="RandkurvenFaelle.cs"/><Compile Include="RandkurvenLogik.cs"/><Compile Include="RandkurvenRohdaten.cs"/><Compile Include="RandexportTests.cs"/>
+    <Compile Include="../../Geometry/**/*.cs" Exclude="../../Geometry/Zellen/Layout.cs;../../Geometry/Zellen/Kurvenrand.Zufahrten.cs;../../Geometry/Zellen/Zufahrt.cs;../../Geometry/ParkingGeometry.Kurvenzufahrten.cs;../../Geometry/Zellen/Kurvenrand.Sektoren.cs;../../Geometry/ParkingGeometry.Kurvenflaechen.cs;../../Geometry/Zellen/Zerlegung.cs;../../Geometry/ParkingGeometry.Kurvenrand.cs;../../Geometry/Zellen/Kurvenrand.cs;../../Geometry/Zellen/Kurvenrand.Anpassung.cs;../../Geometry/ParkingGeometry.Kurvenlaternen.cs;../../Geometry/Zellen/Vereinigung.cs;../../Geometry/Zellen/ParkingGeometry.Zellen.cs"/>
+    <Compile Include="$(LayoutQuelle)" Link="Layout.cs"/>
+    <None Include="Schlusszug2033.json" CopyToOutputDirectory="PreserveNewest"/>
+    <Compile Include="$(KurvenzufahrtenQuelle)" Link="Kurvenrand.Zufahrten.cs"/>
+    <Compile Include="$(ZufahrtsQuelle)" Link="Zufahrt.cs"/>
+    <Compile Include="$(KurvenzielQuelle)" Link="Kurvenzufahrtsziel.cs"/>
+    <Compile Include="$(TeilerQuelle)" Link="Zerlegung.cs"/>
+    <Compile Include="$(ZellenAdapterQuelle)" Link="ZellenAdapter.cs"/>
+    <Compile Include="$(VereinigungQuelle)" Link="Vereinigung.cs"/>
+    <Compile Include="$(RanddatenQuelle)" Link="KurvenrandDaten.cs"/>
+    <Compile Include="$(RandplanQuelle)" Link="Kurvenrand.cs"/>
+    <Compile Include="$(RandsektorenQuelle)" Link="Kurvenrand.Sektoren.cs"/>
+    <Compile Include="$(RandrasterQuelle)" Link="Kurvenrand.Anpassung.cs"/>
+    <Compile Include="$(KurvenflaechenQuelle)" Link="Kurvenflaechen.cs"/>
+    <Compile Include="$(KurvenlampenQuelle)" Link="Kurvenlaternen.cs"/>
+    <None Include="Lot485961.json" CopyToOutputDirectory="PreserveNewest"/>
+    <None Include="Spiel20261019.json" CopyToOutputDirectory="PreserveNewest"/>
+    <None Include="../Zufahrtsvorschau/Lot201905.json" Link="Lot201905.json" CopyToOutputDirectory="PreserveNewest"/>
+    <None Include="../Zufahrtsvorschau/Lot136479.json" Link="Lot136479.json" CopyToOutputDirectory="PreserveNewest"/>
+    <Reference Include="Unity.Mathematics"><HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

@@ -23,6 +23,8 @@ namespace ParkingLotTool.Tools
         internal readonly List<(float2 A, float2 B, bool Links, bool Aus)> Seitenplan;
         internal readonly List<ParkingGeometry.RandzoningLinie> Randzoning;
         internal readonly List<BusStopPlacement> Bushalte;
+        /** Strassenkurven des alten Lots (optional, nur Nachweis). */
+        internal Kurvenzettel[] Kurven;
 
         internal ParkingLotBaukontext(Entity lot, ParkingLotBuildReceipt zettel,
             float3[] punkte, Entrance[] zugaenge, Ausrichtzuweisung[] ausrichtungen,
@@ -54,6 +56,6 @@ namespace ParkingLotTool.Tools
         internal ParkingLotBaukontext MitFlaechen(string strasse, string deko, string zoning)
             => new ParkingLotBaukontext(AltesLot, Zettel, Punkte, Zugaenge, Ausrichtungen,
                 Schnitte, Zonen, strasse, deko, zoning, Vegetationszettel, Zoningstrasse,
-                Seitenplan, Randzoning, Bushalte);
+                Seitenplan, Randzoning, Bushalte) { Kurven = Kurven };
     }
 }

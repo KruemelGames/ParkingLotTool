@@ -22,6 +22,8 @@ namespace ParkingLotTool.Geometry
             "Randzoning", "Zoningstrasse", "BusStops", "Teilflaechenschnitte",
             "Entrances", "AutomaticEntrances", "KantenVersatz", "Zellen",
             "EineFlaeche", "NoNotch", "Single", "NoHalf",
+            // Kurvenlaeufe (Etappe 6): ohne sie ist ein Kurvenbericht offline nicht nachzurechnen.
+            "Kurvenlaeufe",
         };
 
         public static readonly string[] Vegetation =

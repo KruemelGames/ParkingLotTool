@@ -21,28 +21,40 @@ namespace ParkingLotTool.Geometry.Zellen
             double tiefe,
             Knotenfabrik knotenfabrik,
             Linienregister linienregister,
-            Polygonteiler teiler)
+            Polygonteiler teiler,
+            Func<Zufahrtsgeometrie, Punkt[]> konturPlaner = null)
         {
             var ersterNeuerKnoten = knotenfabrik.Anzahl;
             var zufahrten = Plane(areal, vorgaben, tiefe, linienregister);
             var zellen = grundzellen.Select(Kopiere).ToList();
             foreach (var zufahrt in zufahrten)
             {
+                zufahrt.Kontur = konturPlaner?.Invoke(zufahrt);
+                double von = 0, bis = tiefe;
+                if (zufahrt.Kontur != null)
+                {
+                    zufahrt.LinkeKante = linienregister.Zufahrtskante(zufahrt.Start - zufahrt.Querhalbvektor,
+                        zufahrt.Innennormale, zufahrt.Nummer, "links");
+                    zufahrt.RechteKante = linienregister.Zufahrtskante(zufahrt.Start + zufahrt.Querhalbvektor,
+                        zufahrt.Innennormale, zufahrt.Nummer, "rechts");
+                    von = zufahrt.Kontur.Min(p => Geometrie.Skalar(p - zufahrt.Start, zufahrt.Innennormale));
+                    bis = zufahrt.Kontur.Max(p => Geometrie.Skalar(p - zufahrt.Start, zufahrt.Innennormale));
+                }
                 var links = zufahrt.Start - zufahrt.Querhalbvektor;
                 var rechts = zufahrt.Start + zufahrt.Querhalbvektor;
                 zellen = TeileAlle(
                     zellen,
                     teiler,
                     zufahrt.LinkeKante,
-                    links,
-                    links + zufahrt.Innennormale * tiefe);
+                    links + zufahrt.Innennormale * von,
+                    links + zufahrt.Innennormale * bis, zufahrt.Kontur != null);
                 VervollstaendigeNachbarkanten(zellen, teiler, zufahrt.LinkeKante);
                 zellen = TeileAlle(
                     zellen,
                     teiler,
                     zufahrt.RechteKante,
-                    rechts,
-                    rechts + zufahrt.Innennormale * tiefe);
+                    rechts + zufahrt.Innennormale * von,
+                    rechts + zufahrt.Innennormale * bis, zufahrt.Kontur != null);
                 VervollstaendigeNachbarkanten(zellen, teiler, zufahrt.RechteKante);
             }
 
@@ -87,6 +99,7 @@ namespace ParkingLotTool.Geometry.Zellen
                     BuchtId = istZufahrt || istBuchtrest ? null : zelle.BuchtId,
                     QuerstrassenId = istZufahrt ? null : zelle.QuerstrassenId,
                     Flaechenabschnitt = zelle.Flaechenabschnitt,
+                    GemeinsamerBoden = zelle.GemeinsamerBoden,
                     Zufahrtsdeckungen = deckungen,
                     Zugangsart = istZufahrt ? wert.Zugangsart : null,
                 });
@@ -167,6 +180,7 @@ namespace ParkingLotTool.Geometry.Zellen
             Zufahrtsgeometrie zufahrt,
             Punkt punkt)
         {
+            if (zufahrt.Kontur != null) return Geometrie.Enthaelt(zufahrt.Kontur, punkt);
             var delta = punkt - zufahrt.Start;
             var achsvektor = zufahrt.Innennormale * zufahrt.Tiefe;
             var nenner = Geometrie.Kreuz(zufahrt.Querhalbvektor, achsvektor);
@@ -184,7 +198,8 @@ namespace ParkingLotTool.Geometry.Zellen
             Polygonteiler teiler,
             Linie linie,
             Punkt segmentanfang,
-            Punkt segmentende)
+            Punkt segmentende,
+            bool kurvenkontur)
         {
             var ausgabe = new List<Zelle>();
             foreach (var zelle in zellen)
@@ -192,7 +207,19 @@ namespace ParkingLotTool.Geometry.Zellen
                 IReadOnlyList<Polygon> teile;
                 try
                 {
-                    teile = teiler.TeileSegment(
+                    if (kurvenkontur)
+                    {
+                        // Bordstein und Fahrbahnrand begrenzen schon das Raster.
+                        // An der geknickten Kontur kann eine angeschnittene Zelle
+                        // ihren Schwerpunkt ausserhalb der Seitenstrecke haben.
+                        var achse = segmentende - segmentanfang;
+                        double laenge2 = Geometrie.Skalar(achse, achse);
+                        var stationen = zelle.Polygon.Punkte.Select(p =>
+                            Geometrie.Skalar(p - segmentanfang, achse));
+                        teile = stationen.Max() < 0 || stationen.Min() > laenge2
+                            ? zelle.Polygon.Einzeln() : teiler.Teile(zelle.Polygon, linie);
+                    }
+                    else teile = teiler.TeileSegment(
                         zelle.Polygon, linie, segmentanfang, segmentende);
                 }
                 catch (Exception fehler)
@@ -214,6 +241,7 @@ namespace ParkingLotTool.Geometry.Zellen
                         BuchtId = zelle.BuchtId,
                         QuerstrassenId = zelle.QuerstrassenId,
                         Flaechenabschnitt = zelle.Flaechenabschnitt,
+                        GemeinsamerBoden = zelle.GemeinsamerBoden,
                         Zufahrtsdeckungen = zelle.Zufahrtsdeckungen,
                     });
             }
@@ -267,6 +295,7 @@ namespace ParkingLotTool.Geometry.Zellen
             BuchtId = zelle.BuchtId,
             QuerstrassenId = zelle.QuerstrassenId,
             Flaechenabschnitt = zelle.Flaechenabschnitt,
+            GemeinsamerBoden = zelle.GemeinsamerBoden,
             Zufahrtsdeckungen = zelle.Zufahrtsdeckungen,
         };
 

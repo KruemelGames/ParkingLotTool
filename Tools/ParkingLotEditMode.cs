@@ -73,6 +73,23 @@ namespace ParkingLotTool.Tools
 
         internal bool IsEditing => _editLot != Entity.Null;
 
+        /**
+         * EDIT IST ERST OFFEN, WENN DIE ERSTE VORSCHAU STEHT (Nutzer 20.10.).
+         *
+         * Das Panel zeigt die Werte des Bauzettels sofort, die Vorschau eines
+         * grossen Parkplatzes braucht aber Sekunden (458 Buchten: 4,7 s). Wer
+         * in dieser Zeit klickt, baut ins Leere. Solange deckt eine Sperre das
+         * Panel ab. Abgeleitet, nicht nur gemerkt: ohne laufende oder
+         * anstehende Rechnung faellt sie von selbst weg und kann nie haengen.
+         * Erst nach einer Viertelsekunde, damit kleine Parkplaetze nicht flackern.
+         */
+        private bool _editOeffnet;
+        private float _editOeffnetSeit;
+
+        internal bool EditOeffnetNoch => IsEditing && _editOeffnet
+            && (_layoutDirty || _buildTask != null)
+            && UnityEngine.Time.realtimeSinceStartup - _editOeffnetSeit > 0.25f;
+
         private void InitializeEditing()
         {
             _editOwnerParts = GetEntityQuery(new EntityQueryDesc
@@ -243,6 +260,7 @@ namespace ParkingLotTool.Tools
                 _worldPoints.Add(points[i]);
                 _points.Add(points[i].xz);
             }
+            LadeKurvenAusZettel(lot);
             _entrances.AddRange(entrances);
             _closed = true;
             _polygonTouched = true;
@@ -263,6 +281,8 @@ namespace ParkingLotTool.Tools
             {
                 var hidden = HideVisibleParts(lot);
                 PublishEntranceState();
+                _editOeffnet = true;
+                _editOeffnetSeit = UnityEngine.Time.realtimeSinceStartup;
                 _uiSystem?.SetStatus(ParkingLotTexte.T("editMode.editingParkingLotCancelRestoresThe"));
                 Mod.log.Info("PLT-Bearbeiten: Einstieg Lot " + lot.Index
                     + " über Infofenster; " + hidden.Areas + " Flächen und "
@@ -668,6 +688,7 @@ namespace ParkingLotTool.Tools
             _zoningErhalten = false;
             _uiSystem?.ClearBuildReceiptTemplate();
             _editLot = Entity.Null;
+            _editOeffnet = false;
             _replacementNewLot = Entity.Null;
             _replacementNewCarrier = Entity.Null;
             _editBaselinePending = false;
@@ -754,6 +775,7 @@ namespace ParkingLotTool.Tools
             Colossal.Serialization.Entities.Purpose purpose, GameMode mode)
         {
             if (_bauarbeiter) return;
+            VergissKurvendiagnose();
             EntferneSurfacePreview("Laden");
             base.OnGamePreload(purpose, mode);
             _baumzieleNachLadenGeprueft = false;
@@ -800,6 +822,7 @@ namespace ParkingLotTool.Tools
                 SurfaceDecorationOn = _uiSystem?.FlaecheDekoAn ?? true,
                 SurfaceApronOn = _uiSystem?.VorflaecheAn ?? true,
                 BayIcons = _uiSystem?.Buchtsymbole ?? true,
+                Kurven = KurvenzettelFuerBau(),
                 ZoningWinkelmodus = ZoningWinkelmodus,
                 ZoningReglerwinkel = ZoningReglerwinkel,
                 ZoningAussentiefeVorwahl = ZoningTiefeVorwahl,

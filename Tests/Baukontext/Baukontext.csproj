@@ -10,6 +10,7 @@
     <Compile Include="../../Geometry/Zellen/*.cs" Link="Geometry/Zellen/%(Filename)%(Extension)" />
     <Compile Include="../../Tools/ParkingLotBuildReceipt.cs" Link="ParkingLotBuildReceipt.cs" />
     <Compile Include="../../Tools/ParkingLotBaukontext.cs" Link="ParkingLotBaukontext.cs" />
+    <Compile Include="../../Tools/ParkingLotKurvenzettelPuffer.cs" Link="ParkingLotKurvenzettelPuffer.cs" />
     <Compile Include="$(BaukontextLeserQuelle)" Link="ParkingLotBaukontextLeser.cs" />
     <Reference Include="Unity.Mathematics"><HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath></Reference>
   </ItemGroup>

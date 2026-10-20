@@ -144,7 +144,7 @@ namespace ParkingLotTool.Geometry
      * Rechnet nur auf dem Layout: Buchten, Grasflaechen und Netzlinien. Die
      * Vorschau und der Bau nehmen denselben Plan.
      */
-    public static class ParkingLanterns
+    public static partial class ParkingLanterns
     {
         public const float StandardAbstand = 30f;
         public const float MinAbstand = 20f, MaxAbstand = 40f;
@@ -218,8 +218,12 @@ namespace ParkingLotTool.Geometry
              * float - genau diese Unschaerfe.
              */
             var rohBuchten = new List<(double Ang, float2 M01, float2 M23, float Breite)>();
-            foreach (var p in layout.Bay)
+            var kurvenbuchten = new HashSet<int>((layout.KurvenRandreihen ?? Array.Empty<KurvenRandreihe>())
+                .SelectMany(r => r.Buchten));
+            for (int buchtIndex = 0; buchtIndex < layout.Bay.Length; buchtIndex++)
             {
+                if (kurvenbuchten.Contains(buchtIndex)) continue;
+                var p = layout.Bay[buchtIndex];
                 if (p == null || p.Length < 4) continue;
                 var m01 = (p[0] + p[1]) * 0.5f;
                 var m23 = (p[2] + p[3]) * 0.5f;
@@ -385,6 +389,7 @@ namespace ParkingLotTool.Geometry
             }
             plan.Laternen.AddRange(innen);
             plan.Laternen.AddRange(rand);
+            Kurvenlaternen(plan, layout.KurvenRandreihen, S, IstGruen);
             return plan;
         }
 

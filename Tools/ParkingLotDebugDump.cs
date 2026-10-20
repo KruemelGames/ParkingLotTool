@@ -39,6 +39,13 @@ namespace ParkingLotTool.Tools
         private float2[] _lastPreviewSite;
         private float3[] _lastPreviewWorldSite;
         private LayoutSettings _lastPreviewSettings;
+        /**
+         * Einstellungen des zuletzt GESCHEITERTEN Laufs (20.10.): der Bericht
+         * zu einer gescheiterten Vorschau hatte sonst das neue Polygon, aber
+         * Einstellungen und Kurvenlaeufe des letzten gelungenen Stands.
+         */
+        private LayoutSettings _gescheitertSettings;
+        private int _gescheitertRevision = -1;
         private ParkingLayout _lastPreviewLayout;
         private int _lastPreviewRevision = -1;
         private DateTime _lastPreviewStartedUtc;
@@ -467,6 +474,10 @@ namespace ParkingLotTool.Tools
             if (!matchesResult && _lastPreviewLayout != null)
                 notes.Add("Das aktuelle Polygon weicht vom letzten fertigen Layout ab; "
                     + "Polygon und Ergebnisrevision sind deshalb getrennt ausgewiesen.");
+            if (inputSource == "aktuelles gezeichnetes Polygon" && _buildSettings == null
+                && _gescheitertRevision == _geometryRevision)
+                notes.Add($"Die Vorschau zu Stand {_gescheitertRevision} ist gescheitert; "
+                    + "LayoutSettings stammen aus genau diesem Lauf.");
 
             return new DebugDumpDocument
             {
@@ -757,7 +768,8 @@ namespace ParkingLotTool.Tools
                 world = new float3[_worldPoints.Count];
                 for (var i = 0; i < _points.Count; i++) site[i] = _points[i];
                 for (var i = 0; i < _worldPoints.Count; i++) world[i] = _worldPoints[i];
-                settings = (_buildSettings ?? _lastPreviewSettings ?? LayoutSettings.Cs2).Clone();
+                var gescheitert = _gescheitertRevision == _geometryRevision ? _gescheitertSettings : null;
+                settings = (_buildSettings ?? gescheitert ?? _lastPreviewSettings ?? LayoutSettings.Cs2).Clone();
                 source = "aktuelles gezeichnetes Polygon";
                 return;
             }

@@ -255,6 +255,7 @@ namespace ParkingLotTool.Tools
          */
         private ValueBinding<bool> _altwegOhneWarnung;
         private ValueBinding<bool> _autoZufahrtModus;
+        private ValueBinding<bool> _kurveFolgen;
         private ValueBinding<float> _rowAngle;
         private ValueBinding<float> _edgeSetbackDefault;
         private ValueBinding<float> _aisleWidthDefault;
@@ -335,6 +336,8 @@ namespace ParkingLotTool.Tools
         private ValueBinding<string> _hinweis;
         /** Warum die Vorschau fehlt, fuer Bauknopf und Schalter: "", "zuKlein", "zuKleinRandstrassen". */
         private ValueBinding<string> _vorschaufehler;
+        /** Edit wartet noch auf seine erste Vorschau: Sperre ueber dem Panel. */
+        private ValueBinding<bool> _editOeffnet;
         private ValueBinding<int> _fensterHeim;
         private ValueBinding<string> _flaecheStrasse;
         private ValueBinding<string> _flaecheDeko;
@@ -553,6 +556,9 @@ namespace ParkingLotTool.Tools
             AddBinding(_autoZufahrtModus = new ValueBinding<bool>(Group,
                 "AutoEntryMode",
                 Mod.Optionen?.AutomatischZufahrtModus ?? true));
+            AddBinding(_kurveFolgen = new ValueBinding<bool>(Group,
+                "FollowCurves",
+                Mod.Optionen?.StrassenkurveFolgen ?? false));
 
             AddBinding(_edgeSetbackDefault = new ValueBinding<float>(Group,
                 "EdgeSetbackDefault", _defaults.EdgeSetback));
@@ -759,8 +765,10 @@ namespace ParkingLotTool.Tools
              */
             AddBinding(_status = new ValueBinding<string>(
                 Group, "Status", T("uISystem.ready")));
+            _statusBasis = _status.value;
             AddBinding(_hinweis = new ValueBinding<string>(Group, "Hinweis", ""));
             AddBinding(_vorschaufehler = new ValueBinding<string>(Group, "Vorschaufehler", ""));
+            AddBinding(_editOeffnet = new ValueBinding<bool>(Group, "EditOeffnet", false));
             AddBinding(_fensterHeim = new ValueBinding<int>(Group, "PanelHome", 0));
             /**
              * Was das Panel gemessen hat, ins Log.
@@ -1040,6 +1048,16 @@ namespace ParkingLotTool.Tools
                         Mod.Optionen.ApplyAndSave();
                     }
                     _autoZufahrtModus.Update(value);
+                }));
+            AddBinding(new TriggerBinding<bool>(Group, "SetFollowCurves",
+                value =>
+                {
+                    if (Mod.Optionen != null)
+                    {
+                        Mod.Optionen.StrassenkurveFolgen = value;
+                        Mod.Optionen.ApplyAndSave();
+                    }
+                    _kurveFolgen.Update(value);
                 }));
             AddBinding(new TriggerBinding(Group, "ResetAll", ResetAll));
             AddBinding(new TriggerBinding<string>(Group, "ResetOne", ResetOne));
@@ -1399,6 +1417,9 @@ namespace ParkingLotTool.Tools
             var jetzt = Mod.Optionen.AutomatischZufahrtModus;
             if (_autoZufahrtModus.value != jetzt)
                 _autoZufahrtModus.Update(jetzt);
+            var kurve = Mod.Optionen.StrassenkurveFolgen;
+            if (_kurveFolgen != null && _kurveFolgen.value != kurve)
+                _kurveFolgen.Update(kurve);
         }
 
         /**
@@ -2621,7 +2642,30 @@ namespace ParkingLotTool.Tools
             VerlasseMeldemodus();
         }
 
-        internal void SetStatus(string text) => _status?.Update(text ?? string.Empty);
+        private string _statusBasis = string.Empty, _kurvenhinweis;
+        internal void SetStatus(string text)
+        {
+            _statusBasis = text ?? string.Empty;
+            ZeigeStatusMitKurvenhinweis();
+        }
+        internal void SetKurvenhinweis(string text)
+        {
+            if (_kurvenhinweis == text) return;
+            _kurvenhinweis = text;
+            ZeigeStatusMitKurvenhinweis();
+        }
+        private string _statusAnzeige, _statusAnzeigeBasis, _statusAnzeigeKurve;
+        private void ZeigeStatusMitKurvenhinweis()
+        {
+            if (_statusAnzeige == null || _statusAnzeigeBasis != _statusBasis || _statusAnzeigeKurve != _kurvenhinweis)
+            {
+                _statusAnzeigeBasis = _statusBasis;
+                _statusAnzeigeKurve = _kurvenhinweis;
+                _statusAnzeige = string.IsNullOrEmpty(_kurvenhinweis) ? _statusBasis
+                    : _statusBasis + "\n" + _kurvenhinweis;
+            }
+            _status?.Update(_statusAnzeige);
+        }
 
         /**
          * Die Sprache neu einlesen - nach jeder Aenderung in den Optionen.
@@ -2649,7 +2693,10 @@ namespace ParkingLotTool.Tools
             _textSprache = Sprachtexte.Aktiv;
             if (von != null && !string.Equals(von, _textSprache, StringComparison.OrdinalIgnoreCase))
             {
-                SetzeUm(_status, von);
+                _statusBasis = Sprachtexte.Umsetzen(_statusBasis, von, _textSprache);
+                if (!string.IsNullOrEmpty(_kurvenhinweis))
+                    _kurvenhinweis = Sprachtexte.Umsetzen(_kurvenhinweis, von, _textSprache);
+                ZeigeStatusMitKurvenhinweis();
                 SetzeUm(_zoningZug, von);
                 SetzeUm(_baukurzinfo, von);
                 SetzeUm(_ueberlappungsstand, von);
@@ -2678,6 +2725,8 @@ namespace ParkingLotTool.Tools
         /** Mehrere Hinweise durch Zeilenumbruch getrennt; leer heisst: keine. */
         internal void SetVorschaufehler(string ursache)
             => _vorschaufehler?.Update(ursache ?? string.Empty);
+
+        internal void SetEditOeffnet(bool oeffnet) => _editOeffnet?.Update(oeffnet);
 
         internal void SetHinweise(string[] hinweise)
             => _hinweis?.Update(hinweise == null || hinweise.Length == 0

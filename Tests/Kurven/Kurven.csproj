@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems><Nullable>disable</Nullable>
+    <KurvenQuelle Condition="'$(KurvenQuelle)' == ''">../../Geometry/Strassenkurve.cs</KurvenQuelle>
+    <NetzQuelle Condition="'$(NetzQuelle)' == ''">../../Geometry/StrassenkurvenNetz.cs</NetzQuelle>
+    <LogQuelle Condition="'$(LogQuelle)' == ''">../../Geometry/StrassenkurvenLog.cs</LogQuelle>
+    <GruppenQuelle Condition="'$(GruppenQuelle)' == ''">../../Geometry/Kurvengruppe.cs</GruppenQuelle>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs"/><Compile Include="KurvenkanteTests.cs"/><Compile Include="VersatzTests.cs"/><Compile Include="NativeKnoten.cs"/><Compile Include="KurvenzettelTests.cs"/>
+    <Compile Include="$(NetzQuelle)" Link="StrassenkurvenNetz.cs"/>
+    <Compile Include="$(LogQuelle)" Link="StrassenkurvenLog.cs"/><Compile Include="$(KurvenQuelle)" Link="Strassenkurve.cs"/>
+    <Compile Include="../../Geometry/**/*.cs"
+      Exclude="../../Geometry/Strassenkurve.cs;../../Geometry/StrassenkurvenNetz.cs;../../Geometry/StrassenkurvenLog.cs;../../Geometry/Kurvengruppe.cs"/>
+    <Compile Include="$(GruppenQuelle)" Link="Kurvengruppe.cs"/>
+    <None Include="NativeKnoten.json" CopyToOutputDirectory="PreserveNewest"/>
+    <Reference Include="Unity.Mathematics"><HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

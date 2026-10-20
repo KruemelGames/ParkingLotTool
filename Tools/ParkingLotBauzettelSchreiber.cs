@@ -137,6 +137,13 @@ namespace ParkingLotTool.Tools
                     EntityManager.RemoveComponent<ParkingLotBuildAlignment>(lot);
                 }
 
+                // Strassenkurven: Formel, Zusammenfassung, gebaute Stationen.
+                ParkingLotKurvenzettelPuffer.Schreibe(EntityManager, lot, q.Kurven);
+                if (q.Kurven != null)
+                    foreach (var kurve in q.Kurven)
+                        if (kurve != null)
+                            Mod.log.Info("PLT-Kurve gebaut: " + kurve.Kurzzeile() + ".");
+
                 // Die Handschnitte gehoeren zu den Zuweisungen: sie legen
                 // fest, WELCHE Teilflaechen es ueberhaupt gibt.
                 if (q.Trennschnitte.Count > 0)

@@ -3,6 +3,7 @@
     <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <NoWarn>$(NoWarn);CS0649</NoWarn>
+    <KurvenrandFormatQuelle Condition="'$(KurvenrandFormatQuelle)' == ''">../../Geometry/ParkingGeometry.KurvenrandFormat.cs</KurvenrandFormatQuelle>
     <MusterMarkerQuelle Condition="'$(MusterMarkerQuelle)' == ''">../../Tools/ParkingLotMusterflaeche.cs</MusterMarkerQuelle>
     <ReceiptQuelle Condition="'$(ReceiptQuelle)' == ''">../../Tools/ParkingLotBuildReceipt.cs</ReceiptQuelle>
     <RueckwegQuelle Condition="'$(RueckwegQuelle)' == ''">../../Tools/ParkingLotRueckwegDaten.cs</RueckwegQuelle>
@@ -21,15 +22,16 @@
     <Compile Include="$(NebenMarkerQuelle)" Link="ParkingLotNebenarbeitDaten.cs" />
     <Compile Include="$(ErzeugungsdatenQuelle)" Link="ParkingLotErzeugungsauftrag.cs" />
     <Compile Include="$(VersorgungsdatenQuelle)" Link="ParkingLotVersorgungsnachweis.Daten.cs" />
-    <Compile Include="NeueNebenformate.cs" />
+    <Compile Include="NeueNebenformate.cs" /><Compile Include="Kurvenformate.cs" />
     <Compile Include="$(MusterMarkerQuelle)" Link="ParkingLotMusterflaeche.cs" />
     <Compile Include="Program.cs" /><Compile Include="Container.cs" /><Compile Include="Feldstrom.cs" />
-    <Compile Include="../../Geometry/*.cs" Exclude="../../Geometry/EditFreigabe.cs" Link="Geometry/%(Filename)%(Extension)" />
+    <Compile Include="../../Geometry/*.cs" Exclude="../../Geometry/EditFreigabe.cs;../../Geometry/ParkingGeometry.KurvenrandFormat.cs" Link="Geometry/%(Filename)%(Extension)" />
     <Compile Include="../../Geometry/Zellen/*.cs" Link="Geometry/Zellen/%(Filename)%(Extension)" />
     <Compile Include="$(ReceiptQuelle)" Link="ParkingLotBuildReceipt.cs" />
     <Compile Include="$(RueckwegQuelle)" Link="ParkingLotRueckwegDaten.cs" />
     <Compile Include="$(ZwischenbauQuelle)" Link="ParkingLotGespeicherterZwischenbau.cs" />
     <Compile Include="$(StufeAQuelle)" Link="ParkingLotStufeAPrefabID.cs" />
+    <Compile Include="$(KurvenrandFormatQuelle)" Link="KurvenrandFormat.cs" />
     <Compile Include="$(EditQuelle)" Link="EditFreigabe.cs" />
     <Compile Include="../../Tools/ParkingLotPrefabname.cs" Link="ParkingLotPrefabname.cs" />
     <Compile Include="../../Tools/ParkingLotAbrissabsicht.cs" Link="ParkingLotAbrissabsicht.cs" />

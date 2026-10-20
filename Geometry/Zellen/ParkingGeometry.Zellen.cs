@@ -9,7 +9,7 @@ namespace ParkingLotTool.Geometry
 {
     public static partial class ParkingGeometry
     {
-        private const double ZellenEingangsgitter = 0.001;
+        internal const double ZellenEingangsgitter = 0.001;
 
         private sealed class ZellenEingabe
         {
@@ -56,7 +56,8 @@ namespace ParkingLotTool.Geometry
             internal Punkt Punkt { get; set; }
         }
 
-        private static ParkingLayout BuildZellen(float2[] site, LayoutSettings settings)
+        private static ParkingLayout BuildZellen(float2[] site, LayoutSettings settings,
+            VorschauVorbereitung vorbereitung = null)
         {
             /*
              * MEHR ALS EIN TEIL: JEDES WIRD EIN EIGENER PARKPLATZ.
@@ -101,11 +102,11 @@ namespace ParkingLotTool.Geometry
              * Weg ist gemessen und beschrieben, und die Entscheidung dagegen
              * ist eine Gestaltungsfrage, keine Sackgasse.
              */
-            return BuildZellenEinzeln(site, settings);
+            return BuildZellenEinzeln(site, settings, vorbereitung);
         }
 
         private static ParkingLayout BuildZellenEinzeln(
-            float2[] site, LayoutSettings settings)
+            float2[] site, LayoutSettings settings, VorschauVorbereitung vorbereitung = null)
         {
             var eingabe = ZellenNormalisiereEingabe(site, settings);
             var quellpolygon = eingabe.Normalisiert
@@ -184,6 +185,7 @@ namespace ParkingLotTool.Geometry
                     VerschiedeneAchsen(plan.Winkel, globalerWinkel));
             var zelleneinstellungen = new Zelleneinstellungen
             {
+                Kurvenlaeufe = ZellenKurvenlaeufe(site, settings),
                 Randabstand = settings.Es,
                 Fahrgassenbreite = settings.Ai,
                 Querstrassenbreite = settings.Cw,
@@ -268,7 +270,7 @@ namespace ParkingLotTool.Geometry
             };
             var form = new Formdefinition("Mod-Polygon", eingabe.Normalisiert);
             var bau = Layoutbauer.Baue(
-                form, zelleneinstellungen, eingabe.Zufahrten);
+                form, zelleneinstellungen, eingabe.Zufahrten, vorbereitung);
             var layout = ZellenZuLayout(bau, settings);
             SetzeTeilflaechenStatistik(
                 layout, quellpolygon, settings, teilplan);
@@ -345,6 +347,17 @@ namespace ParkingLotTool.Geometry
                         nameof(settings));
                 var kante = entrance.Edge;
                 var along = entrance.Along;
+                var rasterlaenge = Geometrie.Laenge(
+                    original[(kante + 1) % original.Count] - original[kante]);
+                if (along > rasterlaenge)
+                {
+                    // Nur das EXAKTE Welt-Kantenende abbilden, keine Toleranz.
+                    // Das 1-mm-Raster kann die Kante verkuerzen (R15: 0,52 mm).
+                    var aWelt = site[kante]; var bWelt = site[(kante + 1) % original.Count];
+                    var delta = new Punkt((double)bWelt.x - aWelt.x, (double)bWelt.y - aWelt.y);
+                    if (along == Geometrie.Laenge(delta) || along == math.distance(aWelt, bWelt))
+                        along = rasterlaenge;
+                }
                 var eckenanfang = string.Equals(
                     entrance.Corner, "start", StringComparison.Ordinal)
                     ? (bool?)true
@@ -357,7 +370,7 @@ namespace ParkingLotTool.Geometry
                     var laenge = Geometrie.Laenge(b - a);
                     kante = Geometrie.Mod(
                         original.Count - 2 - entrance.Edge, original.Count);
-                    along = laenge - entrance.Along;
+                    along = laenge - along;
                     if (eckenanfang.HasValue) eckenanfang = !eckenanfang.Value;
                 }
 
@@ -432,13 +445,15 @@ namespace ParkingLotTool.Geometry
              * Alles landet in `AsphaltSurface`; welches der beiden Prefabs der
              * Bau daraus macht, ist gleich, sie sind ja dasselbe.
              */
+            var kurvenmaterial = ZellenKurvenmaterial(bau);
             var gras = bau.Flaechen
                 .Where(flaeche => flaeche.Material == ZellMaterial.Gruen)
                 .Select(flaeche => ZellenRing(bau.Rahmen, flaeche.Aussenring))
                 .ToArray();
             var asphalt = bau.Flaechen
                 .Where(flaeche => flaeche.Material == ZellMaterial.Asphalt)
-                .Select(flaeche => ZellenRing(bau.Rahmen, flaeche.Aussenring))
+                .Select(flaeche => kurvenmaterial.TryGetValue(flaeche.Id, out var rechteck)
+                    ? rechteck : ZellenRing(bau.Rahmen, flaeche.Aussenring))
                 .ToArray();
             var zoningflaechen = bau.Flaechen
                 .Where(flaeche => flaeche.Material == ZellMaterial.Zoning)
@@ -512,10 +527,18 @@ namespace ParkingLotTool.Geometry
              * es war - der Paritaetslauf belegt das.
              */
             var entwirreBelag = !settings.Randstrassen;
-            var grasNachRolle = PlaneZellenCs2Flaechen(
-                gras, entwirreBelag, unbaubareRinge, entwirreBelag, haarrisse);
-            var asphaltNachRolle = PlaneZellenCs2Flaechen(
-                asphalt, entwirreBelag, unbaubareRinge, entwirreBelag, haarrisse);
+            if (bau.Kurvenrand != null && settings.Randstrassen)
+            {
+                // Naht zwischen Gasse und Randstrasse gerade statt Haarriss (KURVEN-15).
+                asphalt = GlaetteNaehte(asphalt, gras);
+                gras = GlaetteNaehte(gras, asphalt);
+            }
+            var grasNachRolle = bau.Kurvenrand != null && settings.Randstrassen
+                ? Kurvenflaechen(gras, unbaubareRinge, haarrisse)
+                : PlaneZellenCs2Flaechen(gras, entwirreBelag, unbaubareRinge, entwirreBelag, haarrisse);
+            var asphaltNachRolle = bau.Kurvenrand != null && settings.Randstrassen
+                ? Kurvenflaechen(asphalt, unbaubareRinge, haarrisse)
+                : PlaneZellenCs2Flaechen(asphalt, entwirreBelag, unbaubareRinge, entwirreBelag, haarrisse);
             gras = grasNachRolle;
             asphalt = asphaltNachRolle;
 
@@ -631,7 +654,14 @@ namespace ParkingLotTool.Geometry
                     Gesetzt = zufahrt.Gesetzt,
                 });
             }
+            var kurvenbuchten = ZellenEntnehmeKurvenbuchten(bau, buchtgruppen, rollen);
             AssignBayRoles(rollen, settings);
+            foreach (var bucht in kurvenbuchten)
+            {
+                rollen.Bay.Add(bucht);
+                rollen.BayKind.Add(BayKind.Perimeter);
+                rollen.BayRole.Add(BayRole.Normal);
+            }
             buchten = rollen.Bay
                 .Select(bucht => bucht
                     .Select(punkt => new float2((float)punkt.x, (float)punkt.y))
@@ -643,7 +673,9 @@ namespace ParkingLotTool.Geometry
             var gassen = strassen.Where(strasse => strasse.Kind == "aisle").ToList();
             var quer = strassen.Where(strasse => strasse.Kind == "cross").ToList();
             var zufahrten = strassen.Where(strasse => strasse.Kind == "entrance").ToList();
-            var netz = ZellenNetzfassung(strassen);
+            var netz = ZellenNetzfassung(strassen, bau.Rahmen,
+                bau.Kurvenrand == null || !bau.Randstrassen
+                    ? null : new HashSet<Punkt>(bau.Randstrassenmittellinie));
             var winkel = Math.Atan2(bau.Rahmen.XAchse.Y, bau.Rahmen.XAchse.X)
                 * 180 / Math.PI;
             winkel = ((winkel % 180) + 180) % 180;
@@ -830,6 +862,7 @@ namespace ParkingLotTool.Geometry
             return new ParkingLayout
             {
                 Bay = buchten,
+                KurvenRandreihen = ZellenKurvenreihen(bau, buchtgruppen, buchten.Length),
                 BayKind = buchtarten,
                 BayRole = rollen.BayRole.ToArray(),
                 ElectricPair = rollen.ElectricPair.ToArray(),
@@ -1444,7 +1477,7 @@ namespace ParkingLotTool.Geometry
             {
                 var vorher = ausgabe.Count;
                 Fuege("entrance", zufahrt.Start,
-                    ZellenStrahlTrifftRing(zufahrt.Start,
+                    zufahrt.Netzziel ?? ZellenStrahlTrifftRing(zufahrt.Start,
                         zufahrt.Innennormale, bau.Randstrassenmittellinie));
                 for (var i = vorher; i < ausgabe.Count; i++)
                 {
@@ -1682,7 +1715,8 @@ namespace ParkingLotTool.Geometry
         }
 
         private static List<ZellenStrasse> ZellenNetzfassung(
-            IReadOnlyList<ZellenStrasse> strassen)
+            IReadOnlyList<ZellenStrasse> strassen, Rahmen rahmen,
+            ISet<Punkt> festeEcken = null)
         {
             var schnitte = strassen.Select(strasse => new List<ZellenSchnitt>
             {
@@ -1751,7 +1785,8 @@ namespace ParkingLotTool.Geometry
                     });
                 }
             }
-            return ZellenVerschmelzeNaheKnoten(ausgabe);
+            var knoten = ZellenVerschmelzeNaheKnoten(ausgabe, festeEcken);
+            return ZellenBindeNetzknoten(knoten, rahmen, festeEcken);
         }
 
         /**
@@ -1760,8 +1795,9 @@ namespace ParkingLotTool.Geometry
          * Nutzerbefund vom 2026-08-21 an der Spurenansicht: an der Einfahrt
          * ging es nur in eine Richtung. Der Abzug zeigte warum - die
          * Randstrasse bestand aus 18,5 / 29,8 / ... Meter langen Stuecken UND
-         * einem von 0,039 m. CS2 verwirft alles unter 0,375 m; genau an dieser
-         * Stelle war der Ring danach durchtrennt.
+         * einem von 0,039 m. Genau dort war der Ring danach durchtrennt.
+         * Die damalige 0,375-m-Positionsbindung bleibt bestehen; die
+         * Kurszulassung von 1 m liegt in ZellenBindeNetzknoten.
          *
          * Die Ursache liegt im Teilen: die Zufahrt trifft den Ring 3,9 cm
          * neben einer Ecke, die das Zellenraster dort ohnehin schon hatte.
@@ -1775,9 +1811,10 @@ namespace ParkingLotTool.Geometry
          * CS2 die ganze Verbindung.
          */
         private static List<ZellenStrasse> ZellenVerschmelzeNaheKnoten(
-            List<ZellenStrasse> stuecke)
+            List<ZellenStrasse> stuecke, ISet<Punkt> festeEcken = null)
         {
-            // Dasselbe Mass, mit dem CS2 selbst aussortiert.
+            // Bisherige Positionsbindung erhalten. Die baubare Kurslaenge
+            // prueft die Netzfassung anschliessend an verbundenen Knoten.
             const double Mindestlaenge = 0.375;
 
             var wichtigkeit = new Dictionary<Punkt, HashSet<string>>();
@@ -1794,8 +1831,12 @@ namespace ParkingLotTool.Geometry
             }
 
             // Wichtigste zuerst: sie werden Vertreter, die anderen wandern.
+            // Die Kurvenbuchten wurden gegen diese Achse konstruiert.
+            // Ein naher Gassenanschluss trifft ihre Ecke, statt die Ecke
+            // um Zentimeter in die volle Bucht zu verschieben.
             var geordnet = wichtigkeit.Keys
-                .OrderByDescending(punkt => wichtigkeit[punkt].Count)
+                .OrderByDescending(punkt => festeEcken?.Contains(punkt) == true)
+                .ThenByDescending(punkt => wichtigkeit[punkt].Count)
                 .ToList();
             var vertreter = new List<Punkt>();
             var zuordnung = new Dictionary<Punkt, Punkt>();

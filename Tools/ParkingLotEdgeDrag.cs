@@ -161,6 +161,7 @@ namespace ParkingLotTool.Tools
         private void UpdateEdgeHover()
         {
             _hoverEdge = -1;
+            _hoverKurve = -1;
             if (!_closed || !_hasHover || _dragPoint >= 0 || _dragEdge >= 0) return;
             if (_hoverPoint >= 0) return;
             // Im Zufahrtsmodus setzt der Linksklick Zufahrten auf genau diese
@@ -171,14 +172,30 @@ namespace ParkingLotTool.Tools
 
             var cursor = _hoverPosition.xz;
             var best = EdgeHitDistance * EdgeHitDistance;
+            var kurvenBest = best;
+            var kurvenSehne = -1;
             for (var i = 0; i < _points.Count; i++)
             {
                 var a = _points[i];
                 var b = _points[(i + 1) % _points.Count];
                 var distanceSquared = math.lengthsq(cursor - NearestOnSegment(cursor, a, b));
+                // Die Sehnen einer Strassenkurve sind kein eigener Griff: die
+                // Rundung ist ein Ganzes (Nutzer, 19.10.) und wird nur als
+                // Ganzes versetzt, siehe ParkingLotKurvenVersatz.
+                if (IstKurvenzwischenpunkt(i) || IstKurvenzwischenpunkt((i + 1) % _points.Count))
+                {
+                    if (distanceSquared < kurvenBest) { kurvenBest = distanceSquared; kurvenSehne = i; }
+                    continue;
+                }
                 if (distanceSquared > best) continue;
                 best = distanceSquared;
                 _hoverEdge = i;
+            }
+            // Beim Ausrichten waehlt man gerade Linien; eine Sehne waere dort kein Ziel.
+            if (kurvenSehne >= 0 && kurvenBest < best && !AusrichtWahlAktiv)
+            {
+                _hoverKurve = ZiehbareKurve(kurvenSehne);
+                if (_hoverKurve >= 0) _hoverEdge = kurvenSehne;
             }
 
             // ZURUECKSETZEN VOR DEM AUSSTIEG. Ohne diese Zeile blieb die
@@ -198,7 +215,7 @@ namespace ParkingLotTool.Tools
                 _points[(_hoverEdge + 1) % _points.Count]));
             var hoehe = _worldPoints[_hoverEdge].y;
             _edgeGuide = new float3(lot.x, hoehe, lot.y);
-            _insertReady = ModifierHeld();
+            _insertReady = _hoverKurve < 0 && ModifierHeld();
             if (_insertReady) _insertPosition = _edgeGuide;
         }
 
@@ -266,6 +283,8 @@ namespace ParkingLotTool.Tools
          */
         private void BeginEdgeExtrude()
         {
+            // Eine Kurve waechst nicht aus sich heraus; Alt zieht sie wie ohne Alt.
+            if (_hoverKurve >= 0) { BeginEdgeDrag(); return; }
             _edgeDragUndo = CaptureUndoState();
             var a = _hoverEdge;
             var b = (_hoverEdge + 1) % _points.Count;
@@ -309,8 +328,13 @@ namespace ParkingLotTool.Tools
 
         private void BeginEdgeDrag()
         {
+            if (_hoverKurve >= 0) { BeginKurvenzug(); return; }
             if (_edgeDragUndo == null) _edgeDragUndo = CaptureUndoState();
             _dragEdge = _hoverEdge;
+            // Zufahrten VOR dem Loesen einer Kurve merken: danach stimmen
+            // ihre Kantennummern nicht mehr, ihre Weltlage schon.
+            CaptureEntrancesForPointDrag();
+            LoeseKurvenFuerKantenzug();
             _dragEdgeStartPoints = _points.ToArray();
             _dragEdgeStartWorld = _worldPoints.ToArray();
             _dragEdgeStartCursor = _hoverPosition.xz;
@@ -328,7 +352,6 @@ namespace ParkingLotTool.Tools
             _dragEdgeNormal = length < 1e-6f
                 ? new float2(0f, 1f)
                 : new float2(-tangent.y, tangent.x) / length;
-            CaptureEntrancesForPointDrag();
         }
 
         /**
@@ -360,6 +383,7 @@ namespace ParkingLotTool.Tools
 
         private void UpdateEdgeDrag()
         {
+            if (_kurvenzug != null) { UpdateKurvenzug(); return; }
             if (LinkeMausGehalten())
             {
                 if (!_hasHover) return;
@@ -493,7 +517,11 @@ namespace ParkingLotTool.Tools
                         + "keine Umprojektion auf die alte Weltlage.");
                     _entrancePositionsBeforePointDrag = null;
                 }
-                else ReprojectEntrancesAfterPointDrag();
+                else
+                {
+                    UebernimmKantenzugKurven(_dragEdge, (_dragEdge + 1) % _dragEdgeStartPoints.Length);
+                    ReprojectEntrancesAfterPointDrag();
+                }
                 _geometryRevision++;
                 _layoutDirty = true;
                 _polygonTouched = true;
@@ -527,6 +555,7 @@ namespace ParkingLotTool.Tools
                  * den Modifier pruefen.
                  */
                 RestoreEdgeStart();
+                StelleKantenzugKurvenWieder();
                 _dragEdge = -1;
                 _dragEdgeStartPoints = null;
                 _dragEdgeStartWorld = null;
@@ -681,6 +710,7 @@ namespace ParkingLotTool.Tools
                 _dragEdgeStartWorld[aIndex].y, _points[aIndex].y);
             _worldPoints[bIndex] = new float3(_points[bIndex].x,
                 _dragEdgeStartWorld[bIndex].y, _points[bIndex].y);
+            KantenzugAufBordstein(aIndex, bIndex, offset);
         }
 
         /**
@@ -708,6 +738,9 @@ namespace ParkingLotTool.Tools
 
         private bool EdgeOffsetValid(float offset)
         {
+            // Beim Schlusszug liegen beide Enden auf der Kurve, nicht auf der starren
+            // Verschiebung; die Kurve selbst begrenzt den Zug (SchlusszugAufKurve).
+            if (_schlusszug != null) return true;
             var probe = new float2[_dragEdgeStartPoints.Length];
             for (var i = 0; i < probe.Length; i++) probe[i] = _dragEdgeStartPoints[i];
             var aIndex = _dragEdge;

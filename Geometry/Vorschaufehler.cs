@@ -47,7 +47,11 @@ namespace ParkingLotTool.Geometry
                 || Hat("does not intersect the inner contour")
                 || Hat("The inset boundary leaves the site")
                 || (Hat("The boundary inset by") && (Hat("has no edge left")
-                    || Hat("is not counter-clockwise"))))
+                    || Hat("is not counter-clockwise")))
+                // Kurvenrandreihe (Etappe 6): Bogen zu eng fuer eine ganze Bucht
+                // samt Fahrbahn - wie "zu klein" (Nutzer 18.10.: zu eng -> Fehler mit Grund).
+                || Hat("fuer eine ganze Randbucht zu eng") || Hat("passt keine ganze Randbucht")
+                || Hat("keine durchgehende Fahrbahn frei"))
                 return Ursache.ZuKlein;
             // Der gezeichnete Umriss selbst taugt nicht.
             if (Hat("fold back on each other") || Hat("at least three corners")

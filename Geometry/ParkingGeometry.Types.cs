@@ -256,6 +256,8 @@ namespace ParkingLotTool.Geometry
 
     public sealed class LayoutSettings
     {
+        /** Explizite Kurvenherkunft; leer laesst den bisherigen Plan bitgleich. */
+        public KurvenRandlauf[] Kurvenlaeufe { get; set; } = Array.Empty<KurvenRandlauf>();
         public double Es { get; set; } = 1;
         public double Ai { get; set; } = 7;
         public double Cw { get; set; } = 3;
@@ -426,6 +428,8 @@ namespace ParkingLotTool.Geometry
         {
             return new LayoutSettings
             {
+                Kurvenlaeufe = Kurvenlaeufe?.Select(k => k?.Clone()).ToArray()
+                    ?? Array.Empty<KurvenRandlauf>(),
                 Es = Es,
                 Ai = Ai,
                 Cw = Cw,
@@ -599,6 +603,7 @@ namespace ParkingLotTool.Geometry
     {
         public float2[][] Bay { get; internal set; } = Array.Empty<float2[]>();
         public BayKind[] BayKind { get; internal set; } = Array.Empty<BayKind>();
+        public KurvenRandreihe[] KurvenRandreihen { get; internal set; } = Array.Empty<KurvenRandreihe>();
         public BayRole[] BayRole { get; internal set; } = Array.Empty<BayRole>();
         /**
          * Je Eintrag die beiden Buchten, die sich eine Ladesaeule teilen.
@@ -894,6 +899,10 @@ namespace ParkingLotTool.Geometry
          * BuildMaterialSurfaces.
          */
         public static ParkingLayout Build(float2[] site, LayoutSettings settings)
+            => Build(site, settings, null);
+
+        public static ParkingLayout Build(float2[] site, LayoutSettings settings,
+            VorschauVorbereitung vorbereitung)
         {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
             /*
@@ -911,7 +920,7 @@ namespace ParkingLotTool.Geometry
              * der einen unbenutzten Weg bewacht, gibt eine Sicherheit vor,
              * die es nicht gibt.
              */
-            var layout = BuildZellen(site, settings);
+            var layout = BuildZellen(site, settings, vorbereitung);
             layout.Grundstueck = site?.ToArray() ?? Array.Empty<float2>();
             return layout;
         }

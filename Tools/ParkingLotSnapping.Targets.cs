@@ -125,16 +125,28 @@ namespace ParkingLotTool.Tools
              */
             var found = best;
 
+            /**
+             * Zwei Durchlaeufe: erst alle Bordsteinstuecke der Umgebung sammeln
+             * und zu durchgehenden Bordsteinen gruppieren, dann fangen. Erst
+             * dann weiss jede Gerade, zu welchem Bordstein sie gehoert - auch
+             * wenn das verbindende Stueck spaeter in der Suchliste steht.
+             */
+            bool sammeln = false;
+            _curbPieces.Clear();
+            _curbParents.Clear();
+
             void Consider(Bezier4x3 curve)
             {
                 if (!math.all(math.isfinite(curve.a)) || !math.all(math.isfinite(curve.d))
                     || math.distancesq(curve.a, curve.d) < 0.01f) return;
+                if (sammeln) { _curbPieces.Add(curve); return; }
                 if (MathUtils.Distance(curve.xz, raw.xz, out var t) >= SnapDistance)
                     return;
                 var direction = math.normalizesafe(MathUtils.Tangent(curve, t).xz);
                 if (math.lengthsq(direction) < 0.5f) return;
+                MerkeKurvenlinienquelle(curve, false);
                 RegisterSnap(ref found, raw, LevelNet, SnapKind.RoadEdge,
-                    MathUtils.Position(curve, t), direction);
+                    MathUtils.Position(curve, t), direction, curbGroup: CurbGroupOf(curve));
             }
 
             /**
@@ -151,12 +163,17 @@ namespace ParkingLotTool.Tools
                 if (!math.all(math.isfinite(end))
                     || math.distancesq(curve.a, end) < 0.01f) return;
                 var line = new Line3.Segment(curve.a, end);
+                var piece = new Bezier4x3(line.a, math.lerp(line.a, line.b, 1f / 3f),
+                    math.lerp(line.a, line.b, 2f / 3f), line.b);
+                if (sammeln) { _curbPieces.Add(piece); return; }
                 if (MathUtils.Distance(line.xz, raw.xz, out var t) >= SnapDistance)
                     return;
                 var axis = math.normalizesafe(direction.xz);
                 if (math.lengthsq(axis) < 0.5f) return;
+                MerkeKurvenlinienquelle(curve, true);
                 RegisterSnap(ref found, raw, LevelNet, SnapKind.RoadEdge,
-                    MathUtils.Position(line, t), axis);
+                    MathUtils.Position(line, t), axis, curbGroup: CurbGroupOf(piece));
+                MerkeKurvenknotenquelle(line, t);
             }
 
             void ConsiderNodeGeometry(EdgeNodeGeometry geometry)
@@ -183,39 +200,70 @@ namespace ParkingLotTool.Tools
                     .m_Flags.m_General & CompositionFlags.General.Tunnel) == 0;
 
             var seen = new HashSet<Entity>();
-            for (var i = 0; i < results.Length; i++)
+            for (var pass = 0; pass < 2; pass++)
             {
-                var entity = results[i];
-                if (!EntityManager.HasComponent<Game.Net.Edge>(entity)
-                    || !EntityManager.HasComponent<Game.Net.Road>(entity)
-                    // Unterelemente fremder Gebaeude und laufende Vorschauen
-                    // sind keine Strassen, an die man ein Areal legt.
-                    || EntityManager.HasComponent<Owner>(entity)
-                    || EntityManager.HasComponent<Temp>(entity)
-                    || EntityManager.HasComponent<Deleted>(entity)) continue;
-                if (!seen.Add(entity)) continue;
-
-                var composition = EntityManager.HasComponent<Composition>(entity)
-                    ? EntityManager.GetComponentData<Composition>(entity)
-                    : default;
-
-                if (Snappable(composition.m_Edge)
-                    && EntityManager.HasComponent<EdgeGeometry>(entity))
+                sammeln = pass == 0;
+                seen.Clear();
+                for (var i = 0; i < results.Length; i++)
                 {
-                    var geometry = EntityManager.GetComponentData<EdgeGeometry>(entity);
-                    Consider(geometry.m_Start.m_Left);
-                    Consider(geometry.m_Start.m_Right);
-                    Consider(geometry.m_End.m_Left);
-                    Consider(geometry.m_End.m_Right);
+                    var entity = results[i];
+                    if (!EntityManager.HasComponent<Game.Net.Edge>(entity)
+                        || !EntityManager.HasComponent<Game.Net.Road>(entity)
+                        // Unterelemente fremder Gebaeude und laufende Vorschauen
+                        // sind keine Strassen, an die man ein Areal legt.
+                        || EntityManager.HasComponent<Owner>(entity)
+                        || EntityManager.HasComponent<Temp>(entity)
+                        || EntityManager.HasComponent<Deleted>(entity)) continue;
+                    if (!seen.Add(entity)) continue;
+                    if (!sammeln) MerkeKurvenstrasse(entity);
+
+                    var composition = EntityManager.HasComponent<Composition>(entity)
+                        ? EntityManager.GetComponentData<Composition>(entity)
+                        : default;
+
+                    if (Snappable(composition.m_Edge)
+                        && EntityManager.HasComponent<EdgeGeometry>(entity))
+                    {
+                        var geometry = EntityManager.GetComponentData<EdgeGeometry>(entity);
+                        Consider(geometry.m_Start.m_Left);
+                        if (!sammeln) MerkeKurvenquelle(entity, 1, 0, geometry.m_Start.m_Left);
+                        Consider(geometry.m_Start.m_Right);
+                        if (!sammeln) MerkeKurvenquelle(entity, -1, 0, geometry.m_Start.m_Right);
+                        Consider(geometry.m_End.m_Left);
+                        if (!sammeln) MerkeKurvenquelle(entity, 1, 1, geometry.m_End.m_Left);
+                        Consider(geometry.m_End.m_Right);
+                        if (!sammeln) MerkeKurvenquelle(entity, -1, 1, geometry.m_End.m_Right);
+                    }
+                    var kante = EntityManager.GetComponentData<Game.Net.Edge>(entity);
+                    if (EntityManager.HasComponent<StartNodeGeometry>(entity)
+                        && Snappable(composition.m_StartNode))
+                        ConsiderNode(EntityManager
+                            .GetComponentData<StartNodeGeometry>(entity).m_Geometry, kante.m_Start, 2);
+                    if (EntityManager.HasComponent<EndNodeGeometry>(entity)
+                        && Snappable(composition.m_EndNode))
+                        ConsiderNode(EntityManager
+                            .GetComponentData<EndNodeGeometry>(entity).m_Geometry, kante.m_End, 3);
+
+                    /**
+                     * Ein glatter Durchlaufknoten ist ein Stueck desselben Bogens:
+                     * begradigt gaebe es dort zwei Tangenten, deren Schnitt den
+                     * Fang mitten in der Kurve springen liess. Nur Ecken und
+                     * Kreuzungen werden wie in Vanilla begradigt.
+                     */
+                    void ConsiderNode(EdgeNodeGeometry geometry, Entity node, int quelle)
+                    {
+                        if (!GlatterKurvenknoten(entity, node, geometry))
+                        {
+                            ConsiderNodeGeometry(geometry);
+                            return;
+                        }
+                        Consider(geometry.m_Left.m_Left);
+                        if (!sammeln) MerkeKurvenquelle(entity, 0, quelle, geometry.m_Left.m_Left);
+                        Consider(geometry.m_Right.m_Right);
+                        if (!sammeln) MerkeKurvenquelle(entity, 0, quelle, geometry.m_Right.m_Right);
+                    }
                 }
-                if (EntityManager.HasComponent<StartNodeGeometry>(entity)
-                    && Snappable(composition.m_StartNode))
-                    ConsiderNodeGeometry(EntityManager
-                        .GetComponentData<StartNodeGeometry>(entity).m_Geometry);
-                if (EntityManager.HasComponent<EndNodeGeometry>(entity)
-                    && Snappable(composition.m_EndNode))
-                    ConsiderNodeGeometry(EntityManager
-                        .GetComponentData<EndNodeGeometry>(entity).m_Geometry);
+                if (sammeln) GroupCurbPieces();
             }
 
             best = found;

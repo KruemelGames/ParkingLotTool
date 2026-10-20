@@ -81,6 +81,8 @@ namespace ParkingLotTool.Tools
             settings.TeilflaechenAusrichtungen = (k.Ausrichtungen ?? Array.Empty<Ausrichtzuweisung>())
                 .Select(a => new TeilflaechenAusrichtung { Anker = a.Anker, Winkel = a.Winkel }).ToArray();
             settings.Ausrichtwinkel = double.IsNaN(k.Zettel.Ausrichtwinkel) ? (double?)null : k.Zettel.Ausrichtwinkel;
+            // Aus den gespeicherten Kurvenzetteln, genau wie beim Setzen - Edit und Sync rechnen dieselben Laeufe.
+            settings.Kurvenlaeufe = Kurvenzettel.Laeufe(k.Punkte.Select(p => p.xz).ToArray(), k.Kurven);
             return settings;
         }
 
@@ -378,6 +380,7 @@ namespace ParkingLotTool.Tools
                 ZoningAusrichtwinkel = double.IsNaN(r.ZoningAusrichtwinkel) ? (double?)null : r.ZoningAusrichtwinkel,
                 Ausrichtwinkel = _areaPreviewSettings.Ausrichtwinkel, Ausrichtungen = k.Ausrichtungen,
                 Trennschnitte = k.Schnitte, Zoningflaechen = k.Zonen, Seitenplan = k.Seitenplan,
+                Kurven = k.Kurven,
                 Randzoning = k.Randzoning, FlaecheStrasse = k.FlaecheStrasse,
                 FlaecheDekoration = k.FlaecheDekoration, FlaecheZoning = k.FlaecheZoning };
             if (!SchreibeBauzettel(_lotOwner,q)) throw new InvalidOperationException("Neuer Bauzettel fehlt.");

@@ -11,7 +11,7 @@ import {
 } from "./controls";
 import { ReportTab } from "./report";
 import { DebugTab } from "./debug";
-import { entwicklerDebug$, autoEntryMode$, setAutoEntryMode, arbeitOffen$ } from "./bindings";
+import { entwicklerDebug$, autoEntryMode$, setAutoEntryMode, arbeitOffen$, followCurves$, setFollowCurves } from "./bindings";
 import { ZoningTab } from "./zoning";
 import { ListeTab } from "./liste";
 import {
@@ -41,6 +41,7 @@ import {
   ausrichtBestaetigen, trennmodus$, trennungFertig,
   teilen, teilenAbbrechen, teilungEntfernen, teilflaechenzahl$,
   altbestand$, altbestandLoeschen, altbestandBehalten,
+  editOeffnet$,
   panelStil$, setPanelStil,
   syncOffen$, syncAuto$,
 } from "./bindings";
@@ -322,6 +323,7 @@ export const ParkingLotPanel = () => {
   // 2026-09-14 20:44:39). Derselbe Fehler wie am 2026-08-11.
   const entwicklerDebug = useValue(entwicklerDebug$);
   const autoEntryMode = useValue(autoEntryMode$);
+  const followCurves = useValue(followCurves$);
   const syncOffen = useValue(syncOffen$);
   const arbeitOffen = useValue(arbeitOffen$);
   const syncAuto = useValue(syncAuto$);
@@ -365,6 +367,7 @@ export const ParkingLotPanel = () => {
   const trennmodus = useValue(trennmodus$);
   const teilflaechenzahl = useValue(teilflaechenzahl$);
   const altbestand = useValue(altbestand$);
+  const editOeffnet = useValue(editOeffnet$);
   const entranceMode = useValue(entranceMode$);
   const busStopMode = useValue(busStopMode$);
   const entranceKind = useValue(entranceKind$);
@@ -1200,6 +1203,22 @@ export const ParkingLotPanel = () => {
             Nutzer es genannt hat. Sie sind eine eigene Sache und stehen
             deshalb fuer sich am Rand.
           */}
+          {/*
+            STRASSENKURVE FOLGEN zwischen Schliessen und den Fangschaltern
+            (Nutzer, 19.10.), abgesetzt wie Wiederherstellen vom Stilknopf.
+            Gleiche Bauart wie ein Fangschalter; das Symbol ist CS2s eigenes
+            "einfache Kurve" aus dem Strassenwerkzeug.
+          */}
+          <span className={styles.kopfTrenner} />
+          <TooltipKnopf text={`${t.kurveFolgen}: ${followCurves ? t.schalterAn : t.schalterAus}. ${t.tooltipKurveFolgen}`}
+            className={`${styles.fangKnopf} ${followCurves ? styles.fangAn : ""}`}
+            aria-pressed={followCurves}
+            aria-label={t.kurveFolgen}
+            onMouseDown={haltAn}
+            onClick={() => setFollowCurves(!followCurves)}
+          >
+            <img alt="" src="Media/Tools/Net Tool/SimpleCurve.svg" />
+          </TooltipKnopf>
           <Fangschalter />
           </div>
           {syncOffen > 0 && !syncAuto &&
@@ -1719,6 +1738,14 @@ export const ParkingLotPanel = () => {
         <div ref={fussRef} className={styles.fussBauen}>{bauKnopf}</div>
       ) : null}
     </div>
+      {/* Edit ist erst offen, wenn die Vorschau steht (Nutzer 20.10.): bis
+          dahin deckt die Sperre nur das Panel ab, das Spiel bleibt frei. */}
+      {editOeffnet ? (
+        <div className={styles.editSperre} onMouseDown={haltAn}>
+          <div className={styles.editSperreTitel}>{t.editOeffnetTitel}</div>
+          <div className={styles.editSperreText}>{t.editOeffnetText}</div>
+        </div>
+      ) : null}
     </div>
 
     {/* Nach dem Laden: Parkplaetze aus dem ausgebauten Rechenweg.

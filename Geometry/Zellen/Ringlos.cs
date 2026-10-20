@@ -830,7 +830,7 @@ namespace ParkingLotTool.Geometry.Zellen
                 // Der Fang an Kante 3 hat Projektion 0,625: eine rechtwinklige
                 // Stirn lag 1,171 m ausserhalb. Die bereits vom Zufahrtsbauer
                 // berechnete Kantenbreite haelt beide Stirnecken auf der Kontur.
-                if (Frei(anschluss, areal, zoning)) p.Zufahrten.Add(anschluss);
+                if (ZufahrtFrei(anschluss, areal, zoning)) p.Zufahrten.Add(anschluss);
                 else p.Warnungen.Add("Randstraßen aus: Zufahrt " + z.Nummer + " trifft ein Hindernis.");
             }
             PlaneEndwegeNebenZufahrtsgassen();

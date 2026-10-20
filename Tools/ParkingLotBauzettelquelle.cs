@@ -34,6 +34,8 @@ namespace ParkingLotTool.Tools
         internal IReadOnlyList<ParkingGeometry.Zoningflaeche> Zoningflaechen;
         internal IReadOnlyList<(float2 A, float2 B, bool Links, bool Aus)> Seitenplan;
         internal IReadOnlyList<ParkingGeometry.RandzoningLinie> Randzoning;
+        /** Strassenkurven der Form (Etappe 4); null = keine. */
+        internal IReadOnlyList<Kurvenzettel> Kurven;
         internal string FlaecheStrasse;
         internal string FlaecheDekoration;
         internal string FlaecheZoning;
