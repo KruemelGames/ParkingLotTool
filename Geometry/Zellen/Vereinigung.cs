@@ -104,7 +104,8 @@ namespace ParkingLotTool.Geometry.Zellen
                 // Material und Rolle, aber nicht dieselbe CS2-Flaeche. Ohne
                 // diese vorab gesetzte Grenze wuerden sie wieder zum Ring.
                 if (erste.Material == zweite.Material
-                    && Rollengruppe(erste.Art) == Rollengruppe(zweite.Art)
+                    && (erste.GemeinsamerBoden && zweite.GemeinsamerBoden
+                        || Rollengruppe(erste.Art) == Rollengruppe(zweite.Art))
                     && erste.Flaechenabschnitt == zweite.Flaechenabschnitt)
                     komponenten.Vereinige(erste.Id, zweite.Id);
             }

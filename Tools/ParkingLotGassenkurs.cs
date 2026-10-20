@@ -20,6 +20,17 @@ namespace ParkingLotTool.Tools
             internal float T, HalbeBreite, Vorflaechenbreite, Laenge, Abstand, Hoehe;
         }
 
+        /**
+         * STUMMEL STATT NICHTS (Nutzer 20.10.).
+         *
+         * Findet eine Gasse in ihrer Richtung keine Stadtstrasse, entstand
+         * bisher gar nichts - auch nicht das Stueck im Parkplatz, denn die
+         * Gasse ersetzt die Zufahrt. Jetzt laeuft sie 8 m ueber den
+         * Polygonrand hinaus und endet frei: ein Ankerpunkt, an den der
+         * Spieler spaeter eine Strasse anschliessen kann.
+         */
+        private const float Stummellaenge = 8f;
+
         private bool PlaneGassenkurs(
             NetSegment piece,
             int index,
@@ -39,10 +50,25 @@ namespace ParkingLotTool.Tools
                     out var mitte, out var halbeBreite, out var halbeImStrahl,
                     out var strasse, out var t, out var strassenhoehe))
             {
+                var aussen = math.normalizesafe(piece.A - piece.B);
+                if (math.lengthsq(aussen) < 0.5f)
+                {
+                    bericht.Add($"Zufahrt {index}: keine Stadtstrasse und keine Richtung");
+                    return false;
+                }
+                var stummel = piece.A + aussen * Stummellaenge;
+                var raus = Zufahrtsarten.FaehrtHinaus(piece.Art);
+                plan = new Gassenkurs { Index = index, Piece = piece, Prefab = gasse,
+                    Mitte = stummel, Ende = piece.B, Strasse = Entity.Null,
+                    Vorflaechenbreite = vorflaechenbreite,
+                    Von = raus ? piece.B : stummel, Nach = raus ? stummel : piece.B,
+                    Laenge = math.distance(stummel, piece.B), Abstand = Stummellaenge,
+                    Hoehe = float.NaN };
                 bericht.Add($"Zufahrt {index}: keine Stadtstrasse in "
                     + "Fangrichtung, Bordstein hoechstens "
-                    + $"{Gassenreichweite.Reichweite:F0} m ab Polygonrand");
-                return false;
+                    + $"{Gassenreichweite.Reichweite:F0} m ab Polygonrand - "
+                    + $"Stummel {Stummellaenge:F0} m ueber den Rand zum spaeteren Anschliessen");
+                return true;
             }
 
             var richtung = piece.A - mitte;

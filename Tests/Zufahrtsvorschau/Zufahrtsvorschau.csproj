@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework><StartupObject>Zufahrtspruefung</StartupObject>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems><Nullable>disable</Nullable>
+    <TypesQuelle Condition="'$(TypesQuelle)' == ''">../../Geometry/ParkingGeometry.Types.cs</TypesQuelle>
+    <TeilerQuelle Condition="'$(TeilerQuelle)' == ''">../../Geometry/Zellen/Zerlegung.cs</TeilerQuelle>
+    <GeometrieQuelle Condition="'$(GeometrieQuelle)' == ''">../../Geometry/Zellen/Geometrie.cs</GeometrieQuelle>
+    <ModellQuelle Condition="'$(ModellQuelle)' == ''">../../Geometry/Zellen/Modell.cs</ModellQuelle>
+    <Cs2Quelle Condition="'$(Cs2Quelle)' == ''">../../Geometry/Cs2Triangulierung.cs</Cs2Quelle>
+    <VorbereitungQuelle Condition="'$(VorbereitungQuelle)' == ''">../../Geometry/VorschauVorbereitung.cs</VorbereitungQuelle>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs"/><Compile Include="Vergleich.cs"/><Compile Include="VorbereitungTests.cs"/><Compile Include="SchnittTests.cs"/>
+    <Compile Include="../GeometryParity/CSharp/*.cs"/>
+    <Compile Include="$(TypesQuelle)" Link="ParkingGeometry.Types.cs"/>
+    <Compile Include="../../Geometry/**/*.cs" Exclude="../../Geometry/Zellen/Geometrie.cs;../../Geometry/Zellen/Zerlegung.cs;../../Geometry/Zellen/Modell.cs;../../Geometry/Cs2Triangulierung.cs;../../Geometry/VorschauVorbereitung.cs;../../Geometry/ParkingGeometry.Types.cs"/>
+    <Compile Include="$(TeilerQuelle)" Link="Zerlegung.cs"/>
+    <Compile Include="$(GeometrieQuelle)" Link="Geometrie.cs"/>
+    <Compile Include="$(ModellQuelle)" Link="Modell.cs"/>
+    <Compile Include="$(Cs2Quelle)" Link="Cs2Triangulierung.cs"/>
+    <Compile Include="$(VorbereitungQuelle)" Link="VorschauVorbereitung.cs"/>
+    <None Include="Lot136479.json" CopyToOutputDirectory="PreserveNewest"/>
+    <None Include="Lot201905.json" CopyToOutputDirectory="PreserveNewest"/>
+    <None Include="Bericht-20261019.json" CopyToOutputDirectory="PreserveNewest"/>
+    <Reference Include="Unity.Mathematics"><HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

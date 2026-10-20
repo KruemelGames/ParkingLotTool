@@ -154,7 +154,7 @@ namespace ParkingLotTool.Geometry
          * Zusammenlegen, solange CS2 das Ergebnis annimmt.
          */
         private static List<float2[]> Dreiecksverbund(
-            float2[] ring, List<float2[]> verloren)
+            float2[] ring, List<float2[]> verloren, bool einfacheRinge = false)
         {
             var punkte = ring.ToArray();
             var flaeche = RingflaecheFloat(punkte);
@@ -169,8 +169,12 @@ namespace ParkingLotTool.Geometry
             // Jedes Stueck ist eine Liste von Ringindizes gegen den
             // Uhrzeigersinn. Benachbart ist, was eine Kante gegenlaeufig teilt.
             var stuecke = dreiecke.Select(d => new List<int> { d.A, d.B, d.C }).ToList();
-            bool Baubar(List<int> s) => Cs2Triangulierung.Dreiecke(
-                s.Select(i => punkte[i]).ToArray()) != 0;
+            bool Baubar(List<int> s)
+            {
+                var kontur = s.Select(i => punkte[i]).ToArray();
+                return (!einfacheRinge || KurvenringEinfach(kontur))
+                    && Cs2Triangulierung.Dreiecke(kontur) != 0;
+            }
             var geaendert = true;
             while (geaendert)
             {
@@ -208,7 +212,8 @@ namespace ParkingLotTool.Geometry
             foreach (var s in stuecke)
             {
                 var r = s.Select(i => punkte[i]).ToArray();
-                if (Cs2Triangulierung.Dreiecke(r) != 0) ausgabe.Add(r);
+                if ((!einfacheRinge || KurvenringEinfach(r))
+                    && Cs2Triangulierung.Dreiecke(r) != 0) ausgabe.Add(r);
                 else verloren?.Add(r);
             }
             return ausgabe;

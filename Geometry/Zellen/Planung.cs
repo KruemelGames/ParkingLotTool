@@ -13,7 +13,8 @@ namespace ParkingLotTool.Geometry.Zellen
     {
         internal static IReadOnlyList<Punkt> Innenrand(
             IReadOnlyList<Punkt> aussenring,
-            double abstand)
+            double abstand,
+            IReadOnlyList<double> kantenabstaende = null)
         {
             var verschobeneKanten = new (Punkt Punkt, Punkt Richtung)[aussenring.Count];
             for (var i = 0; i < aussenring.Count; i++)
@@ -24,7 +25,7 @@ namespace ParkingLotTool.Geometry.Zellen
                 if (laenge == 0)
                     throw new InvalidOperationException("The outer ring contains a zero-length edge.");
                 var linkeNormale = new Punkt(-richtung.Y / laenge, richtung.X / laenge);
-                verschobeneKanten[i] = (a + linkeNormale * abstand, richtung);
+                verschobeneKanten[i] = (a + linkeNormale * (kantenabstaende?[i] ?? abstand), richtung);
             }
 
             var innen = new Punkt[aussenring.Count];

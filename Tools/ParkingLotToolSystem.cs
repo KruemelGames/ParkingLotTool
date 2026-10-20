@@ -31,6 +31,8 @@ namespace ParkingLotTool.Tools
         private const float PointHitDistance = 8f;
         private const float PointMoveEpsilon = 0.01f;
 
+        private readonly VorschauVorbereitung _vorschauVorbereitung = new VorschauVorbereitung();
+        private string _kurvenlaufLog;
         private readonly List<float2> _points = new List<float2>();
         private readonly List<float3> _worldPoints = new List<float3>();
 
@@ -400,6 +402,9 @@ namespace ParkingLotTool.Tools
             // Dieselbe Reservierung wie oben: die Bordsteinsonde legt ihre
             // Faelle als NetCourse an und liest sie im naechsten Frame ab.
             if (PflegeBordsteinsonde()) return RenderOverlay(deps);
+            // Ohne Rechnung (z.B. Kurve ohne Vorschau) ist der Einstieg auch vorbei.
+            if (_editOeffnet && !_layoutDirty && _buildTask == null) _editOeffnet = false;
+            _uiSystem?.SetEditOeffnet(EditOeffnetNoch);
             if (TryBeginPendingEdit()) return RenderOverlay(deps);
             if (ProcessEditLifecycle()) return RenderOverlay(deps);
             PollCompletedBuild();
@@ -818,10 +823,16 @@ namespace ParkingLotTool.Tools
                 }
                 if (!DarfArbeiten(Weltarbeit.Umriss)) return;
                 _pointDragUndo = CaptureUndoState();
-                _dragPoint = _hoverPoint;
+                // Zufahrten VOR dem Loesen einer Kurve merken: danach stimmen
+                // ihre Kantennummern nicht mehr, ihre Weltlage schon.
+                CaptureEntrancesForPointDrag();
+                // Ein Kurvenende wird gezogen: die Kurve loest sich (gerade
+                // Kanten beim Ziehen), beim Loslassen wird neu gesucht.
+                var gegriffen = _points[_hoverPoint];
+                LoeseKurvenAn(gegriffen);
+                _dragPoint = _points.IndexOf(gegriffen);
                 _dragStartPoint = _points[_dragPoint];
                 _dragStartWorld = _worldPoints[_dragPoint];
-                CaptureEntrancesForPointDrag();
                 // Auch die Bezugsachse muss zurueckgenommen werden koennen,
                 // sonst rechnen die Nachbarpunkte nach einem verworfenen
                 // Ziehen mit einer Achse, die es nicht mehr gibt.
@@ -834,6 +845,7 @@ namespace ParkingLotTool.Tools
             if (CanCloseAtCursor())
             {
                 var before = CaptureUndoState();
+                UebernimmKurve(_points.Count - 1, 0);
                 _closed = true;
                 _polygonTouched = false;
                 _layoutDirty = true;
@@ -868,6 +880,8 @@ namespace ParkingLotTool.Tools
             // naechsten - so entsteht aus "Punkt am Bordstein" ein
             // rechtwinkliger Parkplatz an der Strasse.
             StoreSnapAxis(_points.Count - 1);
+            MerkeKurvenpunkt(point);
+            if (_points.Count >= 2) UebernimmKurve(_points.Count - 2, _points.Count - 1);
             _geometryRevision++;
             CommitUndoState(pointBefore, () => T("toolSystem.pointPlaced"));
         }
@@ -893,6 +907,8 @@ namespace ParkingLotTool.Tools
                 > PointMoveEpsilon * PointMoveEpsilon;
             if (changed)
             {
+                MerkeKurvenpunkt(_points[_dragPoint]);
+                UebernimmKurvenAn(_dragPoint);
                 ReprojectEntrancesAfterPointDrag();
                 _geometryRevision++;
                 _layoutDirty = true;
@@ -904,6 +920,7 @@ namespace ParkingLotTool.Tools
                 _points[_dragPoint] = _dragStartPoint;
                 _worldPoints[_dragPoint] = _dragStartWorld;
                 RestoreSnapAxis(_dragPoint, _dragStartAxis);
+                UebernimmKurvenAn(_dragPoint);
             }
             _entrancePositionsBeforePointDrag = null;
             _pointDragUndo = null;
@@ -956,6 +973,16 @@ namespace ParkingLotTool.Tools
              * rechtsklickt. Schliessen tut ausschliesslich ESC.
              */
             if (_points.Count == 0) return;
+
+            // Hinten steht eine Strassenkurve (Schliesskante): EIN Rechtsklick
+            // nimmt die ganze Kurve, nicht jeden Zwischenpunkt einzeln (19.10.).
+            if (IstKurvenzwischenpunkt(_points.Count - 1)
+                && EntferneKurveMitPunkt(_points[_points.Count - 1]))
+            {
+                _hoverPoint = -1;
+                CommitUndoState(before, () => T("undo.kurveEntfernt"));
+                return;
+            }
 
             DropEntrancesAtRemovedLastPoint(_points.Count);
             _points.RemoveAt(_points.Count - 1);
@@ -1101,6 +1128,7 @@ namespace ParkingLotTool.Tools
             var bestSquared = PointHitDistance * PointHitDistance;
             for (var i = 0; i < _points.Count; i++)
             {
+                if (IstKurvenzwischenpunkt(i)) continue;
                 var distanceSquared = math.lengthsq(cursor - _points[i]);
                 if (distanceSquared > bestSquared) continue;
                 bestSquared = distanceSquared;
@@ -1139,6 +1167,16 @@ namespace ParkingLotTool.Tools
             if (!_closed || !_layoutDirty || _dragPoint >= 0 || _dragEntrance >= 0
                 || _buildTask != null) return;
 
+            // Zu enge Kurve: Fehler mit Grund, keine Vorschau (Nutzer, 18.10.).
+            if (KurvenformFehler(out var kurvengrund))
+            {
+                _layoutDirty = false;
+                _overlay.ClearLayout();
+                ClearAreaPreviewLayout("Kurve " + kurvengrund);
+                _uiSystem?.SetStatus(T("kurven.keineVorschau", ("grund", Kurvenmeldung(kurvengrund))));
+                return;
+            }
+
             var site = new float2[_points.Count];
             for (var i = 0; i < _points.Count; i++) site[i] = _points[i];
 
@@ -1149,6 +1187,18 @@ namespace ParkingLotTool.Tools
             _buildSettings = WithManualEntrances(_uiSystem != null
                 ? _uiSystem.CurrentSettings() : LayoutSettings.Cs2);
             _buildSettings.BusStops = _busStops.ToArray();
+            // Randbuchten und Laternen laufen an einer Kurve als ein Bogen (Etappe 6).
+            var kurvenzettel = KurvenzettelFuerBau();
+            _buildSettings.Kurvenlaeufe = Kurvenzettel.Laeufe(site, kurvenzettel);
+            // Einmal je Aenderung: welche Kurven als Bogenreihe laufen. Eine versetzte
+            // oder gekuerzte Kurve passt nicht mehr zu ihrer Formel und bleibt aussen vor.
+            var laufzeile = $"PLT-Kurvenlaeufe: {_buildSettings.Kurvenlaeufe.Length} von {kurvenzettel?.Count ?? 0} Kurve(n) als Bogenreihe"
+                + string.Concat(_buildSettings.Kurvenlaeufe.Select(l => $"; ab Punkt {l.Von}, {l.Kanten} Kanten"));
+            if ((kurvenzettel?.Count ?? 0) > 0 && laufzeile != _kurvenlaufLog)
+            {
+                _kurvenlaufLog = laufzeile;
+                Mod.log.Info(laufzeile);
+            }
             // Bei ausgeschaltetem Ausrichten baut der Parkplatz ohne Teilung
             // und ohne Linie - gemerkt bleiben beide (SchalteAusrichtungAus).
             _buildSettings.Teilflaechenschnitte = (TeilungWirkt ? _trennschnitte : new List<Teilflaechenschnitt>())
@@ -1234,11 +1284,11 @@ namespace ParkingLotTool.Tools
                 _buildTask = Task.Run(() =>
                 {
                     var start = Stopwatch.GetTimestamp();
-                    try { return ParkingGeometry.Build(site, settings); }
+                    try { return ParkingGeometry.Build(site, settings, _vorschauVorbereitung); }
                     finally { rechenzeit[0] = Stopwatch.GetTimestamp() - start; }
                 });
             }
-            else _buildTask = Task.Run(() => ParkingGeometry.Build(site, settings));
+            else _buildTask = Task.Run(() => ParkingGeometry.Build(site, settings, _vorschauVorbereitung));
             // Der Nutzer konnte bis zum 2026-08-21 nicht unterscheiden, ob
             // gerechnet wird oder ob sich der Generator weigert - im Panel
             // stand in beiden Faellen noch das Ergebnis von vorher.
@@ -1447,6 +1497,7 @@ namespace ParkingLotTool.Tools
                 // Fuer die Statuszeile beim Ausrichten: dort wartet man
                 // darauf, und ohne Zahl sieht Warten wie Stillstand aus.
                 _letzteVorschaudauerMs = elapsedMilliseconds;
+                _editOeffnet = false;
                 Mod.log.Info($"PLT-Vorschau berechnet: {layout.Stalls} Buchten in "
                     + $"{elapsedMilliseconds:F0} ms. Ueberschneidungstests: "
                     + $"{rufe:N0}, davon {raus:N0} per Rechteckvergleich verworfen"
@@ -1495,6 +1546,9 @@ namespace ParkingLotTool.Tools
                 if (revision == _geometryRevision)
                 {
                     _layoutDirty = false;
+                    _editOeffnet = false;
+                    _gescheitertSettings = settings?.Clone();
+                    _gescheitertRevision = revision;
                     _overlay.ClearLayout();
                     ClearAreaPreviewLayout("layout build failed");
                 }
@@ -1688,6 +1742,8 @@ namespace ParkingLotTool.Tools
             var entwurfshilfen = Werkzeugzustand.ZeigtUmrisshilfe(_reiter, AktuellerModus);
 
             var uhrZeichnen = ParkingLotMessung.Start();
+            _overlay.OhneGriff = _kurvenZwischen;
+            _overlay.Zeigerkurve = Zeigerkurve();
             _overlay.Draw(buffer, _worldPoints, _closed, (entwurfshilfen || MarkerMode) && _hasHover,
                 _hoverPosition, CanCloseAtCursor(),
                 // Im Trennmodus ist der Punkt das Auswahlziel - wie die Kante
@@ -1740,6 +1796,7 @@ namespace ParkingLotTool.Tools
                     : ((float2, float2, int)?)null);
             DrawBusStops(new ParkingLotPreviewBuffer(buffer));
             ZeichneMustergriff(new ParkingLotPreviewBuffer(buffer));
+            ZeichneKurvendiagnose(new ParkingLotPreviewBuffer(buffer));
             ParkingLotMessung.Ende(
                 ParkingLotMessung.Punkt.Zeichnen, uhrZeichnen);
             return deps;
@@ -2017,6 +2074,7 @@ namespace ParkingLotTool.Tools
             // ApplyMode.Clear wuerde das eben Gebaute verwerfen.
             VergissMustergriff();
             _points.Clear();
+            VergissKurvendiagnose();
             _worldPoints.Clear();
             _pointAxes.Clear();
             ClearSnapFeedback();
@@ -2085,6 +2143,7 @@ namespace ParkingLotTool.Tools
              */
             _buildTask = null;
             _points.Clear();
+            VergissKurvendiagnose();
             _worldPoints.Clear();
             _pointAxes.Clear();
             ClearSnapFeedback();

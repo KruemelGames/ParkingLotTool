@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems><Nullable>disable</Nullable>
+    <NetzfassungQuelle Condition="'$(NetzfassungQuelle)' == ''">../../Geometry/ParkingGeometry.Netzfassung.cs</NetzfassungQuelle>
+    <ZellenAdapterQuelle Condition="'$(ZellenAdapterQuelle)' == ''">../../Geometry/Zellen/ParkingGeometry.Zellen.cs</ZellenAdapterQuelle>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs"/>
+    <Compile Include="../../Geometry/**/*.cs" Exclude="../../Geometry/ParkingGeometry.Netzfassung.cs;../../Geometry/Zellen/ParkingGeometry.Zellen.cs"/>
+    <Compile Include="$(NetzfassungQuelle)" Link="Netzfassung.cs"/>
+    <Compile Include="$(ZellenAdapterQuelle)" Link="ZellenAdapter.cs"/>
+    <Reference Include="Unity.Mathematics"><HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

@@ -2325,6 +2325,44 @@ $eck-reiter: 9rem;
  * faengt Klicks ab, damit man beim Wegklicken nicht versehentlich einen
  * Regler der Leiste verstellt.
  */
+/**
+ * SPERRE BEIM OEFFNEN IM EDIT (Nutzer 20.10.).
+ *
+ * Liegt nur ueber dem Panel (das Panel ist `position: absolute` und damit
+ * der Bezug), nicht ueber dem Spiel. Halbdurchsichtig, damit man die Werte
+ * darunter schon sieht; Klicks landen hier statt auf den Reglern.
+ */
+.editSperre {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $s6;
+  background-color: rgba(8, 12, 20, 0.6);
+  pointer-events: auto;
+}
+
+.editSperreTitel {
+  @include textPlatz(0 1 auto);
+  margin-bottom: $s3;
+  color: $text-1;
+  font-size: $type-md;
+  font-weight: bold;
+  text-align: center;
+}
+
+.editSperreText {
+  @include textPlatz(0 1 auto);
+  color: $text-2;
+  font-size: $type-xs;
+  text-align: center;
+}
+
 .frageGrund {
   position: absolute;
   top: 0;

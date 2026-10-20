@@ -12,6 +12,11 @@ namespace ParkingLotTool.Tools
 {
     internal sealed partial class ParkingLotOverlay
     {
+        /** Formpunkte ohne Griff (Zwischenpunkte einer Strassenkurve); vom Werkzeug gesetzt. */
+        internal HashSet<float2> OhneGriff;
+        /** Zeigerlinie entlang einer Strassenkurve statt gerade; null = gerade. */
+        internal float3[] Zeigerkurve;
+
         internal void Draw(OverlayRenderSystem.Buffer nativeBuffer,
             IReadOnlyList<float3> polygon, bool closed, bool hasCursor,
             float3 cursor, bool canClose, int hoverPoint, int dragPoint,
@@ -481,6 +486,14 @@ namespace ParkingLotTool.Tools
                     buffer.DrawLine(PolygonColor,
                         new Line3.Segment(polygon[polygon.Count - 1], polygon[0]),
                         PolygonLineWidth, false);
+                else if (hasCursor && polygon.Count > 0 && Zeigerkurve != null && Zeigerkurve.Length > 1)
+                {
+                    // Strassenkurve folgen: dieselbe Strichlinie, aber entlang der Kurve.
+                    for (var i = 1; i < Zeigerkurve.Length; i++)
+                        buffer.DrawDashedLine(canClose ? ClosePointColor : PreviewColor,
+                            new Line3.Segment(Zeigerkurve[i - 1], Zeigerkurve[i]),
+                            PreviewLineWidth, DashLength, DashGap);
+                }
                 else if (hasCursor && polygon.Count > 0)
                     buffer.DrawDashedLine(canClose ? ClosePointColor : PreviewColor,
                         new Line3.Segment(polygon[polygon.Count - 1],
@@ -660,6 +673,8 @@ namespace ParkingLotTool.Tools
 
                 for (var i = 0; i < polygon.Count; i++)
                 {
+                    // Zwischenpunkte einer Strassenkurve sind keine Griffe.
+                    if (OhneGriff != null && OhneGriff.Contains(polygon[i].xz)) continue;
                     var active = i == dragPoint || i == hoverPoint;
                     var closeTarget = !closed && canClose && i == 0;
                     buffer.DrawCircle(closeTarget ? ClosePointColor

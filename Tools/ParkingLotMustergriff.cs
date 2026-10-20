@@ -74,7 +74,7 @@ namespace ParkingLotTool.Tools
             var b=_musterGriff.Bereich.Value;
             var p=_musterGriff.Zieht ? _musterGriff.Ziel : b.Mitte;
             var mitte=new float3(p.x,_musterGriffHoehe,p.y);
-            var farbe=_musterGriffHover || _musterGriff.Zieht ? ActivePointColor : PointColor;
+            var farbe=_musterGriffHover || _musterGriff.Zieht ? MustergriffAktivColor : MustergriffColor;
             buffer.DrawRing(farbe,mitte,ActivePointDiameter,HandleOutlineWidth);
             for(int i=0;i<4;i++)
             {

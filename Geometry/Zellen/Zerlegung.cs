@@ -10,11 +10,14 @@ namespace ParkingLotTool.Geometry.Zellen
 
         internal Knoten Neu(Punkt punkt) => new Knoten(_naechsteId++, punkt);
         internal int Anzahl => _naechsteId;
+        internal void Fortsetzen(int anzahl) => _naechsteId = anzahl;
     }
 
     internal sealed class Linienregister
     {
         private int _naechsteId;
+        internal int Anzahl => _naechsteId;
+        internal void Fortsetzen(int anzahl) => _naechsteId = anzahl;
 
         internal Linie Aussenkante(int index) =>
             new Linie(_naechsteId++, Linienart.Aussenkante, $"Aussenkante {index}");
@@ -322,6 +325,10 @@ namespace ParkingLotTool.Geometry.Zellen
                     (int Quelllinie, int Schnittlinie, int Knoten, int KanteA, int KanteB),
                     Beobachtung>();
 
+        // Nachbarkanten brauchen nur Beobachtungen ihrer Schnittlinie.
+        private readonly Dictionary<int, List<Beobachtung>> _beobachtungenJeLinie
+            = new Dictionary<int, List<Beobachtung>>();
+
         private sealed class Beobachtung
         {
             internal Linie Quelllinie { get; set; }
@@ -350,8 +357,8 @@ namespace ParkingLotTool.Geometry.Zellen
             IReadOnlyList<Polygon> polygone,
             Linie schnittlinie)
         {
-            var einsaetze = Schnittbeobachtungen
-                .Where(wert => wert.Schnittlinie.Id == schnittlinie.Id)
+            if (!_beobachtungenJeLinie.TryGetValue(schnittlinie.Id, out var beobachtungen)) return;
+            var einsaetze = beobachtungen
                 .Select(wert => new
                 {
                     wert.Quellkante,
@@ -419,13 +426,13 @@ namespace ParkingLotTool.Geometry.Zellen
         {
             var hatMinus = false;
             var hatPlus = false;
-            foreach (var punkt in polygon.Punkte)
+            for (var i = 0; i < polygon.Anzahl; i++)
             {
-                var seite = schnittlinie.Seite(punkt);
+                var seite = schnittlinie.Seite(polygon.Ecken[i].Knoten.Punkt);
                 if (seite < 0) hatMinus = true;
                 if (seite > 0) hatPlus = true;
             }
-            if (!hatMinus || !hatPlus) return new[] { polygon };
+            if (!hatMinus || !hatPlus) return polygon.Einzeln();
             return new[]
             {
                 SchneideHalbebene(polygon, schnittlinie, true),
@@ -452,7 +459,7 @@ namespace ParkingLotTool.Geometry.Zellen
                 Geometrie.Mittelwert(polygon) - segmentanfang,
                 richtung) / laengenquadrat;
             if (mittenparameter < 0 || mittenparameter > 1)
-                return new[] { polygon };
+                return polygon.Einzeln();
 
             var parameter = new List<double>();
             for (var i = 0; i < polygon.Anzahl; i++)
@@ -473,7 +480,7 @@ namespace ParkingLotTool.Geometry.Zellen
                 }
             }
             if (parameter.Count < 2 || parameter.Max() <= 0 || parameter.Min() >= 1)
-                return new[] { polygon };
+                return polygon.Einzeln();
             return Teile(polygon, schnittlinie);
         }
 
@@ -658,6 +665,9 @@ namespace ParkingLotTool.Geometry.Zellen
                     Quellkante = quellkante,
                 };
                 _beobachtungen.Add(schluessel, beobachtung);
+                if (!_beobachtungenJeLinie.TryGetValue(schnittlinie.Id, out var liste))
+                    _beobachtungenJeLinie.Add(schnittlinie.Id, liste = new List<Beobachtung>());
+                liste.Add(beobachtung);
             }
             beobachtung.Anfragen++;
         }

@@ -76,6 +76,7 @@ namespace ParkingLotTool.Geometry.Zellen
             A = a;
             B = b;
             C = c;
+            _normalenlaenge = Math.Sqrt(a * a + b * b);
             Achse = achse;
             Achsenwert = achsenwert;
             TragendeGeradenId = tragendeGeradenId ?? id;
@@ -94,6 +95,9 @@ namespace ParkingLotTool.Geometry.Zellen
         // konstruktiv bekannte, gemeinsame Gerade ab.
         internal int TragendeGeradenId { get; }
 
+        // Je Gerade konstant, statt je Zellknoten erneut die Wurzel zu ziehen.
+        private readonly double _normalenlaenge;
+
         internal double Seite(Punkt punkt)
         {
             var wert = A * punkt.X + B * punkt.Y - C;
@@ -103,7 +107,7 @@ namespace ParkingLotTool.Geometry.Zellen
             // double-Stelle neben der neuen x=76,2-Rasterlinie; ohne FIT_EPS
             // entstand daraus ein orientierungsloses Femtometer-Polygon statt
             // eines Randtreffers.
-            var normalenlaenge = Math.Sqrt(A * A + B * B);
+            var normalenlaenge = _normalenlaenge;
             return normalenlaenge != 0
                 && Math.Abs(wert) <= 1e-6 * normalenlaenge
                     ? 0
@@ -139,6 +143,10 @@ namespace ParkingLotTool.Geometry.Zellen
         }
 
         internal List<Ecke> Ecken { get; }
+        // Die meisten Schnittanfragen lassen ein Fragment unveraendert.
+        // Dafuer nicht je Anfrage ein neues Ein-Element-Array erzeugen.
+        private Polygon[] _einzeln;
+        internal Polygon[] Einzeln() => _einzeln ?? (_einzeln = new[] { this });
         internal int Anzahl => Ecken.Count;
         internal Knoten Knoten(int index) => Ecken[Geometrie.Mod(index, Anzahl)].Knoten;
         internal Linie Linie(int index) => Ecken[Geometrie.Mod(index, Anzahl)].LinieBisNaechste;
@@ -242,6 +250,7 @@ namespace ParkingLotTool.Geometry.Zellen
         // lochfreie Umfangsboegen geplant. Die ID ist deren feste Grenze;
         // sie darf bei der gleichmaterialigen Vereinigung nicht verschwinden.
         internal int? Flaechenabschnitt { get; set; }
+        internal bool GemeinsamerBoden { get; set; }
     }
 
     internal readonly struct KantenSchluessel : IEquatable<KantenSchluessel>
@@ -395,6 +404,8 @@ namespace ParkingLotTool.Geometry.Zellen
         internal Punkt Querhalbvektor { get; set; }
         internal Punkt Innennormale { get; set; }
         internal double Tiefe { get; set; }
+        internal Punkt[] Kontur { get; set; }
+        internal Punkt? Netzziel { get; set; }
         internal Linie LinkeKante { get; set; }
         internal Linie RechteKante { get; set; }
     }
@@ -669,6 +680,8 @@ namespace ParkingLotTool.Geometry.Zellen
 
     internal sealed class Randreihenschnitt
     {
+        internal bool EndenGerastert { get; set; } = true;
+        internal Punkt[] Bereich { get; set; }
         internal Linie Linie { get; set; }
         internal Punkt Aussen { get; set; }
         internal Punkt Innen { get; set; }
@@ -1077,6 +1090,7 @@ namespace ParkingLotTool.Geometry.Zellen
 
     internal sealed class Zelleneinstellungen
     {
+        internal KurvenRandlauf[] Kurvenlaeufe { get; set; } = Array.Empty<KurvenRandlauf>();
         internal double Randabstand { get; set; } = 1.0;
         internal double Fahrgassenbreite { get; set; } = 7.0;
         internal double Buchtbreite { get; set; } = 3.0;
@@ -1148,6 +1162,7 @@ namespace ParkingLotTool.Geometry.Zellen
 
     internal sealed class Bauergebnis
     {
+        internal Kurvenrandplan Kurvenrand { get; set; }
         internal IReadOnlyList<string> Schnittwarnungen { get; set; } = Array.Empty<string>();
         internal bool Randstrassen { get; set; } = true;
         internal Ringlosplan Ringlos { get; set; }

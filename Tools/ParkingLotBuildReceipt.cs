@@ -582,6 +582,121 @@ namespace ParkingLotTool.Tools
         }
     }
 
+    /**
+     * STRASSENKURVEN DES LOTS (Etappe 4, 19.10.2026). Drei eigene optionale
+     * Puffer; alte Spielstaende besitzen sie nicht und lesen sich exakt wie
+     * bisher. Version steht in jedem Element zuerst (siehe oben).
+     *
+     * Je Kurvenkante ein Eintrag: Endpunkte, Zahl der Zwischenpunkte (die
+     * stehen im Punktpuffer zwischen Von und Bis), Lage ihrer Abschnitte und
+     * Stationen in den beiden Folgepuffern und die Zusammenfassung.
+     */
+    public struct ParkingLotBuildCurve : IBufferElementData, ISerializable
+    {
+        public const int CurrentVersion = 1;
+        public int Version;
+        public float2 Von;
+        public float2 Bis;
+        public int Zwischen;
+        public int ErsterAbschnitt;
+        public int Abschnitte;
+        public int ErsteStation;
+        public float Laenge;
+        public float RadiusMin;
+        public float Winkel;
+        public float Pfeilhoehe;
+        public int Wendepunkte;
+        public float Toleranz;
+        public float MinSehne;
+        public float MaxSehne;
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(CurrentVersion);
+            writer.Write(Von);
+            writer.Write(Bis);
+            writer.Write(Zwischen);
+            writer.Write(ErsterAbschnitt);
+            writer.Write(Abschnitte);
+            writer.Write(ErsteStation);
+            writer.Write(Laenge);
+            writer.Write(RadiusMin);
+            writer.Write(Winkel);
+            writer.Write(Pfeilhoehe);
+            writer.Write(Wendepunkte);
+            writer.Write(Toleranz);
+            writer.Write(MinSehne);
+            writer.Write(MaxSehne);
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out Version);
+            reader.Read(out Von);
+            reader.Read(out Bis);
+            reader.Read(out Zwischen);
+            reader.Read(out ErsterAbschnitt);
+            reader.Read(out Abschnitte);
+            reader.Read(out ErsteStation);
+            reader.Read(out Laenge);
+            reader.Read(out RadiusMin);
+            reader.Read(out Winkel);
+            reader.Read(out Pfeilhoehe);
+            reader.Read(out Wendepunkte);
+            reader.Read(out Toleranz);
+            reader.Read(out MinSehne);
+            reader.Read(out MaxSehne);
+        }
+    }
+
+    /** Die Formel: ein kubischer Bordstein-Abschnitt (Kontrollpunkte A-D, Weltkoordinaten). */
+    [InternalBufferCapacity(0)]
+    public struct ParkingLotBuildCurveSection : IBufferElementData, ISerializable
+    {
+        public const int CurrentVersion = 1;
+        public int Version;
+        public float3 A, B, C, D;
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(CurrentVersion);
+            writer.Write(A);
+            writer.Write(B);
+            writer.Write(C);
+            writer.Write(D);
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out Version);
+            reader.Read(out A);
+            reader.Read(out B);
+            reader.Read(out C);
+            reader.Read(out D);
+        }
+    }
+
+    /** Bogenlaenge (m) eines gebauten Zwischenpunkts ab dem Kurvenanfang. */
+    [InternalBufferCapacity(0)]
+    public struct ParkingLotBuildCurveStation : IBufferElementData, ISerializable
+    {
+        public const int CurrentVersion = 1;
+        public int Version;
+        public float Bogen;
+
+        public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
+        {
+            writer.Write(CurrentVersion);
+            writer.Write(Bogen);
+        }
+
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader
+        {
+            reader.Read(out Version);
+            reader.Read(out Bogen);
+        }
+    }
+
     /** UTF-8-Byte eines variablen Bauzetteltexts; Kind 1=Fahr-, 2=Zwischenfläche. */
     [InternalBufferCapacity(0)]
     public struct ParkingLotBuildText : IBufferElementData, ISerializable

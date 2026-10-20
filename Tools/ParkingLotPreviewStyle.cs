@@ -6,6 +6,9 @@ namespace ParkingLotTool.Tools
     // Meter im Weltraum, keine Pixel. Siehe PREVIEW-DESIGN.md fuer Abnahme.
     internal static class ParkingLotPreviewStyle
     {
+        internal static readonly Color KurvenJa = new Color(.15f, .9f, .25f, 1f);
+        internal static readonly Color KurvenNein = new Color(1f, .2f, .15f, 1f);
+        internal const float KurvenPunktDurchmesser = .55f;
         // Eigener Klonschluessel, eine Stufe ueber der bewaehrten Vorflaeche (-90).
         internal const int MusterPrioritaet = Geometry.Flaechenklonname.Vorflaeche + 1;
         internal const int MusterBodenPrioritaet = Geometry.Flaechenklonname.Zoning + 1;
@@ -119,6 +122,9 @@ namespace ParkingLotTool.Tools
         internal static readonly Color PreviewColor = Alpha(Accent, 0.55f);
         internal static readonly Color PointColor = new Color(0.88f, 0.94f, 0.98f, 0.8f);
         internal static readonly Color ActivePointColor = Accent;
+        // Griff der echten Vorschau: weiss war auf Belag und Gras kaum zu sehen (Nutzer 20.10.).
+        internal static readonly Color MustergriffColor = new Color(1f, 0.55f, 0.1f, 0.95f);
+        internal static readonly Color MustergriffAktivColor = new Color(1f, 0.72f, 0.3f, 1f);
         internal static readonly Color ClosePointColor = Positive;
         internal static readonly Color ExtrudeColor = Accent;
         internal static readonly Color ShiftColor = Accent;

@@ -253,8 +253,9 @@ namespace ParkingLotTool.Geometry.Zellen
         {
             var x = 0.0;
             var y = 0.0;
-            foreach (var punkt in polygon.Punkte)
+            for (var i = 0; i < polygon.Anzahl; i++)
             {
+                var punkt = polygon.Ecken[i].Knoten.Punkt;
                 x += punkt.X;
                 y += punkt.Y;
             }

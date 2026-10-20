@@ -51,10 +51,10 @@ public static class Cs2Triangulierung
      * Baut CS2s Dreiecke. Gibt zurueck, wieviele entstanden sind - 0 heisst
      * verworfen, also im Spiel unsichtbar.
      *
-     * `edgeBounds` benutzt das Spiel nur als Beschleuniger fuer grosse
-     * Polygone; ohne ihn laeuft derselbe Test gegen alle uebrigen Knoten.
-     * Dieser Nachbau nimmt bewusst immer den langsamen Zweig: er liefert
-     * dasselbe Ergebnis und hat keine Baumtiefe zu raten.
+     * Ab 21 Knoten prueft CS2 mit `edgeBounds` auch bereits abgeschnittene
+     * Knoten. Der Baum beschleunigt nur die Suche; die Menge der geprueften
+     * Knoten ist groesser als im kleinen Zweig. Ohne diesen Unterschied
+     * nahm der Nachbau am 19.10. zwei Ringe mit 306/102 Knoten falsch an.
      */
     public static int Dreiecke(float2[] ring, bool gegenUhrzeiger = true)
         => Schneide(ring, gegenUhrzeiger, null);
@@ -271,6 +271,15 @@ public static class Cs2Triangulierung
         var f = (b - a) * new float2((c - a).y, (c - a).x);
         if (f.x - f.y < float.Epsilon) return false;
 
+        if (knoten.Length > 20)
+        {
+            // GeometrySystem.Snip: der Bounds-Zweig durchsucht ALLE
+            // Originalindizes, unabhaengig vom verbliebenen Indexring.
+            for (var i = 0; i < knoten.Length; i++)
+                if (i != e0.Knoten && i != e1.Knoten && i != e2.Knoten
+                    && ImDreieck(a, b, c, knoten[i])) return false;
+            return true;
+        }
         var lauf = index[e2.Nachher];
         for (var j = 3; j < uebrig; j++)
         {

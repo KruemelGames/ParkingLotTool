@@ -391,6 +391,28 @@ namespace ParkingLotTool
         [SettingsUIHidden]
         public string MusterObjektklone { get; set; } = string.Empty;
 
+        // Nur Diagnose auf dem Kurvenzweig; kein Schalter fuer den spaeteren Bau.
+        [SettingsUIHidden]
+        public bool Kurvendiagnose { get; set; } = true;
+
+        /**
+         * Strassenkurve folgen: zwei Punkte an derselben gekruemmten Strasse,
+         * und die Kante laeuft am Bordstein entlang. Bis 1.1.0 Standard AUS
+         * (18.10.), seit dem Release AN (Nutzer 20.10.: "Kurven-folgen
+         * standard an"); der Panelknopf schreibt hierher, der Zustand bleibt
+         * gespeichert und geht nie von selbst aus.
+         */
+        [SettingsUIHidden]
+        public bool StrassenkurveFolgen { get; set; } = true;
+
+        /**
+         * EINMALIG AN (1.1.0), wie die Sprache auf "Automatisch": im Entwurf
+         * war "aus" der Standard und steht deshalb bei jedem gespeichert, der
+         * den Mod schon hatte. Danach gilt jede Wahl wieder dauerhaft.
+         */
+        [SettingsUIHidden]
+        public bool StrassenkurveFolgenEingeschaltet { get; set; }
+
         /**
          * Baustandard fuer neue Parkplaetze. 0 heisst kostenlos.
          *

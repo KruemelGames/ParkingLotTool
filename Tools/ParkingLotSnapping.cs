@@ -105,7 +105,19 @@ namespace ParkingLotTool.Tools
             public float2 Direction;
             public float Level;
             public bool IsGuide;
+
+            // Durchgehender Bordstein, aus dem die Gerade stammt; 0 = keiner.
+            public int CurbGroup;
         }
+
+        /**
+         * Bordsteinstuecke des aktuellen Fangs und ihre Zusammengehoerigkeit
+         * (Union-Find). Ein Bordstein ist eine Kette von Stuecken, die Ende an
+         * Ende ohne Knick ineinander uebergehen: Kantenhaelften und Knoten-
+         * haelften an Durchlaufknoten. Als Feld, damit kein Frame Listen anlegt.
+         */
+        private readonly List<Bezier4x3> _curbPieces = new List<Bezier4x3>();
+        private readonly List<int> _curbParents = new List<int>();
 
         /** Im Feld gehalten, damit nicht jeder Frame eine Liste anlegt. */
         private readonly List<SnapLine> _snapLines = new List<SnapLine>();
@@ -333,6 +345,7 @@ namespace ParkingLotTool.Tools
         private float3 ApplySnapping(float3 raw, bool nurWelt = false)
         {
             ClearSnapFeedback();
+            BeginKurvenfang(raw);
             _snapLines.Clear();
 
             /**
@@ -375,6 +388,7 @@ namespace ParkingLotTool.Tools
                 SnapGuide = new Line3.Segment(from, to);
                 HasSnapGuide = true;
             }
+            BestaetigeKurvenfang(best.Position);
             return best.Position;
         }
 
@@ -385,7 +399,8 @@ namespace ParkingLotTool.Tools
          * Bedingung sich nie mit einer anderen zu einer Ecke verbinden kann.
          */
         private void RegisterSnap(ref SnapCandidate best, float3 hit, float level,
-            SnapKind kind, float3 position, float2 direction, bool isGuide = false)
+            SnapKind kind, float3 position, float2 direction, bool isGuide = false,
+            int curbGroup = 0)
         {
             if (!math.all(math.isfinite(position))
                 || math.lengthsq(direction) < 0.5f) return;
@@ -405,7 +420,90 @@ namespace ParkingLotTool.Tools
                 Direction = direction,
                 Level = level,
                 IsGuide = isGuide,
+                CurbGroup = curbGroup,
             });
+        }
+
+        /**
+         * Zwei Geraden DESSELBEN Bordsteins schneiden sich nicht. An einer
+         * Kurve zeigen die Tangenten benachbarter Stuecke an der Mausstelle
+         * leicht verschieden und schnitten sich dicht neben dem Bordstein -
+         * der Fang sprang dann auf diesen Punkt, links und rechts jedes
+         * Knotens. Echte Ecken zweier Strassen knicken und bleiben Schnitte.
+         */
+        private static bool SameCurb(SnapLine a, SnapLine b)
+            => a.CurbGroup != 0 && a.CurbGroup == b.CurbGroup;
+
+        /**
+         * Ein Bordstein und eine Linie, die unter 15 Grad (wie
+         * `Strassenkurve.Fortsetzungswinkel`) zueinander laufen, bilden keine
+         * Ecke - auch wenn die Gruppierung sie nicht verbunden hat. Ein so
+         * flacher Schnitt liegt dicht am Bordstein, wandert bei kleinster
+         * Mausbewegung weit und schlaegt als "zwei Bedingungen" den
+         * Bordsteinfang. Nutzer 19./20.10.: am Knoten zwischen gerader und
+         * gebogener Strasse sprang der Fang ("blau weiss blau"); Log 20.10.:
+         * die Achsenhilfslinie des vorigen Punkts (geradeaus) schnitt die
+         * Tangente der flach abbiegenden Strasse (R 167). Darum zaehlt jede
+         * Linie, nicht nur ein zweiter Bordstein; zwei Hilfslinien bleiben
+         * wie in Vanilla.
+         */
+        private static readonly float FlacherSchnitt = (float)System.Math.Cos(ParkingLotTool.Geometry.Strassenkurve.Fortsetzungswinkel);
+
+        private static bool OhneKnick(SnapLine a, SnapLine b)
+            => (a.CurbGroup != 0 || b.CurbGroup != 0)
+               && math.abs(math.dot(a.Direction, b.Direction)) >= FlacherSchnitt;
+
+        private void GroupCurbPieces()
+        {
+            _curbParents.Clear();
+            for (int i = 0; i < _curbPieces.Count; i++) _curbParents.Add(i);
+            for (int i = 0; i < _curbPieces.Count; i++)
+            for (int j = i + 1; j < _curbPieces.Count; j++)
+            {
+                if (!CurbJoint(_curbPieces[i], _curbPieces[j])) continue;
+                int a = CurbRoot(i), b = CurbRoot(j);
+                if (a != b) _curbParents[b] = a;
+            }
+        }
+
+        private int CurbRoot(int i)
+        {
+            while (_curbParents[i] != i)
+            {
+                _curbParents[i] = _curbParents[_curbParents[i]];
+                i = _curbParents[i];
+            }
+            return i;
+        }
+
+        private int CurbGroupOf(Bezier4x3 curve)
+        {
+            for (int i = 0; i < _curbPieces.Count && i < _curbParents.Count; i++)
+            {
+                var p = _curbPieces[i];
+                if (math.all(p.a == curve.a) && math.all(p.b == curve.b)
+                    && math.all(p.c == curve.c) && math.all(p.d == curve.d))
+                    return CurbRoot(i) + 1;
+            }
+            return 0;
+        }
+
+        // Stossen Ende an Ende und gehen dort ohne Knick (15 Grad) ineinander ueber.
+        private static bool CurbJoint(Bezier4x3 a, Bezier4x3 b)
+        {
+            const float joint = 0.1f;
+            float minCos = math.cos(math.radians(15f));
+            for (int i = 0; i < 2; i++)
+            for (int j = 0; j < 2; j++)
+            {
+                var pa = i == 0 ? a.a : a.d;
+                var pb = j == 0 ? b.a : b.d;
+                if (math.distance(pa.xz, pb.xz) > joint) continue;
+                var ta = math.normalizesafe((i == 0 ? MathUtils.StartTangent(a) : MathUtils.EndTangent(a)).xz);
+                var tb = math.normalizesafe((j == 0 ? MathUtils.StartTangent(b) : MathUtils.EndTangent(b)).xz);
+                if (math.abs(math.dot(ta, tb)) >= minCos) return true;
+            }
+            return false;
         }
 
         /**
@@ -418,6 +516,7 @@ namespace ParkingLotTool.Tools
          */
         private void AddSnapLine(ref SnapCandidate best, float3 hit, SnapLine line)
         {
+            BeginKurvenfanglinie(line);
             for (var i = 0; i < _snapLines.Count; i++)
             {
                 var other = _snapLines[i];
@@ -425,6 +524,7 @@ namespace ParkingLotTool.Tools
                 // was dasselbe Problem ist.
                 if (math.abs(math.dot(line.Direction, other.Direction)) > 0.999999f)
                     continue;
+                if (SameCurb(line, other) || OhneKnick(line, other)) continue;
 
                 var a = new Line2(line.Position.xz, line.Position.xz + line.Direction);
                 var b = new Line2(other.Position.xz, other.Position.xz + other.Direction);
@@ -438,6 +538,7 @@ namespace ParkingLotTool.Tools
                 position.xz += source.Direction * (leading ? t.x : t.y);
 
                 var guide = line.IsGuide || other.IsGuide;
+                BeginKurveneckenschnitt(best.Priority);
                 Offer(ref best, hit, math.max(line.Level, other.Level),
                     WeightCrossing, new SnapCandidate
                     {
@@ -448,7 +549,9 @@ namespace ParkingLotTool.Tools
                         GuideDirection = line.IsGuide
                             ? line.Direction : other.Direction,
                     });
+                MerkeKurveneckenschnitt(i, line, other, position, best);
             }
+            MerkeKurvenfanglinie(line);
             _snapLines.Add(line);
         }
 

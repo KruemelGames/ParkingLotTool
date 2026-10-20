@@ -50,8 +50,14 @@ namespace ParkingLotTool.Tools
                     + $"Start {anschlussAnfang.Entity} t={anschlussAnfang.Teilung:F6}, Ende {anschlussEnde.Entity} t={anschlussEnde.Teilung:F6}; 0 Definitionen ausgegeben.");
             var length = math.distance(a, b);
             // Kuerzer als ein Meter ist kein Fahrweg, sondern ein Rundungsrest.
-            // CS2 legt daraus einen Knoten ohne Kante an.
-            if (!(length >= 1f)) return false;
+            // CS2 legt daraus einen Knoten ohne Kante an. Der Kern plant seit
+            // Runde 15 keine solchen Stuecke mehr (gemeinsamer Vertrag); greift
+            // die Pruefung trotzdem, fehlt ein Stueck - das melden, nicht schlucken.
+            if (!(length >= ParkingGeometry.NetzMindestlaenge))
+            {
+                Mod.log.Warn($"PLT-Netz: Kurs {kind}/{index} mit {length:F3} m unter der Mindestlaenge ausgelassen.");
+                return false;
+            }
 
             // Ohne CoursePosFlags.FreeHeight - und das ist RICHTIG, aber die
             // frueher hier stehende Begruendung war falsch. Sie behauptete, das

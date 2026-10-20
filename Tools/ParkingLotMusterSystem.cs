@@ -254,6 +254,7 @@ namespace ParkingLotTool.Tools
                 else { EntityManager.AddComponent<Deleted>(e); anzahl++; }
             }
             _warteGeometrie = _warteSichtbar = false;
+            _reihenfolge = null; _bereit = null;
             return anzahl;
         }
 

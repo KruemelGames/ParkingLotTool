@@ -918,9 +918,34 @@ namespace ParkingLotTool.Tools
                 || StadtstrasseNaheAn(_points[edge]);
             var endeFrei = endCorner
                 || StadtstrasseNaheAn(_points[(edge + 1) % _points.Count]);
-            minimum = startFrei ? 0f : normalMargin;
-            maximum = length - (endeFrei ? 0f : normalMargin);
+            minimum = startFrei ? 0f : math.max(0f, normalMargin - KurvenrandBis(edge, rueckwaerts: true, normalMargin));
+            maximum = length - (endeFrei ? 0f : math.max(0f, normalMargin - KurvenrandBis(edge, rueckwaerts: false, normalMargin)));
             return minimum <= maximum + ParkingGeometry.FitEps;
+        }
+
+        /**
+         * EIN KURVENKNICK IST KEINE ECKE (19.10.).
+         *
+         * Der Eckabstand oben gilt je Polygonkante. Eine Kurve besteht aber
+         * aus Sehnen von hoechstens 16 m, und jede brauchte 2 x 9,5 m - am
+         * Bordstein fiel das nur nicht auf, weil dort an jedem Knick die
+         * Stadtstrasse liegt. Eine 14 m nach innen versetzte Kurve meldete
+         * auf jeder Sehne "Zu wenig Rand". Hier zaehlt der Rand ueber die
+         * Zwischenpunkte einer Kurve hinweg bis zur naechsten echten Ecke.
+         * Nur Kurvenzwischenpunkte: handgezeichnete Formen bleiben, wie sie sind.
+         */
+        private float KurvenrandBis(int edge, bool rueckwaerts, float genug)
+        {
+            int n = _points.Count;
+            int ecke = rueckwaerts ? edge : (edge + 1) % n;
+            float strecke = 0f;
+            for (int schritt = 0; schritt < n && strecke < genug && IstKurvenzwischenpunkt(ecke); schritt++)
+            {
+                int weiter = rueckwaerts ? (ecke - 1 + n) % n : (ecke + 1) % n;
+                strecke += math.distance(_points[ecke], _points[weiter]);
+                ecke = weiter;
+            }
+            return strecke;
         }
 
         /**

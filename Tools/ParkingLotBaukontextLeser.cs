@@ -35,7 +35,10 @@ namespace ParkingLotTool.Tools
             TryReadBuildText(texte, 5, out var zoningstrasse);
             kontext = new ParkingLotBaukontext(lot, zettel, punkte, zugaenge,
                 ausrichtungen, schnitte, zonen, strasse, deko, zoning,
-                vegetation, zoningstrasse, seiten, rand, bus);
+                vegetation, zoningstrasse, seiten, rand, bus)
+            {
+                Kurven = ParkingLotKurvenzettelPuffer.Lies(em, lot),
+            };
             var messung = $"PLT-Hintergrund: Bauzettelkopie Lot {lot.Index}; "
                 + $"Punkte {punkte.Length}, Zugaenge {zugaenge.Length}, "
                 + $"Zoning {zonen?.Length ?? 0}, Seiten {seiten.Count}, "

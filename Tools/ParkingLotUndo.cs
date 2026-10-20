@@ -12,6 +12,8 @@ namespace ParkingLotTool.Tools
         internal float2[] Points;
         internal float3[] WorldPoints;
         internal float2[] SnapAxes;
+        // Strassenkurven der Form: Endpunkte und Zwischenpunkte gehoeren zusammen.
+        internal ParkingLotToolSystem.Kurvenkante[] Kurven;
         internal Entrance[] Entrances;
         internal ParkingLotDraftSettingsSnapshot Settings;
         internal bool Closed;
@@ -89,6 +91,7 @@ namespace ParkingLotTool.Tools
                 Points = _points.ToArray(),
                 WorldPoints = _worldPoints.ToArray(),
                 SnapAxes = _pointAxes.ToArray(),
+                Kurven = KurvenSchnappschuss(),
                 Entrances = CopyEntrances(_entrances),
                 Settings = _uiSystem?.CaptureDraftSettings(),
                 Closed = _closed,
@@ -288,6 +291,7 @@ namespace ParkingLotTool.Tools
             _pointAxes.Clear();
             _pointAxes.AddRange(snapshot.SnapAxes ?? Array.Empty<float2>());
             SyncSnapAxes();
+            KurvenWiederherstellen(snapshot.Kurven);
             _entrances.Clear();
             _entrances.AddRange(CopyEntrances(snapshot.Entrances));
             _closed = snapshot.Closed;
