@@ -276,6 +276,7 @@ namespace ParkingLotTool.Tools
         private ValueBinding<string> _zoningWinkelmodus;
         private ValueBinding<string> _zoningZug;
         private ValueBinding<int> _zoningAussentiefe;
+        private ValueBinding<int> _zoningVerloren;
         private ValueBinding<bool> _zoningLinienwahl;
         private ValueBinding<float> _zoningAusrichtwinkel;
         private ValueBinding<int> _zoningAuswahl;
@@ -413,6 +414,14 @@ namespace ParkingLotTool.Tools
             if (namen == null || namen.Length == 0 || _flaechenListe == null) return;
             var zusammen = string.Join("\n", namen);
             if (_flaechenListe.value != zusammen) _flaechenListe.Update(zusammen);
+        }
+
+        private static bool NeuOderAus(ValueBinding<string> bindung, string wert)
+        {
+            wert ??= string.Empty;
+            if (bindung == null || bindung.value == wert) return false;
+            bindung.Update(wert);
+            return true;
         }
 
         private static bool Neu(ValueBinding<string> bindung, string wert)
@@ -615,6 +624,27 @@ namespace ParkingLotTool.Tools
                 new ValueBinding<bool>(Group, "ZoningSeitenMoeglich", false));
             AddBinding(new TriggerBinding<bool>(Group, "SetZoningSeitenModus",
                 an => Tool()?.SetzeZoningSeitenModus(an)));
+            // "Edge zoning": nur die Umrisslinien (seit 21.10. eigener Knopf).
+            AddBinding(_zoningRandModus =
+                new ValueBinding<bool>(Group, "ZoningRandModus", false));
+            AddBinding(new TriggerBinding<bool>(Group, "SetZoningRandModus",
+                an => Tool()?.SetzeZoningRandModus(an)));
+            // Werkzeugmodus und feste Groesse; gespeichert in den Optionen.
+            AddBinding(_zoningPlatzierart =
+                new ValueBinding<string>(Group, "ZoningPlatzierart", "ziehen"));
+            AddBinding(new TriggerBinding<string>(Group, "SetZoningPlatzierart",
+                art => Tool()?.SetzeZoningPlatzierart(art)));
+            AddBinding(_zoningFestBreite = new ValueBinding<int>(Group, "ZoningFestBreite", 3));
+            AddBinding(_zoningFestTiefe = new ValueBinding<int>(Group, "ZoningFestTiefe", 2));
+            AddBinding(new TriggerBinding<int, int>(Group, "SetZoningFestGroesse",
+                (breite, tiefe) => Tool()?.SetzeZoningFestGroesse(breite, tiefe)));
+            AddBinding(_zoningVorlagen = new ValueBinding<string>(Group, "ZoningVorlagen", ""));
+            AddBinding(new TriggerBinding(Group, "SpeichereZoningVorlage",
+                () => Tool()?.SpeichereZoningGroessenVorlage()));
+            AddBinding(new TriggerBinding<string>(Group, "EntferneZoningVorlage",
+                vorlage => Tool()?.EntferneZoningGroessenVorlage(vorlage)));
+            AddBinding(_zoningGrenzeBreite = new ValueBinding<int>(Group, "ZoningGrenzeBreite", 25));
+            AddBinding(_zoningGrenzeTiefe = new ValueBinding<int>(Group, "ZoningGrenzeTiefe", 25));
             AddBinding(_zoningModus =
                 new ValueBinding<bool>(Group, "ZoningModus", false));
             AddBinding(new TriggerBinding<bool>(Group, "SetZoningModus",
@@ -645,6 +675,8 @@ namespace ParkingLotTool.Tools
                 Group, "ZoningAuswahl", -1));
             AddBinding(_zoningAussentiefe = new ValueBinding<int>(
                 Group, "ZoningAussentiefe", 2));
+            AddBinding(_zoningVerloren = new ValueBinding<int>(
+                Group, "ZoningVerloren", 0));
             AddBinding(new TriggerBinding<int>(Group, "SetZoningAussentiefe",
                 wert => Tool()?.SetzeZoningAussentiefe(wert)));
             AddBinding(_zoningZug =
@@ -808,9 +840,11 @@ namespace ParkingLotTool.Tools
              */
             AddBinding(_flaecheZoning = new ValueBinding<string>(
                 Group, "SurfaceZoning", string.Empty));
+            // "Off" ist hier ein leerer Name - `Neu` verwirft leere Werte
+            // (fuer Strasse/Deko richtig), beim Parzellenboden heisst leer aus.
             AddBinding(new TriggerBinding<string>(Group, "SetSurfaceZoning",
                 wert => ChangeDraftSetting(() => Geaendert("SurfaceZoning"), () =>
-                    Neu(_flaecheZoning, wert))));
+                    NeuOderAus(_flaecheZoning, wert))));
             AddBinding(_flaecheStrasseStd = new ValueBinding<string>(
                 Group, "SurfaceRoadDefault",
                 string.IsNullOrEmpty(_defaults.SurfaceRoad)
@@ -1691,6 +1725,13 @@ namespace ParkingLotTool.Tools
                 _zoningAuswahl.Update(index);
         }
 
+        /** Wie viele Kacheln der Outer zones CS2 nach dem Bauen verwirft (gelb mit X). */
+        internal void SetZoningVerloren(int anzahl)
+        {
+            if (_zoningVerloren != null && _zoningVerloren.value != anzahl)
+                _zoningVerloren.Update(anzahl);
+        }
+
         internal void SetZoningAussentiefe(int parzellen)
         {
             if (_zoningAussentiefe != null
@@ -1728,6 +1769,27 @@ namespace ParkingLotTool.Tools
         {
             if (_zoningSeitenModus != null && _zoningSeitenModus.value != an)
                 _zoningSeitenModus.Update(an);
+        }
+
+        private ValueBinding<bool> _zoningRandModus;
+        private ValueBinding<string> _zoningPlatzierart;
+        private ValueBinding<int> _zoningFestBreite;
+        private ValueBinding<int> _zoningFestTiefe;
+        private ValueBinding<string> _zoningVorlagen;
+        private ValueBinding<int> _zoningGrenzeBreite;
+        private ValueBinding<int> _zoningGrenzeTiefe;
+
+        internal void SetZoningRandModus(bool an) => _zoningRandModus?.Update(an);
+
+        internal void SetZoningPlatzierung(string art, int breite, int tiefe,
+            string vorlagen, int grenzeBreite, int grenzeTiefe)
+        {
+            _zoningPlatzierart?.Update(art);
+            _zoningFestBreite?.Update(breite);
+            _zoningFestTiefe?.Update(tiefe);
+            _zoningVorlagen?.Update(vorlagen);
+            _zoningGrenzeBreite?.Update(grenzeBreite);
+            _zoningGrenzeTiefe?.Update(grenzeTiefe);
         }
 
         internal void SetZoningSeitenMoeglich(bool moeglich)

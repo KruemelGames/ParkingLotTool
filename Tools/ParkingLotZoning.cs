@@ -199,7 +199,8 @@ namespace ParkingLotTool.Tools
         /** Die Vorwahl fuer den naechsten Klick auf eine Aussenseite. */
         internal void SetzeZoningAussentiefe(int parzellen)
         {
-            var neu = math.clamp(parzellen, 1, 6);
+            // Ab 2: eine einzelne Reihe loescht CS2 immer mit (ParkingLotZoningBand).
+            var neu = math.clamp(parzellen, ZoningBandMindestreihen, 6);
             if (ZoningTiefeVorwahl == neu) return;
             ZoningTiefeVorwahl = neu;
             _uiSystem?.SetZoningAussentiefe(neu);
@@ -257,9 +258,75 @@ namespace ParkingLotTool.Tools
              * Abgeraeumt wird deshalb nur noch bei GLEICHER Tiefe - der
              * zweite Klick mit unveraenderter Vorwahl.
              */
-            var neu = ZoningTiefeVorwahl * ParkingGeometry.Zoningparzelle;
-            var gleich = Math.Abs(f.Aussentiefen[seite] - neu) < 1e-6;
+            /*
+             * NUR SO TIEF, WIE BIS ZUR RANDSTRASSE PLATZ IST.
+             *
+             * Nutzerbefund 21.10.: ein Band von 2 Kacheln ragte mit Reihe 2
+             * auf die Randstrasse. CS2 sperrte sie - und mit ihr Reihe 1, weil
+             * es keine einzelne Reihe stehen laesst. Der Parkplatz hatte den
+             * Platz trotzdem freigehalten und dafuer den Belag der Randstrasse
+             * ausgeschnitten. Gemessen wird an der Randstrasse des letzten
+             * Laufs; die folgt dem Umriss, nicht dem Band.
+             */
+            ZoningBandGekappt = 0;
+            var umriss = _closed && _worldPoints != null && _worldPoints.Count >= 3
+                ? _worldPoints.Select(p => p.xz).ToList() : null;
+            var platz = ZoningBandPlatz(f, seite, ZoningRandstrassenquads(), umriss);
+            /*
+             * DIE GEWAEHLTE TIEFE GILT, AUCH WENN NICHT ALLES PASST.
+             *
+             * Nutzer 21.10.: *"wenn ich mit 6 tiefe baue aber er erkennt dass
+             * nur fuer 2 platz ist duerfen gerne die restlichen tiefen
+             * angezeigt werden also alle 6 auch wenn 4 davon gelb sind."*
+             * Gekuerzt wird nicht mehr; die Vorschau markiert, was CS2 nicht
+             * setzt. Abgelehnt wird nur, wenn keine Spalte zwei Reihen behaelt.
+             */
+            var reihen = platz >= ZoningBandMindestreihen ? ZoningTiefeVorwahl : platz;
+            var neu = reihen * ParkingGeometry.Zoningparzelle;
             var vorher = f.Aussentiefen[seite];
+            /*
+             * ZU WENIG PLATZ IST NICHT "ABRAEUMEN".
+             *
+             * Hier stand zuerst `gleich` vor der Platzfrage: 0 Reihen frei
+             * ergab neu = 0, das war "gleich" der leeren Seite, und der Klick
+             * lief als "Band entfernt" durch - ohne Meldung (Abzug 20:43).
+             * Hat die Seite schon ein Band, nimmt der Klick es weg wie
+             * gewohnt; sonst sagt er, warum nichts kommt.
+             */
+            if (reihen < ZoningBandMindestreihen && vorher <= 1e-6)
+            {
+                ZoningBandGekappt = -1;
+                Mod.log.Info("PLT-Aussenband ABGELEHNT: Flaeche " + index
+                    + ", Seite " + seite + ": bis zur Randstrasse " + platz
+                    + " Reihe(n) frei, CS2 braucht "
+                    + ZoningBandMindestreihen + ".");
+                return 0;
+            }
+            if (reihen < ZoningBandMindestreihen) neu = 0.0;
+            var gleich = neu <= 1e-6 || Math.Abs(vorher - neu) < 1e-6;
+            /*
+             * NIE ALLE VIER SEITEN (Nutzer 21.10.).
+             *
+             * Gassen und Querwege enden vor der Outer zone. Haette ein Patch
+             * an allen vier Seiten eine, kaeme kein Weg mehr an seine
+             * Zoningstrasse heran - Codex hat genau das gemessen (6x6 mit vier
+             * Baendern: Zoningkurse unerreichbar). Also wird die vierte
+             * abgelehnt.
+             */
+            if (!gleich && vorher <= 1e-6)
+            {
+                var andere = 0;
+                for (var s = 0; s < 4; s++)
+                    if (s != seite && f.Aussentiefen[s] > 1e-6) andere++;
+                if (andere >= 3)
+                {
+                    ZoningBandGekappt = -2;
+                    Mod.log.Info("PLT-Aussenband ABGELEHNT: Flaeche " + index
+                        + ", Seite " + seite + ": die drei anderen Seiten haben schon ein Band.");
+                    return 0;
+                }
+            }
+            if (!gleich && platz < ZoningTiefeVorwahl) ZoningBandGekappt = platz;
             f.Aussentiefen[seite] = gleich ? 0.0 : neu;
             // Anfang der Messkette zum Zoningzettel: hier entsteht der Wert,
             // in `WriteBuildReceipt` wird er geschrieben, beim Umbau wieder
@@ -269,11 +336,15 @@ namespace ParkingLotTool.Tools
                     System.Globalization.CultureInfo.InvariantCulture)
                 + " -> " + f.Aussentiefen[seite].ToString("0.##",
                     System.Globalization.CultureInfo.InvariantCulture)
-                + " m (Vorwahl " + ZoningTiefeVorwahl + " Kacheln).");
+                + " m (Vorwahl " + ZoningTiefeVorwahl + " Kacheln, bis zur "
+                + "Randstrasse " + platz + " frei).");
             _layoutDirty = _closed;
             _geometryRevision++;
-            return gleich ? 0 : ZoningTiefeVorwahl;
+            return gleich ? 0 : reihen;
         }
+
+        /** Letzter Klick: 0 alles passt, -1 kein Platz, -2 vierte Seite, sonst so viele Reihen behaelt CS2 hoechstens. */
+        internal int ZoningBandGekappt { get; private set; }
 
         /*
          * HIER STAND `UebernimmZoningRand`.
@@ -298,7 +369,8 @@ namespace ParkingLotTool.Tools
             // Winkel-Setter wuerde alle Flaechen drehen (4 gespeicherte Werte).
             ZoningWinkelmodus = Winkelmodus.Dekodiere(receipt.ZoningWinkelmodus);
             ZoningReglerwinkel = receipt.ZoningReglerwinkel;
-            ZoningTiefeVorwahl = receipt.ZoningAussentiefeVorwahl;
+            ZoningTiefeVorwahl = math.clamp(receipt.ZoningAussentiefeVorwahl,
+                ZoningBandMindestreihen, 6);
             ZoningAusrichtwinkel = double.IsNaN(receipt.ZoningAusrichtwinkel)
                 ? null : receipt.ZoningAusrichtwinkel;
             _uiSystem?.LoadZoningBedienwerte(ZoningWinkelmodus,
@@ -495,10 +567,13 @@ namespace ParkingLotTool.Tools
             _zoningZug = null;
             _zoningSchiebt = -1;
             _uiSystem?.SetZoningModus(an);
-            _uiSystem?.SetStatus(an
-                ? T("zoning.zoningDragARectangleRightClick")
-                : T("zoning.zoningFinished"));
+            _uiSystem?.SetStatus(an ? ZoningSetzstatus() : T("zoning.zoningFinished"));
         }
+
+        /** Was im Status steht, solange gesetzt wird - je nach Werkzeugmodus. */
+        internal string ZoningSetzstatus() => ZoningFesteGroesse
+            ? T("zoning.festSetzen")
+            : T("zoning.zoningDragARectangleRightClick");
 
         /** Welche Flaeche liegt unter dem Zeiger? -1, wenn keine. */
         private int ZoningUnterZeiger()
@@ -782,8 +857,11 @@ namespace ParkingLotTool.Tools
             {
                 if (primaerGehalten)
                 {
+                    if (math.distance(ZoningMausBildschirm(), _zoningZugMaus) >= ZoningZugSchwellePx)
+                        _zoningZugBewegt = true;
+                    // Auf der Parzellengrenze zaehlt die kleinere Zahl (wie beim Geist).
                     var kandidat = ParkingGeometry.ZoningAusZug(
-                        _zoningZugStart, zeiger, ZoningWinkel,
+                        _zoningZugStart, ZoningZugEnde(_zoningZugStart, zeiger), ZoningWinkel,
                         out var breiteAus, out var tiefeAus);
                     // GAR NICHT ERST HINAUSLASSEN. Passt der naechste
                     // Schritt nicht mehr in den Umriss, bleibt der letzte
@@ -796,13 +874,37 @@ namespace ParkingLotTool.Tools
                         && !ZoningUeberlapptAndere(kandidat, -1))
                     {
                         _zoningZug = kandidat;
+                        _zoningZugVersuch = null;
                         MeldeZug(_zoningZug, breiteAus, tiefeAus);
                     }
+                    // Was nicht passt, bleibt sichtbar rot - das Feld selbst steht
+                    // weiter an der letzten passenden Groesse (Nutzer: waechst bis
+                    // an die Kante und dort nicht weiter).
+                    else _zoningZugVersuch = kandidat;
                     return true;
                 }
                 var fertig = _zoningZug;
                 _zoningZug = null;
+                _zoningZugVersuch = null;
                 _uiSystem?.SetZoningZug(string.Empty);
+                // Auch ein Zug, der zwischen zwei Bildern losgelassen wurde, zaehlt
+                // (Codex 21.10.): Bewegung am Ende pruefen. Und fuer JEDEN Zug gilt
+                // die Loslassstelle, wenn sie passt - sonst die letzte passende.
+                if (!_zoningZugBewegt
+                    && math.distance(ZoningMausBildschirm(), _zoningZugMaus) >= ZoningZugSchwellePx)
+                    _zoningZugBewegt = true;
+                if (_zoningZugBewegt)
+                {
+                    var ende = ParkingGeometry.ZoningAusZug(
+                        _zoningZugStart, ZoningZugEnde(_zoningZugStart, zeiger), ZoningWinkel);
+                    if (ZoningPasst(ende)) fertig = ende;
+                }
+                // EIN KLICK SETZT NIE EIN FELD (Nutzer 21.10.) - nur Druecken und Ziehen.
+                if (!_zoningZugBewegt)
+                {
+                    _uiSystem?.SetStatus(T("zoningGeist.nurKlick"));
+                    return true;
+                }
                 var vorher3 = CaptureUndoState();
                 fertig.Rand = ZoningRand;
                 // Baender bekommt die Flaeche nicht beim Setzen, sondern
@@ -818,6 +920,7 @@ namespace ParkingLotTool.Tools
                 return true;
             }
 
+            PflegeZoningGeist(zeiger);
             if (primaerGedrueckt)
             {
                 var getroffen = ZoningUnterZeiger();
@@ -876,18 +979,41 @@ namespace ParkingLotTool.Tools
                         + "Flaeche " + ParkingLotLiveLog.Zahl(naechste)
                         + " m entfernt");
                 }
-                var erste = ParkingGeometry.ZoningAusZug(
-                    zeiger, zeiger, ZoningWinkel, out _, out _);
-                if (!ZoningLiegtImUmriss(erste)
-                    || ZoningUeberlapptAndere(erste, -1))
+                /*
+                 * FESTE GROESSE: der Druck setzt, was am Zeiger haengt
+                 * (Nutzer 21.10.). Ziehen dagegen beginnt AM GEISTERFELD -
+                 * dessen ferne Ecke bleibt fest, der Zeiger haelt die nahe.
+                 */
+                if (ZoningFesteGroesse)
                 {
-                    // Schon die kleinste Parzelle passt hier nicht. Lieber
-                    // gar nicht anfangen als einen Zug beginnen, der nie
-                    // etwas ergeben kann.
+                    var stempel = ZoningStempel(zeiger, ZoningFestBreite, ZoningFestTiefe);
+                    if (!ZoningPasst(stempel))
+                    {
+                        _uiSystem?.SetStatus(T("zoning.noRoomForAParcelHere"));
+                        return true;
+                    }
+                    var vorherFest = CaptureUndoState();
+                    stempel.Rand = ZoningRand;
+                    _zoningflaechen.Add(stempel);
+                    _zoningAuswahl = _zoningflaechen.Count - 1;
+                    _uiSystem?.SetZoningAuswahl(_zoningAuswahl);
+                    var festSpalten = stempel.Spalten;
+                    var festReihen = stempel.Reihen;
+                    NachZoningaenderung(vorherFest, () => T("zoning.zoningPatchX", ("fertigSpalten", festSpalten), ("fertigReihen", festReihen)));
+                    return true;
+                }
+                var erste = ZoningEckGeist(zeiger, out var anker);
+                if (!ZoningPasst(erste))
+                {
+                    // Schon das Geisterfeld passt hier nicht. Lieber gar nicht
+                    // anfangen als einen Zug, der nie etwas ergeben kann.
                     _uiSystem?.SetStatus(T("zoning.noRoomForAParcelHere"));
                     return true;
                 }
-                _zoningZugStart = zeiger;
+                _zoningZugStart = anker;
+                _zoningZugMaus = ZoningMausBildschirm();
+                _zoningZugBewegt = false;
+                _zoningZugVersuch = null;
 
                 _zoningZug = erste;
                 MeldeZug(_zoningZug, false, false);

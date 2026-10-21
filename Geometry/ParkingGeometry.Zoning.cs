@@ -175,6 +175,34 @@ namespace ParkingLotTool.Geometry
              */
             public double[] Aussentiefen { get; set; }
 
+            /**
+             * WAS DER PARKPLATZ WIRKLICH FREIHAELT, je Seite in Metern.
+             *
+             * `Aussentiefen` ist die Wahl des Nutzers und wird gespeichert und
+             * angezeigt. Was davon CS2 nicht setzen kann - hinter der
+             * Randstrasse, hinter dem Umriss, in einer Eckspalte an der
+             * Randstrasse -, zeigt die Vorschau gelb mit X, und dort darf
+             * nichts freigeraeumt werden (Nutzer 21.10.: *"Also alles was gelb
+             * ist wird auch nicht erstellt als Tile sozusagen bzw da wird auch
+             * keine Flaeche entfernt."*). Das Werkzeug rechnet es vor jedem
+             * Lauf aus; `null` heisst: wie `Aussentiefen`.
+             *
+             * INTERNAL, nicht public: Bauprotokoll, Bauzettel und die
+             * Rueckleseprobe der Reparatur erfassen per Reflection jede
+             * oeffentliche Eigenschaft. Als public stand der Wert dort
+             * zusaetzlich, und jede Reparatur eines aelteren Parkplatzes brach
+             * mit "Rueckleseprobe weicht ab: Zoningflaechen" ab (21.10.).
+             */
+            internal double[] AussenWirksam { get; set; }
+
+            /**
+             * Wie weit das Band am Anfang und am Ende jeder Seite gekuerzt ist,
+             * in Metern: acht Werte, je Seite Anfang dann Ende (Seite i laeuft
+             * von Ecke i nach i+1). Das sind die gelben Spalten an den Enden.
+             * `null` heisst ungekuerzt. Internal aus demselben Grund.
+             */
+            internal double[] AussenKuerzung { get; set; }
+
             public int Parzellen => Spalten * Reihen;
 
             public double Flaeche =>
@@ -191,6 +219,8 @@ namespace ParkingLotTool.Geometry
                 // Kopieren weg, und Vorschau, Rueckgaengig, Bauzettel und
                 // Bearbeitungsmodus gehen alle ueber Clone.
                 Aussentiefen = Aussentiefen?.Clone() as double[],
+                AussenWirksam = AussenWirksam?.Clone() as double[],
+                AussenKuerzung = AussenKuerzung?.Clone() as double[],
             };
         }
 

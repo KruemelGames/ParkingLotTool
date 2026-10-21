@@ -92,12 +92,29 @@ namespace ParkingLotTool.Tools
         /** Der Modus selbst - vom Panel geschaltet. */
         internal bool ZoningSeitenModus { get; private set; }
 
-        internal void SetzeZoningSeitenModus(bool an)
+        /**
+         * ZWEI KNOEPFE STATT EINES WERKZEUGS MIT ZWEI AUFGABEN (Nutzer 21.10.).
+         *
+         * "Edge zoning" bedient nur die Linien des Umrisses, "Zoning road
+         * sides" nur die Zoningstrassen (Seiten und Aussenband). Vorher
+         * entschied der Abstand zum Zeiger, was gemeint war - das musste man
+         * wissen, sehen konnte man es nicht. Beide teilen sich weiter den
+         * Seitenmodus; dieser Merker sagt nur, welche Haelfte gilt.
+         */
+        internal bool ZoningNurRand { get; private set; }
+
+        internal void SetzeZoningSeitenModus(bool an) => SetzeZoningSeitenArt(an, false);
+
+        internal void SetzeZoningRandModus(bool an) => SetzeZoningSeitenArt(an, true);
+
+        private void SetzeZoningSeitenArt(bool an, bool nurRand)
         {
             if (an && !ZoningSeitenMoeglich) return;
-            if (ZoningSeitenModus == an) return;
+            if (ZoningSeitenModus == an && (!an || ZoningNurRand == nurRand)) return;
             ZoningSeitenModus = an;
+            ZoningNurRand = an && nurRand;
             _zoningSeitenZiel = -1;
+            _randzoningZiel = -1;
             /*
              * DAS SETZEN GEHT AUS, WENN DER SEITENSCHALTER ANGEHT.
              *
@@ -112,7 +129,8 @@ namespace ParkingLotTool.Tools
              * wird ohnehin zuerst gefragt.
              */
             if (an) SetzeZoningModus(false);
-            _uiSystem?.SetZoningSeitenModus(an);
+            _uiSystem?.SetZoningSeitenModus(an && !ZoningNurRand);
+            _uiSystem?.SetZoningRandModus(ZoningNurRand);
         }
 
         private void InitialisiereZoningSeiten()
@@ -177,18 +195,20 @@ namespace ParkingLotTool.Tools
             }
 
             /*
-             * ZWEI AUFGABEN, EIN WERKZEUG - der Zeiger entscheidet.
+             * ZWEI AUFGABEN, ZWEI KNOEPFE (21.10.).
              *
-             * Ansage des Nutzers: *"Zum Erstellen von RZ soll bitte das
+             * Bis dahin galt die Ansage *"Zum Erstellen von RZ soll bitte das
              * gleiche Tool genommen werden, womit wir derzeit die Road Side
-             * einstellen."* Also wird beides gesucht, und was NAEHER liegt,
-             * bekommt den Klick. Ein zusaetzlicher Schalter waere eine
-             * Bedienung, die dem Nutzer nichts einbringt.
+             * einstellen."* - was NAEHER lag, bekam den Klick. Am 21.10. hat
+             * der Nutzer es getrennt: ob Umrisslinie oder Zoningstrasse
+             * gemeint ist, sagt jetzt der Knopf (`ZoningNurRand`).
              */
-            var seitenAbstand = SucheZoningSeite();
-            _randzoningZiel = SucheUmrisslinie(out var linienAbstand);
-            var randzoningNaeher = _randzoningZiel >= 0
-                && linienAbstand < seitenAbstand;
+            if (ZoningNurRand) _zoningSeitenZiel = -1;
+            else SucheZoningSeite();
+            _randzoningZiel = ZoningNurRand ? SucheUmrisslinie(out _) : -1;
+            var randzoningNaeher = _randzoningZiel >= 0;
+            if (ZoningNurRand && _randzoningZiel < 0)
+                _zoningSeitenBefund = T("zoningRoadEdit.pointAtALineOfTheOutline");
 
             /*
              * RECHTSKLICK ENTFERNT, WAS UNTER DEM ZEIGER LIEGT.
@@ -246,6 +266,11 @@ namespace ParkingLotTool.Tools
                 return;
             }
             // Die Absage kommt VOR dem Klick, nicht danach.
+            if (StadtstrasseVorLinie(a, b))
+            {
+                _zoningSeitenBefund = T("randzoning.roadRightOutside");
+                return;
+            }
             _zoningSeitenBefund = PruefeRandzoning(a, b, out _)
                 ? T("zoningRoadEdit.outlineEdgeClickTurnsItInto")
                 : T("zoningRoadEdit.noRoomAZoningPatchSits");
@@ -453,7 +478,13 @@ namespace ParkingLotTool.Tools
                     : " | innen, kein Band")
                 + ".");
             if (aussen)
-                _uiSystem?.SetStatus(tiefe > 0
+                _uiSystem?.SetStatus(ZoningBandGekappt == -2
+                    ? T("zoningRoadEdit.bandVierteSeite")
+                    : ZoningBandGekappt < 0
+                    ? T("zoningRoadEdit.bandKeinPlatz")
+                    : ZoningBandGekappt > 0
+                    ? T("zoningRoadEdit.bandBisRandstrasse", ("frei", ZoningBandGekappt), ("tiefe", tiefe))
+                    : tiefe > 0
                     ? T("zoningRoadEdit.outsideTilesDeepTheParkingLot", ("tiefe", tiefe))
                     : T("zoningRoadEdit.outerBandRemoved"));
         }

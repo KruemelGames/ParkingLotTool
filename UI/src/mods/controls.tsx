@@ -528,6 +528,8 @@ interface ModeProps {
   extra?: any;
   /** Eine volle Zeile unter den Kacheln. */
   unten?: any;
+  /** Ganzer Waehler ausgegraut; der gewaehlte Wert bleibt sichtbar. */
+  disabled?: boolean;
 }
 
 /** Drei kurze Moeglichkeiten nebeneinander lesen sich schneller als ein
@@ -542,8 +544,8 @@ interface ModeProps {
  */
 export const ModeChooser = ({ label, tooltip, value, options, ton, onChange,
                               differsFromDefault, onReset, onSetDefault,
-                              raster, extra, unten }: ModeProps) => (
-  <div className={styles.control}>
+                              raster, extra, unten, disabled }: ModeProps) => (
+  <div className={`${styles.control} ${disabled ? styles.controlOff : ""}`}>
     <div className={styles.controlHead}>
       <MitTooltip text={tooltip}>
         <span className={styles.label} title={tooltip} aria-label={tooltip}>{label}</span>
@@ -563,11 +565,11 @@ export const ModeChooser = ({ label, tooltip, value, options, ton, onChange,
           <button
             className={`${raster ? styles.modeKachel : styles.mode}
               ${option.id === value ? styles[`modeAktiv${ton}`] : ""}
-              ${option.disabled ? styles.modeOff : ""}`}
-            aria-disabled={option.disabled}
+              ${option.disabled || disabled ? styles.modeOff : ""}`}
+            aria-disabled={option.disabled || disabled}
             aria-label={option.tooltip}
             title={option.tooltip}
-            onClick={() => { if (!option.disabled) onChange(option.id); }}
+            onClick={() => { if (!option.disabled && !disabled) onChange(option.id); }}
           >
             {option.text}
           </button>

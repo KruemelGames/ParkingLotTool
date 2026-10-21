@@ -22,7 +22,8 @@ namespace ParkingLotTool.Geometry.Zellen
 
         private static bool Frei(Weg w, IReadOnlyList<Punkt> innen, IReadOnlyList<Zoningvorgabe> zoning)
             => w.Ecken.All(v => Innen(innen, v))
-               && !(zoning ?? Array.Empty<Zoningvorgabe>()).Any(z => Ueberlappt(w.Ecken, z.Ecken().ToArray()));
+               && !(zoning ?? Array.Empty<Zoningvorgabe>()).Any(z => (Ueberlappt(w.Ecken, z.Ecken())
+                   || z.Aussenbauland().Any(band => Ueberlappt(w.Ecken, band))));
 
         private static bool Innen(IReadOnlyList<Punkt> innen, Punkt v)
             => Geometrie.EnthaeltOderRand(innen, v)
@@ -45,7 +46,8 @@ namespace ParkingLotTool.Geometry.Zellen
         {
             var ecken = w.Ecken;
             return Innen(innen, ecken[1]) && Innen(innen, ecken[2])
-                && !(zoning ?? Array.Empty<Zoningvorgabe>()).Any(z => Ueberlappt(ecken, z.Ecken().ToArray()));
+                && !(zoning ?? Array.Empty<Zoningvorgabe>()).Any(z => (Ueberlappt(ecken, z.Ecken())
+                    || z.Aussenbauland().Any(band => Ueberlappt(ecken, band))));
         }
 
         private static IEnumerable<(double A, double B)> Waagerecht(IReadOnlyList<Punkt> poly, double y)

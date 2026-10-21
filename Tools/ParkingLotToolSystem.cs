@@ -405,6 +405,7 @@ namespace ParkingLotTool.Tools
             // Ohne Rechnung (z.B. Kurve ohne Vorschau) ist der Einstieg auch vorbei.
             if (_editOeffnet && !_layoutDirty && _buildTask == null) _editOeffnet = false;
             _uiSystem?.SetEditOeffnet(EditOeffnetNoch);
+            MeldeZoningPlatzierung();
             if (TryBeginPendingEdit()) return RenderOverlay(deps);
             if (ProcessEditLifecycle()) return RenderOverlay(deps);
             PollCompletedBuild();
@@ -1212,12 +1213,15 @@ namespace ParkingLotTool.Tools
             _buildSettings.Zoningflaechen = _zoningflaechen
                 .Select(f =>
                 {
-                    var kopie = f.Clone();
+                    // Was gelb ist, haelt der Parkplatz nicht frei
+                    // (ParkingLotZoningBand.MitBandwirkung).
+                    var kopie = MitBandwirkung(f);
                     // Der Rand gilt fuer den ganzen Parkplatz und kann sich
                     // seit dem Setzen geaendert haben.
                     kopie.Rand = ZoningRand;
                     return kopie;
                 }).ToArray();
+            _bandwirkungImLauf = BandwirkungSchluessel(_buildSettings.Zoningflaechen);
             // Und die Randzoning-Linien auf demselben Weg - sie gehoeren
             // genauso zum Entwurf wie die Flaechen.
             _buildSettings.Randzoning = _randzoning
@@ -1744,6 +1748,7 @@ namespace ParkingLotTool.Tools
             var uhrZeichnen = ParkingLotMessung.Start();
             _overlay.OhneGriff = _kurvenZwischen;
             _overlay.Zeigerkurve = Zeigerkurve();
+            _overlay.ZoningSperren = ZoningSperrquads();
             _overlay.Draw(buffer, _worldPoints, _closed, (entwurfshilfen || MarkerMode) && _hasHover,
                 _hoverPosition, CanCloseAtCursor(),
                 // Im Trennmodus ist der Punkt das Auswahlziel - wie die Kante
@@ -1787,7 +1792,8 @@ namespace ParkingLotTool.Tools
                         out var seiteLinks, out var seiteKacheln)
                     ? (seiteA, seiteB, seiteLinks, seiteKacheln)
                     : ((float2, float2, bool, int)?)null,
-                ZoningSeitenModus,
+                // Seitenmarken nur fuer "Zoning road sides", nicht fuer "Edge zoning".
+                ZoningSeitenModus && !ZoningNurRand,
                 _randzoning.Select(l => (l.A, l.B)).ToArray(),
                 RandzoningStrassenAchsen.Select(r => (r.A, r.B)).ToArray(),
                 RandzoningVorschau(out var randA, out var randB,
@@ -1796,6 +1802,8 @@ namespace ParkingLotTool.Tools
                     : ((float2, float2, int)?)null);
             DrawBusStops(new ParkingLotPreviewBuffer(buffer));
             ZeichneMustergriff(new ParkingLotPreviewBuffer(buffer));
+            ZeichneZoningGeist(new ParkingLotPreviewBuffer(buffer));
+            _uiSystem?.SetZoningVerloren(_overlay.ZoningVerloren);
             ZeichneKurvendiagnose(new ParkingLotPreviewBuffer(buffer));
             ParkingLotMessung.Ende(
                 ParkingLotMessung.Punkt.Zeichnen, uhrZeichnen);

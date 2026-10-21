@@ -384,6 +384,27 @@ export const setZoningSeitenModus = (an: boolean) =>
   trigger(MOD, "SetZoningSeitenModus", an);
 export const setZoningModus = (an: boolean) =>
   trigger(MOD, "SetZoningModus", an);
+/* "Edge zoning": nur die Linien des Umrisses (seit 21.10. eigener Knopf,
+   "Zoning road sides" bedient nur noch die Zoningstrassen). */
+export const zoningRandModus$ = bindValue<boolean>(MOD, "ZoningRandModus", false);
+export const setZoningRandModus = (an: boolean) =>
+  trigger(MOD, "SetZoningRandModus", an);
+/* Werkzeugmodus beim Setzen: "ziehen" oder "fest". Feste Groesse und
+   gemerkte Groessen ("2x2;4x3") stehen in den Optionen und bleiben ueber
+   einen Neustart; die Grenzen kommen aus den Mod-Einstellungen. */
+export const zoningPlatzierart$ = bindValue<string>(MOD, "ZoningPlatzierart", "ziehen");
+export const setZoningPlatzierart = (art: string) =>
+  trigger(MOD, "SetZoningPlatzierart", art);
+export const zoningFestBreite$ = bindValue<number>(MOD, "ZoningFestBreite", 3);
+export const zoningFestTiefe$ = bindValue<number>(MOD, "ZoningFestTiefe", 2);
+export const setZoningFestGroesse = (breite: number, tiefe: number) =>
+  trigger(MOD, "SetZoningFestGroesse", breite, tiefe);
+export const zoningVorlagen$ = bindValue<string>(MOD, "ZoningVorlagen", "");
+export const speichereZoningVorlage = () => trigger(MOD, "SpeichereZoningVorlage");
+export const entferneZoningVorlage = (vorlage: string) =>
+  trigger(MOD, "EntferneZoningVorlage", vorlage);
+export const zoningGrenzeBreite$ = bindValue<number>(MOD, "ZoningGrenzeBreite", 25);
+export const zoningGrenzeTiefe$ = bindValue<number>(MOD, "ZoningGrenzeTiefe", 25);
 export const zoningWinkelmodus$ =
   bindValue<string>(MOD, "ZoningWinkelmodus", "edge");
 export const setZoningWinkelmodus = (modus: string) =>
@@ -399,6 +420,9 @@ export const zoningAussentiefe$ =
   bindValue<number>(MOD, "ZoningAussentiefe", 2);
 export const setZoningAussentiefe = (n: number) =>
   trigger(MOD, "SetZoningAussentiefe", n);
+/* Kacheln einer Outer zone, die CS2 nach dem Bauen verwirft - in der
+   Vorschau gelb mit X. 0 = keine. */
+export const zoningVerloren$ = bindValue<number>(MOD, "ZoningVerloren", 0);
 export const zoningLinienwahl$ =
   bindValue<boolean>(MOD, "ZoningLinienwahl", false);
 export const setZoningLinienwahl = (an: boolean) =>

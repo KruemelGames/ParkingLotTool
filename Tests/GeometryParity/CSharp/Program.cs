@@ -130,6 +130,7 @@ internal static partial class Program
 
     private static int Run(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--aussenband") return PruefeAussenband();
         if (args.Length == 1 && args[0] == "--zettelvollstaendig")
             return PruefeZettelvollstaendigkeit();
         if (args.Length == 1 && args[0] == "--bushaltestellen")

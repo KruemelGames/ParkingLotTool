@@ -341,7 +341,8 @@ namespace ParkingLotTool.Geometry
                     Reihen = f.Reihen,
                     Winkel = f.Winkel,
                     Rand = f.Rand,
-                    Aussen = f.Aussentiefen,
+                    Aussen = f.AussenWirksam ?? f.Aussentiefen,
+                    Kuerzung = f.AussenKuerzung,
                 });
             }
             if (vorgaben.Count == 0) return null;

@@ -862,10 +862,47 @@ namespace ParkingLotTool.Geometry.Zellen
          */
         internal double[] Aussen { get; set; }
 
+        /**
+         * Kuerzung des Bandes an Anfang/Ende jeder Seite in Metern, acht Werte
+         * (siehe `Zoningflaeche.AussenKuerzung`). `null` heisst ungekuerzt.
+         */
+        internal double[] Kuerzung { get; set; }
+
+        internal double KuerzungSeite(int s, bool ende) =>
+            Kuerzung != null && 2 * s + (ende ? 1 : 0) < Kuerzung.Length
+                ? Math.Max(0.0, Kuerzung[2 * s + (ende ? 1 : 0)]) : 0.0;
+
         /** Aussentiefe der Seite `s`, auch wenn `Aussen` fehlt. */
         internal double AussenSeite(int s) =>
             Aussen != null && s >= 0 && s < Aussen.Length
                 ? Math.Max(0.0, Aussen[s]) : 0.0;
+
+        // Je Seite ein konvexes Baulandrechteck. Der Treppenumriss ist
+        // konkav und deshalb kein Hindernis fuer den SAT-Rechtecktest.
+        internal IEnumerable<Punkt[]> Aussenbauland()
+        {
+            if (!HatAussenband) yield break;
+            var ring = Ecken();
+            for (var s = 0; s < 4; s++)
+            {
+                var tiefe = AussenSeite(s);
+                if (tiefe <= 1e-6) continue;
+                var a = ring[s];
+                var b = ring[(s + 1) % 4];
+                var laenge = Geometrie.Laenge(b - a);
+                var u = (b - a) * (1 / laenge);
+                var anfang = KuerzungSeite(s, false);
+                var ende = KuerzungSeite(s, true);
+                if (anfang + ende >= laenge - 1e-6) continue;
+                a += u * anfang;
+                b -= u * ende;
+                var n = new Punkt(u.Y, -u.X);
+                yield return new[]
+                {
+                    a, b, b + n * tiefe, a + n * tiefe,
+                };
+            }
+        }
 
         /** Gibt es ueberhaupt aeusseres Bauland? */
         internal bool HatAussenband =>
@@ -982,8 +1019,16 @@ namespace ParkingLotTool.Geometry.Zellen
                     normale = new Punkt(-normale.X, -normale.Y);
 
                 var aussen = new Punkt(normale.X * tiefe, normale.Y * tiefe);
-                Fuege(new Punkt(a.X + aussen.X, a.Y + aussen.Y));
-                Fuege(new Punkt(b.X + aussen.X, b.Y + aussen.Y));
+                var anfang = KuerzungSeite(s, false);
+                var ende = KuerzungSeite(s, true);
+                if (anfang + ende >= laenge - 1e-6) { Fuege(a); Fuege(b); continue; }
+                var richtung = new Punkt(dx / laenge, dy / laenge);
+                var a2 = new Punkt(a.X + richtung.X * anfang, a.Y + richtung.Y * anfang);
+                var b2 = new Punkt(b.X - richtung.X * ende, b.Y - richtung.Y * ende);
+                Fuege(a2);
+                Fuege(new Punkt(a2.X + aussen.X, a2.Y + aussen.Y));
+                Fuege(new Punkt(b2.X + aussen.X, b2.Y + aussen.Y));
+                Fuege(b2);
                 Fuege(b);
             }
 
@@ -1023,18 +1068,16 @@ namespace ParkingLotTool.Geometry.Zellen
 
             // Seite 0 ist die Kante Ecke -> Ecke+Breite, also v = 0; dann
             // im Uhrzeigersinn weiter. Dieselbe Zuordnung wie in `Umriss`.
-            if (u >= -1e-6 && u <= breite + 1e-6)
-            {
-                if (v <= 1e-6 && v >= -AussenSeite(0) - 1e-6) return true;
-                if (v >= tiefe - 1e-6 && v <= tiefe + AussenSeite(2) + 1e-6)
-                    return true;
-            }
-            if (v >= -1e-6 && v <= tiefe + 1e-6)
-            {
-                if (u >= breite - 1e-6 && u <= breite + AussenSeite(1) + 1e-6)
-                    return true;
-                if (u <= 1e-6 && u >= -AussenSeite(3) - 1e-6) return true;
-            }
+            // Seite 0 laeuft in +u, Seite 1 in +v, Seite 2 in -u, Seite 3
+            // in -v - danach richtet sich, welches Ende gekuerzt ist.
+            if (u >= KuerzungSeite(0, false) - 1e-6 && u <= breite - KuerzungSeite(0, true) + 1e-6
+                && v <= 1e-6 && v >= -AussenSeite(0) - 1e-6) return true;
+            if (u <= breite - KuerzungSeite(2, false) + 1e-6 && u >= KuerzungSeite(2, true) - 1e-6
+                && v >= tiefe - 1e-6 && v <= tiefe + AussenSeite(2) + 1e-6) return true;
+            if (v >= KuerzungSeite(1, false) - 1e-6 && v <= tiefe - KuerzungSeite(1, true) + 1e-6
+                && u >= breite - 1e-6 && u <= breite + AussenSeite(1) + 1e-6) return true;
+            if (v <= tiefe - KuerzungSeite(3, false) + 1e-6 && v >= KuerzungSeite(3, true) - 1e-6
+                && u <= 1e-6 && u >= -AussenSeite(3) - 1e-6) return true;
             return false;
         }
 
