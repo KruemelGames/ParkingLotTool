@@ -414,6 +414,21 @@ namespace ParkingLotTool
         public bool StrassenkurveFolgenEingeschaltet { get; set; }
 
         /**
+         * WIE ZONINGFLAECHEN GESETZT WERDEN (Nutzer 21.10.): "ziehen" oder
+         * "fest", dazu die zuletzt eingetragene feste Groesse und gemerkte
+         * Groessen ("2x2;4x3"). Bleibt ueber einen Neustart, bis der Spieler
+         * es aendert; die Obergrenze kommt aus ZonBreite/ZonTiefe.
+         */
+        [SettingsUIHidden]
+        public string ZoningPlatzierart { get; set; } = "ziehen";
+        [SettingsUIHidden]
+        public int ZoningFestBreite { get; set; } = 3;
+        [SettingsUIHidden]
+        public int ZoningFestTiefe { get; set; } = 2;
+        [SettingsUIHidden]
+        public string ZoningGroessenVorlagen { get; set; } = string.Empty;
+
+        /**
          * Baustandard fuer neue Parkplaetze. 0 heisst kostenlos.
          *
          * Beim Bau wird er in die gespeicherten Wirtschaftsdaten der Flaeche

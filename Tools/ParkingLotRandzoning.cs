@@ -1,5 +1,12 @@
 using System.Collections.Generic;
+using Colossal.Mathematics;
+using Game.Common;
+using Game.Net;
+using Game.Prefabs;
+using Game.Tools;
 using ParkingLotTool.Geometry;
+using Unity.Collections;
+using Unity.Entities;
 using Unity.Mathematics;
 using static ParkingLotTool.Tools.ParkingLotTexte;
 
@@ -224,6 +231,86 @@ namespace ParkingLotTool.Tools
          * mit heraus, damit der Aufrufer ihn gegen den Abstand zur naechsten
          * Zoning-Strasse halten kann - naeher gewinnt.
          */
+        /**
+         * NIE AN EINER STRASSE (Nutzer 21.10.): "Eine Edge Zone kann nie an
+         * eine Strasse gesetzt werden, sonst wuerde das bedeuten dass die
+         * Tiles auf der Strasse sind." Randzoning laesst die Haeuser vom
+         * Umriss NACH AUSSEN wachsen; liegt dort naeher als eine Parzelle
+         * (8 m) eine Stadtstrasse, ist kein Platz fuer sie.
+         *
+         * NICHT MIT DER STRASSENSUCHE DER VORFLAECHE (erster Anlauf 21.10.,
+         * Nutzer: "zu strickt, ich konnte nirgends"). Die blendet nur
+         * Vorschaunetze aus - die gebaute Randstrasse des Parkplatzes liegt
+         * aber direkt am Umriss und sperrte damit jede Kante. Gezaehlt wird
+         * jetzt nur eine echte Strasse OHNE Besitzer (unsere Netze haengen
+         * alle an Traeger, Lot oder Zoninganker), deren Fahrbahn in den
+         * Streifen von 8 m vor der Linie hineinragt. Je Linie und Stand einmal.
+         */
+        private readonly Dictionary<(float2, float2), bool> _randzoningStrasseVor = new();
+        private int _randzoningStrasseStand = int.MinValue;
+
+        private bool StadtstrasseVorLinie(float2 a, float2 b)
+        {
+            if (_randzoningStrasseStand != _geometryRevision)
+            {
+                _randzoningStrasseVor.Clear();
+                _randzoningStrasseStand = _geometryRevision;
+            }
+            if (_randzoningStrasseVor.TryGetValue((a, b), out var bekannt)) return bekannt;
+            var belegt = StrasseImStreifen(a, b);
+            _randzoningStrasseVor[(a, b)] = belegt;
+            return belegt;
+        }
+
+        private bool StrasseImStreifen(float2 a, float2 b)
+        {
+            var d = b - a;
+            var laenge = math.length(d);
+            if (laenge < 1e-3f || _netSearchSystem == null) return false;
+            var richtung = d / laenge;
+            var innen = InnenAusUmriss((a + b) * 0.5f, richtung, _points);
+            if (math.lengthsq(innen) < 1e-6f) return false;
+            var aussen = -innen;
+            var kachel = (float)ParkingGeometry.Zoningparzelle;
+            // Beruehren am Umriss (eine Randstrasse, die genau an der Linie
+            // endet) ist kein Hineinragen: halber Meter Luft.
+            const float beruehrung = 0.5f;
+
+            var ecken = new[] { a, b, a + aussen * (kachel + 20f), b + aussen * (kachel + 20f) };
+            var min = math.min(math.min(ecken[0], ecken[1]), math.min(ecken[2], ecken[3]));
+            var max = math.max(math.max(ecken[0], ecken[1]), math.max(ecken[2], ecken[3]));
+            var baum = _netSearchSystem.GetNetSearchTree(readOnly: true, out var deps);
+            deps.Complete();
+            using var treffer = new NativeList<Entity>(32, Allocator.Temp);
+            var iterator = new EntityIterator { Bounds = new Bounds2(min, max), Results = treffer };
+            baum.Iterate(ref iterator);
+            for (var i = 0; i < treffer.Length; i++)
+            {
+                var kante = treffer[i];
+                if (!EntityManager.Exists(kante) || !EntityManager.HasComponent<Road>(kante)
+                    || !EntityManager.HasComponent<Curve>(kante)
+                    || !EntityManager.HasComponent<Composition>(kante)
+                    || EntityManager.HasComponent<Owner>(kante)
+                    || EntityManager.HasComponent<Deleted>(kante)) continue;
+                if (EntityManager.HasComponent<Temp>(kante)
+                    && EntityManager.GetComponentData<Temp>(kante).m_Original == Entity.Null) continue;
+                var komposition = EntityManager.GetComponentData<Composition>(kante).m_Edge;
+                if (!EntityManager.HasComponent<NetCompositionData>(komposition)) continue;
+                var halb = EntityManager.GetComponentData<NetCompositionData>(komposition).m_Width * 0.5f;
+                var kurve = EntityManager.GetComponentData<Curve>(kante).m_Bezier;
+                for (var s = 0; s <= 16; s++)
+                {
+                    var q3 = MathUtils.Position(kurve, s / 16f);
+                    var q = new float2(q3.x, q3.z) - a;
+                    var u = math.dot(q, richtung);
+                    var v = math.dot(q, aussen);
+                    if (u < 0f || u > laenge) continue;
+                    if (v + halb > beruehrung && v - halb < kachel) return true;
+                }
+            }
+            return false;
+        }
+
         private int SucheUmrisslinie(out float abstand)
         {
             abstand = float.PositiveInfinity;
@@ -268,6 +355,13 @@ namespace ParkingLotTool.Tools
             {
                 _randzoning.RemoveAt(vorhanden);
                 NachZoningaenderung(vorher, () => T("randzoning.edgeZoningRemoved"));
+                return;
+            }
+
+            // Eine Stadtstrasse direkt vor der Linie: die Kacheln laegen auf ihr.
+            if (StadtstrasseVorLinie(a, b))
+            {
+                _uiSystem?.SetStatus(T("randzoning.roadRightOutside"));
                 return;
             }
 

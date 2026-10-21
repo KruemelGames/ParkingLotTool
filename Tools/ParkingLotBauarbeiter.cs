@@ -131,6 +131,14 @@ namespace ParkingLotTool.Tools
                 var uhr = Stopwatch.StartNew();
                 _hintergrundRechenthread = System.Threading.Thread.CurrentThread.ManagedThreadId;
                 var layout = ParkingGeometry.Build(polygon,settings);
+                // Gelb wird auch hier nicht freigeraeumt (ParkingLotZoningBand).
+                var mitWirkung = BandwirkungFuerLauf(settings.Zoningflaechen, layout,
+                    settings.Ai, settings.Cw, polygon);
+                if (mitWirkung != null)
+                {
+                    settings.Zoningflaechen = mitWirkung;
+                    layout = ParkingGeometry.Build(polygon, settings);
+                }
                 _hintergrundRechenMs = uhr.Elapsed.TotalMilliseconds;
                 return layout;
             });

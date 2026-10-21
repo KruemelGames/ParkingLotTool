@@ -12,7 +12,7 @@ import {
 import { ReportTab } from "./report";
 import { DebugTab } from "./debug";
 import { entwicklerDebug$, autoEntryMode$, setAutoEntryMode, arbeitOffen$, followCurves$, setFollowCurves } from "./bindings";
-import { ZoningTab } from "./zoning";
+import { ZoningTab, ZoningWerkzeugfenster } from "./zoning";
 import { ListeTab } from "./liste";
 import {
   aisleWidth$, aisleWidthDefault$, aisles$, angleMode$, angleModeDefault$,
@@ -41,7 +41,7 @@ import {
   ausrichtBestaetigen, trennmodus$, trennungFertig,
   teilen, teilenAbbrechen, teilungEntfernen, teilflaechenzahl$,
   altbestand$, altbestandLoeschen, altbestandBehalten,
-  editOeffnet$,
+  editOeffnet$, zoningModus$,
   panelStil$, setPanelStil,
   syncOffen$, syncAuto$,
 } from "./bindings";
@@ -368,6 +368,7 @@ export const ParkingLotPanel = () => {
   const teilflaechenzahl = useValue(teilflaechenzahl$);
   const altbestand = useValue(altbestand$);
   const editOeffnet = useValue(editOeffnet$);
+  const zoningSetzt = useValue(zoningModus$);
   const entranceMode = useValue(entranceMode$);
   const busStopMode = useValue(busStopMode$);
   const entranceKind = useValue(entranceKind$);
@@ -1740,6 +1741,9 @@ export const ParkingLotPanel = () => {
     </div>
       {/* Edit ist erst offen, wenn die Vorschau steht (Nutzer 20.10.): bis
           dahin deckt die Sperre nur das Panel ab, das Spiel bleibt frei. */}
+      {/* Werkzeugmodus beim Setzen von Zoningflaechen: klein, rechts ueber
+          dem Panel, nur solange gesetzt wird (Nutzer 21.10.). */}
+      {zoning && zoningSetzt ? <ZoningWerkzeugfenster hochkant={hochkant} haltAn={haltAn} /> : null}
       {editOeffnet ? (
         <div className={styles.editSperre} onMouseDown={haltAn}>
           <div className={styles.editSperreTitel}>{t.editOeffnetTitel}</div>

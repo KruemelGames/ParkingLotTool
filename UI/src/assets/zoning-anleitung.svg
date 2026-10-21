@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 124" width="150" height="124">
+  <!-- Boden ausserhalb -->
+  <rect x="0" y="0" width="150" height="124" rx="4" fill="#26352a"/>
+  <!-- Parkplatz: Asphalt, blauer Umriss wie im Werkzeug -->
+  <rect x="8" y="8" width="134" height="108" fill="#4d5359" stroke="#4fc3f7" stroke-width="1.6"/>
+  <!-- Buchtreihe unten: Parkplatz, nicht Bauland -->
+  <g stroke="#ffffff" stroke-opacity="0.75" stroke-width="1">
+    <path d="M8 92h134"/>
+    <path d="M18 92v24M28 92v24M38 92v24M48 92v24M58 92v24M68 92v24M78 92v24M88 92v24M98 92v24M108 92v24M118 92v24M128 92v24"/>
+  </g>
+  <!-- freie Flaeche mit Parzellenraster -->
+  <g stroke="#9eb0e8" stroke-opacity="0.22" stroke-width="1">
+    <path d="M22 14v72M38 14v72M54 14v72M70 14v72M86 14v72M102 14v72"/>
+    <path d="M14 22h110M14 38h110M14 54h110M14 70h110"/>
+  </g>
+  <!-- Ziel: so weit wird gezogen (4 x 3 Parzellen) -->
+  <rect x="22" y="22" width="64" height="48" fill="#9eb0e8" fill-opacity="0.16" stroke="#9eb0e8" stroke-width="2" stroke-dasharray="5 3.5"/>
+  <!-- Geisterfeld: die erste Parzelle -->
+  <rect x="22" y="22" width="16" height="16" fill="#9eb0e8" fill-opacity="0.55" stroke="#9eb0e8" stroke-width="2.2"/>
+  <!-- Zugpfeile -->
+  <path d="M42 30h20M57 25.5l5.5 4.5-5.5 4.5" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M30 42v18M25.5 55l4.5 5.5 4.5-5.5" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Mauszeiger an der gezogenen Ecke -->
+  <path d="M86 70v18l4.5-4.5 3.5 7.4 3-1.4-3.4-7.4h6.4z" fill="#ffffff" stroke="#1d1d1d" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>

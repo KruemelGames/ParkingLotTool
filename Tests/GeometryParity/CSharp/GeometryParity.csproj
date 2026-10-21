@@ -45,6 +45,8 @@
     <Compile Include="Program.Mittig.cs" />
     <Compile Include="Program.Zoningtreffer.cs" />
     <Compile Include="Program.Zoningnetz.cs" />
+    <Compile Include="Program.Aussenband.cs" />
+    <Compile Include="..\..\Zufahrtsvorschau\Vergleich.cs" Link="Vergleich.cs" />
     <Compile Include="Program.ZoningTAnschluss.cs" />
     <Compile Include="Program.Zoningflaeche.cs" />
     <Compile Include="Program.Zoningrasten.cs" />

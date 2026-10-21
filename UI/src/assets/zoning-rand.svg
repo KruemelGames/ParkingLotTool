@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 124" width="150" height="124">
+  <!-- Boden ausserhalb des Parkplatzes -->
+  <rect x="0" y="0" width="150" height="124" rx="4" fill="#26352a"/>
+  <!-- Bauland: waechst von der Linie NACH AUSSEN -->
+  <g fill="#9eb0e8" fill-opacity="0.4" stroke="#9eb0e8" stroke-width="1.2">
+    <rect x="12" y="30" width="18" height="18"/><rect x="31" y="30" width="18" height="18"/><rect x="50" y="30" width="18" height="18"/><rect x="69" y="30" width="18" height="18"/><rect x="88" y="30" width="18" height="18"/><rect x="107" y="30" width="18" height="18"/>
+    <rect x="12" y="11" width="18" height="18"/><rect x="31" y="11" width="18" height="18"/><rect x="50" y="11" width="18" height="18"/><rect x="69" y="11" width="18" height="18"/><rect x="88" y="11" width="18" height="18"/><rect x="107" y="11" width="18" height="18"/>
+  </g>
+  <!-- Parkplatz: Asphalt und Buchten -->
+  <rect x="8" y="50" width="134" height="66" fill="#4d5359"/>
+  <g stroke="#ffffff" stroke-opacity="0.75" stroke-width="1">
+    <path d="M8 92h134"/>
+    <path d="M18 92v24M28 92v24M38 92v24M48 92v24M58 92v24M68 92v24M78 92v24M88 92v24M98 92v24M108 92v24M118 92v24M128 92v24"/>
+  </g>
+  <!-- Randstrasse innen, wird hier zur Zoningstrasse -->
+  <rect x="8" y="52" width="134" height="12" fill="#30353a"/>
+  <path d="M12 58h130" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>
+  <!-- Umriss: die angeklickte Linie hervorgehoben, der Rest blau -->
+  <path d="M8 50v66h134V50" fill="none" stroke="#4fc3f7" stroke-width="1.6"/>
+  <path d="M8 50h134" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <!-- Mauszeiger auf der Linie -->
+  <path d="M96 50v18l4.5-4.5 3.5 7.4 3-1.4-3.4-7.4h6.4z" fill="#ffffff" stroke="#1d1d1d" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>

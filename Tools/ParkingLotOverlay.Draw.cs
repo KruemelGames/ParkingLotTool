@@ -16,6 +16,10 @@ namespace ParkingLotTool.Tools
         internal HashSet<float2> OhneGriff;
         /** Zeigerlinie entlang einer Strassenkurve statt gerade; null = gerade. */
         internal float3[] Zeigerkurve;
+        /** Fahrbahnen des Bauplans als Vierecke - sie sperren Zonenzellen. */
+        internal IReadOnlyList<float2[]> ZoningSperren;
+        /** Kacheln einer Outer zone, die CS2 nach dem Bauen verwirft (letztes Bild). */
+        internal int ZoningVerloren { get; private set; }
 
         internal void Draw(OverlayRenderSystem.Buffer nativeBuffer,
             IReadOnlyList<float3> polygon, bool closed, bool hasCursor,
@@ -237,7 +241,9 @@ namespace ParkingLotTool.Tools
 
             ZeichneZoning(buffer, cursor.y, zoningflaechen, zoningVorschau,
                 zoningHover, zoningAuswahl, zoningSeite, zoningstrassen,
-                closed ? polygon : null, randzoningachsen);
+                closed ? polygon : null, randzoningachsen, ZoningSperren,
+                out var verloren);
+            ZoningVerloren = verloren;
 
             /*
              * WELCHE SEITE ZONING HAT - direkt an der Strasse.

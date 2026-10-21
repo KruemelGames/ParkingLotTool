@@ -1,0 +1,114 @@
+{
+  "Quelle": "ParkingLotTool-prebuild-20261021-191355-528.json",
+  "PolygonXZ": [
+    {
+      "X": 1285.118408203125,
+      "Z": 4389.1865234375
+    },
+    {
+      "X": 1249.7301025390625,
+      "Z": 4507.52734375
+    },
+    {
+      "X": 1373.4791259765625,
+      "Z": 4544.5419921875
+    },
+    {
+      "X": 1408.8770751953125,
+      "Z": 4426.17041015625
+    }
+  ],
+  "Einstellungen": {
+    "Es": 1,
+    "Ai": 7,
+    "Cw": 3,
+    "Sl": 5.9,
+    "Sw": 3,
+    "Md": 2.5,
+    "Gassenbreite": 5.5,
+    "Cr": 33,
+    "Qk": true,
+    "Randstrassen": true,
+    "Auto": false,
+    "Angle": 0,
+    "AngleMode": "edge",
+    "Ausrichtwinkel": null,
+    "TeilflaechenAusrichtungen": [],
+    "Zoningflaechen": [
+      {
+        "Ecke": [
+          1305.7021484375,
+          4435.9306640625
+        ],
+        "Spalten": 5,
+        "Reihen": 3,
+        "Winkel": 16.634276363520115,
+        "Rand": 8,
+        "Aussentiefen": [
+          0,
+          40,
+          24,
+          0
+        ],
+        "Parzellen": 15,
+        "Flaeche": 960
+      }
+    ],
+    "Randzoning": [
+      {
+        "A": [
+          1285.118408203125,
+          4389.1865234375
+        ],
+        "B": [
+          1249.7301025390625,
+          4507.52734375
+        ]
+      },
+      {
+        "A": [
+          1249.7301025390625,
+          4507.52734375
+        ],
+        "B": [
+          1373.4791259765625,
+          4544.5419921875
+        ]
+      },
+      {
+        "A": [
+          1373.4791259765625,
+          4544.5419921875
+        ],
+        "B": [
+          1408.8770751953125,
+          4426.17041015625
+        ]
+      }
+    ],
+    "Zoningstrasse": "Alley",
+    "BusStops": [],
+    "Teilflaechenschnitte": [],
+    "Entrances": [
+      {
+        "Edge": 3,
+        "Along": 46.59522247314453,
+        "Corner": null,
+        "Art": "Gasse",
+        "AxisDirection": [
+          -0.28631967306137085,
+          0.958134114742279
+        ],
+        "AxisLength": 6.900001049041748
+      }
+    ],
+    "AutomaticEntrances": false,
+    "KantenVersatz": 0,
+    "Zellen": true,
+    "EineFlaeche": false,
+    "NoNotch": false,
+    "Single": false,
+    "NoHalf": false,
+    "Kurvenlaeufe": []
+  }
+}

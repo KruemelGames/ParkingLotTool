@@ -222,5 +222,8 @@ namespace ParkingLotTool.Tools
         internal static readonly Color ZoneGridSnapColor = new Color(0.40f, 0.83f, 0.80f, 0.92f);
         // Bauland ist eine Kategorie, kein Warnzustand: ruhiges Blauviolett.
         internal static readonly Color ZoningColor = new Color(0.62f, 0.69f, 0.91f, 0.8f);
+        // Kacheln, die CS2 nach dem Bauen verwirft: Gelb wie $hinweis im Panel
+        // ("hier passiert noch etwas"), nicht Rot - Rot heisst Loeschen/Stopp.
+        internal static readonly Color ZoningVerlorenColor = new Color(0.949f, 0.788f, 0.298f, 0.9f);
     }
 }

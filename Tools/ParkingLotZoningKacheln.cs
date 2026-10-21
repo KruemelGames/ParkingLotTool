@@ -280,9 +280,14 @@ namespace ParkingLotTool.Tools
                 if (!ZoningModus) return null;
 
                 var f = ZoningVorschau;
+                // Ueber die Kante hinaus gezogen: sagen, wo das Feld stehen bleibt.
+                if (f != null && _zoningZugVersuch != null)
+                    return T("zoningGeist.zugStopp", ("breite", f.Spalten), ("tiefe", f.Reihen));
                 if (f == null && _zoningHover >= 0
                     && _zoningHover < _zoningflaechen.Count)
                     f = _zoningflaechen[_zoningHover];
+                // Vor der gewaehlten Flaeche: was am Zeiger entstehen wuerde.
+                if (f == null && ZoningGeistSichtbar) return ZoningGeistText();
                 if (f == null && ZoningAuswahl >= 0
                     && ZoningAuswahl < _zoningflaechen.Count)
                     f = _zoningflaechen[ZoningAuswahl];

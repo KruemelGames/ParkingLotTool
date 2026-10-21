@@ -304,6 +304,7 @@ namespace ParkingLotTool.Geometry.Zellen
                         Winkel = vorgabe.Winkel - rahmenwinkel,
                         Rand = vorgabe.Rand,
                         Aussen = vorgabe.Aussen,
+                        Kuerzung = vorgabe.Kuerzung,
                     };
                 })
                 .ToArray();
@@ -584,6 +585,43 @@ namespace ParkingLotTool.Geometry.Zellen
             if (kurvenrand != null)
                 ErgaenzeKurvenplan(kurvenrand, randreihenplan,
                     teilflaechenlayout?.Buchtenzahl ?? gueltigeBuchten.Count, linienregister);
+
+            // Nur mit Aussenband: Buchten werden gegen die wirklich baubaren
+            // Kurse zugelassen, bevor eine Zelle ihre Buchtrolle erhaelt.
+            var buchtzugang = new Dictionary<int, bool>();
+            if (zoningLokal.Any(z => z.HatAussenband))
+            {
+                var zufahrtsplan = Zufahrtsbauer.Plane(lokalpunkte,
+                    ringlos == null ? lokaleZufahrten : Array.Empty<Zufahrtsvorgabe>(),
+                    einstellungen.Zufahrtstiefe, new Linienregister());
+                if (kurvenrand != null)
+                    foreach (var z in zufahrtsplan)
+                        z.Kontur = kurvenrand.Zufahrtskontur(z, randstrassenrand, randstrassenmittellinie);
+                var zugang = ParkingGeometry.ZellenZoningzugang(new Bauergebnis
+                {
+                    Kurvenrand = kurvenrand, Randstrassen = einstellungen.Randstrassen,
+                    Ringlos = ringlos, Rahmen = rahmen, Umrisslokal = lokalpunkte,
+                    Randzoningabschnitte = rzAbschnitte, Innenrand = innenrand,
+                    Randstrassenmittellinie = randstrassenmittellinie,
+                    Bandplan = teilflaechenlayout?.ErsterBandplan ?? bandplan,
+                    InnereStrassen = teilflaechenlayout?.Strassen ?? Array.Empty<Rasterstrassenplan>(),
+                    Querstrassenstuecke = teilflaechenlayout == null
+                        ? modulplanung.Querstrassenstuecke : Array.Empty<Querstrassenstueck>(),
+                    Zufahrtsbericht = new Zufahrtsbericht { Zufahrten = zufahrtsplan },
+                }, zoningLokal, randzoningLokal, einstellungen.Fahrgassenbreite, einstellungen.Querstrassenbreite);
+                foreach (var modul in modulplanung.Plaene)
+                foreach (var reihe in modul.Modul.Reihen)
+                foreach (var spalte in modul.Reihenplaene[reihe.Id].Spalten)
+                    if (gueltigeBuchten.TryGetValue((reihe.Id, spalte.Id), out var id))
+                        buchtzugang[id] = zugang(new[]
+                        {
+                            new Punkt(spalte.Anfang, reihe.Anfang), new Punkt(spalte.Ende, reihe.Anfang),
+                            new Punkt(spalte.Ende, reihe.Ende), new Punkt(spalte.Anfang, reihe.Ende),
+                        });
+                if (teilflaechenlayout != null)
+                    foreach (var b in teilflaechenlayout.Buchten) buchtzugang[b.Key] = zugang(b.Value);
+                foreach (var b in randreihenplan.Buchten) buchtzugang[b.Id] = zugang(b.Ecken);
+            }
 
             // Flaechenabschnitte an den Gassenachsen statt an jeder Material-
             // grenze: Nutzerpolygon 91 -> 18 Grasringe. Jede Achse wird selbst
@@ -1333,6 +1371,11 @@ namespace ParkingLotTool.Geometry.Zellen
                 int bodenabschnitt = kurvenrand == null ? -1
                     : kurvenrand.MaterialsektorBei(mitte);
                 if (bodenabschnitt >= 0) flaechenabschnitt = 50000 + bodenabschnitt;
+                if (buchtId.HasValue && buchtzugang.TryGetValue(buchtId.Value, out var erreichbar) && !erreichbar)
+                {
+                    // Der Reihenbelag bleibt; ohne Fahrbahn kein Stellplatz.
+                    buchtId = null;
+                }
                 var zellId = zellen.Count;
                 zellen.Add(new Zelle
                 {

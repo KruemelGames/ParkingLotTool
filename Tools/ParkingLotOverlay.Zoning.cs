@@ -20,8 +20,19 @@ namespace ParkingLotTool.Tools
             IReadOnlyList<(float2 A, float2 B, bool LinksAn, bool RechtsAn)>
                 strassen,
             IReadOnlyList<float3> umriss,
-            IReadOnlyList<(float2 A, float2 B)> randzoningstrassen)
+            IReadOnlyList<(float2 A, float2 B)> randzoningstrassen,
+            IReadOnlyList<float2[]> sperren,
+            out int verloren)
         {
+            var verlorenGesamt = 0;
+            // Hinter dem Umriss setzt CS2 nichts - fuer die Outer zone zaehlt
+            // er wie ein Hindernis (ZoningBandTiefen).
+            List<float2> umriss2 = null;
+            if (umriss != null && umriss.Count >= 3)
+            {
+                umriss2 = new List<float2>(umriss.Count);
+                foreach (var p in umriss) umriss2.Add(p.xz);
+            }
             var kante = (float)ParkingGeometry.Zoningparzelle;
             var strasse = (float)ParkingGeometry.ZoningStrassenbreite;
 
@@ -158,6 +169,23 @@ namespace ParkingLotTool.Tools
                         ParkingGeometry.ZoningAussenkacheln(f, 2),
                         ParkingGeometry.ZoningAussenkacheln(f, 3)));
                 var ringe = strassenringe + tiefste;
+
+                // Was CS2 von jeder Outer zone stehen laesst - je Seite die
+                // Tiefe jeder Spalte (ParkingLotZoningBand.ZoningBandTiefen).
+                var bandtiefen = new int[4][];
+                for (var s = 0; s < 4; s++)
+                    bandtiefen[s] = ParkingLotToolSystem.ZoningBandTiefen(f, s, sperren, umriss2);
+                bool Verloren(int i, int j)
+                {
+                    int s, c, r;
+                    if (j < -1 && i >= -1 && i <= f.Spalten) { s = 0; r = -1 - j; c = i + 1; }
+                    else if (i > f.Spalten && j >= -1 && j <= f.Reihen) { s = 1; r = i - f.Spalten; c = j + 1; }
+                    else if (j > f.Reihen && i >= -1 && i <= f.Spalten) { s = 2; r = j - f.Reihen; c = f.Spalten - i; }
+                    else if (i < -1 && j >= -1 && j <= f.Reihen) { s = 3; r = -1 - i; c = f.Reihen - j; }
+                    else return false;
+                    var t = bandtiefen[s];
+                    return c >= 0 && c < t.Length && r > t[c];
+                }
                 // Ein schmaler Spalt zwischen den Kacheln - so liest man sie
                 // als Kacheln und nicht als eine grosse Flaeche.
                 var fuellbreite = kante - 0.6f;
@@ -201,7 +229,10 @@ namespace ParkingLotTool.Tools
                      * gezogene Umriss. Was ausserhalb liegt, ist nicht mehr
                      * sein Parkplatz.
                      */
-                    if (!ZoningZelleImUmriss(umriss, zellmitte)) continue;
+                    // Ausnahme: Kacheln der Outer zone hinter dem Umriss werden
+                    // gelb gezeigt statt ausgeblendet - der Nutzer will alle
+                    // gewaehlten Reihen sehen, auch die, die nichts werden.
+                    if (!ZoningZelleImUmriss(umriss, zellmitte) && !Verloren(i, j)) continue;
                     if (ParkingLotToolSystem.ZoningZelleAufStrasse(
                             strassen, zellmitte)) continue;
                     /*
@@ -218,8 +249,10 @@ namespace ParkingLotTool.Tools
                         strassen, zellmitte, flaechen);
                     if (stand == ParkingLotToolSystem.Kachelstand.Keine) continue;
                     if (!ZuerstGesehen(zellmitte)) continue;
-                    var kachelfarbe = stand
-                        == ParkingLotToolSystem.Kachelstand.Unsicher
+                    var verlorenHier = Verloren(i, j);
+                    var kachelfarbe = verlorenHier
+                        ? Alpha(ZoningVerlorenColor, fuellung.a)
+                        : stand == ParkingLotToolSystem.Kachelstand.Unsicher
                         ? Alpha(fuellung, fuellung.a * 0.35f) : fuellung;
 
                     var von = zellmitte - laengs * (fuellbreite * 0.5f);
@@ -244,6 +277,18 @@ namespace ParkingLotTool.Tools
                     Linie(e1, e2, randfarbe, GridLineWidth);
                     Linie(e2, e3, randfarbe, GridLineWidth);
                     Linie(e3, e0, randfarbe, GridLineWidth);
+                    /*
+                     * GELBES X: "so kannst du bauen, aber diese Kachel setzt CS2
+                     * nicht" (Nutzer 21.10.) - eine Strasse liegt darauf, davor
+                     * oder sie bleibt allein zwischen zwei leeren Spalten.
+                     */
+                    if (verlorenHier)
+                    {
+                        verlorenGesamt++;
+                        var x = ZoningVerlorenColor;
+                        Linie(e0, e2, x, GridLineWidth * 2f);
+                        Linie(e1, e3, x, GridLineWidth * 2f);
+                    }
                 }
 
                 /*
@@ -488,6 +533,7 @@ namespace ParkingLotTool.Tools
                     }
                 }
             }
+            verloren = verlorenGesamt;
         }
 
         /** Wie viele Kachelreihen neben einer RZ-Strasse geprueft werden. */

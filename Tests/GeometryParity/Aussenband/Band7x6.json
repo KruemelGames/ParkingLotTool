@@ -1,0 +1,83 @@
+{
+  "Quelle": "ParkingLotTool-debug-20261021-165254-484.json",
+  "PolygonXZ": [
+    {
+      "X": 1290.958251953125,
+      "Z": 4390.9306640625
+    },
+    {
+      "X": 1256.27001953125,
+      "Z": 4506.9443359375
+    },
+    {
+      "X": 1374.47509765625,
+      "Z": 4540.17626953125
+    },
+    {
+      "X": 1403.171630859375,
+      "Z": 4424.458984375
+    }
+  ],
+  "Einstellungen": {
+    "Es": 1,
+    "Ai": 7,
+    "Cw": 3,
+    "Sl": 5.9,
+    "Sw": 3,
+    "Md": 2.5,
+    "Gassenbreite": 5.5,
+    "Cr": 33,
+    "Qk": true,
+    "Randstrassen": true,
+    "Auto": false,
+    "Angle": 0,
+    "AngleMode": "edge",
+    "Ausrichtwinkel": null,
+    "TeilflaechenAusrichtungen": [],
+    "Zoningflaechen": [
+      {
+        "Ecke": [
+          1363.0880126953125,
+          4496.587890625
+        ],
+        "Spalten": 7,
+        "Reihen": 6,
+        "Winkel": -163.365478515625,
+        "Rand": 8,
+        "Aussentiefen": [
+          0,
+          16,
+          0,
+          0
+        ],
+        "Parzellen": 42,
+        "Flaeche": 2688
+      }
+    ],
+    "Randzoning": [],
+    "Zoningstrasse": "Alley",
+    "BusStops": [],
+    "Teilflaechenschnitte": [],
+    "Entrances": [
+      {
+        "Edge": 3,
+        "Along": 39.80951690673828,
+        "Corner": null,
+        "Art": "Gasse",
+        "AxisDirection": [
+          -0.2706497311592102,
+          0.9626779556274414
+        ],
+        "AxisLength": 6.900914192199707
+      }
+    ],
+    "AutomaticEntrances": false,
+    "KantenVersatz": 0,
+    "Zellen": true,
+    "EineFlaeche": false,
+    "NoNotch": false,
+    "Single": false,
+    "NoHalf": false,
+    "Kurvenlaeufe": []
+  }
+}

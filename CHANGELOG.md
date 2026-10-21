@@ -1,16 +1,25 @@
 # Changelog
 
-## 1.1.0 — October 20, 2026
+## 1.1.0 — October 21, 2026
 
 - Addition: support for curved roads. Just click along a curved road and the parking lot follows.
 - Addition: real preview of surfaces, lamps and plants in a movable cut-out.
+- Addition: redesigned zoning tab: drag a patch or place it at a fixed size with saved presets (thanks Mxdanger).
+- Addition: zoning tiles the game won't build are shown yellow with an X, and the lot keeps its surfaces there.
 - Improvement: faster preview.
+- Improvement: aisles and paths end before an outer band, so the game zones the whole band.
+- Improvement: the zoning tab explains each tool with a small drawing.
+- Improvement: snapping toggles use the game's blue (thanks Mxdanger).
 - Improvement: an entrance with no road nearby gets an 8 m alley stub.
 - Improvement: the panel shows "Opening parking lot …" while a lot opens for editing.
 - Change: lots without any city road no longer ask to synchronize.
+- Change: "Zoning road sides" is now "Inner zoning"; the outer band depth is only active in Edge zoning and Inner zoning.
+- Change: an outer band is 2 to 6 tiles deep and can't go on all four sides of a patch.
 - Fix: lamps switch on at night and off in the morning (thanks NCC1701py).
 - Fix: no more gaps in perimeter roads.
 - Fix: large surfaces with many corners are no longer dropped.
+- Fix: edge zoning can't be placed where a city road runs right outside the line.
+- Fix: the ground under parcels can be switched off again.
 
 ## 1.0.12 — October 17, 2026
 

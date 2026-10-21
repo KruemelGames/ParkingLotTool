@@ -233,7 +233,8 @@ namespace ParkingLotTool.Geometry
                         Reihen = f.Reihen,
                         Winkel = f.Winkel,
                         Rand = f.Rand,
-                        Aussen = f.Aussentiefen,
+                        Aussen = f.AussenWirksam ?? f.Aussentiefen,
+                        Kuerzung = f.AussenKuerzung,
                     })
                     .ToArray(),
                 /*
@@ -595,7 +596,8 @@ namespace ParkingLotTool.Geometry
                         Reihen = f.Reihen,
                         Winkel = f.Winkel - rahmenwinkel,
                         Rand = f.Rand,
-                        Aussen = f.Aussentiefen,
+                        Aussen = f.AussenWirksam ?? f.Aussentiefen,
+                        Kuerzung = f.AussenKuerzung,
                     };
                 })
                 .ToArray();
@@ -1352,6 +1354,18 @@ namespace ParkingLotTool.Geometry
                         ZoningSchneidetWeg(rest.A, rest.B, bauland,
                             ausserhalb, 0.0);
                     reste = ausserhalb;
+                    // Das aeussere Bauland ist kein Anschluss zur Ringachse.
+                    //
+                    // Randstrasse und Zufahrt bleiben (Nutzer 21.10.): ragt ein
+                    // Band bis an sie heran, setzt CS2 die Reihen dahinter
+                    // nicht, und die Vorschau zeigt sie gelb mit X - "diese
+                    // Tiles werden nicht gebaut, weil kein Platz". Das Band
+                    // schneidet dem Parkplatz nicht seine Erschliessung weg.
+                    if (!string.Equals(kind, "perimeter", StringComparison.Ordinal)
+                        && !string.Equals(kind, "entrance", StringComparison.Ordinal))
+                        foreach (var z in bauland)
+                        foreach (var band in z.Aussenbauland())
+                            reste = ZoningOhneRechteck(reste, band);
                 }
 
                 /*
