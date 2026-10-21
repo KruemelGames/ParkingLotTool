@@ -1,22 +1,23 @@
-# Parking Lot Tool (Beta)
+# Parking Lot Tool
 
-A Cities: Skylines II mod that generates a complete, working parking lot inside
-any polygon you draw — bays, aisles, connecting roads, a perimeter road,
-markings and surfaces, with cars that actually park.
+A Cities: Skylines II mod that turns any shape you draw into a complete,
+working parking lot — bays, aisles, perimeter road, entrances, markings,
+surfaces, lamps and plants, with cars that actually park.
 
+**[Parking Lot Tool on Paradox Mods](https://mods.paradoxplaza.com/mods/161156/Windows)**
+· [Changelog](CHANGELOG.md)
+· [Forum thread](https://forum.paradoxplaza.com/forum/threads/mod-parking-lot-tool-discussion-feedback.1943010/)
 
 ## Video
 
-https://youtu.be/BGzduZI8sJ8
-
-## Reddit-post
-
-https://www.reddit.com/r/CitiesSkylines2/comments/1wi47hg/parking_lot_tool_test_release_out_now/
+[Parking Lot Tool Basics](https://www.youtube.com/watch?v=bITKYlYngp8&list=PLYhkG6JrJFEA)
+— and the rest of the playlist.
 
 ## Status
 
-Work in progress, and honest about it: it builds working parking lots, but it
-is not on the Workshop yet and things still break. Please Backup your save before using this mod. I will not be responsible if your save breaks.
+Released on Paradox Mods and updated regularly. A mod this size still meets
+cities and mod combinations nobody has tested, so please back up your save
+before you build your first lot.
 
 ## Reporting a problem
 
@@ -45,15 +46,31 @@ game objects:
 
 - **Parking bays** as decals that carry a working `ParkingLane` — cars really
   park there, it is not decoration.
-- **Aisles, connecting roads and a perimeter road** as invisible paths, so the
-  lot is drivable and connects to the road you drew next to.
-- **Two surfaces** — one for the driving area, one for everything in between —
-  both freely selectable from the game's surfaces, or switched off entirely if
-  you would rather paint the ground yourself.
-- **Entrances** you place by hand, snapped to an existing road.
+- **Aisles, cross roads and a perimeter road** as invisible paths, so the lot
+  is drivable. **Entrances** connect it to the road next to it: two-way, entry
+  and exit as separate ramps, pedestrian access, or a visible alley.
+- **Curved roads**: click along a curved road and the lot follows it.
+- **Surfaces** for the driving area, for everything in between and for the
+  ground under zoning parcels — any surface in the game, including asset mods,
+  or switched off. The surface can reach out to the road it connects to.
+- **Lamps, trees and bushes**, with a real preview of surfaces, lamps and
+  plants before you build.
+- **Zoning** inside the lot: drag patches or place them at a fixed size, ringed
+  by zoning roads. Edge zoning lets houses grow outward from the outline, and
+  Inner zoning sets each road side and an outer band. Tiles the game will not
+  build are shown in yellow with an X.
+- **Economy** like the vanilla lots: upkeep, parking fees and staff. It can be
+  switched off in the settings.
+- **Utilities**: water and power are routed through the lot automatically.
+- **Editing**: open a built lot again, change it, undo and redo.
+- **The Parking Lots list** shows every lot and offers sync and repair after an
+  update or a broken save.
+- Ten languages: English, German, French, Spanish, Brazilian Portuguese,
+  Polish, Russian, Japanese, Korean and Simplified Chinese.
 
 The whole lot has a single owner, so it can be selected and bulldozed as one
-thing.
+thing. Before you unsubscribe, use "Remove all PLT parking lots" in the mod
+settings.
 
 ## Requirements
 
@@ -64,10 +81,12 @@ them before you enable it.
 |---|---|
 | [Unified Icon Library](https://mods.paradoxplaza.com/mods/74417/Windows) | every icon in the panel comes from it |
 | [Asset Icon Library](https://mods.paradoxplaza.com/mods/79634/Windows) | the surface pictures in the surface picker |
+| [Find It](https://mods.paradoxplaza.com/mods/77240/Windows) | not used by PLT itself — Asset Icon Library needs it |
 
-Plus Cities: Skylines II itself, of course.
+Plus Cities: Skylines II itself, of course. Paradox Mods installs all three
+automatically when you subscribe.
 
-If the panel opens but icons show as white boxes, one of the two is missing.
+If the panel opens but icons show as white boxes, one of them is missing.
 
 **Harmony does not need installing.** The mod ships its own copy of
 `0Harmony.dll` and it lands in the mod folder on build. It is used to read the
