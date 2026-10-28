@@ -864,6 +864,7 @@
   "ui.waisenRepariertMeldung.other": "연결 끊긴 주차장 {n}개 복구됨",
   "ui.wegeAusserhalb": "일부 경로가 윤곽선 밖에 있습니다. 같은 형태와 설정으로 재건설해 복구합니다.",
   "ui.wegeKnoten": "한 점에 너무 많은 경로가 모입니다. 같은 형태와 설정으로 재건설해 복구합니다.",
+  "ui.wegeFehlen": "이 주차장은 경로를 잃어 차량과 보행자가 들어갈 수 없습니다. 같은 형태와 설정으로 재건설해 복구합니다.",
   "ui.wegwoerter.0": "가까움",
   "ui.wegwoerter.1": "보통",
   "ui.wegwoerter.2": "멂",

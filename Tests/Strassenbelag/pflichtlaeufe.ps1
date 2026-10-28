@@ -14,7 +14,8 @@ $mutationen = @(
     @{ Name='zu-schmal'; Quelle=$adapter; Alt='Zufahrtsgassenbreite = 8.0'; Neu='Zufahrtsgassenbreite = 5.5'; Prop='StrassenadapterQuelle' },
     @{ Name='kein-eigenes-material'; Quelle=$quelle; Alt='z.Material = Material.Strassenbelag;'; Neu='z.Material = Material.Asphalt;'; Prop='StrassenplanQuelle' },
     @{ Name='gassen-ignoriert'; Quelle=$adapter; Alt='s.Kind == "entrance"'; Neu='s.Kind == "nie"'; Prop='StrassenadapterQuelle' },
-    @{ Name='strasse-ohne-fahrbahn'; Quelle=$quelle; Alt='if (arten.Count == 0) return ringe;'; Neu='return ringe;'; Prop='StrassenplanQuelle' },
+    @{ Name='strasse-ohne-fahrbahn'; Quelle=$quelle; Alt='Strassenzelle(z) && arten.Contains(z.Art) || IstAutozufahrt(z)'; Neu='IstAutozufahrt(z)'; Prop='StrassenplanQuelle' },
+    @{ Name='zufahrt-ohne-fahrbahn'; Quelle=$quelle; Alt='Strassenzelle(z) && arten.Contains(z.Art) || IstAutozufahrt(z)'; Neu='Strassenzelle(z) && arten.Contains(z.Art)'; Prop='StrassenplanQuelle' },
     @{ Name='bruecke-ignoriert'; Quelle=$quelle; Alt='return !bruecken.Any(b => Geometrie.Enthaelt(b, mitte));'; Neu='return true;'; Prop='StrassenplanQuelle' },
     @{ Name='buchten-nicht-ausgenommen'; Quelle=$quelle; Alt='IstBucht(Zelle z) => z.BuchtId.HasValue || z.Art == Zellart.Bucht;'; Neu='IstBucht(Zelle z) => false;'; Prop='StrassenplanQuelle' }
 )
@@ -24,7 +25,7 @@ foreach ($m in $mutationen) {
     [IO.File]::WriteAllText($datei, $m.Quelle.Replace($m.Alt, $m.Neu), [Text.UTF8Encoding]::new($false))
     dotnet run -c Release --project $projekt "-p:$($m.Prop)=$datei" *> (Join-Path $ablage ($m.Name + '.log'))
     if ($LASTEXITCODE -eq 0) { throw "Gegenprobe faelschlich gruen: $($m.Name)" }
-    if (!(Select-String -LiteralPath (Join-Path $ablage ($m.Name + '.log')) -Pattern 'eigener Belag vorhanden|8-m-Alley abgedeckt|Lot201905 erzeugt den Strassenbelag|unsichtbare Strasse|einer Bucht|Bruecke:' -Quiet)) {
+    if (!(Select-String -LiteralPath (Join-Path $ablage ($m.Name + '.log')) -Pattern 'eigener Belag vorhanden|8-m-Alley abgedeckt|Lot201905 erzeugt den Strassenbelag|unsichtbare Strasse|einer Bucht|Bruecke:|Autozufahrt' -Quiet)) {
         throw "Gegenprobe ohne erwarteten geometrischen Befund: $($m.Name)"
     }
     Write-Output "Gegenprobe $($m.Name): erkannt"

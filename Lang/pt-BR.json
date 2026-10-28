@@ -864,6 +864,7 @@
   "ui.waisenRepariertMeldung.other": "{n} estacionamentos órfãos reparados",
   "ui.wegeAusserhalb": "Alguns caminhos deste estacionamento saem do contorno. O reparo o reconstrói com a mesma forma e configurações.",
   "ui.wegeKnoten": "Caminhos demais deste estacionamento se encontram em um único ponto. O reparo o reconstrói com a mesma forma e configurações.",
+  "ui.wegeFehlen": "Este estacionamento perdeu seus caminhos, e carros e pedestres não conseguem entrar. O reparo o reconstrói com a mesma forma e configurações.",
   "ui.wegwoerter.0": "curto",
   "ui.wegwoerter.1": "normal",
   "ui.wegwoerter.2": "longo",

@@ -864,6 +864,7 @@
   "ui.waisenRepariertMeldung.other": "駐車場{n}件の関連付けを修復",
   "ui.wegeAusserhalb": "一部の経路が駐車場の輪郭からはみ出しています。修復すると同じ形状・設定で再建します。",
   "ui.wegeKnoten": "1点に集まる経路が多すぎます。修復すると同じ形状・設定で再建します。",
+  "ui.wegeFehlen": "この駐車場は経路を失っており、車も歩行者も入れません。修復すると同じ形状・設定で再建します。",
   "ui.wegwoerter.0": "短い",
   "ui.wegwoerter.1": "標準",
   "ui.wegwoerter.2": "遠",

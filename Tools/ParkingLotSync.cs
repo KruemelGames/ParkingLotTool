@@ -538,6 +538,9 @@ namespace ParkingLotTool.Tools
                 }
                 if (a.Braucht(lot, traeger, teile))
                 {
+                    // Die Pruefung selbst kann ablehnen (Schritt 16: Bauzettel
+                    // passt nicht zum Bestand) - dann nichts anfassen.
+                    if (_gescheitert.Contains(lot)) return false;
                     if (a.Hintergrund && !World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>().KannNeubauen(lot,out var grund))
                     { MeldeBauplanFehlt(lot,grund); return false; }
                     ParkingLotSchrittmarke.Setze("Sync: Lot " + lot.Index
@@ -683,6 +686,10 @@ namespace ParkingLotTool.Tools
                 text.AppendLine("  lot " + lot.Index + " open, data level " + StandVon(lot));
             text.AppendLine();
             text.Append(World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>().Zustandsbericht());
+            text.AppendLine();
+            text.AppendLine("Path findings (repair list):");
+            text.Append(World.GetOrCreateSystemManaged<ParkingLotWegpruefungSystem>().Zustandsbericht());
+            text.AppendLine("Alley pre-build: " + World.GetOrCreateSystemManaged<ParkingLotGassenvorbauSystem>().Zustand);
             return text.ToString();
         }
 

@@ -864,6 +864,7 @@
   "ui.waisenRepariertMeldung.other": "{n} verwaiste Parkplätze repariert",
   "ui.wegeAusserhalb": "Einige Wege dieses Parkplatzes verlaufen außerhalb seines Umrisses. Reparieren baut ihn mit derselben Form und denselben Einstellungen neu.",
   "ui.wegeKnoten": "An einem Punkt treffen sich zu viele Wege dieses Parkplatzes. Reparieren baut ihn mit derselben Form und denselben Einstellungen neu.",
+  "ui.wegeFehlen": "Diesem Parkplatz fehlen seine Wege, Autos und Fußgänger kommen nicht hinein. Reparieren baut ihn mit derselben Form und denselben Einstellungen neu.",
   "ui.wegwoerter.0": "kurz",
   "ui.wegwoerter.1": "üblich",
   "ui.wegwoerter.2": "weit",

@@ -309,6 +309,9 @@ namespace ParkingLotTool
             // schaltet es ausserhalb davon ein und wieder aus.
             updateSystem.UpdateAt<ParkingLotFahrwegTauschWerkzeug>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAt<ParkingLotFahrwegTauschSystem>(SystemUpdatePhase.UIUpdate);
+            // Gassen mit Stadtteilung vor dem Neubau eines Parkplatzes ohne Wegenetz (28.10.).
+            updateSystem.UpdateAt<ParkingLotGassenvorbauWerkzeug>(SystemUpdatePhase.ToolUpdate);
+            updateSystem.UpdateAt<ParkingLotGassenvorbauSystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateAt<ParkingLotBestandsTauschWerkzeug>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAt<ParkingLotBestandsTauschSystem>(SystemUpdatePhase.UIUpdate);
             // Sync-Schritt 13: feste Flaechendefinitionen wie die Flaechenrettung

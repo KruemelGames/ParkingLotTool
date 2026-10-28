@@ -864,6 +864,7 @@
   "ui.waisenRepariertMeldung.other": "{n} parkings orphelins réparés",
   "ui.wegeAusserhalb": "Certains chemins de ce parking sortent de son contour. La réparation reconstruit le parking avec la même forme et les mêmes paramètres.",
   "ui.wegeKnoten": "Trop de chemins de ce parking se rejoignent au même point. La réparation reconstruit le parking avec la même forme et les mêmes paramètres.",
+  "ui.wegeFehlen": "Ce parking a perdu ses chemins : ni voitures ni piétons ne peuvent y entrer. La réparation reconstruit le parking avec la même forme et les mêmes paramètres.",
   "ui.wegwoerter.0": "court",
   "ui.wegwoerter.1": "habituel",
   "ui.wegwoerter.2": "loin",

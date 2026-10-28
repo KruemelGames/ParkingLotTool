@@ -58,8 +58,11 @@ namespace ParkingLotTool.Tools
         /** Mehr Wege an einem Knoten plant der Kern nicht (Kreuzung = 4). */
         private const int Hoechstgrad = 5;
 
-        /** 1 = Wege ausserhalb des Umrisses, 2 = zu viele Wege an einem Knoten. */
-        internal const int Ausserhalb = 1, Knoten = 2;
+        /**
+         * 1 = Wege ausserhalb des Umrisses, 2 = zu viele Wege an einem Knoten,
+         * 3 = gar kein Wegenetz (ParkingLotWaisenSystem `OhneWegenetz`, 28.10.).
+         */
+        internal const int Ausserhalb = 1, Knoten = 2, Fehlt = 3;
 
         private sealed class Stand
         {
@@ -68,6 +71,7 @@ namespace ParkingLotTool.Tools
             internal int Verdacht;
             internal bool Geprueft;
             internal int Befund;
+            internal bool OhneNetz;
         }
 
         private EntityQuery _lots;
@@ -78,6 +82,8 @@ namespace ParkingLotTool.Tools
         private readonly HashSet<string> _bleibt = new(StringComparer.Ordinal);
         /** Nach dem Bau veraendert - einmal gemeldet, dass die Automatik sie auslaesst. */
         private readonly HashSet<string> _autoAusgelassen = new(StringComparer.Ordinal);
+        /** Schon gemeldet: Parkplatz ohne Wegenetz. */
+        private readonly HashSet<string> _gemeldetOhneNetz = new(StringComparer.Ordinal);
         private Entity _probeLot = Entity.Null;
         private long _probeAbdruck;
         private Task<int> _probe;
@@ -119,6 +125,7 @@ namespace ParkingLotTool.Tools
             _repariert.Clear();
             _bleibt.Clear();
             _autoAusgelassen.Clear();
+            _gemeldetOhneNetz.Clear();
             _probe = null;
             _probeLot = Entity.Null;
             _stand = -1;
@@ -147,14 +154,34 @@ namespace ParkingLotTool.Tools
         {
             using var lots = _lots.ToEntityArray(Allocator.Temp);
             var lebend = new HashSet<Entity>();
+            var waisen = World.GetOrCreateSystemManaged<ParkingLotWaisenSystem>();
             foreach (var lot in lots)
             {
                 lebend.Add(lot);
                 var wege = WegeDesTraegers(lot);
                 var abdruck = Abdruck(wege);
-                if (_staende.TryGetValue(lot, out var alt) && alt.Abdruck == abdruck) continue;
-                var neu = new Stand { Abdruck = abdruck };
+                var ohne = waisen.OhneWegenetz.Contains(lot);
+                if (_staende.TryGetValue(lot, out var alt) && alt.Abdruck == abdruck && alt.OhneNetz == ohne) continue;
+                var neu = new Stand { Abdruck = abdruck, OhneNetz = ohne };
                 _staende[lot] = neu;
+                /*
+                 * KEIN WEGENETZ (28.10.2026): "Parking Lot (192 spaces)" hatte
+                 * seit Anfang Oktober keinen einzigen Weg, nur Zoning, Flaechen
+                 * und Bauzettel. Eine Gegenprobe braucht es nicht - es gibt
+                 * nichts, was der Kern anders planen koennte.
+                 */
+                if (ohne)
+                {
+                    if (ParkingLotBaukontextLeser.TryRead(EntityManager, lot, out var k0, out _, melden: false))
+                        neu.LotId = ParkingLotToolSystem.LotId(k0.Punkte.Select(p => p.xz).ToArray());
+                    neu.Geprueft = true;
+                    if (neu.LotId != null && _bleibt.Contains(neu.LotId)) continue;
+                    neu.Befund = Fehlt;
+                    if (neu.LotId == null || _gemeldetOhneNetz.Add(neu.LotId))
+                        Mod.log.Info("PLT-Wegpruefung: Lot " + lot.Index + " (" + neu.LotId + ") hat kein Wegenetz - "
+                            + "Reparieren wird angeboten (erst Gassen mit Stadtteilung, dann Neubau im Hintergrund).");
+                    continue;
+                }
                 if (wege.Count == 0) continue;
                 if (!ParkingLotBaukontextLeser.TryRead(EntityManager, lot, out var kontext, out _, melden: false))
                     continue;
@@ -162,8 +189,11 @@ namespace ParkingLotTool.Tools
                 neu.LotId = ParkingLotToolSystem.LotId(umriss);
                 neu.Verdacht = Auffaellig(wege, umriss, out var grund);
                 if (neu.Verdacht != 0)
+                {
                     Mod.log.Info("PLT-Wegpruefung: Lot " + lot.Index + " (" + neu.LotId + ") auffaellig - "
                         + grund + ". Gegenprobe mit dem laufenden Kern folgt.");
+                    if (neu.Verdacht == Ausserhalb) BeschreibeAusserhalb(lot, umriss, lots);
+                }
             }
             foreach (var weg in _staende.Keys.Where(k => !lebend.Contains(k)).ToArray())
                 _staende.Remove(weg);
@@ -191,6 +221,68 @@ namespace ParkingLotTool.Tools
             return wege;
         }
 
+        /*
+         * WAS LIEGT DA AUSSERHALB? (28.10.2026) Nach der Reparatur von
+         * "Parking Lot (192 spaces)" meldete die Pruefung "19 Weg(e) bis
+         * 211,8 m ausserhalb" - Wege dieses Parkplatzes koennen das nicht sein.
+         * Steht ein fremder Weg im SubNet des Traegers, nimmt CS2 ihn beim
+         * Abriss mit. Deshalb je Ausreisser: Prefab, Besitzerkette und der
+         * Parkplatz, in dessen Umriss er liegt.
+         */
+        private void BeschreibeAusserhalb(Entity lot, float2[] umriss, NativeArray<Entity> lots)
+        {
+            var traeger = EntityManager.GetComponentData<ParkingLotCarrierReference>(lot).Carrier;
+            if (!EntityManager.HasBuffer<Game.Net.SubNet>(traeger)) return;
+            var prefabs = World.GetOrCreateSystemManaged<Game.Prefabs.PrefabSystem>();
+            var umrisse = new List<(Entity Lot, float2[] Ring)>();
+            foreach (var l in lots)
+                if (ParkingLotBaukontextLeser.TryRead(EntityManager, l, out var k, out _, melden: false))
+                    umrisse.Add((l, k.Punkte.Select(p => p.xz).ToArray()));
+            var funde = new List<(float Abstand, string Text)>();
+            var puffer = EntityManager.GetBuffer<Game.Net.SubNet>(traeger, true);
+            for (var i = 0; i < puffer.Length; i++)
+            {
+                var e = puffer[i].m_SubNet;
+                if (!EntityManager.Exists(e) || EntityManager.HasComponent<Deleted>(e)
+                    || !EntityManager.HasComponent<Game.Net.Curve>(e) || IstStrasse(e)) continue;
+                var c = EntityManager.GetComponentData<Game.Net.Curve>(e).m_Bezier;
+                var mitte = Colossal.Mathematics.MathUtils.Position(c, 0.5f).xz;
+                var weit = math.max(AbstandAusserhalb(c.a.xz, umriss), math.max(AbstandAusserhalb(mitte, umriss), AbstandAusserhalb(c.d.xz, umriss)));
+                if (weit <= Grenze) continue;
+                var name = EntityManager.HasComponent<Game.Prefabs.PrefabRef>(e)
+                    && prefabs.TryGetPrefab<Game.Prefabs.PrefabBase>(EntityManager.GetComponentData<Game.Prefabs.PrefabRef>(e).m_Prefab, out var p)
+                    && p != null ? p.name : "?";
+                var kette = new List<string>();
+                var o = e;
+                for (var n = 0; n < 4 && EntityManager.HasComponent<Owner>(o); n++)
+                {
+                    o = EntityManager.GetComponentData<Owner>(o).m_Owner;
+                    if (o == Entity.Null) break;
+                    kette.Add(o.Index.ToString());
+                }
+                var inLot = "keinem";
+                foreach (var (l, ring) in umrisse) if (AbstandAusserhalb(mitte, ring) == 0) { inLot = l.Index.ToString(); break; }
+                funde.Add((weit, $"{e.Index}:{e.Version} '{name}' {weit:F1} m, Owner {(kette.Count > 0 ? string.Join(">", kette) : "keiner")}, "
+                    + $"Mitte ({mitte.x:F1}/{mitte.y:F1}) im Umriss von Lot {inLot}"));
+            }
+            Mod.log.Info($"PLT-Wegpruefung: Lot {lot.Index}, Traeger {traeger.Index}: {funde.Count} Ausreisser im SubNet - "
+                + string.Join(" | ", funde.OrderByDescending(f => f.Abstand).Take(6).Select(f => f.Text)) + ".");
+        }
+
+        /** Fuer den Sync-Bericht: jeder Parkplatz mit Befund. */
+        internal string Zustandsbericht()
+        {
+            var text = new System.Text.StringBuilder();
+            var vorbau = World.GetOrCreateSystemManaged<ParkingLotGassenvorbauSystem>();
+            foreach (var paar in _staende.Where(p => p.Value.Befund != 0))
+                text.AppendLine("  lot " + paar.Key.Index + " (" + paar.Value.LotId + "): finding "
+                    + (paar.Value.Befund == Fehlt ? "no path network" : paar.Value.Befund == Knoten ? "too many paths at one node" : "paths outside")
+                    + (paar.Value.LotId != null && _repariert.Contains(paar.Value.LotId) ? ", repair started" : "")
+                    + (paar.Value.LotId != null && _bleibt.Contains(paar.Value.LotId) ? ", still wrong after repair" : "")
+                    + (vorbau.Offen(paar.Key) ? ", alley pre-build queued" : ""));
+            return text.Length == 0 ? "  none\n" : text.ToString();
+        }
+
         /**
          * GASSEN UND ZONINGSTRASSEN ZAEHLEN NICHT (Spielerlog 11.10.2026).
          *
@@ -202,9 +294,21 @@ namespace ParkingLotTool.Tools
          * Geprueft werden nur unsere unsichtbaren Wege (keine RoadData).
          */
         private bool IstStrasse(Entity kante)
-            => EntityManager.HasComponent<Game.Prefabs.PrefabRef>(kante)
-               && EntityManager.HasComponent<Game.Prefabs.RoadData>(
-                   EntityManager.GetComponentData<Game.Prefabs.PrefabRef>(kante).m_Prefab);
+        {
+            if (!EntityManager.HasComponent<Game.Prefabs.PrefabRef>(kante)) return false;
+            var prefab = EntityManager.GetComponentData<Game.Prefabs.PrefabRef>(kante).m_Prefab;
+            /*
+             * VERSORGUNGSLEITUNGEN AUCH NICHT (28.10.2026): Nach der Reparatur
+             * von "Parking Lot (192 spaces)" meldete die Pruefung "19 Weg(e)
+             * bis 211,8 m ausserhalb" - die Messung zeigte Low-voltage Ground
+             * Cable und Combined Small Pipe des eigenen Traegers, die zum
+             * Stadtnetz laufen. Nach jedem Bau mit langer Leitung haette die
+             * Liste sonst "Reparieren" angeboten.
+             */
+            return EntityManager.HasComponent<Game.Prefabs.RoadData>(prefab)
+                || EntityManager.HasComponent<Game.Prefabs.ElectricityConnectionData>(prefab)
+                || EntityManager.HasComponent<Game.Prefabs.WaterPipeConnectionData>(prefab);
+        }
 
         /** Unabhaengig von der Reihenfolge; aendert sich, sobald ein Weg wandert. */
         private static long Abdruck(List<(float2 A, float2 B)> wege)
@@ -366,7 +470,8 @@ namespace ParkingLotTool.Tools
             foreach (var paar in _staende.Where(p => p.Value.Befund != 0).ToArray())
             {
                 if (paar.Value.LotId == null || _repariert.Contains(paar.Value.LotId)) continue;
-                if (werkzeug.WegeSeitBauVeraendert(paar.Key))
+                // Ohne Wegenetz IST die Veraenderung der Schaden - die Automatik darf.
+                if (paar.Value.Befund != Fehlt && werkzeug.WegeSeitBauVeraendert(paar.Key))
                 {
                     if (_autoAusgelassen.Add(paar.Value.LotId))
                         Mod.log.Info("PLT-Wegpruefung: Lot " + paar.Key.Index + " wurde nach dem Bau veraendert - "
@@ -386,6 +491,33 @@ namespace ParkingLotTool.Tools
             var sync = World.GetOrCreateSystemManaged<ParkingLotSyncSystem>();
             if (sync.SyncLaeuft) { sync.SperrtWegenArbeit("Reparieren"); return; }
             if (s.LotId != null) _repariert.Add(s.LotId);
+            if (s.Befund == Fehlt)
+            {
+                /*
+                 * Der Hintergrund-Neubau darf keine Stadtstrasse teilen. Die
+                 * Gassen, die das brauchen, baut deshalb zuerst der
+                 * Gassenvorbau wie das Edit; danach findet der Neubau sie als
+                 * unveraenderte Gassen. Scheitert der Vorbau, bleibt der
+                 * Parkplatz, wie er ist.
+                 */
+                var vorbau = World.GetOrCreateSystemManaged<ParkingLotGassenvorbauSystem>();
+                if (vorbau.Offen(lot)) return;
+                Mod.log.Info("PLT-Wegpruefung: Lot " + lot.Index + " (" + s.LotId + ") ohne Wegenetz: "
+                    + "erst Gassen mit Stadtteilung, dann Neubau im Hintergrund.");
+                vorbau.Einreihen(lot, (ok, text) =>
+                {
+                    if (!ok)
+                    {
+                        Mod.log.Warn("PLT-Wegpruefung: Lot " + lot.Index + " - Gassenvorbau gescheitert (" + text
+                            + "); kein Neubau, Parkplatz unveraendert.");
+                        return;
+                    }
+                    if (!EntityManager.Exists(lot) || EntityManager.HasComponent<Deleted>(lot)) return;
+                    Mod.log.Info("PLT-Wegpruefung: Lot " + lot.Index + " (" + s.LotId + ") wird im Hintergrund neu gebaut.");
+                    World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>().Einreihen(lot);
+                });
+                return;
+            }
             Mod.log.Info("PLT-Wegpruefung: Lot " + lot.Index + " (" + s.LotId + ") wird im Hintergrund neu gebaut.");
             hintergrund.Einreihen(lot);
         }

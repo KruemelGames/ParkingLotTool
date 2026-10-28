@@ -84,6 +84,38 @@ internal static partial class StrassenbelagTests
         var road = (float2[][])eigenschaft.GetValue(l);
         var gasse = name.Contains("/gasse/");
         Pruefe(gasse ? road.Length > 0 : road.Length == 0, name + " eigener Belag vorhanden");
+        /*
+         * AUTOZUFAHRTEN (Nutzer 28.10.: "Surface to road" reicht nicht mehr bis
+         * zur Strasse): ihr Gang im Lot gehoert zur Fahrbahn mit Strassen-Ebene,
+         * in die Tools die Vorflaeche einsetzt - und liegt nur auf Asphalt.
+         */
+        var fahrbahnAlle = l.FahrbahnSurface ?? Array.Empty<float2[]>();
+        // Bezug ist die Achse jeder Autozufahrt im Netz, 1,5 m zu jeder Seite,
+        // vom Umriss bis 4 m vor ihren inneren Knoten (dort beginnt die Strasse).
+        // Die Vierecke aus EntranceQuad taugen nicht: sie zaehlen Fusswegzellen
+        // auf Gras ohne Zugangsart als "Zufahrt" (gemessen 1/False/ohne/Zufahrt).
+        var quads = l.EntranceQuad ?? Array.Empty<float2[]>();
+        var autos = l.NetLine.Where(n => n.Kind == "entrance" && !Zufahrtsarten.IstGasse(n.Art)
+            && n.Art != Zufahrtsart.Fussweg).ToArray();
+        var autoproben = 0;
+        foreach (var n in autos)
+        {
+            var u = math.normalize(n.B - n.A);
+            var q = new float2(-u.y, u.x);
+            var laenge = math.distance(n.A, n.B);
+            for (float t = .3f; t < laenge - 4f; t += .37f)
+            for (float quer = -1.5f; quer <= 1.5f; quer += .25f)
+            {
+                var p = n.A + u * t + q * quer;
+                if (!Innen(polygon, p) || Abstand(polygon, p) < .1f) continue;
+                autoproben++;
+                Pruefe(fahrbahnAlle.Any(f => Innen(f, p)), name + " Autozufahrt in der Fahrbahn " + p);
+                Pruefe(l.AsphaltSurface.Any(a => Innen(a, p)), name + " Autozufahrt: Asphalt darunter bleibt " + p);
+            }
+        }
+        if (autos.Any(n => math.distance(n.A, n.B) > 5f)) Pruefe(autoproben > 0, name + " Autozufahrt: Proben vorhanden");
+        foreach (var r in fahrbahnAlle)
+            Pruefe(Cs2Triangulierung.Dreiecke(r) > 0, name + " Autozufahrt: CS2 nimmt Fahrbahn an");
         if (!gasse) return;
         if (name.EndsWith("/einheitlich", StringComparison.Ordinal))
         {
@@ -257,7 +289,7 @@ internal static partial class StrassenbelagTests
                 // Randstrasse aus den Linien kommen und an den Enden bis 0,31 m
                 // zu kurz sind (gemessen 1/False am Parkplatzrand).
                 Pruefe(l.AsphaltSurface.Any(a => Innen(a, p) || Abstand(a, p) < .02f)
-                    && strassen.Any(a => Innen(a, p) || Abstand(a, p) < .5f),
+                    && strassen.Concat(quads).Any(a => Innen(a, p) || Abstand(a, p) < .5f),
                     name + " Fahrbahn nur ueber Strassenasphalt " + p);
                 Pruefe(!l.Bay.Any(a => Innen(a, p) && Abstand(a, p) > .05f)
                     && !l.GrassSurface.Any(a => Innen(a, p) && Abstand(a, p) > .05f)

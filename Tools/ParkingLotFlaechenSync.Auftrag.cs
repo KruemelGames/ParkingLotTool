@@ -18,9 +18,14 @@ namespace ParkingLotTool.Tools
             internal int Neu;
             internal int Seit;
             internal double Verloren;
+            // Schritt 16: Flaechen neu aufbauen (ParkingLotFlaechenSync.Neuaufbau.cs).
+            internal bool Neuaufbau;
+            internal bool Angelegt;
+            internal Entity Besitzer;
+            internal System.Threading.Tasks.Task<ParkingLayout> Rechnung;
         }
 
-        private readonly List<(Entity Lot, Auftragskennung Kennung)> _warteschlange = new();
+        private readonly List<(Entity Lot, Auftragskennung Kennung, bool Neuaufbau)> _warteschlange = new();
         private Lauf _lauf;
 
         internal int Offen => _warteschlange.Count + (_lauf != null ? 1 : 0);
@@ -28,20 +33,24 @@ namespace ParkingLotTool.Tools
 
         private ParkingLotAuftragsSystem Auftraege => World.GetOrCreateSystemManaged<ParkingLotAuftragsSystem>();
 
-        internal bool Einreihen(Entity lot, Auftragskennung id)
+        internal bool Einreihen(Entity lot, Auftragskennung id) => Einreihen(lot, id, false);
+
+        internal bool EinreihenNeuaufbau(Entity lot, Auftragskennung id) => Einreihen(lot, id, true);
+
+        private bool Einreihen(Entity lot, Auftragskennung id, bool neuaufbau)
         {
             if (_warteschlange.Any(a => a.Lot == lot) || _lauf?.Lot == lot) return false;
             if (!Auftraege.Annehmen(id, lot, Auftragsarbeiter.Flaechen)) return false;
-            _warteschlange.Add((lot, id));
+            _warteschlange.Add((lot, id, neuaufbau));
             Diagnose(() => Mod.log.Info($"PLT-Flaechensync: Lot {lot.Index} eingereiht; offen {Offen}."));
             return true;
         }
 
-        private bool Beginne(Entity lot, Auftragskennung id, int bild)
+        private bool Beginne(Entity lot, Auftragskennung id, int bild, bool neuaufbau)
         {
             if (!Auftraege.Register.Lies(id, out var a) || a.Lot != lot
                 || a.Arbeiter != Auftragsarbeiter.Flaechen || !Auftraege.Starte(id)) return false;
-            _lauf = new Lauf { Lot = lot, Kennung = id, Seit = bild };
+            _lauf = new Lauf { Lot = lot, Kennung = id, Seit = bild, Neuaufbau = neuaufbau };
             return true;
         }
 

@@ -52,6 +52,12 @@ namespace ParkingLotTool.Tools
             Bushalte = bushalte;
         }
 
+        /** Dieselbe Kopie mit dem Namen der Zoningstrasse - fuer Bauzettel ohne ihn. */
+        internal ParkingLotBaukontext MitZoningstrasse(string name)
+            => new ParkingLotBaukontext(AltesLot, Zettel, Punkte, Zugaenge, Ausrichtungen,
+                Schnitte, Zonen, FlaecheStrasse, FlaecheDekoration, FlaecheZoning, Vegetationszettel, name,
+                Seitenplan, Randzoning, Bushalte) { Kurven = Kurven };
+
         /** Dieselbe Kopie mit anderen Flaechen - fuer die Reparatur fehlender Assets. */
         internal ParkingLotBaukontext MitFlaechen(string strasse, string deko, string zoning)
             => new ParkingLotBaukontext(AltesLot, Zettel, Punkte, Zugaenge, Ausrichtungen,

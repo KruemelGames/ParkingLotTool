@@ -864,6 +864,7 @@
   "ui.waisenRepariertMeldung.other": "已修复{n}个失联停车场",
   "ui.wegeAusserhalb": "此停车场的部分路径超出轮廓。修复会以相同形状和设置重建。",
   "ui.wegeKnoten": "此停车场在同一点交汇的路径过多。修复会以相同形状和设置重建。",
+  "ui.wegeFehlen": "此停车场的路径已丢失，车辆和行人都无法进入。修复会以相同形状和设置重建。",
   "ui.wegwoerter.0": "较短",
   "ui.wegwoerter.1": "正常",
   "ui.wegwoerter.2": "远",

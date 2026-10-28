@@ -94,6 +94,8 @@ namespace ParkingLotTool.Tools
             // Reparatur fehlender Assets: dieselben Bauwerte, nur andere Flaechen/Arten.
             var ersatz = ParkingLotFehlendeAssetsSystem.ErsatzFuer(lot);
             if (ersatz != null) _baukontext = _baukontext.MitFlaechen(ersatz.Strasse, ersatz.Deko, ersatz.Zoning);
+            if (string.IsNullOrEmpty(_baukontext.Zoningstrasse))
+                _baukontext = _baukontext.MitZoningstrasse(ZoningstrasseAusBestand(lot));
             _definitionsmodus = ParkingLotDefinitionsmodus.Permanent;
             _definitionsauftrag = auftrag;
             _editLot = lot; _lotOwner = _lotCarrier = Entity.Null;
@@ -145,6 +147,9 @@ namespace ParkingLotTool.Tools
             });
         }
 
+        /** Was HintergrundPrefabs zuletzt vermisst hat - fuer die Fehlermeldung. */
+        internal string HintergrundPrefabGrund { get; private set; } = "";
+
         internal bool HintergrundPrefabs(ParkingLayout layout)
         {
             _areaPreviewLayout = layout;
@@ -157,13 +162,23 @@ namespace ParkingLotTool.Tools
                 if (!_vorbereitungportion.Fertig) return false;
             }
             SyncAreaPreview(prefabsOnly: true);
-            bool netze = ResolvePathPrefabs();
+            bool wege = ResolvePathPrefabs(), zoning = true, gassen = true;
             foreach (var stueck in layout.NetLine)
             {
-                if (stueck.Kind == "zoning") netze &= TryResolveZoningRoad(_areaPreviewSettings.Zoningstrasse, out _);
-                if (Zufahrtsarten.IstGasse(stueck.Art)) netze &= TryResolveZufahrtsgasse(stueck.Art, out _);
+                if (stueck.Kind == "zoning") zoning &= TryResolveZoningRoad(_areaPreviewSettings.Zoningstrasse, out _);
+                if (Zufahrtsarten.IstGasse(stueck.Art)) gassen &= TryResolveZufahrtsgasse(stueck.Art, out _);
             }
-            return _areaPreviewPrefabsReady && netze && TryResolveLotOwnerPrefab(out _);
+            bool lot = TryResolveLotOwnerPrefab(out _);
+            // Zaehler vor Theorie (28.10.): "Bauprefabs nicht bereit" an
+            // "Parking Lot (323 spaces)", zweimal, ohne zu sagen welches.
+            var fehlt = new List<string>();
+            if (!_areaPreviewPrefabsReady) fehlt.Add("Flaechen (" + _areaTransferNote + ")");
+            if (!wege) fehlt.Add("Wege");
+            if (!zoning) fehlt.Add("Zoningstrasse '" + _areaPreviewSettings.Zoningstrasse + "'");
+            if (!gassen) fehlt.Add("Gassenklon");
+            if (!lot) fehlt.Add("Lot-Prefab");
+            HintergrundPrefabGrund = string.Join(", ", fehlt);
+            return fehlt.Count == 0;
         }
 
         private HintergrundPortion _abrissportion;

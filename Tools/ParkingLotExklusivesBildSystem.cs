@@ -81,11 +81,10 @@ namespace ParkingLotTool.Tools
             if (_anlegen == null) return;
             var spiel = GameManager.instance;
             var bereit = spiel != null && !spiel.isGameLoading && spiel.gameMode.IsGame();
-            // CalculateEntityCount synchronisiert die Query-Abhaengigkeiten.
+            // ToEntityArray synchronisiert die Query-Abhaengigkeiten.
             // Ausstehende Tool-Schreiber sind am vorgesehenen Wiedergabepunkt
             // bereits in der Welt; EndFrame-Schreiber laufen vor ToolSystem.
-            var definitionen = _definitionen.CalculateEntityCount();
-            var temps = _temps.CalculateEntityCount();
+            ZaehleEntwuerfe(out var definitionen, out var temps);
             if (!ExklusivesBaubild.DarfAnlegen(definitionen, temps, bereit))
             {
                 var werkzeug = World.GetExistingSystemManaged<ParkingLotToolSystem>();
@@ -120,7 +119,7 @@ namespace ParkingLotTool.Tools
             // ueberlappenden Neubau beim naechsten Update erzeugen.
             Verwerfe(lot);
             var gemeldet = anlegen(ParkingLotDefinitionsmodus.Permanent);
-            var anzahl = _definitionen.CalculateEntityCount();
+            ZaehleEntwuerfe(out var anzahl, out _);
             if (gemeldet != anzahl) Melde($"Definitionszaehler: Erzeuger {gemeldet}, ECS {anzahl}; ECS ist massgeblich.");
             if (_wartendeBilder > 0) Melde($"exklusives Bild Lot {lot.Index}: fremde Definitionen 0, "
                 + $"Temps 0; {anzahl} Definitionen angelegt; "
@@ -132,6 +131,40 @@ namespace ParkingLotTool.Tools
             base.OnGameLoaded(context);
             // Delegates enthalten alte Entity-IDs und werden nie geladen.
             Verwerfe(_lot);
+        }
+
+        /*
+         * EINE AUSWAHL-HERVORHEBUNG IST KEIN ENTWURF (Sync haengt, 28.10.).
+         *
+         * Steht die Maus mit dem Standardwerkzeug ueber einem Parkplatz, legt
+         * Vanilla in jedem Bild eine Definition mit nur `Select`, ohne Prefab,
+         * fuer die Hervorhebung an - samt Temp mit `TempFlags.Select`. Sie baut
+         * nichts und wird nie uebernommen. Das Tor zaehlte sie als fremden
+         * Entwurf: Lot 499407 wartete ueber 2000 Bilder ("Torbelegung ... Flags
+         * Select, Prefab (kein)"), weil man beim Sync auf seine Parkplaetze
+         * schaut. Unsere Definitionen sind fest (Permanent) und brauchen kein
+         * Apply, das sich mit ihr mischen koennte. Jeder echte Entwurf zaehlt
+         * weiter: mit Prefab, oder ein Temp mit Erzeugen/Loeschen/Aendern.
+         */
+        private void ZaehleEntwuerfe(out int definitionen, out int temps)
+        {
+            definitionen = temps = 0;
+            using (var alle = _definitionen.ToEntityArray(Allocator.Temp))
+                foreach (var e in alle)
+                {
+                    var d = EntityManager.GetComponentData<CreationDefinition>(e);
+                    if (d.m_Flags == CreationFlags.Select && d.m_Prefab == Entity.Null) continue;
+                    definitionen++;
+                }
+            const TempFlags aenderung = TempFlags.Create | TempFlags.Delete | TempFlags.Modify
+                | TempFlags.Replace | TempFlags.Upgrade | TempFlags.Duplicate | TempFlags.Combine;
+            using (var alle = _temps.ToEntityArray(Allocator.Temp))
+                foreach (var e in alle)
+                {
+                    var f = EntityManager.GetComponentData<Temp>(e).m_Flags;
+                    if ((f & TempFlags.Select) != 0 && (f & aenderung) == 0) continue;
+                    temps++;
+                }
         }
 
         private static void Melde(string text)

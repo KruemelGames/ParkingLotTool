@@ -77,12 +77,15 @@ namespace ParkingLotTool.Geometry
         {
             var gassen = strassen.Where(s => s.Kind == "entrance"
                 && Zufahrtsarten.IstGasse(s.Art)).Select(s => (s.A, s.B)).ToArray();
-            if (gassen.Length == 0) return bau;
             var bruecken = (settings.Brueckengrundrisse ?? Array.Empty<float2[]>())
                 .Where(r => r != null && r.Length >= 3)
                 .Select(r => r.Select(p => bau.Rahmen.NachLokal(new Punkt(p.x, p.y))).ToArray())
                 .ToArray();
-            return Strassenbelagplan.Baue(bau, gassen, bruecken);
+            if (gassen.Length > 0) return Strassenbelagplan.Baue(bau, gassen, bruecken);
+            // Ohne Alley nichts zu schneiden: nur die Fahrbahn der Autozufahrten,
+            // aus den unveraenderten Zellen (Asphalt und Gras bleiben bitgleich).
+            bau.Fahrbahnringe = Strassenbelagplan.Fahrbahnen(gassen, bau.Zellen, bau.Flaechen, bau.Rahmen, bruecken);
+            return bau;
         }
     }
 }

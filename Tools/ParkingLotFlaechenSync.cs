@@ -116,6 +116,12 @@ namespace ParkingLotTool.Tools
             if (_lauf != null)
             {
                 if (!LaufGueltig()) { _lauf = null; return; }
+                if (_lauf.Neuaufbau)
+                {
+                    try { PflegeNeuaufbau(bild); }
+                    catch (System.Exception x) { BeendeNachAusnahme("Neuaufbau", x); }
+                    return;
+                }
                 if (bild - _lauf.Seit < Pruefabstand) return;
                 try { Pruefe(bild); }
                 catch (System.Exception x) { BeendeNachAusnahme("Pruefung", x); }
@@ -133,10 +139,10 @@ namespace ParkingLotTool.Tools
                 && plt.ArbeitetGerade) return;
             if (World.GetOrCreateSystemManaged<ParkingLotBestandsTauschSystem>().WerkzeugLaeuft
                 || World.GetOrCreateSystemManaged<ParkingLotFahrwegTauschSystem>().WerkzeugLaeuft) return;
-            var (lot, id) = _warteschlange[0];
+            var (lot, id, neuaufbau) = _warteschlange[0];
             _warteschlange.RemoveAt(0);
-            if (!Beginne(lot, id, bild)) return;
-            try { Starte(lot, bild); }
+            if (!Beginne(lot, id, bild, neuaufbau)) return;
+            try { if (neuaufbau) StarteNeuaufbau(lot); else Starte(lot, bild); }
             catch (System.Exception x) { BeendeNachAusnahme("Start", x); }
         }
 

@@ -920,6 +920,7 @@
   "ui.waisenRepariertMeldung.many": "Naprawiono {n} parkingów bez PLT",
   "ui.wegeAusserhalb": "Część dróg wychodzi poza obrys. Naprawa przebuduje parking z tym samym kształtem i ustawieniami.",
   "ui.wegeKnoten": "Zbyt wiele dróg spotyka się w jednym punkcie. Naprawa przebuduje parking z tym samym kształtem i ustawieniami.",
+  "ui.wegeFehlen": "Parking utracił swoje drogi, więc nie wjadą samochody ani nie wejdą piesi. Naprawa przebuduje parking z tym samym kształtem i ustawieniami.",
   "ui.wegwoerter.0": "blisko",
   "ui.wegwoerter.1": "zwykle",
   "ui.wegwoerter.2": "daleko",

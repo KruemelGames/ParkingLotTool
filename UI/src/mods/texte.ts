@@ -493,6 +493,7 @@ const baue = (d: Record<string, string>) => {
     tooltipGithub: tx("tooltipGithub"),
     wegeAusserhalb: tx("wegeAusserhalb"),
     wegeKnoten: tx("wegeKnoten"),
+    wegeFehlen: tx("wegeFehlen"),
     tooltipWegeReparieren: tx("tooltipWegeReparieren"),
     ohneBauzettel: tx("ohneBauzettel"),
     bauplanTitel: tx("bauplanTitel"),

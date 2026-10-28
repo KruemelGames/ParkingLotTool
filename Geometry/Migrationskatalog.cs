@@ -98,6 +98,12 @@ namespace ParkingLotTool.Geometry
                 "Wie Schritt 14, fuer Parkplaetze, die ihn schon als erledigt fuehren (2026-10-12): "
                 + "Neubau und Edit setzten den Stand vor der Anbindung; scheiterte sie, galt der "
                 + "Parkplatz trotzdem als aktuell. Ohne Strasse findet niemand zur Arbeit (0/4)."),
+            new Schritt(16, "FlaechenNeuAufbauen",
+                "Parkplaetze mit Autozufahrt oder Alley bekommen ihre Flaechen neu, genau wie ein Neubau sie "
+                + "heute plant (2026-10-28, Issue #22): seit dem Bruecken-Fix zeichnet der Asphalt nur aufs "
+                + "Gelaende; Alley, Vorflaeche und Knoten der Randstrasse brauchen die Fahrbahn-Ebene mit "
+                + "Strassen-Ebene. Nur Flaechen, Wege bleiben; die alten fallen erst, wenn CS2 alle neuen "
+                + "angenommen hat. Wege und Objekte bleiben unberuehrt."),
         };
 
         /** Der Stand, den ein heute gebauter Parkplatz hat. */

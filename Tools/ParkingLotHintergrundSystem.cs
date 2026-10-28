@@ -247,7 +247,8 @@ namespace ParkingLotTool.Tools
                     {
                         if (!a.Bauer.HintergrundVorbereitungFertig) return;
                         if (a.PrefabSeit < 0) a.PrefabSeit = bild;
-                        if (bild-a.PrefabSeit > 120) throw new InvalidOperationException("Bauprefabs nach 120 Bildern nicht bereit; kein eigener Abriss.");
+                        if (bild-a.PrefabSeit > 120) throw new InvalidOperationException("Bauprefabs nach 120 Bildern nicht bereit ("
+                            + a.Bauer.HintergrundPrefabGrund + "); kein eigener Abriss.");
                         return;
                     }
                     Exklusiv(a, () =>

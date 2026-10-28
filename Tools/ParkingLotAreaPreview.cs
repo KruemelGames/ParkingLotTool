@@ -270,6 +270,11 @@ namespace ParkingLotTool.Tools
             {
                 if (belagAn)
                     netz.FuegeFlaechen(layout.AsphaltSurface, belagfarbe, 0f);
+                // Die Alley hat seit Issue #22 einen eigenen Belag; ohne ihn
+                // stand in der Vorschau dort ein Loch. Die Fahrbahn liegt
+                // ueber dem Asphalt und fehlt hier also nicht.
+                if (belagAn)
+                    netz.FuegeFlaechen(layout.StrassenbelagSurface, belagfarbe, 0f);
                 if (vorflaecheAn)
                     netz.FuegeFlaechen(_vorflaechenSicht, belagfarbe, 0f);
                 if (belagAn)

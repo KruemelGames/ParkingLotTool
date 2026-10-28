@@ -864,6 +864,7 @@
   "ui.waisenRepariertMeldung.other": "{n} orphaned parking lots repaired",
   "ui.wegeAusserhalb": "Some paths of this lot run outside its outline. Repair rebuilds the lot with the same shape and settings.",
   "ui.wegeKnoten": "Too many paths of this lot meet at one point. Repair rebuilds the lot with the same shape and settings.",
+  "ui.wegeFehlen": "This lot has lost its paths, so cars and pedestrians cannot get in. Repair rebuilds the lot with the same shape and settings.",
   "ui.wegwoerter.0": "short",
   "ui.wegwoerter.1": "usual",
   "ui.wegwoerter.2": "far",

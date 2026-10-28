@@ -45,14 +45,6 @@ namespace ParkingLotTool.Tools
     public sealed partial class ParkingLotToolSystem
     {
         /**
-         * Wieviel vor der Fahrbahn der Belag einer Gasse endet, in Metern.
-         *
-         * Dort liegt die Bordsteinrampe der Einmuendung, und die soll
-         * sichtbar bleiben.
-         */
-        private const float GassenbelagAbstand = 2f;
-
-        /**
          * Laenger als das ist keine Vorflaeche mehr plausibel. Beim Vanilla-
          * Querschnitt liegen zwischen Grundstueck und Asphalt hoechstens
          * Gehweg (bis 7 m) und Gruenstreifen.
@@ -208,6 +200,17 @@ namespace ParkingLotTool.Tools
                 // Regel 4: der Fussweg bekommt keine Vorflaeche.
                 if (segment.Art == Zufahrtsart.Fussweg) continue;
                 /*
+                 * DIE GASSE AUCH NICHT MEHR (Nutzer 28.10.): "die Alleyflaeche
+                 * nur vorne am Eingang etwas nach hinten ziehen, maximal bis
+                 * zum Polygonrand - beide Seiten". Seit Issue #22 liegt unter
+                 * der Alley ihr eigener Belag mit Strassen-Ebene; die
+                 * Vorflaeche davor malte ueber Bordstein und Rampe der
+                 * Einmuendung. Ohne sie endet der Belag am Umriss, auch an
+                 * einer schraegen Kante auf beiden Seiten, weil er aus den
+                 * Zellen innerhalb des Umrisses besteht.
+                 */
+                if (Zufahrtsarten.IstGasse(segment.Art)) continue;
+                /*
                  * DIE GASSE BEKOMMT IHRE VORFLAECHE ZURUECK - und diesmal
                  * ist sie der Zweck, nicht der Notbehelf.
                  *
@@ -238,21 +241,12 @@ namespace ParkingLotTool.Tools
                  */
                 var breite = (float)new Entrance { Art = segment.Art }
                     .Breite(settings?.Ai ?? 6.0, settings?.Gassenbreite ?? 0);
-                /*
-                 * DIE GASSE: VOLLE BREITE, ECKEN VOM STRASSENBELAG (Issue #22).
-                 *
-                 * Im Lot liegt unter der Alley jetzt der Strassenbelag in der
-                 * gemessenen Alley-Breite, nicht mehr der 5,5-m-Zufahrtsbelag.
-                 * Die Vorflaeche schliesst daran an und wird mit ihm
-                 * verschmolzen (VerschmelzeVorflaechen) - sonst stand vorne
-                 * eine schmalere Einzelflaeche (Nutzer 27.10.).
-                 */
-                var gasse = Zufahrtsarten.IstGasse(segment.Art);
-                if (gasse) breite = (float)ParkingGeometry.Zufahrtsgassenbreite;
                 if (breite <= 0f) continue;
 
+                // Die Ecken rasten auf der Fahrbahn ein - in sie wird die
+                // Vorflaeche eingesetzt (28.10.); der Asphalt als Rueckfall.
                 var ring = VorflaecheFuer(segment, breite, aufweitung,
-                    gasse ? layout.StrassenbelagSurface : layout.AsphaltSurface,
+                    (layout.FahrbahnSurface ?? Array.Empty<float2[]>()).Concat(layout.AsphaltSurface).ToArray(),
                     out var aussenteil, out var innenkante, out var meldung);
                 if (ring != null)
                 {
@@ -521,27 +515,6 @@ namespace ParkingLotTool.Tools
             {
                 meldung = $"{Art(segment.Art)}: Zufahrt laeuft parallel zur Strasse.";
                 return null;
-            }
-
-            /*
-             * DIE GASSE HOERT VOR DER STRASSE AUF.
-             *
-             * Eine gewoehnliche Zufahrt soll bis an den Asphalt reichen -
-             * das ist der Zweck der Vorflaeche. Bei der Gasse liegt zwischen
-             * Belag und Fahrbahn aber die Bordsteinrampe der Einmuendung,
-             * und die soll man sehen. Ansage des Nutzers am 2026-09-18:
-             * "nicht bis ganz an die Strasse ziehen, 2 m vorher aufhoeren,
-             * damit die Flaeche zwischen der Curb ist."
-             *
-             * Abgezogen wird vom Strahlparameter, und der ist in Metern -
-             * `richtung` ist normiert.
-             */
-            // Gilt fuer JEDE Gasse. Vor der einspurigen steht dieselbe
-            // Bordsteinrampe wie vor der zweispurigen.
-            if (Zufahrtsarten.IstGasse(segment.Art))
-            {
-                tLinks = math.max(0f, tLinks - GassenbelagAbstand);
-                tRechts = math.max(0f, tRechts - GassenbelagAbstand);
             }
 
             // Der Teil INNERHALB des Polygons zaehlt nicht als Laenge - sonst

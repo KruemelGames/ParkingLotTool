@@ -864,6 +864,7 @@
   "ui.waisenRepariertMeldung.other": "{n} estacionamientos huérfanos reparados",
   "ui.wegeAusserhalb": "Algunos caminos salen del contorno. Reparar reconstruye el estacionamiento con la misma forma y ajustes.",
   "ui.wegeKnoten": "Demasiados caminos de este estacionamiento confluyen en un punto. Reparar lo reconstruye con la misma forma y ajustes.",
+  "ui.wegeFehlen": "Este estacionamiento ha perdido sus caminos y no entran coches ni peatones. Reparar lo reconstruye con la misma forma y ajustes.",
   "ui.wegwoerter.0": "corto",
   "ui.wegwoerter.1": "normal",
   "ui.wegwoerter.2": "largo",

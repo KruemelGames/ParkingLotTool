@@ -36,15 +36,13 @@ namespace ParkingLotTool.Tools
     {
         private const float KnotenGleich = 0.02f;
 
-        private float2[][] RichteFahrbahnAus(float2[][] fahrbahnen,
-            ref float2[][] asphalt, ref float2[][] verschmolzen)
+        private float2[][] RichteFahrbahnAus(float2[][] fahrbahnen, ref float2[][] asphalt)
         {
             if (fahrbahnen == null || fahrbahnen.Length == 0) return Array.Empty<float2[]>();
-            // Kopien: die Ringe des Layouts selbst bleiben unveraendert.
+            // Kopie: die Ringe des Layouts selbst bleiben unveraendert.
             asphalt = (float2[][])(asphalt ?? Array.Empty<float2[]>()).Clone();
-            verschmolzen = (float2[][])(verschmolzen ?? Array.Empty<float2[]>()).Clone();
-            var gruppen = new[] { asphalt, verschmolzen };
-            var benutzt = new bool[2][] { new bool[asphalt.Length], new bool[verschmolzen.Length] };
+            var gruppen = new[] { asphalt };
+            var benutzt = new bool[1][] { new bool[asphalt.Length] };
             var ergebnis = new float2[fahrbahnen.Length][];
             var ausgerichtet = 0;
             var richtungBehalten = 0;
@@ -56,7 +54,7 @@ namespace ParkingLotTool.Tools
                 // Erst nur Kanten in der Anfangsrichtung des Rings, dann jede.
                 var gefunden = false;
                 for (var durchgang = 0; durchgang < 2 && !gefunden; durchgang++)
-                for (var g = 0; g < 2 && !gefunden; g++)
+                for (var g = 0; g < gruppen.Length && !gefunden; g++)
                 for (var r = 0; r < gruppen[g].Length && !gefunden; r++)
                 {
                     var s = gruppen[g][r];
@@ -130,7 +128,7 @@ namespace ParkingLotTool.Tools
          * Eine Bruecke, die erst NACH dem Parkplatz entsteht, kennt er erst
          * nach Edit oder Neubau.
          */
-        private float2[][] Brueckengrundrisse(float2[] umriss)
+        internal float2[][] Brueckengrundrisse(float2[] umriss)
         {
             if (umriss == null || umriss.Length < 3 || _netSearchSystem == null)
                 return Array.Empty<float2[]>();

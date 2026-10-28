@@ -173,6 +173,20 @@ namespace ParkingLotTool.Tools
                     Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().Einreihen(lot, id),
                     Tausch = true,
                 },
+                /*
+                 * Schritt 16: dieselben Flaechen wie ein Neubau - nur die
+                 * Flaechen, Wege bleiben (ParkingLotFlaechenSync.Neuaufbau.cs).
+                 * Aufgeklebte Zusatzflaechen waren falsch ("einfach ne neue
+                 * Flaeche hinzugekommen"), der volle Hintergrund-Neubau
+                 * scheiterte an den Wegen (Lot 499405 gesperrt, 28.10.).
+                 */
+                ["FlaechenNeuAufbauen"] = new Ausfuehrung
+                {
+                    Braucht = (lot, traeger, teile) => BrauchtStrassenEbene(lot),
+                    Arbeiter = Auftragsarbeiter.Flaechen,
+                    Uebergabe = (lot, id) => World.GetOrCreateSystemManaged<ParkingLotFlaechenSyncSystem>().EinreihenNeuaufbau(lot, id),
+                    Tausch = true,
+                },
                 ["BegleiterAnStrasse"] = new Ausfuehrung
                 {
                     Braucht = (lot, traeger, teile) => World.GetOrCreateSystemManaged<ParkingLotBuildingEconomySystem>().BrauchtStrassensync(lot),

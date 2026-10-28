@@ -168,6 +168,7 @@ namespace ParkingLotTool.Tools
             weiter = anfang;
             var uhr = System.Diagnostics.Stopwatch.StartNew();
             if (!em.HasBuffer<ParkingLotRueckwegkurs>(lot)) return 0;
+            if (anfang == 0) UebernimmFehlendeErhaltene(em, lot);
             if (anfang == 0) ErsetzeToteAnschlussknoten(em, lot);
             // Strukturveraenderungen invalidieren DynamicBuffer: ZUERST kopieren.
             var kopie = em.GetBuffer<ParkingLotRueckwegkurs>(lot, true).ToNativeArray(Allocator.Temp);
@@ -246,8 +247,12 @@ namespace ParkingLotTool.Tools
             if (!em.Exists(lot) || !em.HasBuffer<ParkingLotRueckwegkurs>(lot)) yield break;
             ParkingLotRueckwegkurs[] kurse;
             using (var a = em.GetBuffer<ParkingLotRueckwegkurs>(lot,true).ToNativeArray(Allocator.Temp)) kurse = a.ToArray();
-            var eigeneKanten = EigeneKanten(em,kurse);
+            ParkingLotErhaltenerKurs[] bleibt = Array.Empty<ParkingLotErhaltenerKurs>();
+            if (em.HasBuffer<ParkingLotErhaltenerKurs>(lot))
+                using (var a = em.GetBuffer<ParkingLotErhaltenerKurs>(lot,true).ToNativeArray(Allocator.Temp)) bleibt = a.ToArray();
+            var eigeneKanten = EigeneKanten(em,MitErhaltenen(kurse,bleibt));
             var benutzt = new HashSet<Entity>();
+            foreach (var r in bleibt) if (ParkingLotNetzerhalt.Pruefe(em,r.Bestand)) benutzt.Add(r.Bestand.Kante);
             int index = -1, fehlmeldungen = 0;
             foreach (var gespeichert in kurse)
             {
@@ -291,19 +296,20 @@ namespace ParkingLotTool.Tools
                 }
                 lauf.Ist++;
             }
-            if (em.HasBuffer<ParkingLotErhaltenerKurs>(lot))
+            if (bleibt.Length > 0)
             {
-                ParkingLotErhaltenerKurs[] bleibt;
-                using (var a = em.GetBuffer<ParkingLotErhaltenerKurs>(lot,true).ToNativeArray(Allocator.Temp)) bleibt = a.ToArray();
-                int erhalten = 0;
+                int erhalten = 0, nachLage = 0;
                 foreach (var r in bleibt)
                 {
                     lauf.Soll++;
                     if (ParkingLotNetzerhalt.Pruefe(em,r.Bestand)) { lauf.Ist++; erhalten++; }
-                    else if (diagnose) Melde($"Rueckweg ERHALTEN FEHLT: Originalkante {r.Bestand.Kante}, Prefab {r.Bestand.Prefab}, Knoten {r.Bestand.Start}/{r.Bestand.Ende}; 0 Neubau dieser Kante.");
+                    // Von CS2 geteilt oder neu verbunden: dieselbe Lage zaehlt
+                    // wie bei jedem neu gebauten Kurs.
+                    else if (FindeKurs(em,eigeneKanten,Ersatzkurs(em,r.Bestand,out _),benutzt,out _) != null) { lauf.Ist++; nachLage++; }
+                    else if (diagnose) Melde($"Rueckweg ERHALTEN FEHLT: Originalkante {r.Bestand.Kante}, Prefab {r.Bestand.Prefab}, Knoten {r.Bestand.Start}/{r.Bestand.Ende}; weder Entity noch Lage, nicht nachbaubar.");
                     yield return 0;
                 }
-                Melde($"Rueckweg: erhaltene Originalkanten {erhalten}/{bleibt.Length}, 0 Definitionen dafuer.");
+                Melde($"Rueckweg: erhaltene Originalkanten {erhalten}/{bleibt.Length}, nach Lage wiedergefunden {nachLage}.");
             }
             lauf.Richtig = lauf.Ist == lauf.Soll;
         }
@@ -331,6 +337,104 @@ namespace ParkingLotTool.Tools
             { grund = $"Originalknoten verschieden: Ist {start}/{ende}, Soll {alt.Start}/{alt.Ende}"; return null; }
             foreach (var p in teile) benutzt.Add(p.Kante);
             grund = "vollstaendig"; return teile;
+        }
+
+        private static ParkingLotRueckwegkurs[] MitErhaltenen(ParkingLotRueckwegkurs[] kurse, ParkingLotErhaltenerKurs[] bleibt)
+        {
+            var alle = new ParkingLotRueckwegkurs[kurse.Length + bleibt.Length];
+            kurse.CopyTo(alle,0);
+            for (int i = 0; i < bleibt.Length; i++) alle[kurse.Length + i] = bleibt[i].Bestand;
+            return alle;
+        }
+
+        /*
+         * STEHENGEBLIEBENE KANTEN, DIE TROTZDEM FEHLEN (28.10.2026).
+         *
+         * Unveraenderte Kurse (Zoning, Gassen, Fusswege) baut der Neubau nicht
+         * neu; der Schnappschuss merkt sie nur mit ihrer Entity. Endet ein
+         * neuer Kurs auf so einer Kante, teilt CS2 sie - danach liegen dort
+         * neue Entities, und nach dem Zuruecknehmen eine neue oder keine.
+         * Lot 499405 am 28.10.: Fussweg-Eingang "erhalten 17/18", der
+         * Rueckweg meldete drei Kanten "ERHALTEN FEHLT", baute keine nach, und
+         * der Parkplatz blieb gesperrt, mit Loch. Genau so ein Rest - Wege
+         * weg, Zoning, Flaechen und Bauzettel da - ist "Parking Lot (192
+         * spaces)" seit Anfang Oktober.
+         *
+         * Jetzt: liegt die Kante nach Lage noch da, auch in Stuecken, zaehlt
+         * sie. Fehlt sie wirklich, wird sie ein Rueckwegkurs wie jede
+         * abgerissene Kante; ein toter Knoten wird nach Lage ersetzt oder frei
+         * angelegt. Offen bleibt nur eine STRASSE ohne ihren Knoten: frei
+         * angelegt laege eine Gasse ueber der Stadtstrasse statt an ihr.
+         */
+        private static void UebernimmFehlendeErhaltene(EntityManager em, Entity lot)
+        {
+            if (!em.HasBuffer<ParkingLotErhaltenerKurs>(lot)) return;
+            ParkingLotErhaltenerKurs[] bleibt;
+            using (var a = em.GetBuffer<ParkingLotErhaltenerKurs>(lot,true).ToNativeArray(Allocator.Temp)) bleibt = a.ToArray();
+            if (bleibt.Length == 0) return;
+            ParkingLotRueckwegkurs[] kurse;
+            using (var a = em.GetBuffer<ParkingLotRueckwegkurs>(lot,true).ToNativeArray(Allocator.Temp)) kurse = a.ToArray();
+            var eigeneKanten = EigeneKanten(em,MitErhaltenen(kurse,bleibt));
+            var benutzt = new HashSet<Entity>();
+            foreach (var r in bleibt) if (ParkingLotNetzerhalt.Pruefe(em,r.Bestand)) benutzt.Add(r.Bestand.Kante);
+            var behalten = new List<ParkingLotErhaltenerKurs>();
+            var nachbau = new List<ParkingLotRueckwegkurs>();
+            int nachLage = 0, offen = 0;
+            foreach (var r in bleibt)
+            {
+                if (ParkingLotNetzerhalt.Pruefe(em,r.Bestand)) { behalten.Add(r); continue; }
+                var ersatz = Ersatzkurs(em,r.Bestand,out bool baubar);
+                if (FindeKurs(em,eigeneKanten,ersatz,benutzt,out _) != null) { behalten.Add(r); nachLage++; continue; }
+                if (!baubar) { behalten.Add(r); offen++; continue; }
+                ersatz.PrefabName = ParkingLotPrefabname.Von(em,ersatz.Prefab);
+                nachbau.Add(ersatz);
+            }
+            if (nachbau.Count == 0 && nachLage == 0 && offen == 0) return;
+            var puffer = em.GetBuffer<ParkingLotErhaltenerKurs>(lot);
+            puffer.Clear();
+            foreach (var r in behalten) puffer.Add(r);
+            var rueckweg = em.GetBuffer<ParkingLotRueckwegkurs>(lot);
+            foreach (var k in nachbau) rueckweg.Add(k);
+            Melde($"Rueckweg Lot {lot.Index}: von {bleibt.Length} erhaltenen Kanten {bleibt.Length - nachbau.Count - nachLage - offen} unveraendert, "
+                + $"{nachLage} nach Lage wiedergefunden, {nachbau.Count} fehlen und werden nachgebaut, "
+                + $"{offen} Strasse(n) ohne ihren Knoten bleiben offen.");
+        }
+
+        /** Ein erhaltener Kurs als Rueckwegkurs: lebende Knoten, tote nach Lage ersetzt oder frei. */
+        private static ParkingLotRueckwegkurs Ersatzkurs(EntityManager em, ParkingLotRueckwegkurs alt, out bool baubar)
+        {
+            bool strasse = em.Exists(alt.Prefab) && em.HasComponent<RoadData>(alt.Prefab);
+            bool ok = Lebt(em,alt.Besitzer) && em.Exists(alt.Prefab);
+            Entity Knoten(Entity n, float3 lage)
+            {
+                if (Lebt(em,n)) return n;
+                var ersatz = LebenderKnoten(em,lage,alt.Prefab);
+                if (ersatz == Entity.Null && strasse) ok = false;
+                return ersatz;
+            }
+            alt.Start = Knoten(alt.Start,alt.Kurs.m_StartPosition.m_Position);
+            alt.Ende = Knoten(alt.Ende,alt.Kurs.m_EndPosition.m_Position);
+            alt.Kurs.m_StartPosition.m_Entity = alt.Start;
+            alt.Kurs.m_EndPosition.m_Entity = alt.Ende;
+            baubar = ok;
+            return Originalkurs(em,alt);
+        }
+
+        /** Genau ein anschliessbarer lebender Knoten in 5 cm, sonst Entity.Null. */
+        private static Entity LebenderKnoten(EntityManager em, float3 lage, Entity prefab)
+        {
+            using var q = em.CreateEntityQuery(ComponentType.ReadOnly<Game.Net.Node>(), ComponentType.ReadOnly<PrefabRef>(),
+                ComponentType.Exclude<Deleted>(), ComponentType.Exclude<Temp>());
+            using var alle = q.ToEntityArray(Allocator.Temp);
+            Entity treffer = Entity.Null;
+            foreach (var n in alle)
+            {
+                if (math.distance(em.GetComponentData<Game.Net.Node>(n).m_Position, lage) > .05f) continue;
+                if (!KannAnschliessen(em, prefab, n)) continue;
+                if (treffer != Entity.Null) return Entity.Null;
+                treffer = n;
+            }
+            return treffer;
         }
 
         private static List<Entity> EigeneKanten(EntityManager em, ParkingLotRueckwegkurs[] kurse)

@@ -57,7 +57,7 @@ const BAUZETTEL_FELD = WAISE_FELD + 1;
 const SYNC_FELD = BAUZETTEL_FELD + 1;
 /** Namen der Flaechen und Pflanzen aus nicht geladenen Mods, leer wenn alles da ist. */
 const FEHLT_FELD = SYNC_FELD + 1;
-/** Falsch verlegte Wege (Issue #10): 0 = in Ordnung, 1 = ausserhalb des Umrisses, 2 = zu viele an einem Knoten. */
+/** Wegebefund: 0 = in Ordnung, 1 = ausserhalb des Umrisses, 2 = zu viele an einem Knoten (Issue #10), 3 = kein Wegenetz. */
 const WEGE_FELD = FEHLT_FELD + 1;
 
 /** Ab so vielen Proben traut sich eine Kachel eine Aussage zu. */
@@ -422,7 +422,7 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
           <>
             <div className={`${styles.listeHinweis} ${styles.listeHinweisMangel}`}>
               <img src={icon("ExclamationMark")} />
-              <div>{platz.wege === 2 ? t.wegeKnoten : t.wegeAusserhalb}</div>
+              <div>{platz.wege === 3 ? t.wegeFehlen : platz.wege === 2 ? t.wegeKnoten : t.wegeAusserhalb}</div>
             </div>
             <div className={styles.listeSyncZeile}>
               <TooltipKnopf text={t.tooltipWegeReparieren}

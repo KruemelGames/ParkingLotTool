@@ -455,7 +455,7 @@ namespace ParkingLotTool.Tools
                     .Append('\t').Append(_sync != null && _sync.BrauchtSync(lot) ? 1 : 0)
                     // Feld 22: Assets aus nicht geladenen Mods, leer wenn alles da ist.
                     .Append('\t').Append(Saeubere(_fehlend?.Text(lot) ?? string.Empty))
-                    // Feld 23: falsch verlegte Wege, 0 = in Ordnung, 1 = ausserhalb, 2 = Knoten.
+                    // Feld 23: Wegebefund, 0 = in Ordnung, 1 = ausserhalb, 2 = Knoten, 3 = kein Wegenetz.
                     .Append('\t').Append(_wege?.Befund(lot) ?? 0);
             }
             SchreibeWaisen();

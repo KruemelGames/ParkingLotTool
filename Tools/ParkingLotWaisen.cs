@@ -83,6 +83,7 @@ namespace ParkingLotTool.Tools
         protected override void OnUpdate()
         {
             AutomatischWeiter();
+            PruefeNachDemLaden();
         }
 
         [Preserve]
@@ -99,6 +100,10 @@ namespace ParkingLotTool.Tools
             _grund.Clear();
             OhneBauzettel.Clear();
             _gescheitert.Clear();
+            _herrenlosProbe.Clear();
+            _wegebestandLots.Clear();
+            OhneWegenetz.Clear();
+            _bilderSeitLaden = 0;
             _autoOffen = false;
             if (mode != GameMode.Game) return;
             ParkingLotSchrittmarke.Setze("Laden: Waisen-Bestandsaufnahme beginnt");
@@ -180,6 +185,8 @@ namespace ParkingLotTool.Tools
                 + Halbwaisen.Count + " halb; " + traeger.Count
                 + " Traeger, davon " + HerrenloseTraeger.Count
                 + " herrenlos.");
+            _wegebestandLots.AddRange(lots);
+            if (HerrenloseTraeger.Count > 0) BeschreibeLotTraeger(lots);
             if (Waisen.Count == 0 && Halbwaisen.Count == 0
                 && HerrenloseTraeger.Count == 0)
             {
@@ -228,6 +235,7 @@ namespace ParkingLotTool.Tools
                     + " SubNet=" + Puffer<Game.Net.SubNet>(t)
                     + " Kinder[Flaechen/Kanten/Knoten/Objekte/sonst]="
                     + Zeile(z) + ".");
+                BeschreibeHerrenlos(t, lots);
             }
             Mod.log.Info("PLT-Waisen: Aufnahme in " + uhr.ElapsedMilliseconds
                 + " ms; " + Bauplaene.Count + " von " + (Waisen.Count + Halbwaisen.Count)

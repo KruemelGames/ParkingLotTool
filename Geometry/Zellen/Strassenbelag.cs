@@ -32,6 +32,22 @@ namespace ParkingLotTool.Geometry.Zellen
          * ueber die Strasse; ein aufgeklebtes Kreuzungsstueck, das an einer
          * Ecke der Randstrasse auch noch wegfiel.
          */
+        /*
+         * DIE ZUFAHRTSGASSE EINER AUTOZUFAHRT GEHOERT AUCH DAZU (Nutzer 28.10.:
+         * "Surface to road" legt die Flaeche bei Entrance, Exit und Entry nicht
+         * mehr bis zur Strasse). Die Vorflaeche wird nahtlos in einen Ring
+         * eingesetzt; war das der Asphalt, zeichnete sie seit Issue #22 nur
+         * noch aufs Gelaende und endete vor Gehweg und Bordstein (Strassenmesh).
+         * Jetzt traegt die Fahrbahn den Gang von der Polygonkante bis zur
+         * Strasse im Lot, und Tools setzt die Vorflaeche in DIESEN Ring ein.
+         */
+        private static bool IstAutozufahrt(Zelle z)
+        {
+            if (IstBucht(z) || z.Material != Material.Asphalt || z.Art != Zellart.Zufahrt) return false;
+            var art = z.Zugangsart ?? Zufahrtsart.Zufahrt;
+            return !Zufahrtsarten.IstGasse(art) && art != Zufahrtsart.Fussweg;
+        }
+
         private static bool Strassenzelle(Zelle z) => !IstBucht(z)
             && z.Material == Material.Asphalt
             && (z.Art == Zellart.Fahrgasse || z.Art == Zellart.Randstrasse
@@ -138,7 +154,7 @@ namespace ParkingLotTool.Geometry.Zellen
          * Brueckenfahrbahn darueber. Dort bleibt nur der Asphalt darunter;
          * nur ein Alley-Knoten genau unter einer Bruecke bliebe sichtbar.
          */
-        private static IReadOnlyList<Ring> Fahrbahnen(IReadOnlyList<(Punkt A, Punkt B)> gassen,
+        internal static IReadOnlyList<Ring> Fahrbahnen(IReadOnlyList<(Punkt A, Punkt B)> gassen,
             IReadOnlyList<Zelle> zellen, IReadOnlyList<Flaeche> flaechen, Rahmen rahmen,
             IReadOnlyList<Punkt[]> bruecken)
         {
@@ -154,14 +170,13 @@ namespace ParkingLotTool.Geometry.Zellen
                 if (amKnoten) arten.Add(z.Art);
             }
             var ringe = new List<Ring>();
-            if (arten.Count == 0) return ringe;
             var nachId = new Dictionary<int, Zelle>();
             foreach (var z in zellen) nachId[z.Id] = z;
             foreach (var f in flaechen.Where(f => f.Material == Material.Asphalt))
             {
                 var auswahl = (f.ZellIds ?? new List<int>())
                     .Where(nachId.ContainsKey).Select(id => nachId[id])
-                    .Where(z => Strassenzelle(z) && arten.Contains(z.Art))
+                    .Where(z => Strassenzelle(z) && arten.Contains(z.Art) || IstAutozufahrt(z))
                     .Where(z =>
                     {
                         var mitte = Geometrie.Mittelwert(z.Polygon);

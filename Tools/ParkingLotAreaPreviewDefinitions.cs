@@ -26,7 +26,7 @@ namespace ParkingLotTool.Tools
             var dekoAn = _baukontext?.Zettel.SurfaceDecorationOn ?? _uiSystem?.FlaecheDekoAn ?? true;
             var vorflaechenPrefab = _vorflaechenPrefab;
             GeplanteBauflaechen(layout, strasseAn, dekoAn, vorflaechenPrefab != Entity.Null,
-                out var gras, out var asphalt, out var verschmolzen, out var einzelneVorflaechen,
+                out var gras, out var asphalt, out var einzelneVorflaechen,
                 out var strassenbelag, out var fahrbahn);
             if (!dekoAn && layout.GrassForVegetation?.Length > 0)
                 RecordPreviewDiagnostic("Warning", "Dekoflaeche AUS: "
@@ -69,7 +69,7 @@ namespace ParkingLotTool.Tools
             // Die Vorflaeche liegt AUSSERHALB des Polygons, also ausserhalb
             // des schon gemessenen Bereichs. Ohne diese Zeile fehlten ihre
             // Knoten in der Terrainpruefung.
-            foreach (var gruppe in new[] { gras, asphalt, einzelneVorflaechen, verschmolzen, strassenbelag, fahrbahn })
+            foreach (var gruppe in new[] { gras, asphalt, einzelneVorflaechen, strassenbelag, fahrbahn })
             {
                 if (gruppe == null) continue;
                 foreach (var ring in gruppe)
@@ -136,193 +136,17 @@ namespace ParkingLotTool.Tools
              * Fehler aus und war einer im Bericht, nicht im Bau.
              */
             var flaechen = 0;
-            /*
-             * DIE DEKOFLAECHE BEKOMMT DIESELBE BEHANDLUNG WIE DER
-             * ZONINGBELAG - auf Wunsch des Nutzers vom 2026-09-03.
-             *
-             * Also den Klon mit `Terrain | Roads` und der hoeheren
-             * Zeichenprioritaet. MIT RUECKFALL: ist der Klon nicht fertig,
-             * wird wie bisher mit dem Vanilla-Prefab gebaut. Ohne diesen
-             * Rueckfall haenge das Gras jedes Parkplatzes daran, dass ein
-             * Laufzeitprefab rechtzeitig entsteht - ein zu grosser Einsatz
-             * fuer eine Verbesserung an einer Stelle.
-             *
-             * ZWEIFEL, AUSDRUECKLICH: der Nutzer hat selbst beschrieben,
-             * dass ein Gebaeude seine Flaeche bis zur Strasse AUFZIEHT.
-             * Dagegen hilft keine Einstellung an unserer Flaeche - sie wird
-             * nicht verdraengt, sondern ueberwachsen. Ob das hier etwas
-             * bringt, ist offen.
-             */
-            var grasPrefab = _dekoBelagPrefab != Entity.Null
-                ? _dekoBelagPrefab
-                : _grassSurfacePrefab;
-            if (dekoAn && gras.Length > 0 && _dekoBelagPrefab == Entity.Null)
-                RecordPreviewDiagnostic("Warning", "Gras raeumt keine "
-                    + "Gelaendebaeume: der PLT-Raeumbelag ist noch nicht "
-                    + "bereit; der Bau verwendet die gewaehlte Vanilla-Flaeche.");
-            if (dekoAn)
-                foreach (int n in CreateAreaPreviewGroupSchritte("Grass", gras,
-                    grasPrefab, heightData))
+            foreach (var g in Flaechengruppen(layout, strasseAn, dekoAn, gras, asphalt,
+                einzelneVorflaechen, strassenbelag, fahrbahn, vorflaechenPrefab))
+                foreach (int n in CreateAreaPreviewGroupSchritte(g.Art, g.Ringe, g.Prefab, heightData))
                 { flaechen += n; yield return n; }
-            /*
-             * DER HAUPTBELAG BEKOMMT DIESELBEN DECAL-EBENEN WIE DIE
-             * VORFLAECHE, ABER EINEN EIGENEN KLON MIT RAEUMFLAG.
-             *
-             * Befund des Nutzers vom 2026-09-18: die Vorflaeche ueberdeckt
-             * den hellen Halbkreis der Gasse, der Hauptbelag nicht. Der
-             * Unterschied steht im Log:
-             *
-             *   PLT Vorflaeche (Pavement Surface 01)  Ebenen Terrain, Roads
-             *   Pavement Surface 01 (Vanilla)         Ebenen Terrain
-             *
-             * Das Vanilla-Prefab zeichnet gar nicht auf Strassen. Seit die
-             * Zufahrtsgasse eine sichtbare Strasse MITTEN im Parkplatz ist,
-             * reicht das nicht mehr - der Belag muss auch dort zeichnen.
-             *
-             * MIT RUECKFALL: ist der Klon nicht fertig, wird wie bisher mit
-             * dem Vanilla-Prefab gebaut. Der Asphalt jedes Parkplatzes daran
-             * zu haengen, dass ein Laufzeitprefab rechtzeitig entsteht,
-             * waere ein zu grosser Einsatz.
-             */
-            if (strasseAn)
-            {
-                if (asphalt.Length > 0 && _asphaltBelagPrefab == Entity.Null)
-                    RecordPreviewDiagnostic("Warning", "Asphalt raeumt keine "
-                        + "Gelaendebaeume: der PLT-Raeumbelag ist noch nicht "
-                        + "bereit; der Bau verwendet die gewaehlte Vanilla-Flaeche.");
-                foreach (int n in CreateAreaPreviewGroupSchritte("Asphalt", asphalt,
-                    _asphaltBelagPrefab != Entity.Null
-                        ? _asphaltBelagPrefab
-                        : _pavementSurfacePrefab,
-                    heightData))
-                { flaechen += n; yield return n; }
-            }
-            /*
-             * DAS BAULAND HAT SEINEN EIGENEN SCHALTER NICHT.
-             *
-             * Es haengt weder an "Strasse" noch an "Dekoration": wer die
-             * Dekoflaechen abschaltet, will kahlen Asphalt - aber die
-             * Parzellen sind kein Schmuck, sie sind der Grund, warum dort
-             * kein Parkplatz ist. Sie werden deshalb immer gesetzt.
-             */
-            if (!ZoningFlaecheAus
-                && layout.ZoningSurface != null
-                && layout.ZoningSurface.Length > 0)
-                foreach (int n in CreateAreaPreviewGroupSchritte("Zoning",
-                    layout.ZoningSurface,
-                    // Mit Rueckfall wie bei der Dekoflaeche: klappt der Klon
-                    // nicht, wird mit dem Vanilla-Prefab gebaut statt gar
-                    // nicht.
-                    _zoningBodenPrefab != Entity.Null
-                        ? _zoningBodenPrefab
-                        : _zoningSurfacePrefab,
-                    heightData))
-                { flaechen += n; yield return n; }
-            /*
-             * Immer gesetzt, wie die Parzellen selbst: ohne diesen Belag
-             * saehe man Autos ueber Gras fahren, denn die Zoning-Strasse ist
-             * unsichtbar. Das ist keine Zierde, sondern die Fahrbahn.
-             */
-            if (layout.ZoningRoadSurface != null
-                && layout.ZoningRoadSurface.Length > 0)
-            {
-                if (_zoningBelagPrefab != Entity.Null)
-                {
-                    foreach (int n in CreateAreaPreviewGroupSchritte("Zoningstrasse",
-                        layout.ZoningRoadSurface, _zoningBelagPrefab,
-                        heightData))
-                { flaechen += n; yield return n; }
-                }
-                else
-                {
-                    /*
-                     * NICHT STILL UEBERSPRINGEN.
-                     *
-                     * Genau diese Bauart - eine Flaeche faellt aus, und
-                     * nirgends steht warum - hat am 2026-09-02 einen halben
-                     * Nachmittag gekostet. Der Nutzer fragte daraufhin, ob
-                     * der Bauzettel so etwas ueberhaupt meldet. Tut er
-                     * nicht; er haelt die gewaehlten Flaechen fest, damit
-                     * sich derselbe Parkplatz nachbauen laesst. Ein Ausfall
-                     * gehoert deshalb mindestens ins Log und in den Abzug.
-                     */
-                    RecordPreviewDiagnostic("Warning",
-                        $"Belag der Zoning-Straße nicht gesetzt: "
-                        + $"{layout.ZoningRoadSurface.Length} Ring(e) "
-                        + "warten auf den Prefabklon mit der Ebene Roads. "
-                        + "Die Straße bleibt befahrbar, sieht aber wie Gras "
-                        + "aus.");
-                    Mod.log.Warn("PLT-Zoningstrasse: Belag nicht gesetzt - "
-                        + layout.ZoningRoadSurface.Length
-                        + " Ring(e), aber der Prefabklon ist noch nicht "
-                        + "benutzbar.");
-                }
-            }
-            /*
-             * STRASSENBELAG (Issue #22): die sichtbaren Alleys im Parkplatz.
-             *
-             * Asphalt und Gras zeichnen nicht mehr auf Strassen, sonst
-             * erscheinen sie auf der Fahrbahn einer Bruecke darueber. Die
-             * Alley haben sie bisher genau damit abgedeckt. Der Zellenkern
-             * spart sie jetzt aus Asphalt und Gras aus und liefert sie als
-             * eigene, lueckenlose Ringliste (`StrassenbelagSurface`); hier
-             * entstehen sie mit dem Vorflaechen-Klon, der auf Strassen zeichnet,
-             * samt eingesetzter Vorflaeche der Gasse (GeplanteBauflaechen).
-             * Rueckfall ohne Klon: Asphalt - dann liegt die Alley offen, aber
-             * es fehlt keine Flaeche.
-             */
-            if (strasseAn && strassenbelag.Length > 0)
-            {
-                if (_strassenbelagPrefab == Entity.Null)
-                    RecordPreviewDiagnostic("Warning", "Strassenbelag mit Asphalt "
-                        + "gebaut: der Vorflaechen-Klon ist noch nicht bereit, die "
-                        + "Alley bleibt im Parkplatz sichtbar.");
-                foreach (int n in CreateAreaPreviewGroupSchritte("Strassenbelag",
-                    strassenbelag,
-                    _strassenbelagPrefab != Entity.Null ? _strassenbelagPrefab
-                        : _asphaltBelagPrefab != Entity.Null ? _asphaltBelagPrefab
-                        : _pavementSurfacePrefab,
-                    heightData))
-                { flaechen += n; yield return n; }
-            }
-            if (strasseAn && verschmolzen.Length > 0)
-                foreach (int n in CreateAreaPreviewGroupSchritte("Asphalt mit Vorflaeche",
-                    verschmolzen,
-                    _asphaltBelagPrefab != Entity.Null
-                        ? _asphaltBelagPrefab : vorflaechenPrefab,
-                    heightData))
-                { flaechen += n; yield return n; }
-            if (strasseAn && einzelneVorflaechen.Length > 0)
-                foreach (int n in CreateAreaPreviewGroupSchritte("Vorflaeche",
-                    einzelneVorflaechen, vorflaechenPrefab, heightData))
-                { flaechen += n; yield return n; }
-            /*
-             * FAHRBAHN (Issue #22): die unsichtbare Strasse, an der eine
-             * Alley endet - meist die Randstrasse - als eigene durchgaengige
-             * Flaeche mit Strassen-Ebene. Sie liegt ueber dem Asphalt und
-             * damit ueber dem Halbkreis des Alley-Knotens. Texturlage vom
-             * Asphaltring darunter (RichteFahrbahnAus). Ohne den Klon nicht
-             * bauen: mit dem Asphaltklon deckte sie nichts.
-             */
-            if (strasseAn && fahrbahn.Length > 0)
-            {
-                if (_strassenbelagPrefab != Entity.Null)
-                    foreach (int n in CreateAreaPreviewGroupSchritte("Fahrbahn",
-                        fahrbahn, _strassenbelagPrefab, heightData))
-                    { flaechen += n; yield return n; }
-                else
-                    RecordPreviewDiagnostic("Warning", "Fahrbahn nicht gesetzt: "
-                        + "der Vorflaechen-Klon ist noch nicht bereit, der Halbkreis der "
-                        + "Alley bleibt sichtbar.");
-            }
             created += flaechen;
             // Die beiden Zoning-Listen zaehlen mit: sie werden immer
             // gesetzt, unabhaengig von den Schaltern fuer Strasse und
             // Dekoration. Fehlten sie im Soll, meldete der Zaehler
             // "vollstaendig", waehrend Parzellen oder Fahrbahn fehlten.
             var geplant = (dekoAn ? gras.Length : 0)
-                + (strasseAn ? asphalt.Length + verschmolzen.Length
-                    + einzelneVorflaechen.Length : 0)
+                + (strasseAn ? asphalt.Length + einzelneVorflaechen.Length : 0)
                 + (ZoningFlaecheAus ? 0 : layout.ZoningSurface?.Length ?? 0)
                 + (layout.ZoningRoadSurface?.Length ?? 0)
                 + (strasseAn ? strassenbelag.Length : 0)
@@ -332,8 +156,8 @@ namespace ParkingLotTool.Tools
                 + " asphalt " + asphalt.Length
                 + " bauland " + (layout.ZoningSurface?.Length ?? 0)
                 + " zoningstrasse " + (layout.ZoningRoadSurface?.Length ?? 0)
-                + " vorflaeche " + (verschmolzen.Length
-                    + einzelneVorflaechen.Length)
+                + " vorflaeche " + (_vorflaechen?.Length ?? 0)
+                + " (einzeln " + einzelneVorflaechen.Length + ")"
                 + " | entitaeten gesamt folgt");
             /*
              * REIHENFOLGE GEMESSEN, NICHT ANGENOMMEN.
@@ -430,6 +254,177 @@ namespace ParkingLotTool.Tools
             int n = 0;
             foreach (int teil in CreateAreaPreviewGroupSchritte(kind, polygons, prefab, heightData)) n += teil;
             return n;
+        }
+
+        /**
+         * Welche Ringe mit welchem Prefab gebaut werden - in Bau-Reihenfolge.
+         * Eine Stelle fuer den Bau und fuer Sync-Schritt 16, der die Flaechen
+         * eines alten Parkplatzes genauso neu aufbaut (Nutzer 28.10.: "Bitte
+         * grundlegend das Problem beheben"). Setzt aufgeloeste Prefabs voraus
+         * (SyncAreaPreview(prefabsOnly: true)).
+         */
+        internal System.Collections.Generic.List<(string Art, float2[][] Ringe, Entity Prefab)> Flaechengruppen(
+            ParkingLayout layout, bool strasseAn, bool dekoAn, float2[][] gras, float2[][] asphalt,
+            float2[][] einzelneVorflaechen, float2[][] strassenbelag, float2[][] fahrbahn, Entity vorflaechenPrefab)
+        {
+            var liste = new System.Collections.Generic.List<(string Art, float2[][] Ringe, Entity Prefab)>();
+            /*
+             * DIE DEKOFLAECHE BEKOMMT DIESELBE BEHANDLUNG WIE DER
+             * ZONINGBELAG - auf Wunsch des Nutzers vom 2026-09-03.
+             *
+             * Also den Klon mit `Terrain | Roads` und der hoeheren
+             * Zeichenprioritaet. MIT RUECKFALL: ist der Klon nicht fertig,
+             * wird wie bisher mit dem Vanilla-Prefab gebaut. Ohne diesen
+             * Rueckfall haenge das Gras jedes Parkplatzes daran, dass ein
+             * Laufzeitprefab rechtzeitig entsteht - ein zu grosser Einsatz
+             * fuer eine Verbesserung an einer Stelle.
+             *
+             * ZWEIFEL, AUSDRUECKLICH: der Nutzer hat selbst beschrieben,
+             * dass ein Gebaeude seine Flaeche bis zur Strasse AUFZIEHT.
+             * Dagegen hilft keine Einstellung an unserer Flaeche - sie wird
+             * nicht verdraengt, sondern ueberwachsen. Ob das hier etwas
+             * bringt, ist offen.
+             */
+            var grasPrefab = _dekoBelagPrefab != Entity.Null
+                ? _dekoBelagPrefab
+                : _grassSurfacePrefab;
+            if (dekoAn && gras.Length > 0 && _dekoBelagPrefab == Entity.Null)
+                RecordPreviewDiagnostic("Warning", "Gras raeumt keine "
+                    + "Gelaendebaeume: der PLT-Raeumbelag ist noch nicht "
+                    + "bereit; der Bau verwendet die gewaehlte Vanilla-Flaeche.");
+            if (dekoAn) liste.Add(("Grass", gras, grasPrefab));
+            /*
+             * DER HAUPTBELAG BEKOMMT DIESELBEN DECAL-EBENEN WIE DIE
+             * VORFLAECHE, ABER EINEN EIGENEN KLON MIT RAEUMFLAG.
+             *
+             * Befund des Nutzers vom 2026-09-18: die Vorflaeche ueberdeckt
+             * den hellen Halbkreis der Gasse, der Hauptbelag nicht. Der
+             * Unterschied steht im Log:
+             *
+             *   PLT Vorflaeche (Pavement Surface 01)  Ebenen Terrain, Roads
+             *   Pavement Surface 01 (Vanilla)         Ebenen Terrain
+             *
+             * Das Vanilla-Prefab zeichnet gar nicht auf Strassen. Seit die
+             * Zufahrtsgasse eine sichtbare Strasse MITTEN im Parkplatz ist,
+             * reicht das nicht mehr - der Belag muss auch dort zeichnen.
+             *
+             * MIT RUECKFALL: ist der Klon nicht fertig, wird wie bisher mit
+             * dem Vanilla-Prefab gebaut. Der Asphalt jedes Parkplatzes daran
+             * zu haengen, dass ein Laufzeitprefab rechtzeitig entsteht,
+             * waere ein zu grosser Einsatz.
+             */
+            if (strasseAn)
+            {
+                if (asphalt.Length > 0 && _asphaltBelagPrefab == Entity.Null)
+                    RecordPreviewDiagnostic("Warning", "Asphalt raeumt keine "
+                        + "Gelaendebaeume: der PLT-Raeumbelag ist noch nicht "
+                        + "bereit; der Bau verwendet die gewaehlte Vanilla-Flaeche.");
+                liste.Add(("Asphalt", asphalt,
+                    _asphaltBelagPrefab != Entity.Null
+                        ? _asphaltBelagPrefab
+                        : _pavementSurfacePrefab));
+            }
+            /*
+             * DAS BAULAND HAT SEINEN EIGENEN SCHALTER NICHT.
+             *
+             * Es haengt weder an "Strasse" noch an "Dekoration": wer die
+             * Dekoflaechen abschaltet, will kahlen Asphalt - aber die
+             * Parzellen sind kein Schmuck, sie sind der Grund, warum dort
+             * kein Parkplatz ist. Sie werden deshalb immer gesetzt.
+             */
+            if (!ZoningFlaecheAus
+                && layout.ZoningSurface != null
+                && layout.ZoningSurface.Length > 0)
+                liste.Add(("Zoning",
+                    layout.ZoningSurface,
+                    // Mit Rueckfall wie bei der Dekoflaeche: klappt der Klon
+                    // nicht, wird mit dem Vanilla-Prefab gebaut statt gar
+                    // nicht.
+                    _zoningBodenPrefab != Entity.Null
+                        ? _zoningBodenPrefab
+                        : _zoningSurfacePrefab));
+            /*
+             * Immer gesetzt, wie die Parzellen selbst: ohne diesen Belag
+             * saehe man Autos ueber Gras fahren, denn die Zoning-Strasse ist
+             * unsichtbar. Das ist keine Zierde, sondern die Fahrbahn.
+             */
+            if (layout.ZoningRoadSurface != null
+                && layout.ZoningRoadSurface.Length > 0)
+            {
+                if (_zoningBelagPrefab != Entity.Null)
+                {
+                    liste.Add(("Zoningstrasse", layout.ZoningRoadSurface, _zoningBelagPrefab));
+                }
+                else
+                {
+                    /*
+                     * NICHT STILL UEBERSPRINGEN.
+                     *
+                     * Genau diese Bauart - eine Flaeche faellt aus, und
+                     * nirgends steht warum - hat am 2026-09-02 einen halben
+                     * Nachmittag gekostet. Der Nutzer fragte daraufhin, ob
+                     * der Bauzettel so etwas ueberhaupt meldet. Tut er
+                     * nicht; er haelt die gewaehlten Flaechen fest, damit
+                     * sich derselbe Parkplatz nachbauen laesst. Ein Ausfall
+                     * gehoert deshalb mindestens ins Log und in den Abzug.
+                     */
+                    RecordPreviewDiagnostic("Warning",
+                        $"Belag der Zoning-Straße nicht gesetzt: "
+                        + $"{layout.ZoningRoadSurface.Length} Ring(e) "
+                        + "warten auf den Prefabklon mit der Ebene Roads. "
+                        + "Die Straße bleibt befahrbar, sieht aber wie Gras "
+                        + "aus.");
+                    Mod.log.Warn("PLT-Zoningstrasse: Belag nicht gesetzt - "
+                        + layout.ZoningRoadSurface.Length
+                        + " Ring(e), aber der Prefabklon ist noch nicht "
+                        + "benutzbar.");
+                }
+            }
+            /*
+             * STRASSENBELAG (Issue #22): die sichtbaren Alleys im Parkplatz.
+             *
+             * Asphalt und Gras zeichnen nicht mehr auf Strassen, sonst
+             * erscheinen sie auf der Fahrbahn einer Bruecke darueber. Die
+             * Alley haben sie bisher genau damit abgedeckt. Der Zellenkern
+             * spart sie jetzt aus Asphalt und Gras aus und liefert sie als
+             * eigene, lueckenlose Ringliste (`StrassenbelagSurface`); hier
+             * entstehen sie mit dem Vorflaechen-Klon, der auf Strassen zeichnet,
+             * samt eingesetzter Vorflaeche der Gasse (GeplanteBauflaechen).
+             * Rueckfall ohne Klon: Asphalt - dann liegt die Alley offen, aber
+             * es fehlt keine Flaeche.
+             */
+            if (strasseAn && strassenbelag.Length > 0)
+            {
+                if (_strassenbelagPrefab == Entity.Null)
+                    RecordPreviewDiagnostic("Warning", "Strassenbelag mit Asphalt "
+                        + "gebaut: der Vorflaechen-Klon ist noch nicht bereit, die "
+                        + "Alley bleibt im Parkplatz sichtbar.");
+                liste.Add(("Strassenbelag",
+                    strassenbelag,
+                    _strassenbelagPrefab != Entity.Null ? _strassenbelagPrefab
+                        : _asphaltBelagPrefab != Entity.Null ? _asphaltBelagPrefab
+                        : _pavementSurfacePrefab));
+            }
+            if (strasseAn && einzelneVorflaechen.Length > 0)
+                liste.Add(("Vorflaeche", einzelneVorflaechen, vorflaechenPrefab));
+            /*
+             * FAHRBAHN (Issue #22): die unsichtbare Strasse, an der eine
+             * Alley endet - meist die Randstrasse - als eigene durchgaengige
+             * Flaeche mit Strassen-Ebene. Sie liegt ueber dem Asphalt und
+             * damit ueber dem Halbkreis des Alley-Knotens. Texturlage vom
+             * Asphaltring darunter (RichteFahrbahnAus). Ohne den Klon nicht
+             * bauen: mit dem Asphaltklon deckte sie nichts.
+             */
+            if (strasseAn && fahrbahn.Length > 0)
+            {
+                if (_strassenbelagPrefab != Entity.Null)
+                    liste.Add(("Fahrbahn", fahrbahn, _strassenbelagPrefab));
+                else
+                    RecordPreviewDiagnostic("Warning", "Fahrbahn nicht gesetzt: "
+                        + "der Vorflaechen-Klon ist noch nicht bereit, der Halbkreis der "
+                        + "Alley bleibt sichtbar.");
+            }
+            return liste;
         }
 
         private System.Collections.Generic.IEnumerable<int> CreateAreaPreviewGroupSchritte(string kind, float2[][] polygons, Entity prefab, TerrainHeightData heightData)
@@ -736,7 +731,7 @@ namespace ParkingLotTool.Tools
             return false;
         }
 
-        private static int OpenNodeCount(float2[] polygon)
+        internal static int OpenNodeCount(float2[] polygon)
         {
             if (polygon == null) return 0;
             var count = polygon.Length;

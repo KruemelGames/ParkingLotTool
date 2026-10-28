@@ -130,6 +130,16 @@ namespace ParkingLotTool.Tools
                 ComponentType.ReadOnly<PrefabData>());
         }
 
+        /** Ist `prefab` ein Klon mit Strassen-Ebene (Vorflaeche, Alley-Belag, Fahrbahn)? Sync-Schritt 16. */
+        internal bool IstStrassenklon(Entity prefab)
+        {
+            foreach (var e in _eintraege.Values)
+                if (e.Bereit && e.KlonEntity == prefab && !e.Raeumt
+                    && e.Prioritaetsaufschlag == ParkingLotTool.Geometry.Flaechenklonname.Vorflaeche)
+                    return true;
+            return false;
+        }
+
         /**
          * Das Werkzeug stellt nur die Anforderung. `AddPrefab` bleibt
          * ausschliesslich in OnUpdate und damit in der richtigen Phase.
