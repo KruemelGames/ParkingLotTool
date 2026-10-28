@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems><Nullable>disable</Nullable>
+    <GeometrieQuelle Condition="'$(GeometrieQuelle)' == ''">../../Geometry</GeometrieQuelle>
+    <StrassenplanQuelle Condition="'$(StrassenplanQuelle)' == ''">$(GeometrieQuelle)/Zellen/Strassenbelag.cs</StrassenplanQuelle>
+    <StrassenadapterQuelle Condition="'$(StrassenadapterQuelle)' == ''">$(GeometrieQuelle)/Zellen/ParkingGeometry.Strassenbelag.cs</StrassenadapterQuelle>
+    <VereinigungQuelle Condition="'$(VereinigungQuelle)' == ''">$(GeometrieQuelle)/Zellen/Vereinigung.cs</VereinigungQuelle>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" /><Compile Include="MaterialTests.cs" /><Compile Include="KettenTests.cs" />
+    <Compile Include="Laufzeit.cs" />
+    <Compile Include="../Zufahrtsvorschau/Vergleich.cs" Link="Vergleich.cs" />
+    <Compile Include="$(GeometrieQuelle)/**/*.cs" Exclude="$(GeometrieQuelle)/Zellen/Vereinigung.cs;$(GeometrieQuelle)/Zellen/Strassenbelag.cs;$(GeometrieQuelle)/Zellen/ParkingGeometry.Strassenbelag.cs" />
+    <Compile Include="$(StrassenplanQuelle)" Condition="Exists('$(StrassenplanQuelle)')" />
+    <Compile Include="$(StrassenadapterQuelle)" Condition="Exists('$(StrassenadapterQuelle)')" />
+    <Compile Include="$(VereinigungQuelle)" />
+    <None Include="Ketten.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../Zufahrtsvorschau/Lot201905.json" Link="Lot201905.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="LotEckalley.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Referenz.json*" CopyToOutputDirectory="PreserveNewest" />
+    <Reference Include="Unity.Mathematics"><HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

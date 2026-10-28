@@ -256,6 +256,16 @@ namespace ParkingLotTool.Geometry
 
     public sealed class LayoutSettings
     {
+        /**
+         * Grundrisse der Bruecken ueber dem Parkplatz, Weltkoordinaten (Issue
+         * #22). Unter ihnen bekommt die Strasse keine eigene Fahrbahn mit
+         * Strassen-Ebene - die schluege auf die Brueckenfahrbahn durch.
+         * Tools liest sie vor jedem Lauf aus der Welt. INTERNAL: nie in
+         * Bauzettel oder Protokoll (jede public Eigenschaft landet dort per
+         * Reflection und bricht die Rueckleseprobe der Reparatur).
+         */
+        internal float2[][] Brueckengrundrisse { get; set; } = Array.Empty<float2[]>();
+
         /** Explizite Kurvenherkunft; leer laesst den bisherigen Plan bitgleich. */
         public KurvenRandlauf[] Kurvenlaeufe { get; set; } = Array.Empty<KurvenRandlauf>();
         public double Es { get; set; } = 1;
@@ -642,6 +652,20 @@ namespace ParkingLotTool.Geometry
          * wird er mit demselben `Terrain | Roads`-Klon wie die Vorflaeche.
          */
         public float2[][] ZoningRoadSurface { get; internal set; }
+            = Array.Empty<float2[]>();
+
+        // Sichtbare Zufahrtsgassen: eigener, auf Strassen zeichnender Belag.
+        // Weltkoordinaten; aus Asphalt und Gras konstruktiv ausgespart.
+        public float2[][] StrassenbelagSurface { get; internal set; }
+            = Array.Empty<float2[]>();
+        /**
+         * Die unsichtbare Strasse, an der eine Alley endet (meist die
+         * Randstrasse), als eigene durchgaengige Fahrbahn mit Strassen-Ebene:
+         * sie liegt ueber dem Halbkreis des Alley-Knotens (Issue #22).
+         * Ueberlappt AsphaltSurface absichtlich, je Asphaltring ein Stueck;
+         * Tools baut es mit dessen Texturlage.
+         */
+        public float2[][] FahrbahnSurface { get; internal set; }
             = Array.Empty<float2[]>();
 
         /**

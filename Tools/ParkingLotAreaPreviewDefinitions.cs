@@ -26,7 +26,8 @@ namespace ParkingLotTool.Tools
             var dekoAn = _baukontext?.Zettel.SurfaceDecorationOn ?? _uiSystem?.FlaecheDekoAn ?? true;
             var vorflaechenPrefab = _vorflaechenPrefab;
             GeplanteBauflaechen(layout, strasseAn, dekoAn, vorflaechenPrefab != Entity.Null,
-                out var gras, out var asphalt, out var verschmolzen, out var einzelneVorflaechen);
+                out var gras, out var asphalt, out var verschmolzen, out var einzelneVorflaechen,
+                out var strassenbelag, out var fahrbahn);
             if (!dekoAn && layout.GrassForVegetation?.Length > 0)
                 RecordPreviewDiagnostic("Warning", "Dekoflaeche AUS: "
                     + "Gelaendebaeume im Gruenstreifen bleiben sichtbar, "
@@ -68,7 +69,7 @@ namespace ParkingLotTool.Tools
             // Die Vorflaeche liegt AUSSERHALB des Polygons, also ausserhalb
             // des schon gemessenen Bereichs. Ohne diese Zeile fehlten ihre
             // Knoten in der Terrainpruefung.
-            foreach (var gruppe in new[] { gras, asphalt, einzelneVorflaechen, verschmolzen })
+            foreach (var gruppe in new[] { gras, asphalt, einzelneVorflaechen, verschmolzen, strassenbelag, fahrbahn })
             {
                 if (gruppe == null) continue;
                 foreach (var ring in gruppe)
@@ -257,6 +258,33 @@ namespace ParkingLotTool.Tools
                         + "benutzbar.");
                 }
             }
+            /*
+             * STRASSENBELAG (Issue #22): die sichtbaren Alleys im Parkplatz.
+             *
+             * Asphalt und Gras zeichnen nicht mehr auf Strassen, sonst
+             * erscheinen sie auf der Fahrbahn einer Bruecke darueber. Die
+             * Alley haben sie bisher genau damit abgedeckt. Der Zellenkern
+             * spart sie jetzt aus Asphalt und Gras aus und liefert sie als
+             * eigene, lueckenlose Ringliste (`StrassenbelagSurface`); hier
+             * entstehen sie mit dem Vorflaechen-Klon, der auf Strassen zeichnet,
+             * samt eingesetzter Vorflaeche der Gasse (GeplanteBauflaechen).
+             * Rueckfall ohne Klon: Asphalt - dann liegt die Alley offen, aber
+             * es fehlt keine Flaeche.
+             */
+            if (strasseAn && strassenbelag.Length > 0)
+            {
+                if (_strassenbelagPrefab == Entity.Null)
+                    RecordPreviewDiagnostic("Warning", "Strassenbelag mit Asphalt "
+                        + "gebaut: der Vorflaechen-Klon ist noch nicht bereit, die "
+                        + "Alley bleibt im Parkplatz sichtbar.");
+                foreach (int n in CreateAreaPreviewGroupSchritte("Strassenbelag",
+                    strassenbelag,
+                    _strassenbelagPrefab != Entity.Null ? _strassenbelagPrefab
+                        : _asphaltBelagPrefab != Entity.Null ? _asphaltBelagPrefab
+                        : _pavementSurfacePrefab,
+                    heightData))
+                { flaechen += n; yield return n; }
+            }
             if (strasseAn && verschmolzen.Length > 0)
                 foreach (int n in CreateAreaPreviewGroupSchritte("Asphalt mit Vorflaeche",
                     verschmolzen,
@@ -268,6 +296,25 @@ namespace ParkingLotTool.Tools
                 foreach (int n in CreateAreaPreviewGroupSchritte("Vorflaeche",
                     einzelneVorflaechen, vorflaechenPrefab, heightData))
                 { flaechen += n; yield return n; }
+            /*
+             * FAHRBAHN (Issue #22): die unsichtbare Strasse, an der eine
+             * Alley endet - meist die Randstrasse - als eigene durchgaengige
+             * Flaeche mit Strassen-Ebene. Sie liegt ueber dem Asphalt und
+             * damit ueber dem Halbkreis des Alley-Knotens. Texturlage vom
+             * Asphaltring darunter (RichteFahrbahnAus). Ohne den Klon nicht
+             * bauen: mit dem Asphaltklon deckte sie nichts.
+             */
+            if (strasseAn && fahrbahn.Length > 0)
+            {
+                if (_strassenbelagPrefab != Entity.Null)
+                    foreach (int n in CreateAreaPreviewGroupSchritte("Fahrbahn",
+                        fahrbahn, _strassenbelagPrefab, heightData))
+                    { flaechen += n; yield return n; }
+                else
+                    RecordPreviewDiagnostic("Warning", "Fahrbahn nicht gesetzt: "
+                        + "der Vorflaechen-Klon ist noch nicht bereit, der Halbkreis der "
+                        + "Alley bleibt sichtbar.");
+            }
             created += flaechen;
             // Die beiden Zoning-Listen zaehlen mit: sie werden immer
             // gesetzt, unabhaengig von den Schaltern fuer Strasse und
@@ -277,7 +324,9 @@ namespace ParkingLotTool.Tools
                 + (strasseAn ? asphalt.Length + verschmolzen.Length
                     + einzelneVorflaechen.Length : 0)
                 + (ZoningFlaecheAus ? 0 : layout.ZoningSurface?.Length ?? 0)
-                + (layout.ZoningRoadSurface?.Length ?? 0);
+                + (layout.ZoningRoadSurface?.Length ?? 0)
+                + (strasseAn ? strassenbelag.Length : 0)
+                + (strasseAn && _strassenbelagPrefab != Entity.Null ? fahrbahn.Length : 0);
             ParkingLotLiveLog.Zeile("flaechen " + flaechen + "/" + geplant
                 + " gesetzt | gras " + gras.Length
                 + " asphalt " + asphalt.Length
@@ -460,6 +509,8 @@ namespace ParkingLotTool.Tools
                 signature = AppendPolygonGroup(signature, layout.AsphaltSurface);
                 signature = AppendPolygonGroup(signature, layout.ZoningRoadSurface);
                 signature = AppendPolygonGroup(signature, layout.ZoningSurface);
+                signature = AppendPolygonGroup(signature, layout.StrassenbelagSurface);
+                signature = AppendPolygonGroup(signature, layout.FahrbahnSurface);
                 // Im Bauzettel 23.09. gingen 3 Klicks auf Innen AUS verloren:
                 // zweimal meldete Enter "ohne Aenderungen". Die Signatur
                 // muss auch die 4 geladenen Handschaltungen vergleichen.

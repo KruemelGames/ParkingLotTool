@@ -116,7 +116,9 @@ namespace ParkingLotTool.Geometry.Zellen
             {
                 var zellliste = gruppe.ToList();
                 var randkanten = Randkanten(zellliste);
-                var ringe = ZieheRinge(randkanten);
+                // Geschlossene Hin-und-zurueck-Kanten haben exakt keine Flaeche.
+                // Sie sind kein Materialring; keine Epsilon-Aufweitung.
+                var ringe = ZieheRinge(randkanten).Where(r => r.Vorzeichenflaeche != 0).ToList();
                 var aussenringe = ringe
                     .Where(ring => ring.Vorzeichenflaeche > 0)
                     .ToList();
@@ -204,6 +206,7 @@ namespace ParkingLotTool.Geometry.Zellen
         private static List<GerichteteKante> Randkanten(IReadOnlyList<Zelle> zellen)
         {
             var offen = new Dictionary<KantenSchluessel, GerichteteKante>();
+            Dictionary<KantenSchluessel, List<GerichteteKante>> mehrfach = null;
             foreach (var zelle in zellen)
                 for (var i = 0; i < zelle.Polygon.Anzahl; i++)
                 {
@@ -211,10 +214,28 @@ namespace ParkingLotTool.Geometry.Zellen
                         zelle.Polygon.Knoten(i),
                         zelle.Polygon.Knoten(i + 1),
                         zelle.Polygon.Linie(i));
-                    if (!offen.Remove(kante.Schluessel))
+                    if (!offen.TryGetValue(kante.Schluessel, out var vorher))
                         offen.Add(kante.Schluessel, kante);
+                    else if (vorher.Von.Id == kante.Nach.Id)
+                    {
+                        if (mehrfach != null && mehrfach.TryGetValue(kante.Schluessel, out var weitere)
+                            && weitere.Count > 0) weitere.RemoveAt(weitere.Count - 1);
+                        else offen.Remove(kante.Schluessel);
+                    }
+                    else
+                    {
+                        // Nur gegenlaeufige Innenkanten heben sich auf.
+                        // Lot201905 hat einen 32-Mikrometer-Streifen mit
+                        // gleicher Laufrichtung; XOR oeffnete dessen Rand.
+                        mehrfach ??= new Dictionary<KantenSchluessel, List<GerichteteKante>>();
+                        if (!mehrfach.TryGetValue(kante.Schluessel, out var weitere))
+                            mehrfach.Add(kante.Schluessel, weitere = new List<GerichteteKante>());
+                        weitere.Add(kante);
+                    }
                 }
-            return offen.Values.ToList();
+            var rand = offen.Values.ToList();
+            if (mehrfach != null) rand.AddRange(mehrfach.Values.SelectMany(kanten => kanten));
+            return rand;
         }
 
         private static List<Ring> ZieheRinge(IReadOnlyList<GerichteteKante> kanten)

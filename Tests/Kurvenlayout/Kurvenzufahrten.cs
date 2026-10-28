@@ -38,9 +38,9 @@ internal static class Kurvenzufahrten
             var vorbereitet = ParkingGeometry.Build(polygon, s, vorbereitung);
             if (Vergleich.Abdruck(layout) != Vergleich.Abdruck(vorbereitet))
                 throw new Exception("Spielzufahrt: Vorschauvorbereitung und Vollbau weichen ab.");
-            int abgelehnt = layout.GrassSurface.Concat(layout.AsphaltSurface).Count(r => Cs2Triangulierung.Dreiecke(r) == 0);
+            int abgelehnt = layout.GrassSurface.Concat(Belag(layout)).Count(r => Cs2Triangulierung.Dreiecke(r) == 0);
             var loch = layout.Warnings.Where(w => w.Contains("hole separation")).ToArray();
-            Console.WriteLine($"Spiel/{strasse}/{maske}: Buchten {layout.Stalls}, G/A {layout.GrassSurface.Length}/{layout.AsphaltSurface.Length}, Netz {layout.NetLine.Length}, Lochwarnungen {loch.Length}, CS2 {abgelehnt}");
+            Console.WriteLine($"Spiel/{strasse}/{maske}: Buchten {layout.Stalls}, G/A/S {layout.GrassSurface.Length}/{layout.AsphaltSurface.Length}/{layout.StrassenbelagSurface.Length}, Netz {layout.NetLine.Length}, Lochwarnungen {loch.Length}, CS2 {abgelehnt}");
             Schreibe(log, "Lot485961", strasse, maske, polygon, s, layout, abgelehnt);
             int materialfehler = strasse ? PruefeKorridore(polygon, layout, s.Gassenbreite) : 0;
             if (abgelehnt != 0 || loch.Length != 0 || materialfehler != 0) fehler++;
@@ -48,6 +48,10 @@ internal static class Kurvenzufahrten
         if (!args.Contains("--befund") && fehler != 0)
             throw new Exception("Kurvenzufahrt hat einen gebrochenen Materialplan.");
     }
+
+    // Dieselbe physische Deckung, unabhaengig von Terrain-/Roads-Prefab.
+    private static IEnumerable<float2[]> Belag(ParkingLayout layout)
+        => layout.AsphaltSurface.Concat(layout.StrassenbelagSurface);
 
     private static bool Enthaelt(float2[] ring, double x, double y)
     {
@@ -68,14 +72,16 @@ internal static class Kurvenzufahrten
         {
             var a = new double2(n.A.x, n.A.y); var b = new double2(n.B.x, n.B.y);
             double laenge = math.distance(a, b); var u = (b - a) / laenge;
+            // Gemessene Alley-Komposition, nicht die schmalere Belagwahl.
+            double physisch = Zufahrtsarten.IstGasse(n.Art) ? 8.0 : breite;
             var q = new double2(-u.y, u.x);
             // Physischer Gassenquerschnitt, unabhaengig von der geplanten Kontur.
             // Auch hinter der Sehnentangente: dort liegt bei konkaven Seiten
             // bereits Lotflaeche. 2 mm entsprechen der bestehenden Ausgabegrenze.
-            for (double t = -breite; t < laenge; t += 0.25)
+            for (double t = -physisch; t < laenge; t += 0.25)
             for (int k = -4; k <= 4; k++)
             {
-                var p = a + u * t + q * ((breite / 2 - 0.002) * k / 4);
+                var p = a + u * t + q * ((physisch / 2 - 0.002) * k / 4);
                 if (!Enthaelt(polygon, p.x, p.y)) continue;
                 // An der Ausgabegrenze gilt dieselbe 2-mm-Schranke wie im
                 // unabhaengigen Ringpruefer (1-mm-Eingangsraster + float).
@@ -89,7 +95,7 @@ internal static class Kurvenzufahrten
                     if (math.distance(p, pa + v * tRand) <= 0.002) { amRand = true; break; }
                 }
                 if (amRand) continue;
-                if (!layout.AsphaltSurface.Any(r => Enthaelt(r, p.x, p.y))
+                if (!Belag(layout).Any(r => Enthaelt(r, p.x, p.y))
                     || layout.GrassSurface.Any(r => Enthaelt(r, p.x, p.y)))
                 {
                     if (fehler < 3) Console.WriteLine($"Korridorluecke {p.x:R}/{p.y:R}, Station {t:R}, Quer {k}");
@@ -136,14 +142,14 @@ internal static class Kurvenzufahrten
             s.Kurvenlaeufe = new[] { f.Lauf.Clone() };
             var layout = ParkingGeometry.Build(p, s);
             int fehler = strasse ? PruefeKorridore(p, layout, s.Gassenbreite) : 0;
-            int abgelehnt = layout.GrassSurface.Concat(layout.AsphaltSurface).Count(r => Cs2Triangulierung.Dreiecke(r) == 0);
+            int abgelehnt = layout.GrassSurface.Concat(Belag(layout)).Count(r => Cs2Triangulierung.Dreiecke(r) == 0);
             Console.WriteLine($"Knoten R{radius}/{innen}/{schraeg}/{lage}/{strasse}: Material {fehler}, CS2 {abgelehnt}, Warnungen {layout.Warnings.Length}");
             if (fehler != 0 || abgelehnt != 0 || (strasse && layout.Warnings.Any(w => w.Contains("hole separation"))))
             {
                 float[][] V(float2[] r) => r.Select(v => new[] { v.x, v.y }).ToArray();
                 Directory.CreateDirectory(".codex-build/kurven-14");
                 File.WriteAllText(".codex-build/kurven-14/knoten-fehler.json", JsonSerializer.Serialize(new {
-                    Polygon = V(p), Gras = layout.GrassSurface.Select(V), Asphalt = layout.AsphaltSurface.Select(V),
+                    Polygon = V(p), Gras = layout.GrassSurface.Select(V), Asphalt = Belag(layout).Select(V),
                     Achsen = layout.NetLine.Select(n => new { n.Kind, A = new[] { n.A.x, n.A.y }, B = new[] { n.B.x, n.B.y } }) }));
                 throw new Exception("Kurvenzufahrt hat einen gebrochenen Materialplan.");
             }
@@ -182,7 +188,7 @@ internal static class Kurvenzufahrten
         }
         log.WriteLine(JsonSerializer.Serialize(new { Name = name, Strasse = strasse, Maske = maske,
             Polygon = Punkte(polygon), Buchten = layout.Bay.Select(Punkte),
-            Gras = layout.GrassSurface.Select(Punkte), Asphalt = layout.AsphaltSurface.Select(Punkte),
+            Gras = layout.GrassSurface.Select(Punkte), Asphalt = Belag(layout).Select(Punkte),
             Achsen = layout.NetLine.Select(n => new { n.Kind, A = new[] { n.A.x, n.A.y }, B = new[] { n.B.x, n.B.y } }),
             Zufahrten = s.Entrances.Select(e => new { e.Edge, e.Along, Art = e.Art.ToString() }),
             Kurven = layout.KurvenRandreihen.SelectMany(r => r.Buchten),

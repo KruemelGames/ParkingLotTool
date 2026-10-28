@@ -219,12 +219,42 @@ internal static partial class Program
             s.Randstrassen = rand;
             faelle.Add((c.Name + (rand ? "/AN" : "/AUS"), c.Site, s));
         }
+        /*
+         * Mit sichtbarer Alley wird der Boden unter ihr Strassenbelag
+         * (Issue #22) - Asphalt, Gras und die Gruenzellen fuer Pflanzen
+         * aendern sich dort zu Recht. Alles andere muss bitgleich zum Stand
+         * vor dem Strassenbelag sein (245e4f9, Abdruck ohne diese fuenf
+         * Listen). Die Flaechen
+         * selbst prueft Tests/Strassenbelag (kein Gruen, keine Splitter,
+         * Flaechensumme). Ohne Alley: voller Abdruck wie bisher.
+         */
+        var pfadOhne = "Tests/GeometryParity/Aussenband/BitgleichOhneFlaechen.ref";
+        var erwartetOhne = File.Exists(pfadOhne)
+            ? JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(pfadOhne))
+            : new Dictionary<string, string>();
         var fehler = 0;
         foreach (var c in faelle)
         {
-            var ist = Vergleich.Abdruck(ParkingGeometry.Build(c.Site, c.Settings));
-            Console.WriteLine($"BITGLEICH {c.Name}: {ist}");
-            if (!erwartet.TryGetValue(c.Name, out var soll) || soll != ist) fehler++;
+            var layout = ParkingGeometry.Build(c.Site, c.Settings);
+            var belag = layout.StrassenbelagSurface?.Length ?? 0;
+            if (belag == 0)
+            {
+                var ist = Vergleich.AbdruckOhne(layout, nameof(ParkingLayout.StrassenbelagSurface),
+                    nameof(ParkingLayout.FahrbahnSurface));
+                Console.WriteLine($"BITGLEICH {c.Name}: {ist}");
+                if (!erwartet.TryGetValue(c.Name, out var soll) || soll != ist) fehler++;
+            }
+            else
+            {
+                var ist = Vergleich.AbdruckOhne(layout, nameof(ParkingLayout.AsphaltSurface),
+                    nameof(ParkingLayout.GrassSurface), nameof(ParkingLayout.StrassenbelagSurface),
+                    nameof(ParkingLayout.Green), nameof(ParkingLayout.GrassForVegetation),
+                    nameof(ParkingLayout.FahrbahnSurface));
+                var gleich = erwartetOhne.TryGetValue(c.Name, out var soll) && soll == ist;
+                Console.WriteLine($"BITGLEICH OHNE FLAECHEN {c.Name}: {ist} STRASSENBELAG {belag}"
+                    + (gleich ? "" : " ABWEICHUNG"));
+                if (!gleich) fehler++;
+            }
         }
         Console.WriteLine($"Ohne Aussenband: {faelle.Count} vollstaendige Bitvergleiche, {fehler} Fehler");
         return fehler;

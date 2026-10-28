@@ -7,7 +7,10 @@ namespace ParkingLotTool.Tools
     internal static class ParkingLotPreviewStyle
     {
         internal static readonly Color KurvenJa = new Color(.15f, .9f, .25f, 1f);
-        internal static readonly Color KurvenNein = new Color(1f, .2f, .15f, 1f);
+        // Nicht rot: rot liest sich als "Stop" (Nutzer 27.10.). Gleiches Hell
+        // wie PointColor - als Wert, weil PointColor weiter unten erst
+        // initialisiert wird.
+        internal static readonly Color KurvenNein = new Color(0.88f, 0.94f, 0.98f, 0.8f);
         internal const float KurvenPunktDurchmesser = .55f;
         // Eigener Klonschluessel, eine Stufe ueber der bewaehrten Vorflaeche (-90).
         internal const int MusterPrioritaet = Geometry.Flaechenklonname.Vorflaeche + 1;

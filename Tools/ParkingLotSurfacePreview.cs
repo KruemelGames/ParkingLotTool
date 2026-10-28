@@ -43,8 +43,9 @@ namespace ParkingLotTool.Tools
             if (_musterMaterialien==null || !_musterPflegeSchluessel.Equals(schluessel))
             {
                 _musterPflegeSchluessel=schluessel; _musterPflegeArt=art;
+                // Siebte Gruppe: Strassenbelag der Alleys (Issue #22), Asphaltmaterial.
                 _musterMaterialien=new[] {schluessel.Item5,schluessel.Item6,schluessel.Item7,
-                    schluessel.Item6,schluessel.Item6,schluessel.Item6};
+                    schluessel.Item6,schluessel.Item6,schluessel.Item6,schluessel.Item6};
                 _musterSchalter=$"{_uiSystem.FlaecheStrasseAn}/{_uiSystem.FlaecheDekoAn}/{_musterGriff.Stand}";
             }
             bool esc=Keyboard.current?.escapeKey.wasPressedThisFrame==true && _musterAbbruchBild!=UnityEngine.Time.frameCount;

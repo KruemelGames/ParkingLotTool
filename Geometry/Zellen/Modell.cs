@@ -181,6 +181,7 @@ namespace ParkingLotTool.Geometry.Zellen
          * Liste, weil ein Ring genau ein Prefab hat.
          */
         Zoningstrasse,
+        Strassenbelag,
     }
 
     internal enum Zellart
@@ -1206,6 +1207,8 @@ namespace ParkingLotTool.Geometry.Zellen
     internal sealed class Bauergebnis
     {
         internal Kurvenrandplan Kurvenrand { get; set; }
+        // Eigene Fahrbahn der Strassen, an denen eine Alley endet (Strassenbelagplan).
+        internal IReadOnlyList<Ring> Fahrbahnringe { get; set; } = Array.Empty<Ring>();
         internal IReadOnlyList<string> Schnittwarnungen { get; set; } = Array.Empty<string>();
         internal bool Randstrassen { get; set; } = true;
         internal Ringlosplan Ringlos { get; set; }

@@ -238,10 +238,21 @@ namespace ParkingLotTool.Tools
                  */
                 var breite = (float)new Entrance { Art = segment.Art }
                     .Breite(settings?.Ai ?? 6.0, settings?.Gassenbreite ?? 0);
+                /*
+                 * DIE GASSE: VOLLE BREITE, ECKEN VOM STRASSENBELAG (Issue #22).
+                 *
+                 * Im Lot liegt unter der Alley jetzt der Strassenbelag in der
+                 * gemessenen Alley-Breite, nicht mehr der 5,5-m-Zufahrtsbelag.
+                 * Die Vorflaeche schliesst daran an und wird mit ihm
+                 * verschmolzen (VerschmelzeVorflaechen) - sonst stand vorne
+                 * eine schmalere Einzelflaeche (Nutzer 27.10.).
+                 */
+                var gasse = Zufahrtsarten.IstGasse(segment.Art);
+                if (gasse) breite = (float)ParkingGeometry.Zufahrtsgassenbreite;
                 if (breite <= 0f) continue;
 
                 var ring = VorflaecheFuer(segment, breite, aufweitung,
-                    layout.AsphaltSurface,
+                    gasse ? layout.StrassenbelagSurface : layout.AsphaltSurface,
                     out var aussenteil, out var innenkante, out var meldung);
                 if (ring != null)
                 {

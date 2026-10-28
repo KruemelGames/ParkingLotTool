@@ -61,6 +61,8 @@ namespace ParkingLotTool.Tools
         private EntityQuery _definitionQuery;
         private Entity _grassSurfacePrefab = Entity.Null;
         private Entity _vorflaechenPrefab = Entity.Null;
+        /** Der Vorflaechen-Klon fuer den Strassenbelag - auch ohne Vorflaeche (Issue #22). */
+        private Entity _strassenbelagPrefab = Entity.Null;
         /** Klon des Hauptbelags, der auch auf Strassen zeichnet. */
         private Entity _asphaltBelagPrefab = Entity.Null;
         private bool _vorflaechenPrefabAusstehend;
@@ -416,6 +418,10 @@ namespace ParkingLotTool.Tools
                 out var asphaltRaeumerFehler,
                 out var asphaltRaeumerAufgegeben,
                 VorflaechePrioritaet, raeumt: true);
+            // Derselbe Schluessel wie die Vorflaeche, also derselbe Klon - aber
+            // unabhaengig davon, ob die Vorflaeche eingeschaltet ist.
+            _strassenbelagPrefab = VorflaechenPrefab(_pavementSurfacePrefab,
+                out _, out _, VorflaechePrioritaet);
             /*
              * DER PARZELLENBODEN GEHOERT AUCH DAZU.
              *

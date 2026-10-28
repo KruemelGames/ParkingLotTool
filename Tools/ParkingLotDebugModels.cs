@@ -325,6 +325,9 @@ namespace ParkingLotTool.Tools
         public DebugPoint2[][] CrossPavement { get; set; }
         public DebugPoint2[][] GrassSurface { get; set; }
         public DebugPoint2[][] AsphaltSurface { get; set; }
+        // Alley-Belag mit Roads-Ebene (Issue #22).
+        public DebugPoint2[][] StrassenbelagSurface { get; set; }
+        public DebugPoint2[][] FahrbahnSurface { get; set; }
         public DebugPoint2[][] PerimeterQuad { get; set; }
         public DebugPoint2[][] EntranceQuad { get; set; }
         public DebugPoint2[][] AisleLine { get; set; }
@@ -418,6 +421,8 @@ namespace ParkingLotTool.Tools
                 CrossPavement = DebugPoint2.From(layout.CrossPavement),
                 GrassSurface = DebugPoint2.From(layout.GrassSurface),
                 AsphaltSurface = DebugPoint2.From(layout.AsphaltSurface),
+                StrassenbelagSurface = DebugPoint2.From(layout.StrassenbelagSurface),
+                FahrbahnSurface = DebugPoint2.From(layout.FahrbahnSurface),
                 PerimeterQuad = DebugPoint2.From(layout.PerimeterQuad),
                 EntranceQuad = DebugPoint2.From(layout.EntranceQuad),
                 AisleLine = DebugPoint2.From(layout.AisleLine),

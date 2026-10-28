@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using ParkingLotTool.Geometry;
 using Unity.Mathematics;
 
 namespace ParkingLotTool.Tools
@@ -46,27 +47,45 @@ namespace ParkingLotTool.Tools
          */
         private const float ZusammenfallendePunkte = 0.01f;
 
+        /*
+         * DIE VORFLAECHE EINER GASSE GEHOERT ZUM STRASSENBELAG (Issue #22).
+         *
+         * Unter der Alley liegt im Lot kein Asphalt mehr, sondern der
+         * Strassenbelag mit demselben Vorflaechen-Klon. Die Vorflaeche der
+         * Gasse wird deshalb in DESSEN Ring eingesetzt - ein Umriss von der
+         * Fahrgasse bis vor die Strasse, wie frueher mit dem Asphalt. Ohne
+         * das blieb sie eine Einzelflaeche mit eigener Texturlage (Nutzer
+         * 27.10.: "vorne ist immer noch die einzelne flaeche").
+         */
         private void VerschmelzeVorflaechen(
             float2[][] asphalt,
+            float2[][] strassenbelag,
             out float2[][] verschmolzen,
             out float2[][] rest,
+            out float2[][] belagMitVorflaeche,
             out float2[][] einzeln,
             out int[] einzelnArt)
         {
             verschmolzen = Array.Empty<float2[]>();
             rest = asphalt ?? Array.Empty<float2[]>();
+            belagMitVorflaeche = strassenbelag ?? Array.Empty<float2[]>();
             einzeln = _vorflaechen;
             einzelnArt = _vorflaechenArt;
             if (_vorflaechen == null || _vorflaechen.Length == 0) return;
             if (_vorflaechenKante == null
                 || _vorflaechenKante.Length != _vorflaechen.Length)
                 return;
-            if (asphalt == null || asphalt.Length == 0) return;
+            asphalt = asphalt ?? Array.Empty<float2[]>();
+            strassenbelag = strassenbelag ?? Array.Empty<float2[]>();
+            if (asphalt.Length == 0 && strassenbelag.Length == 0) return;
 
             // Arbeitskopien: der Ring wird beim Einsetzen laenger.
             var ringe = new List<float2[]>(asphalt.Length);
             for (var i = 0; i < asphalt.Length; i++) ringe.Add(asphalt[i]);
             var beruehrt = new bool[asphalt.Length];
+            var belagRinge = new List<float2[]>(strassenbelag);
+            var belagBeruehrt = new bool[strassenbelag.Length];
+            var inBelag = 0;
 
             var offenRinge = new List<float2[]>();
             var offenArt = new List<int>();
@@ -82,12 +101,26 @@ namespace ParkingLotTool.Tools
                     continue;
                 }
 
-                if (TrySetzeEin(ringe, beruehrt, kante, _vorflaechen[v],
-                        out var meldung))
+                string meldung = null;
+                if (Zufahrtsarten.IstGasse((Zufahrtsart)_vorflaechenArt[v])
+                    && belagRinge.Count > 0)
+                {
+                    if (TrySetzeEin(belagRinge, belagBeruehrt, kante,
+                            _vorflaechen[v], out meldung))
+                    {
+                        meldungen.Add("Gasse/Strassenbelag: " + meldung);
+                        inBelag++;
+                        continue;
+                    }
+                    meldungen.Add("Gasse/Strassenbelag: " + meldung);
+                }
+                if (ringe.Count > 0 && TrySetzeEin(ringe, beruehrt, kante,
+                        _vorflaechen[v], out meldung))
                 {
                     meldungen.Add(meldung);
                     continue;
                 }
+                if (ringe.Count == 0) meldung = "kein Asphaltring vorhanden";
 
                 meldungen.Add(meldung);
                 offenRinge.Add(_vorflaechen[v]);
@@ -104,11 +137,13 @@ namespace ParkingLotTool.Tools
 
             verschmolzen = mitVorflaeche.ToArray();
             rest = ohne.ToArray();
+            belagMitVorflaeche = belagRinge.ToArray();
             einzeln = offenRinge.ToArray();
             einzelnArt = offenArt.ToArray();
 
             var text = "PLT-Vorflaeche verschmolzen: " + mitVorflaeche.Count
-                + " Asphaltring(e) erweitert, " + offenRinge.Count
+                + " Asphaltring(e) erweitert, " + inBelag
+                + " in den Strassenbelag eingesetzt, " + offenRinge.Count
                 + " Vorflaeche(n) blieben eigenstaendig. "
                 + string.Join(" | ", meldungen);
             if (text != _letzteVerschmelzmeldung)

@@ -1,0 +1,72 @@
+{
+ "Quelle": "Nutzerbau 27.10.2026 22:27, Alley-Knoten auf der Ecke der Randstrasse (Issue #22 Knotenabdeckung)",
+ "Polygon": [
+  {
+   "X": 1273.5057373046875,
+   "Z": 4385.71337890625
+  },
+  {
+   "X": 1333.7098388671875,
+   "Z": 4403.70263671875
+  },
+  {
+   "X": 1307.9393310546875,
+   "Z": 4489.94873046875
+  },
+  {
+   "X": 1265.9508056640625,
+   "Z": 4468.75830078125
+  }
+ ],
+ "Settings": {
+  "Es": 1,
+  "Ai": 7,
+  "Cw": 3,
+  "Sl": 5.9,
+  "Sw": 3,
+  "Md": 2.5,
+  "Gassenbreite": 5.5,
+  "Cr": 33,
+  "Qk": true,
+  "Randstrassen": true,
+  "Auto": false,
+  "Angle": 0,
+  "AngleMode": "edge",
+  "Ausrichtwinkel": null,
+  "TeilflaechenAusrichtungen": null,
+  "Zoningflaechen": null,
+  "Randzoning": [],
+  "Zoningstrasse": "Alley",
+  "BusStops": [],
+  "Teilflaechenschnitte": null,
+  "Entrances": [
+   {
+    "Edge": 0,
+    "Along": 32.964420318603516,
+    "Corner": null,
+    "Art": "Gasse",
+    "AxisDirection": [
+     -0.2862992584705353,
+     0.9581402540206909
+    ],
+    "AxisLength": 6.900000095367432
+   },
+   {
+    "Edge": 0,
+    "Along": 10.610740401827227,
+    "Corner": "start",
+    "Art": "Gasse",
+    "AxisDirection": null,
+    "AxisLength": null
+   }
+  ],
+  "AutomaticEntrances": false,
+  "KantenVersatz": 0,
+  "Zellen": true,
+  "EineFlaeche": false,
+  "NoNotch": false,
+  "Single": false,
+  "NoHalf": false,
+  "Kurvenlaeufe": []
+ }
+}

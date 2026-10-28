@@ -62,6 +62,26 @@ namespace ParkingLotTool.Tools
      */
     public sealed partial class ParkingLotApronPrefabSystem : GameSystemBase
     {
+        /**
+         * DIE GROSSEN FLAECHEN ZEICHNEN NICHT AUF STRASSEN (Issue #22).
+         *
+         * Mit der Ebene `Roads` erschienen Asphalt und Gras eines Parkplatzes
+         * unter einer Bruecke auf deren Fahrbahn - je weiter herausgezoomt und
+         * je senkrechter, desto mehr. Der Flaechenshader des Spiels prueft im
+         * Fragment nur Grundriss und Ebene, keine Hoehe (Codex 26.10., Shader
+         * aus resources.assets, Bericht ANALYSE-ISSUE22-BRUECKE). Im Spiel
+         * bestaetigt: alle Klone ohne `Roads` - Bruecke sauber.
+         *
+         * `Roads` brauchen nur die Stuecke, die WIRKLICH auf einer Strasse
+         * liegen sollen: die Alley im Parkplatz und die Vorflaeche zur
+         * Stadtstrasse. Dafuer gibt es die Gruppe "Strassenbelag"
+         * (ParkingLotAreaPreviewDefinitions) mit dem Vorflaechen-Klon. Die
+         * raeumenden Klone (Asphalt, Gras) bedecken grosse Flaechen und
+         * bleiben auf dem Gelaende. Abgeleitet aus dem Schluessel, weil der
+         * zugleich der Klonname im Spielstand ist.
+         */
+        private static bool ZeichnetAufStrassen(Eintrag eintrag) => !eintrag.Raeumt;
+
         private sealed class Eintrag
         {
             public Entity Original;
@@ -647,7 +667,8 @@ namespace ParkingLotTool.Tools
 
                 eintrag.OriginalMaske = originalGerendert.m_DecalLayerMask;
                 klonGerendert.m_DecalLayerMask = eintrag.OriginalMaske
-                    | DecalLayers.Terrain | DecalLayers.Roads;
+                    | DecalLayers.Terrain
+                    | (ZeichnetAufStrassen(eintrag) ? DecalLayers.Roads : 0);
 
                 /*
                  * ZEICHENREIHENFOLGE - hoeher heisst spaeter und damit oben.
@@ -826,7 +847,7 @@ namespace ParkingLotTool.Tools
             var eigenerStapel = originalBatch >= 0
                 && stapel.m_BatchIndex != originalBatch;
             var maskeStimmt = (klonMaske & DecalLayers.Terrain) != 0
-                && (klonMaske & DecalLayers.Roads) != 0;
+                && ((klonMaske & DecalLayers.Roads) != 0) == ZeichnetAufStrassen(eintrag);
             var originalUnveraendert = originalMaske == eintrag.OriginalMaske;
             var raeumflagStimmt = ((geometrie.m_Flags
                 & GeometryFlags.CanOverrideObjects) != 0) == eintrag.Raeumt;

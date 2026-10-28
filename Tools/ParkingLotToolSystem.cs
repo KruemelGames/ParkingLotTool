@@ -1257,6 +1257,8 @@ namespace ParkingLotTool.Tools
                     : "")
                 + " | schnitte " + _buildSettings.Teilflaechenschnitte.Length
                 + " | stand " + _buildRevision);
+            // Auf dem Spielfaden lesen, die Rechnung laeuft gleich im Hintergrund.
+            _buildSettings.Brueckengrundrisse = Brueckengrundrisse(site);
             var settings = _buildSettings;
             // Ohne diese Zeile schweigt das Log, solange gerechnet wird. Genau
             // das machte einen Vorfall unlesbar: der Nutzer meldete "nichts

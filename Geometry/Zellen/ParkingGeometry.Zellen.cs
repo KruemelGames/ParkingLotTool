@@ -446,26 +446,76 @@ namespace ParkingLotTool.Geometry
              * Alles landet in `AsphaltSurface`; welches der beiden Prefabs der
              * Bau daraus macht, ist gleich, sie sind ja dasselbe.
              */
-            var kurvenmaterial = ZellenKurvenmaterial(bau);
-            var gras = bau.Flaechen
+            // Das Bauland liegt in Weltkoordinaten; die Wege rechnen im
+            // Wurzelrahmen. Einmal umlegen, wie im Layout auch.
+            var baulandLokal = (settings.Zoningflaechen
+                    ?? Array.Empty<ParkingGeometry.Zoningflaeche>())
+                .Where(f => f != null && f.Spalten > 0 && f.Reihen > 0)
+                .Select(f =>
+                {
+                    // Winkel abziehen statt zurueckrechnen - dieselbe Regel
+                    // wie im Layout. Ueber zwei umgerechnete Eckpunkte
+                    // waechst der Fehler mit der Kantenlaenge, und das
+                    // Zonenraster von CS2 verzeiht keine Winkelreste.
+                    var rahmenwinkel = Math.Atan2(
+                        bau.Rahmen.XAchse.Y, bau.Rahmen.XAchse.X)
+                        * 180.0 / Math.PI;
+                    return new Zoningvorgabe
+                    {
+                        Ecke = bau.Rahmen.NachLokal(
+                            new Punkt(f.Ecke.x, f.Ecke.y)),
+                        Spalten = f.Spalten,
+                        Reihen = f.Reihen,
+                        Winkel = f.Winkel - rahmenwinkel,
+                        Rand = f.Rand,
+                        Aussen = f.AussenWirksam ?? f.Aussentiefen,
+                        Kuerzung = f.AussenKuerzung,
+                    };
+                })
+                .ToArray();
+            // Die Randzoning-Linien einmal in den Rahmen des Kerns, wie die
+            // Baulandflaechen eine Zeile darueber.
+            var randzoningLokal = (settings.Randzoning
+                    ?? Array.Empty<RandzoningLinie>())
+                .Where(l => l != null)
+                .Select(l => (
+                    A: bau.Rahmen.NachLokal(new Punkt(l.A.x, l.A.y)),
+                    B: bau.Rahmen.NachLokal(new Punkt(l.B.x, l.B.y))))
+                .ToArray();
+            var strassen = ZellenStrassen(bau, baulandLokal, randzoningLokal,
+                settings.Ai, settings.Cw);
+            var netz = ZellenNetzfassung(strassen, bau.Rahmen,
+                bau.Kurvenrand == null || !bau.Randstrassen
+                    ? null : new HashSet<Punkt>(bau.Randstrassenmittellinie));
+            var materialbau = ZellenStrassenbelag(bau, netz, settings);
+            var kurvenmaterial = ZellenKurvenmaterial(materialbau);
+            var gras = materialbau.Flaechen
                 .Where(flaeche => flaeche.Material == ZellMaterial.Gruen)
                 .Select(flaeche => ZellenRing(bau.Rahmen, flaeche.Aussenring))
                 .ToArray();
-            var asphalt = bau.Flaechen
+            var asphalt = materialbau.Flaechen
                 .Where(flaeche => flaeche.Material == ZellMaterial.Asphalt)
                 .Select(flaeche => kurvenmaterial.TryGetValue(flaeche.Id, out var rechteck)
                     ? rechteck : ZellenRing(bau.Rahmen, flaeche.Aussenring))
                 .ToArray();
-            var zoningflaechen = bau.Flaechen
+            var zoningflaechen = materialbau.Flaechen
                 .Where(flaeche => flaeche.Material == ZellMaterial.Zoning)
                 .Select(flaeche => ZellenRing(bau.Rahmen, flaeche.Aussenring))
                 .ToArray();
             // Eigene Liste, weil der Korridor ein anderes Prefab braucht:
             // eine Flaeche mit Ebenenmaske Terrain ist auf einer Strasse
             // unsichtbar, auch auf einer unsichtbaren.
-            var zoningstrassen = bau.Flaechen
+            var zoningstrassen = materialbau.Flaechen
                 .Where(flaeche => flaeche.Material == ZellMaterial.Zoningstrasse)
                 .Select(flaeche => ZellenRing(bau.Rahmen, flaeche.Aussenring))
+                .ToArray();
+
+            var strassenbelag = materialbau.Flaechen
+                .Where(flaeche => flaeche.Material == ZellMaterial.Strassenbelag)
+                .Select(flaeche => ZellenRing(bau.Rahmen, flaeche.Aussenring))
+                .ToArray();
+            var fahrbahn = materialbau.Fahrbahnringe
+                .Select(ring => ZellenRing(bau.Rahmen, ring))
                 .ToArray();
 
             /*
@@ -488,6 +538,10 @@ namespace ParkingLotTool.Geometry
             // Ringe, die CS2 NEHMEN wuerde und die wir trotzdem weglassen,
             // weil sie Haarrisse sind. Getrennt gezaehlt - siehe die Meldung.
             var haarrisse = new List<float2[]>();
+            strassenbelag = PlaneZellenCs2Flaechen(
+                strassenbelag, true, unbaubareRinge);
+            fahrbahn = PlaneZellenCs2Flaechen(
+                fahrbahn, true, unbaubareRinge);
             zoningflaechen = PlaneZellenCs2Flaechen(
                 zoningflaechen, true, unbaubareRinge);
             zoningstrassen = PlaneZellenCs2Flaechen(
@@ -557,7 +611,17 @@ namespace ParkingLotTool.Geometry
              * Gelesen werden nur Bay, BayKind, EntranceLine und settings.Sw -
              * alle uebrigen WorkLayout-Felder bleiben leer.
              */
-            if (settings.EineFlaeche)
+            if (settings.EineFlaeche && strassenbelag.Length > 0)
+            {
+                // Nur die sichtbare Ausgabe zusammenfassen. Rollenflaechen
+                // und Green bleiben fuer Pflanzen und Vorschau erhalten.
+                asphalt = Strassenbelagplan.Einheitsbelag(materialbau)
+                    .Where(f => f.Material == ZellMaterial.Asphalt)
+                    .Select(f => ZellenRing(bau.Rahmen, f.Aussenring)).ToArray();
+                gras = Array.Empty<float2[]>();
+                asphalt = PlaneZellenCs2Flaechen(asphalt, entwirreBelag, unbaubareRinge, entwirreBelag);
+            }
+            if (settings.EineFlaeche && strassenbelag.Length == 0)
             {
                 // Das gezeichnete Areal IST der Umriss des Belags - die Zellen
                 // decken es vollstaendig ab, bis hinaus zum Randband. Es gibt
@@ -574,44 +638,6 @@ namespace ParkingLotTool.Geometry
                     asphalt, entwirreBelag, unbaubareRinge, entwirreBelag);
             }
 
-            // Das Bauland liegt in Weltkoordinaten; die Wege rechnen im
-            // Wurzelrahmen. Einmal umlegen, wie im Layout auch.
-            var baulandLokal = (settings.Zoningflaechen
-                    ?? Array.Empty<ParkingGeometry.Zoningflaeche>())
-                .Where(f => f != null && f.Spalten > 0 && f.Reihen > 0)
-                .Select(f =>
-                {
-                    // Winkel abziehen statt zurueckrechnen - dieselbe Regel
-                    // wie im Layout. Ueber zwei umgerechnete Eckpunkte
-                    // waechst der Fehler mit der Kantenlaenge, und das
-                    // Zonenraster von CS2 verzeiht keine Winkelreste.
-                    var rahmenwinkel = Math.Atan2(
-                        bau.Rahmen.XAchse.Y, bau.Rahmen.XAchse.X)
-                        * 180.0 / Math.PI;
-                    return new Zoningvorgabe
-                    {
-                        Ecke = bau.Rahmen.NachLokal(
-                            new Punkt(f.Ecke.x, f.Ecke.y)),
-                        Spalten = f.Spalten,
-                        Reihen = f.Reihen,
-                        Winkel = f.Winkel - rahmenwinkel,
-                        Rand = f.Rand,
-                        Aussen = f.AussenWirksam ?? f.Aussentiefen,
-                        Kuerzung = f.AussenKuerzung,
-                    };
-                })
-                .ToArray();
-            // Die Randzoning-Linien einmal in den Rahmen des Kerns, wie die
-            // Baulandflaechen eine Zeile darueber.
-            var randzoningLokal = (settings.Randzoning
-                    ?? Array.Empty<RandzoningLinie>())
-                .Where(l => l != null)
-                .Select(l => (
-                    A: bau.Rahmen.NachLokal(new Punkt(l.A.x, l.A.y)),
-                    B: bau.Rahmen.NachLokal(new Punkt(l.B.x, l.B.y))))
-                .ToArray();
-            var strassen = ZellenStrassen(bau, baulandLokal, randzoningLokal,
-                settings.Ai, settings.Cw);
             var rollen = new WorkLayout();
             rollen.Bay.AddRange(buchten.Select(bucht =>
                 bucht.Select(punkt => new double2(punkt.x, punkt.y)).ToArray()));
@@ -675,9 +701,6 @@ namespace ParkingLotTool.Geometry
             var gassen = strassen.Where(strasse => strasse.Kind == "aisle").ToList();
             var quer = strassen.Where(strasse => strasse.Kind == "cross").ToList();
             var zufahrten = strassen.Where(strasse => strasse.Kind == "entrance").ToList();
-            var netz = ZellenNetzfassung(strassen, bau.Rahmen,
-                bau.Kurvenrand == null || !bau.Randstrassen
-                    ? null : new HashSet<Punkt>(bau.Randstrassenmittellinie));
             var winkel = Math.Atan2(bau.Rahmen.XAchse.Y, bau.Rahmen.XAchse.X)
                 * 180 / Math.PI;
             winkel = ((winkel % 180) + 180) % 180;
@@ -691,6 +714,8 @@ namespace ParkingLotTool.Geometry
             };
             if (bau.Ringlos != null) warnungen.AddRange(bau.Ringlos.Warnungen);
             warnungen.AddRange(bau.Schnittwarnungen);
+            if (!ReferenceEquals(materialbau, bau))
+                warnungen.AddRange(materialbau.Schnittwarnungen);
             /*
              * Weggelassene Ringe gehoeren in den Bauzettel, nicht ins
              * Schweigen. Die Flaechensumme sagt sofort, ob es kosmetisch ist
@@ -765,7 +790,7 @@ namespace ParkingLotTool.Geometry
               *
               * Nutzerentscheidung am 2026-08-25: drinlassen, aber melden.
               */
-            var trennung = bau.Lochtrennung;
+            var trennung = materialbau.Lochtrennung;
             if (trennung != null && trennung.Trennnaehte != null
                 && trennung.Trennnaehte.Count != 0)
                 warnungen.Add(
@@ -860,7 +885,7 @@ namespace ParkingLotTool.Geometry
             }
             var entranceQuads = entranceQuadListe.ToArray();
             var greenQuads = ZellenVorschauQuads(
-                bau, zelle => zelle.Material == ZellMaterial.Gruen, true, false);
+                materialbau, zelle => zelle.Material == ZellMaterial.Gruen, true, false);
             return new ParkingLayout
             {
                 Bay = buchten,
@@ -878,6 +903,8 @@ namespace ParkingLotTool.Geometry
                 AsphaltSurface = asphalt,
                 ZoningSurface = zoningflaechen,
                 ZoningRoadSurface = zoningstrassen,
+                StrassenbelagSurface = strassenbelag,
+                FahrbahnSurface = fahrbahn,
                 GrassSurfaceByRole = settings.EineFlaeche
                     ? grasNachRolle : null,
                 AsphaltSurfaceByRole = settings.EineFlaeche

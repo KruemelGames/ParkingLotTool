@@ -121,6 +121,7 @@ namespace ParkingLotTool.Tools
             LadeZoningBedienwerte(_baukontext.Zettel);
             var k = _baukontext;
             var settings = LayoutEinstellungen(k);
+            settings.Brueckengrundrisse = Brueckengrundrisse(k.Punkte.Select(p => p.xz).ToArray());
             _areaPreviewSettings = settings;
             _alteZoningkurse = null; _erhalteneNetzteile.Clear(); _zoningErhalten = false;
             _erhalteneKursketten.Clear(); _hintergrundGassenkurse.Clear();

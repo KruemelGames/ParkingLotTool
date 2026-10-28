@@ -899,7 +899,16 @@ $eck-reiter: 9rem;
  */
 .reiterZeile {
   display: flex;
-  flex-wrap: wrap;
+  /*
+   * WAAGERECHT EINZEILIG (Issue #20, mxdanger).
+   *
+   * Mit `wrap` rechnete Cohtml die Breite der Zeile zu klein: bei groesserer
+   * Interface-Skalierung brach "Report a problem" in eine zweite Zeile,
+   * obwohl rechts daneben viel Platz frei war. Einzeilig ist ihre Breite
+   * einfach die Summe der Reiter. Hochkant bricht die Zeile weiter um
+   * (`.stilHochkant .reiterZeile`).
+   */
+  flex-wrap: nowrap;
   align-items: center;
 }
 

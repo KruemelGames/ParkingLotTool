@@ -17,6 +17,25 @@ internal static class Vergleich
         return Convert.ToHexString(SHA256.HashData(speicher.ToArray()));
     }
 
+    /**
+     * Wie `Abdruck`, aber ohne eine oberste Eigenschaft - fuer Referenzen, die
+     * vor einem NEU hinzugekommenen Feld entstanden sind (StrassenbelagSurface,
+     * 27.10.). Dieselbe Byte-Folge wie damals, solange das Feld fehlt; dass es
+     * im Fall wirklich leer ist, prueft der Aufrufer selbst.
+     */
+    internal static string AbdruckOhne(object wert, params string[] ohne)
+    {
+        using var speicher = new MemoryStream();
+        using var w = new BinaryWriter(speicher);
+        w.Write(true);
+        foreach (var p in wert.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(p => p.GetIndexParameters().Length == 0 && !ohne.Contains(p.Name)).OrderBy(p => p.Name))
+        {
+            w.Write(p.Name); Schreibe(w, p.GetValue(wert), 1);
+        }
+        return Convert.ToHexString(SHA256.HashData(speicher.ToArray()));
+    }
+
     private static void Schreibe(BinaryWriter w, object v, int tiefe = 0)
     {
         if (tiefe > 32) throw new InvalidOperationException("Zyklische Layoutdaten: " + v?.GetType().FullName);
