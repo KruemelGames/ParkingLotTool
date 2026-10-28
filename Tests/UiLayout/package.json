@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "name": "plt-ui-layout",
+  "description": "Layout-Pruefstand: rendert das echte PLT-Panel in Edge bei vielen Aufloesungen und meldet alles, was uebersteht.",
+  "devDependencies": {
+    "playwright-core": "1.48.2"
+  }
+}

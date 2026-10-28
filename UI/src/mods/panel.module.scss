@@ -1033,6 +1033,30 @@ $eck-reiter: 9rem;
   flex-shrink: 0;
 }
 
+/* "Kurve folgen" und die Fangschalter als eine Gruppe (28.10.2026). */
+.fangGruppe {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/*
+ * HOCHKANT: ZWEI ZEILEN STATT EINER ZU LANGEN (28.10.2026).
+ * Fensterknoepfe oben, Kurve und Fangschalter darunter - als Spalte, nicht
+ * mit `flex-wrap`: Gameface rechnet einen umbrechenden Kasten falsch hoch.
+ */
+.stilHochkant .kopfRechts {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.stilHochkant .fangGruppe {
+  margin-top: $s2;
+
+  > .kopfTrenner { display: none; }
+  .fangZeile { margin-left: $s3; }
+}
+
 /* Trennt die Fangschalter von den Fensterknoepfen: zwei Gruppen, zwei
    Aufgaben. Ohne ihn stehen sieben Symbole in einer Reihe und sehen aus
    wie eines. */
@@ -1209,9 +1233,10 @@ $eck-reiter: 9rem;
  * Hoverflaeche.
  */
 .spaltenTitelKlapp {
-  margin-left: -$s2;
-  margin-right: -$s2;
-  padding: 2rem $s2;
+  /* Kein negativer Rand mehr (28.10.2026): die Ueberschrift ragte damit
+     4 rem ueber den Laufbereich hinaus (Pruefstand Tests/UiLayout, hochkant
+     bei hohen Bildschirmen). Die Hover-Flaeche schliesst buendig ab. */
+  padding: 2rem 0;
   border-radius: $eck-innen;
   cursor: pointer;
 
@@ -3321,6 +3346,10 @@ $eck-reiter: 9rem;
 /* Im festen Rahmen schrumpft der Kachelbereich als einziger Teil der Liste
    (Kopf und Fusszeile stehen, siehe `.listeRahmen`). */
 .listeRahmen > .listeScroll { flex: 0 1 auto; min-height: 0; }
+/* Hochkant bei grossem Text laeuft die ganze Liste, nicht nur die Kacheln
+   (28.10.2026, siehe liste.tsx `ganzLaufen`). */
+.listeRahmen.listeRahmenLaeuft { overflow-x: hidden; overflow-y: auto; }
+.listeRahmen.listeRahmenLaeuft > .listeScroll { flex: 0 0 auto; max-height: none; overflow: visible; }
 .listeGitter { align-content: flex-start; }
 .listeZelle { flex-basis: 33.333%; min-width: 320rem; }
 .listeKachel { background-color: $flaeche; border-color: $rand; border-radius: $eck-innen; }
@@ -3365,13 +3394,19 @@ $eck-reiter: 9rem;
 /* Suche und Sortieren rechts im Kopf; jede Note blaettert fuer sich. */
 .listeKopf { flex-wrap: wrap; }
 .listeKopfAktionen { display: flex; flex: 1 1 620rem; justify-content: flex-end; flex-wrap: wrap;
-  align-items: center; margin-left: 0; padding-left: $s4; }
+  align-items: center; margin-left: 0; padding-left: $s4;
+  /* Nie breiter als die Zeile (28.10.2026): hochkant bei 150 % Text lief
+     sie samt Suchfeld 39 px ueber den Rand (Pruefstand Tests/UiLayout). */
+  min-width: 0; max-width: 100%; box-sizing: border-box; }
 .listeKopfAktionen .listeSortierung { margin-left: 0; }
 .listeKopfAktionen .listeSuche { width: 120rem; margin: 0; border: none; background-color: transparent; }
 .listeKopfAktionen .listeFilter { justify-content: flex-end; }
-.listeSuchfeld { display: flex; align-items: center; margin-right: $s3;
+.listeSuchfeld { display: flex; align-items: center; margin-right: $s3; min-width: 0; max-width: 100%; box-sizing: border-box;
   border: 1rem solid $rand; border-radius: $s2; background-color: rgba(0,0,0,0.3);
-  span { padding-left: $s3; color: rgba(255,255,255,0.65); @include textPlatz; }
+  /* Die Beschriftung bleibt ein Wort; nachgeben darf das Eingabefeld
+     (sonst brach "Search" bei 150 % Buchstabe fuer Buchstabe um). */
+  span { padding-left: $s3; color: rgba(255,255,255,0.65); flex: 0 0 auto; white-space: nowrap; }
+  .listeSuche { flex: 1 1 0; min-width: 40rem; }
 }
 .listeUebersicht { flex: 0 0 auto; max-width: 100%; }
 .listeUebersicht strong { @include textPlatz; }

@@ -4,7 +4,7 @@ import styles from "./panel.module.scss";
 import { Listengebuehr } from "./liste-gebuehr";
 import { anteilBelegt, waehlePlaetze, Listenfilter, Listensortierung } from "./liste-logik";
 import { MitTooltip, TooltipKnopf } from "./controls";
-import { Aufklapper } from "./rahmen";
+import { Aufklapper, useTextFaktor } from "./rahmen";
 import { Satzteil, Texte, useTexte } from "./texte";
 import {
   icon, parkplatzBearbeiten, parkplatzInfos$,
@@ -12,6 +12,7 @@ import {
   parkplatzUmbenennen, parkplatzWaehlen,
   parkplatzReparieren, parkplaetzeReparieren, setWaisenAuto, waisenAuto$,
   parkplatzSynchronisieren, parkplaetzeSynchronisieren, setSyncAuto, syncAuto$, syncOffen$,
+  panelStil$,
 } from "./bindings";
 
 /**
@@ -493,6 +494,15 @@ export const ListeTab = () => {
   const auto = useValue(waisenAuto$);
   const syncAuto = useValue(syncAuto$);
   const syncOffen = useValue(syncOffen$);
+  /*
+   * HOCHKANT MIT GROSSEM TEXT LAEUFT DIE GANZE LISTE (28.10.2026).
+   * Sonst steht der Kopf (Knoepfe, Suche, Filter) fest und nimmt bei 150 %
+   * fast die ganze Hoehe - von den Kacheln blieb ein Streifen (Pruefstand
+   * Tests/UiLayout, Nutzer: "so gut wie nicht nutzbar"). Die Knoepfe sind
+   * dann beim Blaettern weg, aber mit einem Schub nach oben wieder da;
+   * waagerecht und bei 100 % bleibt der Kopf stehen wie bisher.
+   */
+  const ganzLaufen = useValue(panelStil$) === "hochkant" && useTextFaktor() > 1.001;
   const [slot, setSlot] = useState(0);
   const [pause, setPause] = useState(false);
   const [hover, setHover] = useState(false);
@@ -505,6 +515,7 @@ export const ListeTab = () => {
   const zielslot = useRef<"anfang" | "ende">("anfang");
   const wechsel = useRef(false);
   const gitter = useRef<HTMLDivElement>(null);
+  const rahmen = useRef<HTMLDivElement>(null);
   /* Das Sortiermenue liegt im Aufklapper ausserhalb der Liste (2026-10-15).
      `onBlur` am Knopf schloss es, bevor ein Klick im Menue ankam - jetzt
      schliesst ein Mausdruck ausserhalb von Knopf UND Menue. */
@@ -565,7 +576,16 @@ export const ListeTab = () => {
   const aktuelleSeite = Math.min(seite, seiten - 1);
   useEffect(() => { setSeite(0); }, [suche, filter, sortierung]);
   useEffect(() => { setSeite(s => Math.min(s, seiten - 1)); }, [seiten]);
-  useEffect(() => { if (gitter.current) gitter.current.scrollTop = 0; }, [aktuelleSeite, suche, filter, sortierung]);
+  useEffect(() => {
+    if (gitter.current) gitter.current.scrollTop = 0;
+    // Laeuft die ganze Liste (`ganzLaufen`), stehen die Seitenknoepfe unten:
+    // nach dem Blaettern den Kachelanfang wieder ins Bild holen.
+    const r = rahmen.current, g = gitter.current;
+    if (r && g) {
+      const darueber = r.getBoundingClientRect().top - g.getBoundingClientRect().top;
+      if (darueber > 0) r.scrollTop -= darueber;
+    }
+  }, [aktuelleSeite, suche, filter, sortierung]);
   // Zustand 3 (verbunden, Bauplan fehlt) zaehlt mit: "Alle reparieren"
   // stellt auch dessen Bauplan wieder her.
   const waisen = plaetze.filter(p => p.waise > 0).length;
@@ -576,7 +596,7 @@ export const ListeTab = () => {
   const summeFrei = plaetze.reduce((summe, p) => summe + Math.max(0, p.kapazitaet - p.belegt), 0);
   const unterhalt = plaetze.reduce((summe, p) => summe + p.unterhalt, 0);
   return (
-    <div className={styles.listeRahmen}
+    <div ref={rahmen} className={`${styles.listeRahmen} ${ganzLaufen ? styles.listeRahmenLaeuft : ""}`}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onFocus={e => setFokus(e.target.tagName === "INPUT" || e.target.getAttribute("role") === "slider")}
       onBlur={e => {

@@ -49,7 +49,7 @@ import { useTexte } from "./texte";
 import { AnleitungTab } from "./anleitung";
 import rueckgaengigSymbol from "../assets/rueckgaengig.svg";
 import {
-  abschlussRem, Aufklapper, AufklappEbene, hoechsterAnker, hoechsthoehePx, SPALTE_REM,
+  abschlussRem, Aufklapper, AufklappEbene, hoechsterAnker, hoechsthoehePx, RAND_REM, SPALTE_REM,
   HOEHE_100_RUECKFALL_REM, HOEHE_WAAGERECHT_REM,
   SpaltenProReihe, unterFreiRem, useBildschirm, useRemPx, useTextFaktor,
 } from "./rahmen";
@@ -203,7 +203,7 @@ export const ParkingLotPanel = () => {
      neues Bild, sobald sich die Bildschirmgroesse aendert. Beides Hooks,
      also hier oben. */
   const remPx = useRemPx();
-  useBildschirm();
+  const bildschirm = useBildschirm();
   /* Wie stark "Text scale" die Schrift vergroessert (150 % = gut 2-fach). */
   const textFaktor = useTextFaktor();
 
@@ -669,9 +669,19 @@ export const ParkingLotPanel = () => {
       hochkant ? { oben: anteil * hoehe } : { unten: anteil * hoehe });
     // Waagerecht: bei 100 % Text hoechstens 40 % des Bildes, bei groesserem
     // Text hoechstens so hoch wie bei 100 % (siehe `hoehe100Rem`).
-    const grenzeRem = textFaktor > 1.001
-      ? Math.min(HOEHE_WAAGERECHT_REM, hoehe100Rem ?? HOEHE_100_RUECKFALL_REM)
-      : HOEHE_WAAGERECHT_REM;
+    /*
+     * AUSNAHME PARKPLATZLISTE (28.10.2026). Die Kacheln wachsen mit dem
+     * Text; bei 150 % blieben in 432 rem nach Kopf, Filtern und Fuss nur
+     * gut 180 px fuer Kacheln von etwa 300 px - nur ihre obere Haelfte war
+     * zu sehen (Nutzer: "so gut wie nicht nutzbar"). Dort waechst die Leiste
+     * mit dem Text, hoechstens auf 60 % des Bildes - genug fuer eine volle
+     * Kachelreihe. Der Entwurf bleibt bei der Regel vom 15.10.
+     */
+    const grenzeRem = tab === "liste" && textFaktor > 1.001
+      ? Math.min(HOEHE_WAAGERECHT_REM * textFaktor, HOEHE_WAAGERECHT_REM * 1.5)
+      : textFaktor > 1.001
+        ? Math.min(HOEHE_WAAGERECHT_REM, hoehe100Rem ?? HOEHE_100_RUECKFALL_REM)
+        : HOEHE_WAAGERECHT_REM;
     return hochkant ? frei
       : Math.min(frei, Math.floor(grenzeRem * remGroesse()));
   };
@@ -1034,6 +1044,16 @@ export const ParkingLotPanel = () => {
         ...(hochkant
           ? { left: `${x * 100}%`, top: `${y * 100}%` }
           : { left: `${x * 100}%`, bottom: `${y * 100}%` }),
+        /*
+         * DIE BREITE KOMMT AUS DEM BILDSCHIRM, NICHT AUS DEM RAHMEN (28.10.).
+         * `width: 88%` bezog sich auf den umgebenden Kasten. Bei einem Spieler
+         * (2560x1440) war die waagerechte Leiste so nur so breit wie die
+         * Spalte, und ihr Inhalt lief rechts hinaus. Dieselbe Rechnung wie
+         * `leistenbreite()`, nur ohne gemessene Breite - die ist ja die Frage.
+         */
+        width: `${Math.round(Math.min(stilmass().breite * remPx,
+          (bildschirm.breite || window.innerWidth || 1920) * stilmass().anteil
+          - (hochkant ? 2 * RAND_REM * remPx : 0)))}px`,
         /* Breiten, die Text tragen, rechnen damit (panel.module.scss). */
         ["--pltText" as any]: textFaktor,
       }}
@@ -1210,6 +1230,14 @@ export const ParkingLotPanel = () => {
             Gleiche Bauart wie ein Fangschalter; das Symbol ist CS2s eigenes
             "einfache Kurve" aus dem Strassenwerkzeug.
           */}
+          {/*
+            EIGENE GRUPPE (28.10.2026): hochkant passen Fensterknoepfe,
+            "Kurve folgen" und sieben Fangschalter nicht in 364 rem - die Reihe
+            ragte rechts aus dem Fenster (Spielerbild Marcaliseth, 2560x1440;
+            Pruefstand Tests/UiLayout: in jedem hochkanten Fall). Dort steht
+            die Gruppe jetzt in einer eigenen Zeile unter den Fensterknoepfen.
+          */}
+          <div className={styles.fangGruppe}>
           <span className={styles.kopfTrenner} />
           <TooltipKnopf text={`${t.kurveFolgen}: ${followCurves ? t.schalterAn : t.schalterAus}. ${t.tooltipKurveFolgen}`}
             className={`${styles.fangKnopf} ${followCurves ? styles.fangAn : ""}`}
@@ -1221,6 +1249,7 @@ export const ParkingLotPanel = () => {
             <img alt="" src="Media/Tools/Net Tool/SimpleCurve.svg" />
           </TooltipKnopf>
           <Fangschalter />
+          </div>
           </div>
           {syncOffen > 0 && !syncAuto &&
             <TooltipKnopf text={t.tooltipSyncHinweis}

@@ -17,6 +17,7 @@ Library/ilpp.pid
 
 # Erzeugte Messbilder und Messdateien - jederzeit neu zu bauen.
 Tests/GeometryParity/fehlerbilder.html
+Tests/UiLayout/out/
 Tests/GeometryParity/flaechen-naehte.jsonl
 qualitaet-*.log
 artifacts/
