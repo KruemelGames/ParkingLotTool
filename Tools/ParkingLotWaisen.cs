@@ -120,6 +120,8 @@ namespace ParkingLotTool.Tools
                 Mod.log.Warn("PLT-Waisen: Bestandsaufnahme abgebrochen: " + e);
             }
             ParkingLotSchrittmarke.Setze("Laden: Waisen-Bestandsaufnahme beendet");
+            try { ZaehleRestnetz(); }
+            catch (System.Exception e) { Mod.log.Warn("PLT-Restnetz: Zaehlung abgebrochen: " + e); }
         }
 
         private bool IstLotPrefab(Entity prefab, Dictionary<Entity, bool> merk)
