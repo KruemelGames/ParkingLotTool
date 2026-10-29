@@ -248,6 +248,7 @@
   "settings.Entfernen.knopf.haengt": "Sin progreso; consulta el registro",
   "settings.Entfernen.knopf.laeuft": "Demoliendo… quedan {uebrig} elementos",
   "settings.Entfernen.knopf.nichts": "No hay nada que eliminar",
+  "settings.Entfernen.knopf.wartet": "Espera: hay una sincronización, reparación o edición en curso",
   "settings.Entfernen.warning": "¿Demoler todos los estacionamientos construidos por este mod en esta ciudad? La función de deshacer de la herramienta no puede revertirlo; haz primero una copia de la partida.",
   "settings.Entwickler.desc": "Muestra la pestaña \"Dev-Debug\" en el panel. Contiene herramientas de medición usadas durante el desarrollo: sondeo de zonificación, análisis de plantillas, prueba de soporte, análisis de solapamientos, comparación de plantillas y registro en directo.\n\nNo hace falta para informar de un problema; para eso está la pestaña \"Informar\", siempre visible. Algunas de estas herramientas construyen y eliminan elementos de tu ciudad.",
   "settings.Entwickler.label": "Mostrar la pestaña de desarrollo",

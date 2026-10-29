@@ -266,6 +266,7 @@
   "settings.Entfernen.knopf.haengt": "Brak postępu. Zobacz dziennik",
   "settings.Entfernen.knopf.laeuft": "Rozbiórka... Zostało części: {uebrig}",
   "settings.Entfernen.knopf.nichts": "Nic do usunięcia",
+  "settings.Entfernen.knopf.wartet": "Poczekaj: trwa synchronizacja, naprawa lub edycja",
   "settings.Entfernen.warning": "Wyburzyć wszystkie parkingi PLT w mieście? Cofanie narzędzia tego nie odwróci. Najpierw zrób kopię zapisu.",
   "settings.Entwickler.desc": "Pokazuje kartę „Debug” z narzędziami pomiarowymi: test stref, analiza prefabów, test nośnika, skan nakładania, porównanie prefabów i dziennik na żywo.\n\nDo zgłoszenia błędu wystarczy zawsze widoczna karta „Zgłoś problem”. Niektóre testy budują i usuwają obiekty w mieście.",
   "settings.Entwickler.label": "Karta deweloperska",

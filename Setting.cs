@@ -712,6 +712,19 @@ namespace ParkingLotTool
                     return;
                 }
 
+                // Wie Panel, Bearbeiten und Reparieren: nicht mitten in
+                // Sync, Reparatur, Neubau oder eine offene Bearbeitung.
+                if (reinigung.Blockiert())
+                {
+                    welt.GetExistingSystemManaged<ParkingLotSyncSystem>()
+                        ?.SperrtWegenArbeit("Deinstallation");
+                    Mod.log.Info("PLT-Stadtreinigung: gesperrt - Sync, "
+                        + "Reparatur, Neubau oder eine offene Bearbeitung "
+                        + "laeuft noch. Der Knopf sagt Bescheid.");
+                    reinigung.Warte();
+                    return;
+                }
+
                 reinigung.Bestand(out var abraeumbar, out var ohneTraeger,
                     out var teile);
                 if (abraeumbar == 0)
@@ -911,6 +924,9 @@ namespace ParkingLotTool
                 case Tools.ParkingLotStadtreinigungSystem
                         .Knopfzustand.Nichts:
                     return S("settings.Entfernen.knopf.nichts");
+                case Tools.ParkingLotStadtreinigungSystem
+                        .Knopfzustand.Wartet:
+                    return S("settings.Entfernen.knopf.wartet");
                 default:
                     return S("settings.Entfernen.knopf.bereit");
             }

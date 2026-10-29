@@ -248,6 +248,7 @@
   "settings.Entfernen.knopf.haengt": "Not progressing — see the log",
   "settings.Entfernen.knopf.laeuft": "Teardown running… {uebrig} parts left",
   "settings.Entfernen.knopf.nichts": "Nothing to remove",
+  "settings.Entfernen.knopf.wartet": "Wait: a sync, repair or edit is still running",
   "settings.Entfernen.warning": "Demolish every parking lot this mod built in this city? The tool's undo cannot take this back — back up your save first.",
   "settings.Entwickler.desc": "Shows the \"Dev-Debug\" tab in the panel. It holds measuring tools from development: zoning probe, prefab dissection, carrier test, overlap scan, prefab comparison and the live log.\n\nYou do not need this to report a problem - the always-visible \"Report a problem\" tab is for that. Some of these tools build and delete things in your city.",
   "settings.Entwickler.label": "Show developer tab",

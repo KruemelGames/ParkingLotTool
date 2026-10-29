@@ -248,6 +248,7 @@
   "settings.Entfernen.knopf.haengt": "Kommt nicht voran — siehe Log",
   "settings.Entfernen.knopf.laeuft": "Abriss läuft… noch {uebrig} Teile",
   "settings.Entfernen.knopf.nichts": "Nichts zu entfernen",
+  "settings.Entfernen.knopf.wartet": "Bitte warten: Sync, Reparatur oder Bearbeitung läuft noch",
   "settings.Entfernen.warning": "Alle mit diesem Mod gebauten Parkplätze in dieser Stadt abreißen? Das lässt sich im Werkzeug nicht rückgängig machen — sichere vorher deinen Spielstand.",
   "settings.Entwickler.desc": "Blendet im Panel den Reiter \"Dev-Debug\" ein. Dort liegen Messwerkzeuge aus der Entwicklung: Zoning-Sonde, Prefab-Zerlegung, Trägertest, Überlappungsmessung, Prefab-Vergleich und das Live-Log.\n\nZum Melden eines Fehlers brauchst du das nicht - dafür ist der Reiter \"Fehler melden\" da, der immer sichtbar ist. Einige dieser Werkzeuge bauen und löschen etwas in deiner Stadt.",
   "settings.Entwickler.label": "Entwickler-Reiter anzeigen",

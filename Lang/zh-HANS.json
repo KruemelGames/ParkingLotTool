@@ -248,6 +248,7 @@
   "settings.Entfernen.knopf.haengt": "无进展，请查看日志",
   "settings.Entfernen.knopf.laeuft": "正在拆除... 剩余 {uebrig} 个部件",
   "settings.Entfernen.knopf.nichts": "无可拆除对象",
+  "settings.Entfernen.knopf.wartet": "请稍候：同步、修复或编辑仍在进行中",
   "settings.Entfernen.warning": "拆除本 Mod 在此城市中建造的所有停车场？工具的撤销无法恢复，请先备份存档。",
   "settings.Entwickler.desc": "显示 Dev-Debug 标签页，包含开发测量工具: 分区检测、Prefab 分析、载体测试、重叠扫描、Prefab 对比及实时日志。\n\n报告问题无需启用此项，请使用始终可见的“报告问题”标签页。部分工具会在城市中建造或删除对象。",
   "settings.Entwickler.label": "显示开发者标签页",

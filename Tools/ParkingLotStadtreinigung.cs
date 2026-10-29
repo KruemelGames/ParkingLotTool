@@ -67,6 +67,7 @@ namespace ParkingLotTool.Tools
         private EntityQuery _markierteLots;
         private EntityQuery _besitzkinder;
         private EntityQuery _alleKanten;
+        private EntityQuery _alleKnoten;
         private PrefabSystem _prefabSystem;
         private ParkingLotUISystem _uiSystem;
 
@@ -108,7 +109,7 @@ namespace ParkingLotTool.Tools
          */
         internal enum Knopfzustand
         {
-            Bereit, Laeuft, Fertig, Haengt, Nichts,
+            Bereit, Laeuft, Fertig, Haengt, Nichts, Wartet,
         }
 
         internal static Knopfzustand Stand { get; private set; }
@@ -250,6 +251,20 @@ namespace ParkingLotTool.Tools
                 All = new[]
                 {
                     ComponentType.ReadOnly<Game.Net.Edge>(),
+                    ComponentType.ReadOnly<PrefabRef>(),
+                },
+                None = new[]
+                {
+                    ComponentType.ReadOnly<Deleted>(),
+                    ComponentType.ReadOnly<Temp>(),
+                },
+            });
+
+            _alleKnoten = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<Game.Net.Node>(),
                     ComponentType.ReadOnly<PrefabRef>(),
                 },
                 None = new[]
@@ -419,6 +434,30 @@ namespace ParkingLotTool.Tools
         internal void Beauftrage() => _beauftragt = true;
 
         /**
+         * NICHT MITTEN IN LAUFENDE ARBEIT (29.10.2026).
+         *
+         * Panel, Bearbeiten, Hotkey und Reparieren sind gesperrt, solange
+         * Sync, Reparatur, Gassenvorbau oder ein Neubau im Hintergrund laufen
+         * (`ParkingLotSyncSystem.ArbeitLaeuft`). Dieser Knopf war es nicht:
+         * mitten in einem Neubau haette er das alte und das halb gebaute neue
+         * Lot zugleich markiert, quer zum Rueckweg. Dasselbe gilt fuer eine
+         * offene Bearbeitung oder einen Entwurf im Werkzeug - das bearbeitete
+         * Lot fiele unter dem Werkzeug weg.
+         */
+        internal bool Blockiert()
+        {
+            var sync = World.GetExistingSystemManaged<ParkingLotSyncSystem>();
+            if (sync != null && sync.ArbeitLaeuft) return true;
+            var werkzeug = World.GetExistingSystemManaged<ParkingLotToolSystem>();
+            var werkzeuge = World.GetExistingSystemManaged<ToolSystem>();
+            return werkzeug != null && werkzeuge != null
+                && werkzeuge.activeTool == werkzeug && werkzeug.ArbeitetGerade;
+        }
+
+        /** Der Knopf sagt "bitte warten", bis `Blockiert` wieder false ist. */
+        internal void Warte() => SetzeStand(Knopfzustand.Wartet);
+
+        /**
          * Zaehlt, was in dieser Stadt steht: abraeumbare Lots, Lots ohne
          * Traegerreferenz (die der Aufraeumer NICHT annimmt) und die noch
          * lebenden Teile.
@@ -518,6 +557,7 @@ namespace ParkingLotTool.Tools
         [Preserve]
         protected override void OnUpdate()
         {
+            if (Stand == Knopfzustand.Wartet && !Blockiert()) SetzeStand(Knopfzustand.Bereit);
             if (_beauftragt)
             {
                 _beauftragt = false;
@@ -637,11 +677,34 @@ namespace ParkingLotTool.Tools
                     if (IstUnsereFlaeche(alle[i])) flaechen++;
                 }
 
+            /*
+             * ALLE PLT-NETZE, NICHT NUR DIE ZONINGKLONE (29.10.2026).
+             *
+             * Gezaehlt wurden nur Zoningstrassen und Zufahrtsgassen. Die
+             * unsichtbaren Wege und alle Knoten fehlten - eine Zaehlung, die
+             * sie nicht kennt, meldet eine beruhigende Null. Entschieden wird
+             * weiter am Prefab, nicht am Owner: ein Rest ohne lebenden
+             * Besitzer ist genau der Fall, den die Pruefung finden soll.
+             */
+            var pltPrefab = new System.Collections.Generic.Dictionary<Entity, bool>();
+            bool IstPlt(Entity prefab)
+            {
+                if (pltPrefab.TryGetValue(prefab, out var ist)) return ist;
+                ist = klone.Contains(prefab)
+                    || _prefabSystem.TryGetPrefab<PrefabBase>(prefab, out var basis)
+                       && basis != null && basis.name != null && basis.name.StartsWith("PLT ");
+                pltPrefab[prefab] = ist;
+                return ist;
+            }
             using (var kanten = _alleKanten.ToEntityArray(Allocator.Temp))
                 for (var i = 0; i < kanten.Length; i++)
-                    if (klone.Contains(EntityManager
-                            .GetComponentData<PrefabRef>(kanten[i]).m_Prefab))
+                    if (IstPlt(EntityManager.GetComponentData<PrefabRef>(kanten[i]).m_Prefab))
                         strassen++;
+            var knoten = 0;
+            using (var punkte = _alleKnoten.ToEntityArray(Allocator.Temp))
+                for (var i = 0; i < punkte.Length; i++)
+                    if (IstPlt(EntityManager.GetComponentData<PrefabRef>(punkte[i]).m_Prefab))
+                        knoten++;
 
             /*
              * DER TRAEGER IST NUR UEBER SEINE KINDER SICHTBAR.
@@ -663,10 +726,10 @@ namespace ParkingLotTool.Tools
                     if (EntityManager.HasComponent<Game.Routes.TransportStop>(
                         teile[i])) bushalte++;
 
-            var summe = flaechen + strassen + traeger + lots;
+            var summe = flaechen + strassen + knoten + traeger + lots;
             var text = "PLT-Schlusspruefung: " + lots + " Parkplatzflaeche(n), "
                 + flaechen + " Belagflaeche(n), " + strassen
-                + " Zoningstrasse/Zufahrtsgasse(n), " + traeger
+                + " PLT-Strasse(n)/Weg(e), " + knoten + " PLT-Knoten, " + traeger
                 + " lebende(s) Teil(e), davon " + bushalte
                 + " Bushaltestelle(n), noch in der Stadt. Zonierte "
                 + "Kacheln und gewachsene Haeuser sind NICHT mitgezaehlt - "

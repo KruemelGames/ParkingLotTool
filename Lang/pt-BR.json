@@ -248,6 +248,7 @@
   "settings.Entfernen.knopf.haengt": "Sem progresso — veja o log",
   "settings.Entfernen.knopf.laeuft": "Demolição em andamento… faltam {uebrig} peças",
   "settings.Entfernen.knopf.nichts": "Nada para remover",
+  "settings.Entfernen.knopf.wartet": "Aguarde: uma sincronização, reparo ou edição está em andamento",
   "settings.Entfernen.warning": "Demolir todos os estacionamentos que este mod construiu nesta cidade? O desfazer da ferramenta não consegue reverter isto — faça backup do jogo salvo antes.",
   "settings.Entwickler.desc": "Mostra a aba “Dev-Debug” no painel. Ela reúne ferramentas de medição da fase de desenvolvimento: sondagem de zoneamento, dissecação de prefabs, teste do portador, varredura de sobreposição, comparação de prefabs e o log ao vivo.\n\nVocê não precisa disto para relatar um problema — a aba “Relatar um problema”, sempre visível, serve para isso. Algumas destas ferramentas constroem e apagam coisas na sua cidade.",
   "settings.Entwickler.label": "Mostrar aba de desenvolvedor",

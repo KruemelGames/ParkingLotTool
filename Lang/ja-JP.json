@@ -248,6 +248,7 @@
   "settings.Entfernen.knopf.haengt": "処理停止。ログを確認",
   "settings.Entfernen.knopf.laeuft": "撤去中... 残り {uebrig} 部品",
   "settings.Entfernen.knopf.nichts": "撤去対象なし",
+  "settings.Entfernen.knopf.wartet": "お待ちください：同期・修復・編集のいずれかが進行中です",
   "settings.Entfernen.warning": "この都市で Mod が建設した駐車場をすべて撤去しますか？ツールの取り消しでは戻せません。先にセーブをバックアップしてください。",
   "settings.Entwickler.desc": "開発用の測定ツールを含む Dev-Debug タブを表示します。ゾーン測定、Prefab 分析、基盤テスト、重複検査、Prefab 比較、ライブログが利用できます。\n\n問題の報告には不要です。常に表示される「問題を報告」タブを使用してください。一部のツールは都市の物体を建設・削除します。",
   "settings.Entwickler.label": "開発タブを表示",

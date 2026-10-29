@@ -248,6 +248,7 @@
   "settings.Entfernen.knopf.haengt": "Aucune progression ; voir le journal",
   "settings.Entfernen.knopf.laeuft": "Démolition en cours… {uebrig} éléments restants",
   "settings.Entfernen.knopf.nichts": "Rien à retirer",
+  "settings.Entfernen.knopf.wartet": "Patientez : synchronisation, réparation ou modification en cours",
   "settings.Entfernen.warning": "Démolir tous les parkings construits par ce mod dans cette ville ? L'outil ne peut pas annuler cette action ; faites d'abord une copie de votre sauvegarde.",
   "settings.Entwickler.desc": "Affiche l'onglet \"Dev-Debug\" du panneau. Il contient les outils de mesure du développement : sonde de zonage, analyse de préfabriqués, test du support, recherche de chevauchements, comparaison de préfabriqués et journal en direct.\n\nPour signaler un problème, utilisez l'onglet \"Signaler\", toujours visible. Certains de ces outils construisent et suppriment des éléments dans votre ville.",
   "settings.Entwickler.label": "Afficher l'onglet développeur",

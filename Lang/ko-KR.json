@@ -248,6 +248,7 @@
   "settings.Entfernen.knopf.haengt": "진행 중단. 로그 확인",
   "settings.Entfernen.knopf.laeuft": "철거 중... 남은 부품 {uebrig}개",
   "settings.Entfernen.knopf.nichts": "제거할 항목 없음",
+  "settings.Entfernen.knopf.wartet": "잠시 기다려 주세요: 동기화, 복구 또는 편집이 진행 중입니다",
   "settings.Entfernen.warning": "이 도시의 모든 PLT 주차장을 철거할까요? 도구의 실행 취소로 되돌릴 수 없습니다. 먼저 저장 파일을 백업하세요.",
   "settings.Entwickler.desc": "개발용 측정 도구가 있는 개발 디버그 탭을 표시합니다. 구역 검사, 프리팹 분석, 운반체 검사, 겹침 검사, 프리팹 비교, 실시간 로그를 제공합니다.\n\n문제 제보에는 항상 표시되는 문제 제보 탭을 사용하세요. 일부 검사 도구는 도시에 요소를 건설하고 삭제합니다.",
   "settings.Entwickler.label": "개발자 탭 표시",
