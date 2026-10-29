@@ -502,7 +502,10 @@ namespace ParkingLotTool.Tools
             RetteToteFlaechen();
             foreach (var eintrag in _eintraege.Values)
             {
-                if (eintrag.Fehler || eintrag.Bereit) continue;
+                // Aufgegeben heisst fertig mit Pruefen: sonst schrieb jeder
+                // weitere Zyklus die AUFGEGEBEN-Meldung samt Stack ins Log
+                // (Spielerbericht 1.1.1: 15-20 je Sekunde, 60 -> 15 FPS).
+                if (eintrag.Fehler || eintrag.Bereit || eintrag.Aufgegeben) continue;
 
                 if (eintrag.KlonEntity == Entity.Null)
                 {
