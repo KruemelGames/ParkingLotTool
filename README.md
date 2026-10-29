@@ -59,7 +59,8 @@ game objects:
   by zoning roads. Edge zoning lets houses grow outward from the outline, and
   Inner zoning sets each road side and an outer band. Tiles the game will not
   build are shown in yellow with an X.
-- **Economy** like the vanilla lots: upkeep, parking fees and staff. It can be
+- **Economy** like the vanilla lots: upkeep, parking fees and staff. Each lot
+  can also run without staff, which saves the wages. The whole economy can be
   switched off in the settings.
 - **Utilities**: water and power are routed through the lot automatically.
 - **Editing**: open a built lot again, change it, undo and redo.

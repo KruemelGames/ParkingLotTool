@@ -12,6 +12,7 @@
 - Change: updating old lots only renews their surfaces; a lot whose paths don't match its build plan is left untouched.
 - Fix: asphalt and grass no longer appear on a bridge above a parking lot (thanks thowelljr5).
 - Fix: demolishing an updated or repaired lot also removes its alleys, zoning roads and paths.
+- Fix: the upkeep in the info panel and the parking lot list now includes the employees' wages, which the city always paid.
 - Fix: the panel no longer runs off the screen at large text sizes or on wide screens (thanks Marcaliseth).
 - Fix: the tab row stays on one line on wide screens (thanks Mxdanger).
 - Fix: hovering over buildings or roads no longer stalls an update in progress.
