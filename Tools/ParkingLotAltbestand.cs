@@ -103,26 +103,39 @@ namespace ParkingLotTool.Tools
         /**
          * Loescht auf ausdruecklichen Wunsch.
          *
-         * Gesetzt wird nur `Deleted` am Lot; den Rest raeumt der vorhandene
-         * relationsbasierte Aufraeumer ab, genau wie beim Bulldozer. Ein
-         * eigener Abrissweg waere eine zweite Wahrheit ueber dasselbe.
+         * Derselbe Abrissweg wie die Deinstallation (29.10.2026):
+         * `ParkingLotStadtreinigungSystem.ReisseAb`, also wie der Bulldozer -
+         * CS2 entscheidet ueber die Knoten an Stadtstrassen, den Rest raeumt
+         * der relationsbasierte Aufraeumer ab. Vorher wurde nur `Deleted`
+         * gesetzt; dann blieb jede Stadtstrasse an einer frueheren Gasse
+         * zweigeteilt. Ein eigener Abrissweg waere eine zweite Wahrheit ueber
+         * dasselbe. Gesperrt wie die Deinstallation, solange Sync, Reparatur,
+         * Neubau oder eine offene Bearbeitung laufen - das Abrisswerkzeug
+         * wuerde einen offenen Entwurf verdraengen.
          */
         internal void LoescheAltbestand()
         {
-            var geloescht = 0;
+            var reinigung = World.GetOrCreateSystemManaged<ParkingLotStadtreinigungSystem>();
+            if (reinigung.Blockiert())
+            {
+                World.GetOrCreateSystemManaged<ParkingLotSyncSystem>().SperrtWegenArbeit("Altbestand loeschen");
+                Mod.log.Info("PLT-Altbestand: gesperrt - Sync, Reparatur, Neubau oder eine offene "
+                    + "Bearbeitung laeuft noch. Das Angebot bleibt stehen.");
+                return;
+            }
+            var auftrag = new List<Entity>();
             foreach (var lot in _altbestand)
             {
                 if (lot == Entity.Null || !EntityManager.Exists(lot)
                     || EntityManager.HasComponent<Deleted>(lot)) continue;
                 if (World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>().Sperrmeldung(lot)) continue;
-                ParkingLotAbriss.Sichern(EntityManager, lot);
-                EntityManager.AddComponent<Deleted>(lot);
-                geloescht++;
+                auftrag.Add(lot);
             }
+            reinigung.ReisseAb(auftrag);
 
-            Mod.log.Info("PLT-Altbestand: " + geloescht + " von "
+            Mod.log.Info("PLT-Altbestand: " + auftrag.Count + " von "
                 + _altbestand.Count + " alt gebauten Parkplaetzen auf Wunsch "
-                + "des Nutzers dem Aufraeumer uebergeben.");
+                + "des Nutzers dem Abriss (Bulldozer-Weg) uebergeben.");
             _altbestand.Clear();
             _uiSystem?.SetAltbestand(0);
         }

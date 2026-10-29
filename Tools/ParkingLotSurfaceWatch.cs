@@ -116,8 +116,9 @@ namespace ParkingLotTool.Tools
             _besitzer = Entity.Null;
             if (!EntityManager.Exists(besitzer))
             {
-                Mod.log.Warn("PLT-Flaechenwache: der Besitzer existiert nicht "
-                    + "mehr - nichts zu vergleichen.");
+                // Abgerissen (Bulldozer, Deinstallation) - kein Befund.
+                Mod.log.Info("PLT-Flaechenwache: der Parkplatz wurde inzwischen "
+                    + "abgerissen - nichts zu vergleichen.");
                 return;
             }
 

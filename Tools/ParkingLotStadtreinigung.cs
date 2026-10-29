@@ -472,6 +472,23 @@ namespace ParkingLotTool.Tools
                 && werkzeuge.activeTool == werkzeug && werkzeug.ArbeitetGerade;
         }
 
+        /**
+         * DER EINE ABRISSWEG fuer Deinstallation und Altbestand (29.10.2026):
+         * wie der Bulldozer, ueber `ParkingLotAbrissWerkzeug`. Der Bulldozer
+         * liest SubNet und SubArea; die Listen muessen vorher stimmen - nach
+         * dem Laden fehlt dort, was nur ueber Owner bekannt ist.
+         */
+        internal void ReisseAb(System.Collections.Generic.IEnumerable<Entity> lots)
+        {
+            var auftrag = new System.Collections.Generic.List<Entity>();
+            foreach (var lot in lots)
+            {
+                FuelleBesitzlisten(lot);
+                auftrag.Add(lot);
+            }
+            _abriss.Einreihen(auftrag);
+        }
+
         /** Der Knopf sagt "bitte warten", bis `Blockiert` wieder false ist. */
         internal void Warte() => SetzeStand(Knopfzustand.Wartet);
 
@@ -550,17 +567,10 @@ namespace ParkingLotTool.Tools
                             flaechen[i])) lots.Add(flaechen[i]);
                     else uebergangen++;
                 }
-                // Der Bulldozer liest SubNet und SubArea; die Listen muessen
-                // vorher stimmen (nach dem Laden fehlt dort, was nur ueber
-                // Owner bekannt ist).
                 var auftrag = new System.Collections.Generic.List<Entity>();
-                for (var i = 0; i < lots.Length; i++)
-                {
-                    FuelleBesitzlisten(lots[i]);
-                    auftrag.Add(lots[i]);
-                    markiert++;
-                }
-                _abriss.Einreihen(auftrag);
+                for (var i = 0; i < lots.Length; i++) auftrag.Add(lots[i]);
+                markiert = auftrag.Count;
+                ReisseAb(auftrag);
             }
 
             Mod.log.Info("PLT-Stadtreinigung: " + markiert
