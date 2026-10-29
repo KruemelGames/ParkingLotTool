@@ -2,6 +2,7 @@
 
 ## 1.1.1 — unreleased
 
+- Addition: a "With staff" switch in each lot's info panel: without staff a lot has no employees, so the city pays no wages for it; maintenance stays (thanks thowelljr5).
 - Addition: lots that lost their paths are listed with "Repair" and rebuilt with the same shape and settings.
 - Improvement: alleys get their own road surface that also covers their round end at the perimeter road.
 - Improvement: the parking lot list stays usable at large text sizes.

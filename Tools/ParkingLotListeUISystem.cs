@@ -438,7 +438,7 @@ namespace ParkingLotTool.Tools
                     .Append(werte.Kapazitaet).Append('\t')
                     .Append(BelegtJetztVon(lot)).Append('\t')
                     .Append(GebuehrVon(wirtschaft)).Append('\t')
-                    .Append(MonatlicherUnterhalt(wirtschaft)).Append('\t')
+                    .Append(MonatlicherUnterhalt(lot, wirtschaft)).Append('\t')
                     .Append(werte.Proben).Append('\t')
                     .Append(breite).Append('\t')
                     .Append(tiefe).Append('\t')
@@ -564,8 +564,8 @@ namespace ParkingLotTool.Tools
          * der echten Kosten. Die Liste muss dieselbe Zahl zeigen wie das
          * Infofenster, sonst glaubt der Nutzer zu Recht keiner von beiden.
          */
-        private int MonatlicherUnterhalt(ParkingLotEconomyData w)
-            => _wirtschaft != null ? _wirtschaft.MonatsUnterhalt(w.Upkeep) : w.Upkeep;
+        private int MonatlicherUnterhalt(Entity lot, ParkingLotEconomyData w)
+            => _wirtschaft != null ? _wirtschaft.MonatsUnterhalt(lot, w.Upkeep) : w.Upkeep;
 
         private ParkingLotEconomySystem _wirtschaft
             => World.GetExistingSystemManaged<ParkingLotEconomySystem>();
@@ -641,7 +641,7 @@ namespace ParkingLotTool.Tools
                                    ParkingLotEconomyData wirtschaft,
                                    out bool geschaetzt)
         {
-            var kosten = MonatlicherUnterhalt(wirtschaft);
+            var kosten = MonatlicherUnterhalt(lot, wirtschaft);
             geschaetzt = false;
             var tage = BeobachteteTage(lot, werte);
             if (tage < MindestTageFuerSchaetzung) return -kosten;

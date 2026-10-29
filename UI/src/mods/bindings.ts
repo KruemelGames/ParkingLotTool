@@ -43,6 +43,9 @@ export const selectedParkingFee$ = bindValue<number>(
   MOD, "SelectedParkingFee", 0);
 export const setSelectedParkingFee = (fee: number) =>
   trigger(MOD, "SetSelectedParkingFee", fee);
+/** Issue #23: Parkplatz mit oder ohne Personal, im Infofenster gesetzt. */
+export const setOhnePersonal = (ohne: boolean) =>
+  trigger(MOD, "SetOhnePersonal", ohne);
 
 export const edgeSetback$ = bindValue<number>(MOD, "EdgeSetback", 1);
 export const aisleWidth$ = bindValue<number>(MOD, "AisleWidth", 7);

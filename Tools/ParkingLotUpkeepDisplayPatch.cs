@@ -148,10 +148,13 @@ namespace ParkingLotTool.Tools
              * Fenster geschrieben, obwohl die Stadt nichts mehr zahlte. Der
              * Nutzer sah einen Betrag, den es nicht gab.
              */
+            // Instandhaltung PLUS Loehne, wie die Stadtkasse rechnet (Issue #23):
+            // die Angestellten sitzen am Begleiter, Vanilla zeigt sie hier nie.
             var soll = Mod.WirtschaftAn
                 ? ParkingLotEconomySystem.WirksamerUnterhalt(
                     em.GetComponentData<ParkingLotEconomyData>(
                         buildingOwnerEntity).Upkeep)
+                  + (welt.GetExistingSystemManaged<ParkingLotEconomySystem>()?.Loehne(buildingOwnerEntity) ?? 0)
                 : 0;
             if (soll < 0) return;
 

@@ -38,6 +38,11 @@ namespace ParkingLotTool.Tools
         private int _besetzt;
         private int _plaetze;
         private string _grund = "noch nicht geprueft";
+        /** Issue #23: Schalter im Fenster, und wieviele Stellen MIT Personal waeren. */
+        private bool _ohnePersonal;
+        private int _mitPersonal;
+        /** Monatsloehne nach Budget-Prozent - steckt im Unterhalt, hier einzeln sichtbar. */
+        private int _loehne;
 
         [Preserve]
         protected override void OnCreate()
@@ -50,6 +55,7 @@ namespace ParkingLotTool.Tools
                 ComponentType.Exclude<Game.Common.Deleted>(),
                 ComponentType.Exclude<Game.Tools.Temp>());
             m_InfoUISystem.AddMiddleSection(this);
+            AddBinding(new TriggerBinding<bool>("ParkingLotTool", "SetOhnePersonal", SetzeOhnePersonal));
         }
 
         /**
@@ -65,6 +71,9 @@ namespace ParkingLotTool.Tools
         {
             _besetzt = 0;
             _plaetze = 0;
+            _ohnePersonal = false;
+            _mitPersonal = 0;
+            _loehne = 0;
             visible = false;
         }
 
@@ -73,7 +82,17 @@ namespace ParkingLotTool.Tools
         {
             var gefunden = TryLeseBegleiter(selectedEntity, out _besetzt,
                 out _plaetze);
-            var sichtbar = Mod.WirtschaftAn && gefunden && _plaetze > 0;
+            _ohnePersonal = gefunden && ParkingLotPersonal.Ohne(EntityManager, selectedEntity);
+            _mitPersonal = gefunden && EntityManager.HasComponent<ParkingLotEconomyData>(selectedEntity)
+                ? ParkingLotEmployeeSystem.CalculateEmployees(
+                    EntityManager.GetComponentData<ParkingLotEconomyData>(selectedEntity).Capacity)
+                : 0;
+            var wirtschaft = World.GetExistingSystemManaged<ParkingLotEconomySystem>();
+            _loehne = gefunden && wirtschaft != null ? wirtschaft.MitBudget(wirtschaft.Loehne(selectedEntity)) : 0;
+            // Auch mit 0 Stellen sichtbar, wenn der Parkplatz Personal haette:
+            // sonst verschwaende mit "ohne Personal" der Schalter zum
+            // Zurueckstellen (Issue #23).
+            var sichtbar = Mod.WirtschaftAn && gefunden && (_plaetze > 0 || _mitPersonal > 0);
             /*
              * Sagen, WARUM nichts zu sehen ist. Am 2026-08-27 fehlte die Zeile,
              * und das Log schwieg dazu - dass in Wahrheit gar kein Begleiter
@@ -187,6 +206,34 @@ namespace ParkingLotTool.Tools
             writer.Write(_besetzt);
             writer.PropertyName("maxEmployees");
             writer.Write(_plaetze);
+            writer.PropertyName("ohnePersonal");
+            writer.Write(_ohnePersonal);
+            writer.PropertyName("mitPersonal");
+            writer.Write(_mitPersonal);
+            writer.PropertyName("loehne");
+            writer.Write(_loehne);
+        }
+
+        /**
+         * Schalter im Fenster. Nicht dem zuletzt sichtbaren Stand trauen: der
+         * Spieler kann zwischen Klick und Trigger etwas anderes angeklickt
+         * haben - es zaehlt die Auswahl JETZT, und sie muss unser Lot sein.
+         */
+        private void SetzeOhnePersonal(bool ohne)
+        {
+            var lot = selectedEntity;
+            if (lot == Entity.Null || !EntityManager.Exists(lot)
+                || !EntityManager.HasComponent<ParkingLotCarrierReference>(lot)
+                || !EntityManager.HasComponent<ParkingLotEconomyData>(lot)) return;
+            if (ParkingLotPersonal.Ohne(EntityManager, lot) == ohne) return;
+            if (ohne) EntityManager.AddComponent<ParkingLotOhnePersonal>(lot);
+            else EntityManager.RemoveComponent<ParkingLotOhnePersonal>(lot);
+            _ohnePersonal = ohne;
+            World.GetOrCreateSystemManaged<ParkingLotEmployeeSystem>().StartePersonalprobe(lot, ohne);
+            // Sofort neu zeichnen, wie Vanilla nach einer Aenderung: sonst
+            // wartete das Haekchen auf die naechste regulaere Auffrischung und
+            // sah aus wie nicht gesetzt (Nutzer 29.10.).
+            m_InfoUISystem.SetDirty();
         }
     }
 }

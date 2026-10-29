@@ -92,6 +92,7 @@ namespace ParkingLotTool.Tools
 
         private EntityQuery _lots;
         private EntityQuery _begleiter;
+        private EntityQuery _wirtschaftsparameter;
         private EntityQuery _parkingPrefabSources;
         private PrefabSystem _prefabSystem;
         private Entity _roadsService = Entity.Null;
@@ -139,6 +140,7 @@ namespace ParkingLotTool.Tools
                     ComponentType.ReadOnly<Temp>(),
                 },
             });
+            _wirtschaftsparameter = GetEntityQuery(ComponentType.ReadOnly<EconomyParameterData>());
             _parkingPrefabSources = GetEntityQuery(
                 ComponentType.ReadOnly<ParkingFacilityData>(),
                 ComponentType.ReadOnly<ServiceObjectData>());
@@ -415,7 +417,7 @@ namespace ParkingLotTool.Tools
                 Mod.log.Info("PLT-Wirtschaft: Lot " + lot.Index + " aus "
                     + lanes + " echten Parkspuren gemessen: " + capacity
                     + " Plaetze, Prefab-Unterhalt " + economy.Upkeep
-                    + ", Auswahlfenster monatlich " + MonatsUnterhalt(economy.Upkeep)
+                    + ", Auswahlfenster monatlich " + MonatsUnterhalt(lot, economy.Upkeep)
                     + ".");
             }
 
@@ -797,16 +799,49 @@ namespace ParkingLotTool.Tools
          * (`CityServiceBudgetSystem`, Standard 100 %). Die Liste rechnete
          * bis 1.0.7 fest "Unterhalt / 2" - das stimmte nur bei 50 % Budget.
          */
-        internal int MonatsUnterhalt(int upkeep)
+        internal int MonatsUnterhalt(Entity lot, int upkeep)
+            => MitBudget(WirksamerUnterhalt(upkeep) + Loehne(lot));
+
+        /** Ein Geldbetrag mal Budget-Prozent des Strassendienstes, wie `CityServiceBudgetSystem`. */
+        internal int MitBudget(int betrag)
         {
-            var wirksam = WirksamerUnterhalt(upkeep);
             var budget = 100;
             if (_roadsService != Entity.Null)
             {
                 var budgets = World.GetExistingSystemManaged<Game.Simulation.CityServiceBudgetSystem>();
                 if (budgets != null) budget = budgets.GetServiceBudget(_roadsService);
             }
-            return (int)System.Math.Round(wirksam * budget / 100.0);
+            return (int)System.Math.Round(betrag * budget / 100.0);
+        }
+
+        /**
+         * LOEHNE DER ANGESTELLTEN (Issue #23, 29.10.2026).
+         *
+         * Die Stadt zahlt fuer ein staedtisches Gebaeude Instandhaltung PLUS
+         * die Loehne seiner Angestellten (`CityServiceBudgetSystem` Zeile
+         * 400-410 mit `CityServiceUpkeepSystem.GetUpkeepOfEmployeeWage`).
+         * Unsere Angestellten sitzen am unsichtbaren Begleiter; Vanilla zeigt
+         * Loehne nur bei Gebaeuden mit `WorkplaceData` und fand sie nie. Bis
+         * hierher zeigten Fenster und Liste deshalb nur die Instandhaltung,
+         * also weniger, als die Stadt zahlte. Dieselbe Rechnung wie CS2: je
+         * Angestelltem `GetWage(Stufe, staedtische Stelle)`. Die einzige
+         * Stelle, an der PLT Loehne rechnet.
+         */
+        internal int Loehne(Entity lot)
+        {
+            if (!Mod.WirtschaftAn || lot == Entity.Null || _wirtschaftsparameter.IsEmptyIgnoreFilter) return 0;
+            var parameter = _wirtschaftsparameter.GetSingleton<EconomyParameterData>();
+            using var alle = _begleiter.ToEntityArray(Allocator.Temp);
+            foreach (var b in alle)
+            {
+                if (EntityManager.GetComponentData<ParkingLotPartRelation>(b).Lot != lot) continue;
+                if (!EntityManager.HasBuffer<Game.Companies.Employee>(b)) return 0;
+                var puffer = EntityManager.GetBuffer<Game.Companies.Employee>(b, true);
+                var summe = 0;
+                for (var i = 0; i < puffer.Length; i++) summe += parameter.GetWage(puffer[i].m_Level, cityServiceJob: true);
+                return summe;
+            }
+            return 0;
         }
     }
 }
