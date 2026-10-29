@@ -628,7 +628,6 @@
   "ui.listeSuche": "주차장 검색...",
   "ui.listeSuchen": "검색",
   "ui.listeSummenzeile": "주차면 {plaetze} · 빈 면 {frei} · 월 유지비 {unterhalt} {waehrung}",
-  "ui.listeTakt": "15초",
   "ui.listeThemen.0": "분석",
   "ui.listeThemen.1": "방문자",
   "ui.listeThemen.2": "도보 경로",

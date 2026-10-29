@@ -83,7 +83,6 @@ const baue = (d: Record<string, string>) => {
       tf("listeNotizKopf", { thema, nummer, anzahl }),
     listeAnzahl: (n: number): string => tz("listeAnzahl", n),
     listeSortiertNach: (name: string): string => tf("listeSortiertNach", { name }),
-    listeTakt: tx("listeTakt"),
     teilen: tx("teilen"),
     tooltipTeilen: tx("tooltipTeilen"),
     teilenAbbrechen: tx("teilenAbbrechen"),

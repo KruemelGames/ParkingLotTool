@@ -505,8 +505,6 @@ export const ListeTab = () => {
   const ganzLaufen = useValue(panelStil$) === "hochkant" && useTextFaktor() > 1.001;
   const [slot, setSlot] = useState(0);
   const [pause, setPause] = useState(false);
-  const [hover, setHover] = useState(false);
-  const [fokus, setFokus] = useState(false);
   const [suche, setSuche] = useState("");
   const [filter, setFilter] = useState<Listenfilter>("alle");
   const [sortierung, setSortierung] = useState<Listensortierung>("name");
@@ -564,7 +562,16 @@ export const ListeTab = () => {
     if (slot + 1 < slots) { setSlot(slot + 1); return; }
     wechsel.current = true; zielslot.current = "anfang"; parkplatzRundeVor();
   };
-  const pausiert = pause || hover || fokus;
+  /*
+   * DER WECHSEL LAEUFT, SOLANGE DER REITER OFFEN IST (Nutzer 29.10.2026).
+   *
+   * Bis hierher hielt er an, sobald die Maus ueber der Liste stand oder ein
+   * Eingabefeld den Fokus hatte - also fast immer, wenn jemand hinsah. Der
+   * Nutzer: "Es macht keinen Sinn, dass die Maus drueber sein muss ... Solange
+   * das Panel offen ist, soll da was angezeigt werden, dass die Leute auch
+   * merken, hier gibt es Infos." Anhalten nur noch mit dem Pause-Knopf.
+   */
+  const pausiert = pause;
   useEffect(() => {
     if (pausiert || plaetze.length === 0) return;
     const timer = setTimeout(weiter, INFO_MILLISEKUNDEN);
@@ -596,12 +603,7 @@ export const ListeTab = () => {
   const summeFrei = plaetze.reduce((summe, p) => summe + Math.max(0, p.kapazitaet - p.belegt), 0);
   const unterhalt = plaetze.reduce((summe, p) => summe + p.unterhalt, 0);
   return (
-    <div ref={rahmen} className={`${styles.listeRahmen} ${ganzLaufen ? styles.listeRahmenLaeuft : ""}`}
-      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      onFocus={e => setFokus(e.target.tagName === "INPUT" || e.target.getAttribute("role") === "slider")}
-      onBlur={e => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setFokus(false);
-      }}>
+    <div ref={rahmen} className={`${styles.listeRahmen} ${ganzLaufen ? styles.listeRahmenLaeuft : ""}`}>
       <div className={styles.listeKopf}>
         <div className={styles.listeUebersicht}>
           <strong>{t.listeAnzahl(plaetze.length)}</strong>
@@ -664,7 +666,8 @@ export const ListeTab = () => {
         <span className={styles.listeSummen}>{t.listeSummenzeile(summePlaetze, summeFrei, unterhalt, t.waehrung)}</span>
         <TooltipKnopf text={pause ? t.listeFortsetzen : t.listePause} className={styles.listeTextknopf}
           aria-pressed={pause} onClick={() => setPause(!pause)}>{pause ? "▶" : "Ⅱ"}</TooltipKnopf>
-        <span>{pausiert ? t.listePausiert : t.listeTakt}</span>
+        {/* Keine Zeitanzeige ("15 s"), Nutzer 29.10.: nur der Hinweis, wenn es steht. */}
+        {pausiert && <span>{t.listePausiert}</span>}
         <div className={styles.listeLuecke} />
         <span>{t.listeTreffer(gefiltert.length, plaetze.length)}</span>
       </div>
