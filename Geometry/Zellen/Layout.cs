@@ -371,7 +371,10 @@ namespace ParkingLotTool.Geometry.Zellen
             // Der Kappenrand folgt dem endgueltigen Fahrbahnrand. Eine an
             // Nullkanten gekappte Achse zieht ihn hinter den reinen Versatz
             // zurueck; dort gehoert das Dreieck zur Kappe (Stand 54: 5,9 cm).
+            // Bei Randabstand 0 gibt es kein Band: Aussen- und Innenrand fallen
+            // zusammen, jeder Stoss haette Laenge 0 und keine Richtung (#19).
             var randbandabschnitte = einstellungen.Randstrassen && lokaleZufahrten.Length == 0
+                && einstellungen.Randabstand > 0
                 ? PlaneRingabschnitte(
                     lokalpunkte,
                     innenrand,

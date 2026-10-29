@@ -99,6 +99,7 @@
     <Compile Include="Program.Teilflaechenwinkel.cs" />
     <Compile Include="Program.Teilen.cs" />
     <Compile Include="Program.SchmalerArm.cs" />
+    <Compile Include="Program.Randabstandnull.cs" />
     <Compile Include="Dump.cs" />
     <Compile Include="..\..\..\Geometry\*.cs" Exclude="..\..\..\Geometry\Sprachtexte.cs;..\..\..\Geometry\OberflaechenMuster.cs" Link="Geometry\%(Filename)%(Extension)" />
     <Compile Include="$(SprachtexteQuelle)" Link="Geometry\Sprachtexte.cs" />

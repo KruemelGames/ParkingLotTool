@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: the preview no longer fails with an edge setback of 0, perimeter roads and no entrance yet (#19).
+
 ## 1.1.1 — October 29, 2026
 
 **There was a bug: since early October, parking lots could lose their paths, and it went unnoticed until recently. It is fixed now. If one of your lots is affected, open the Parking lots list and press "Repair" on it: it is rebuilt with the same shape and settings. Sorry for the inconvenience.**

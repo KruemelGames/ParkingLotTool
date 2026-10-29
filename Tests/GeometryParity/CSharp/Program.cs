@@ -196,6 +196,7 @@ internal static partial class Program
         if (args.Length == 1 && args[0] == "--teilen") return RunTeilen();
         if (args.Length == 1 && args[0] == "--schmalerarm") return RunSchmalerArm();
         if (args.Length == 1 && args[0] == "--fastgerade") return RunFastGerade();
+        if (args.Length == 1 && args[0] == "--randabstandnull") return RunRandabstandNull();
         if (args.Length == 1 && args[0] == "--querstrassenaus") return RunQuerstrassenAus();
         if (args.Length == 1 && args[0] == "--zerlegung")
         { RunZerlegungsprobe(); return 0; }
