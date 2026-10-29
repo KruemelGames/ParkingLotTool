@@ -117,6 +117,7 @@ namespace ParkingLotTool.Tools
             _baupflanzen = World.GetOrCreateSystemManaged<ParkingLotUISystem>().VegetationAssets;
             _editParkingFeeKnown = EntityManager.HasComponent<ParkingLotEconomyData>(lot);
             _editParkingFee = _editParkingFeeKnown ? EntityManager.GetComponentData<ParkingLotEconomyData>(lot).ParkingFee : 0;
+            _editOhnePersonal = ParkingLotPersonal.Ohne(EntityManager, lot);
             _editBuildingEconomyEnabled = HasEnabledCompanion(lot);
             _replacementEconomyTransferred = false;
             _closed = true;
@@ -388,6 +389,7 @@ namespace ParkingLotTool.Tools
                 if (!_editEconomySystem.TryInitializeReplacement(_lotOwner,_editParkingFee)) return false;
                 _replacementEconomyTransferred = true;
             }
+            UebertrageOhnePersonal(_lotOwner);
             return !_editBuildingEconomyEnabled || HasEnabledCompanion(_lotOwner);
         }
 

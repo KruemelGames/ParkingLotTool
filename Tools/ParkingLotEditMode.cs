@@ -43,6 +43,8 @@ namespace ParkingLotTool.Tools
         private long _editBaselineSignature;
         private bool _editParkingFeeKnown;
         private int _editParkingFee;
+        /** Ohne Personal (Issue #23) wandert mit wie die Gebuehr. */
+        private bool _editOhnePersonal;
         private bool _editBuildingEconomyEnabled;
         private bool _replacementEconomyTransferred;
 
@@ -274,6 +276,7 @@ namespace ParkingLotTool.Tools
             if (_editParkingFeeKnown)
                 _editParkingFee = EntityManager
                     .GetComponentData<ParkingLotEconomyData>(lot).ParkingFee;
+            _editOhnePersonal = ParkingLotPersonal.Ohne(EntityManager, lot);
             _editBuildingEconomyEnabled = HasEnabledCompanion(lot);
             PruefeBauzettelUebernahme(receipt, entrances);
 
@@ -372,6 +375,7 @@ namespace ParkingLotTool.Tools
                 return true;
             }
             if (_editParkingFeeKnown) _replacementEconomyTransferred = true;
+            UebertrageOhnePersonal(_replacementNewLot);
             if (_editBuildingEconomyEnabled
                 && !HasEnabledCompanion(_replacementNewLot))
             {
@@ -694,8 +698,18 @@ namespace ParkingLotTool.Tools
             _editBaselinePending = false;
             _editBaselineSignature = long.MinValue;
             _editParkingFeeKnown = false;
+            _editOhnePersonal = false;
             _editBuildingEconomyEnabled = false;
             _replacementEconomyTransferred = false;
+        }
+
+        /** Idempotent: der Neubau bekommt "ohne Personal", wenn das alte Lot es hatte. */
+        private void UebertrageOhnePersonal(Entity neu)
+        {
+            if (!_editOhnePersonal || neu == Entity.Null || !EntityManager.Exists(neu)
+                || EntityManager.HasComponent<ParkingLotOhnePersonal>(neu)) return;
+            EntityManager.AddComponent<ParkingLotOhnePersonal>(neu);
+            Mod.log.Info("PLT-Personal: Lot " + neu.Index + " uebernimmt 'ohne Personal' vom Vorgaenger.");
         }
 
         internal void CancelEditingForShutdown()

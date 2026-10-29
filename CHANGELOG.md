@@ -1,9 +1,10 @@
 # Changelog
 
-## 1.1.1 — unreleased
+## 1.1.1 — October 29, 2026
 
 **There was a bug: since early October, parking lots could lose their paths, and it went unnoticed until recently. It is fixed now. If one of your lots is affected, open the Parking lots list and press "Repair" on it: it is rebuilt with the same shape and settings. Sorry for the inconvenience.**
 
+- Addition: a "With staff" switch in each lot's info panel: without staff a lot has no employees, so the city pays no wages for it; maintenance stays (thanks thowelljr5).
 - Improvement: alleys get their own road surface that also covers their round end at the perimeter road.
 - Improvement: the parking lot list stays usable at large text sizes.
 - Improvement: the infos on the parking lot cards change every 15 s whenever the tab is open.
