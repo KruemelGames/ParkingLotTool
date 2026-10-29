@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.1.2 — October 29, 2026
 
+- Fix: with some surface packs (for example from G87) the frame rate could drop sharply, because the same error was written to the log many times per second; this also made "Updating parking lots" look stuck (#24, thanks zcndgn2310 and kajanpb).
 - Fix: the preview no longer fails with an edge setback of 0, perimeter roads and no entrance yet (#19).
+- Known issue: a bridge directly over an alley entrance shows the surface on top of the bridge. This is a limit of the game and probably can't be fixed.
 
 ## 1.1.1 — October 29, 2026
 
