@@ -21,6 +21,7 @@
 - Fix: lots without a zoning road name in their build plan can be updated again.
 - Fix: utility lines no longer count as paths outside the lot.
 - Fix: curve points in the preview are no longer red.
+- Known issue: if a bridge passes directly over an alley entrance, the round end of the alley is visible there. This comes from how the game draws surfaces and probably can't be fixed.
 
 ## 1.1.0 — October 21, 2026
 
