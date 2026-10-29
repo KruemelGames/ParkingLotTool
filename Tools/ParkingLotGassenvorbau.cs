@@ -58,6 +58,8 @@ namespace ParkingLotTool.Tools
         internal Action<Entity, bool, string> Fertig;
 
         internal bool Beschaeftigt => _stufe != Stufe.Frei;
+        /** Der Parkplatz, dessen Gassen gerade entstehen; sonst Entity.Null. */
+        internal Entity Lot => Beschaeftigt ? _lot : Entity.Null;
 
         [Preserve]
         protected override void OnCreate()
@@ -166,8 +168,11 @@ namespace ParkingLotTool.Tools
                         var eigene = ZaehleEigeneTempKanten();
                         if (eigene >= _kurse.Count)
                         {
-                            var gebunden = BindeAnParkplatz();
+                            // Erst schuetzen, dann binden: `_tempNetze` laesst alles mit
+                            // Owner aus. Umgekehrt fand der Schutz keinen Knoten mehr
+                            // (Log 28.10.: "0/3 innere Gassenknoten mit Elevation 0").
                             var geschuetzt = SchuetzeGassenknoten();
+                            var gebunden = BindeAnParkplatz();
                             ParkingLotSchrittmarke.Aenderung("Gassenvorbau: Lot " + _lot.Index + " wird angewendet (Apply)");
                             Mod.log.Info($"PLT-Gassenvorbau: Lot {_lot.Index}: {eigene} Vorschau-Kante(n), {gebunden} Teile "
                                 + $"an den Parkplatz gebunden, {geschuetzt}/{_innen.Count} innere Gassenknoten mit Elevation 0, wird angewendet.");
@@ -419,9 +424,19 @@ namespace ParkingLotTool.Tools
 
         internal bool Offen(Entity lot)
         {
+            if (lot != Entity.Null && _werkzeug.Lot == lot) return true;
             foreach (var (l, _) in _warteschlange) if (l == lot) return true;
             return false;
         }
+
+        /**
+         * Eingereihte und gerade gebaute Parkplaetze. Der Sync zaehlt sie zur
+         * laufenden Arbeit (28.10.2026): vorher liess sich das Panel waehrend
+         * des Vorbaus oeffnen - der Werkzeugwechsel verwarf den Vorbau und
+         * damit die Reparatur -, und es stand keine Fortschrittsmeldung da,
+         * die beim gesperrten Klick haette pulsieren koennen.
+         */
+        internal int Anzahl => _warteschlange.Count + (_werkzeug.Beschaeftigt ? 1 : 0);
 
         [Preserve]
         protected override void OnCreate()

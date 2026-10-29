@@ -485,7 +485,11 @@ namespace ParkingLotTool.Tools
             stand += "|" + subNet + "|" + fremd;
             if (stand == _zoningseitenStand) return;
             _zoningseitenStand = stand;
-            if (grund == null)
+            if (grund == "kein Lot")
+                // Neuer Entwurf: es gibt noch keine gebaute Kante, die Panelwahl
+                // gilt zu Recht. Als Warnung stand das bei jedem Oeffnen im Log.
+                Mod.log.Info("PLT-Zoningseiten: kein gebauter Parkplatz in Arbeit - es gilt die Panelwahl.");
+            else if (grund == null)
                 Mod.log.Info("PLT-Zoningseiten GELESEN: " + gefunden
                     + " gebaute Zoningkante(n) im Traeger (SubNet " + subNet
                     + ", davon " + fremd + " fremde). Die Seiten kommen aus "

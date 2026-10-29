@@ -159,11 +159,17 @@ namespace ParkingLotTool.Tools
          * Vanilla-'Invisible Car Path' IM grossen Parkplatz mit Besitzer 63223,
          * der nicht der aktuelle Traeger ist. Je Besitzer: Bauteile und ob er
          * zu einem lebenden Lot gehoert (Lot.CarrierReference zeigt auf ihn).
+         *
+         * KEIN BEFUND (29.10.2026): der Zoninganker eines lebenden Lots - er
+         * traegt die Zoningstrassen, die Diagnose ist aelter als er - und
+         * Spielgebaeude, deren Asset eigene unsichtbare Wege mitbringt. Beide
+         * standen als FREMD in jedem Log (69 von 69 in einem Spielerstand).
          */
         private void PruefeWegbesitzer(NativeArray<Entity> netze)
         {
             var prefabs = World.GetOrCreateSystemManaged<Game.Prefabs.PrefabSystem>();
             var gruppen = new Dictionary<Entity, int>();
+            var mitPlt = new HashSet<Entity>();
             foreach (var n in netze)
             {
                 if (!EntityManager.HasComponent<Game.Net.Edge>(n)) continue;
@@ -171,9 +177,10 @@ namespace ParkingLotTool.Tools
                 if (!name.Contains("Invisible") && !name.StartsWith("PLT ", System.StringComparison.Ordinal)) continue;
                 var o = EntityManager.GetComponentData<Game.Common.Owner>(n).m_Owner;
                 gruppen[o] = gruppen.TryGetValue(o, out var c) ? c + 1 : 1;
+                if (name.StartsWith("PLT ", System.StringComparison.Ordinal)) mitPlt.Add(o);
             }
             var text = new StringBuilder("PLT-Wegbesitzer (nur lesen): ").Append(gruppen.Count).Append(" Besitzer.");
-            int fremd = 0;
+            int fremd = 0, gebaeude = 0;
             foreach (var p in gruppen)
             {
                 var o = p.Key;
@@ -182,10 +189,17 @@ namespace ParkingLotTool.Tools
                 {
                     var lot = EntityManager.GetComponentData<ParkingLotPartRelation>(o).Lot;
                     gueltig = Lebt(lot) && EntityManager.HasComponent<ParkingLotCarrierReference>(lot)
-                        && EntityManager.GetComponentData<ParkingLotCarrierReference>(lot).Carrier == o;
+                        && EntityManager.GetComponentData<ParkingLotCarrierReference>(lot).Carrier == o
+                        || Lebt(lot) && EntityManager.HasComponent<ParkingLotZoninganker>(o)
+                           && ParkingLotBesitz.GehoertZu(EntityManager, o, lot);
                 }
                 if (Lebt(o) && EntityManager.HasComponent<ParkingLotCarrierReference>(o)) gueltig = true;
                 if (gueltig) continue;
+                if (Lebt(o) && !mitPlt.Contains(o) && EntityManager.HasComponent<Game.Buildings.Building>(o))
+                {
+                    gebaeude++;
+                    continue;
+                }
                 fremd++;
                 text.Append(" | FREMD ").Append(o).Append(" (").Append(p.Value).Append(" Wegkanten): ");
                 if (!Lebt(o)) { text.Append("existiert nicht"); continue; }
@@ -199,6 +213,7 @@ namespace ParkingLotTool.Tools
                     text.Append(" Prefab='").Append(prefabs.GetPrefabName(
                         EntityManager.GetComponentData<Game.Prefabs.PrefabRef>(o).m_Prefab)).Append("'");
             }
+            text.Append(" Spielgebaeude mit eigenen unsichtbaren Wegen: ").Append(gebaeude).Append('.');
             text.Append(" Davon ohne lebenden Parkplatz: ").Append(fremd).Append('.');
             if (fremd > 0) Mod.log.Warn(text.ToString()); else Mod.log.Info(text.ToString());
         }

@@ -613,7 +613,10 @@ namespace ParkingLotTool.Tools
                 + World.GetOrCreateSystemManaged<ParkingLotWegpruefungSystem>().Anzahl;
             if (_arbeitOffen.value != zuTun) _arbeitOffen.Update(zuTun);
             var arbeit = World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>();
-            var hintergrund = arbeit.Offen + OffeneSyncAuftraege;
+            // Der Gassenvorbau einer Reparatur zaehlt mit; danach uebernimmt
+            // im selben Aufruf der Hintergrund-Neubau, der Zaehler springt nicht.
+            var hintergrund = arbeit.Offen + OffeneSyncAuftraege
+                + World.GetOrCreateSystemManaged<ParkingLotGassenvorbauSystem>().Anzahl;
             _gesamt = System.Math.Max(_gesamt,_warteschlange.Count + hintergrund);
             var fortschritt = HintergrundFortschritt.Zaehle(_gesamt, _warteschlange.Count, hintergrund);
             var laeuft = _warteschlange.Count + hintergrund > 0
@@ -647,7 +650,8 @@ namespace ParkingLotTool.Tools
             else
             {
                 var marke = laeuft + "|" + arbeit.Fortschrittsmarke + "|" + _warteschlange.Count
-                    + "|" + _erledigt + "|" + OffeneSyncAuftraege;
+                    + "|" + _erledigt + "|" + OffeneSyncAuftraege
+                    + "|" + World.GetOrCreateSystemManaged<ParkingLotGassenvorbauSystem>().Zustand;
                 var wartetAufSpieler = !string.IsNullOrEmpty(arbeit.Fortschrittshinweis);
                 if (marke != _fortschrittsmarke || wartetAufSpieler || !_stillstand.IsRunning)
                 {
@@ -734,6 +738,7 @@ namespace ParkingLotTool.Tools
         internal bool ArbeitLaeuft
             => _warteschlange.Count > 0
                || World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>().Laeuft
+               || World.GetOrCreateSystemManaged<ParkingLotGassenvorbauSystem>().Anzahl > 0
                || OffeneSyncAuftraege > 0;
 
         private int OffeneSyncAuftraege => SyncWache.Offen(_wartetAuf.Count,
