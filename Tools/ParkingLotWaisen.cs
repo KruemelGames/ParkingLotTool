@@ -146,6 +146,7 @@ namespace ParkingLotTool.Tools
             var merk = new Dictionary<Entity, bool>();
             var lots = new List<Entity>();
             var traeger = new List<Entity>();
+            var anker = 0;
 
             using (var entities = _mitPrefab.ToEntityArray(Allocator.Temp))
             using (var refs = _mitPrefab.ToComponentDataArray<PrefabRef>(
@@ -156,6 +157,11 @@ namespace ParkingLotTool.Tools
                     if (!IstLotPrefab(refs[i].m_Prefab, merk)) continue;
                     if (EntityManager.HasComponent<Game.Areas.Area>(entities[i]))
                         lots.Add(entities[i]);
+                    // Netzerhalt-Anker (altes Lot ohne Flaeche) sind kein Traeger:
+                    // sonst hiessen sie "herrenlos", und eine Waise mit Anker
+                    // haette zwei Traeger-Kandidaten (29.10.2026).
+                    else if (EntityManager.HasComponent<ParkingLotZoninganker>(entities[i]))
+                        anker++;
                     else
                         traeger.Add(entities[i]);
                 }
@@ -184,7 +190,7 @@ namespace ParkingLotTool.Tools
                 + " verwaist (ohne Traegerverweis und Bauzettel), "
                 + Halbwaisen.Count + " halb; " + traeger.Count
                 + " Traeger, davon " + HerrenloseTraeger.Count
-                + " herrenlos.");
+                + " herrenlos; " + anker + " Netzerhalt-Anker.");
             _wegebestandLots.AddRange(lots);
             if (HerrenloseTraeger.Count > 0) BeschreibeLotTraeger(lots);
             if (Waisen.Count == 0 && Halbwaisen.Count == 0

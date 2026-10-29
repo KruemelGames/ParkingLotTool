@@ -320,6 +320,9 @@ namespace ParkingLotTool
             updateSystem.UpdateAt<ParkingLotFlaechenSyncSystem>(SystemUpdatePhase.PrefabUpdate);
             updateSystem.UpdateAfter<ParkingLotExklusivesBildSystem, ParkingLotHintergrundSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAfter<ParkingLotDefinitionsendeSystem, Game.Tools.ToolReadyBarrier>(SystemUpdatePhase.PostTool);
+            // Vor der Loeschkaskade: der leere Netzerhalt-Anker eines
+            // abgerissenen Lots faellt im selben Bild mit (29.10.2026).
+            updateSystem.UpdateBefore<ParkingLotAnkerabrissSystem, Game.Objects.SubElementDeleteSystem>(SystemUpdatePhase.PostTool);
             updateSystem.UpdateBefore<ParkingLotDauerkursSystem, Game.Tools.GenerateNodesSystem>(SystemUpdatePhase.Modification1);
             updateSystem.UpdateAt<ParkingLotAutoVersorgungApplySystem>(SystemUpdatePhase.PostTool);
             updateSystem.UpdateAt<ParkingLotErzeugungsSystem>(SystemUpdatePhase.ModificationEnd);

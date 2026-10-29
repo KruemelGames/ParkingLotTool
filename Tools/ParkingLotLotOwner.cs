@@ -650,6 +650,8 @@ namespace ParkingLotTool.Tools
                 lotsByCarrier.Add(relation.Carrier, relation.Lot);
             }
 
+            TrageAnkerkantenEin(lotsByCarrier);
+
             var restoredCarriers = 0;
             var restoredEdges = 0;
             var missingSources = 0;
@@ -687,6 +689,83 @@ namespace ParkingLotTool.Tools
                 + $"{missingSources} Flaeche(n) ohne SubNet-Quelle.");
 
             RestoreOwnerSubAreasAfterLoad(lotsByCarrier);
+        }
+
+        /**
+         * GELIEHENE VERWEISE NACH DEM LADEN WIEDER EINTRAGEN (29.10.2026).
+         *
+         * Nach einem Neubau im Hintergrund gehoeren erhaltene Strassen einem
+         * Netzerhalt-Anker, der am Lot haengt. `UebertrageZoningbestand`
+         * traegt sie zusaetzlich in den SubNet des Lots ein - nur dort findet
+         * sie der Bulldozer (`BulldozeToolSystem.AddSubNets` liest den SubNet
+         * des abgerissenen Lots) und laesst CS2 ueber die Knoten entscheiden.
+         * Beim Laden baut CS2 den SubNet aber aus dem Owner der Kanten neu
+         * auf; die geliehenen Eintraege fehlten danach, und beim Abriss
+         * blieben die Gassen stehen (Nutzertest 29.10.).
+         *
+         * Nur Kanten, wie beim Neubau: ueber die Knoten entscheidet CS2.
+         */
+        private void TrageAnkerkantenEin(Dictionary<Entity, Entity> lotsByCarrier)
+        {
+            var lots = new HashSet<Entity>(lotsByCarrier.Values);
+            var lotVonAnker = new Dictionary<Entity, Entity>();
+            var ankerQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<ParkingLotZoninganker>(),
+                    ComponentType.ReadOnly<Owner>(),
+                },
+                None = new[]
+                {
+                    ComponentType.ReadOnly<Deleted>(),
+                    ComponentType.ReadOnly<Temp>(),
+                },
+            });
+            using (var anker = ankerQuery.ToEntityArray(Allocator.TempJob))
+            using (var ankerBesitzer = ankerQuery.ToComponentDataArray<Owner>(Allocator.TempJob))
+                for (var i = 0; i < anker.Length; i++)
+                    if (lots.Contains(ankerBesitzer[i].m_Owner))
+                        lotVonAnker[anker[i]] = ankerBesitzer[i].m_Owner;
+            if (lotVonAnker.Count == 0) return;
+
+            var kantenQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<Game.Net.Edge>(),
+                    ComponentType.ReadOnly<Owner>(),
+                },
+                None = new[]
+                {
+                    ComponentType.ReadOnly<Deleted>(),
+                    ComponentType.ReadOnly<Temp>(),
+                },
+            });
+            using var kanten = kantenQuery.ToEntityArray(Allocator.TempJob);
+            using var besitzer = kantenQuery.ToComponentDataArray<Owner>(Allocator.TempJob);
+            var eingetragen = 0;
+            var betroffen = new HashSet<Entity>();
+            for (var i = 0; i < kanten.Length; i++)
+            {
+                if (!lotVonAnker.TryGetValue(besitzer[i].m_Owner, out var lot)) continue;
+                if (!EntityManager.HasBuffer<Game.Net.SubNet>(lot))
+                    EntityManager.AddBuffer<Game.Net.SubNet>(lot);
+                var buffer = EntityManager.GetBuffer<Game.Net.SubNet>(lot);
+                var schonDrin = false;
+                for (var k = 0; k < buffer.Length && !schonDrin; k++)
+                    schonDrin = buffer[k].m_SubNet == kanten[i];
+                if (schonDrin) continue;
+                buffer.Add(new Game.Net.SubNet(kanten[i]));
+                betroffen.Add(lot);
+                eingetragen++;
+            }
+
+            Mod.log.Info("PLT-Laden: " + eingetragen + " Kante(n) von "
+                + lotVonAnker.Count + " Netzerhalt-Anker(n) in den SubNet von "
+                + betroffen.Count + " Parkplatz/Parkplaetzen eingetragen - "
+                + "geliehene Verweise wie nach dem Neubau, damit der Bulldozer "
+                + "sie mitnimmt.");
         }
 
         /**
