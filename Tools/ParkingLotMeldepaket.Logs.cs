@@ -169,7 +169,7 @@ namespace ParkingLotTool.Tools
             "PLT-Sync", "PLT-Hintergrund", "PLT-Prefabverweise", "PLT-Laden", "PLT-Fahrweg",
             "PLT-Bestand", "PLT-Flaechensync", "PLT-Begleiter", "PLT-Waisen", "[WARN]", "[ERROR]", "Exception",
             // Reparatur fehlender Wegenetze (28.10.): Erkennung, Vorbau, Bauzettel ohne Zoningnamen.
-            "PLT-Wegebestand", "PLT-Restnetz", "PLT-Ankerabriss", "PLT-Wegpruefung", "PLT-Gassenvorbau", "ohne Namen der Zoningstrasse", "PLT-Vorflaeche verschmolzen",
+            "PLT-Wegebestand", "PLT-Restnetz", "PLT-Ankerabriss", "PLT-Abriss", "PLT-Stadtreinigung", "PLT-Schlusspruefung", "PLT-Wegpruefung", "PLT-Gassenvorbau", "ohne Namen der Zoningstrasse", "PLT-Vorflaeche verschmolzen",
         };
         private const int SyncauszugZeilen = 800;
 

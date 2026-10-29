@@ -50,10 +50,14 @@ namespace ParkingLotTool.Tools
      * Auftrag ueberhaupt anzunehmen. Flaechen ohne sie werden gezaehlt und
      * gemeldet, nicht markiert; siehe den Kommentar bei `_flaechen`.
      *
-     * GELOESCHT WIRD NUR DAS LOT. Den Rest raeumt der vorhandene
-     * relationsbasierte Aufraeumer ab, genau wie beim Bulldozer, mitsamt
-     * Leitungsabriss und Wirtschafts-Gegenbuchung. Ein zweiter Abrissweg
-     * waere eine zweite Wahrheit ueber dasselbe.
+     * ABGERISSEN WIRD WIE MIT DEM BULLDOZER (seit 29.10.2026): jedes Lot
+     * geht durch `ParkingLotAbrissWerkzeug`, das dieselben Definitionen
+     * anlegt wie der Vanilla-Bulldozer - CS2 entscheidet dann ueber die
+     * Knoten an Stadtstrassen. Den Rest raeumt der vorhandene
+     * relationsbasierte Aufraeumer ab, genau wie beim Abriss durch den
+     * Spieler, mitsamt Leitungsabriss und Wirtschafts-Gegenbuchung. Ein
+     * zweiter Abrissweg waere eine zweite Wahrheit ueber dasselbe; das alte
+     * Markieren bleibt nur als Rueckfall, wenn der Bulldozer-Weg scheitert.
      *
      * WAS ER NICHT ANFASST: gewachsene Zoninghaeuser. Die gehoeren dem
      * Spieler und sind gewoehnliche CS2-Gebaeude; sie stehen nur zufaellig
@@ -70,6 +74,8 @@ namespace ParkingLotTool.Tools
         private EntityQuery _alleKnoten;
         private PrefabSystem _prefabSystem;
         private ParkingLotUISystem _uiSystem;
+        private ParkingLotAbrissWerkzeug _abriss;
+        private bool _abrissAktiviert;
 
         /** Laeuft gerade ein Abriss? `-1` heisst nein. */
         private int _erwartet = -1;
@@ -156,6 +162,13 @@ namespace ParkingLotTool.Tools
             base.OnCreate();
             _prefabSystem = World.GetOrCreateSystemManaged<PrefabSystem>();
             _uiSystem = World.GetOrCreateSystemManaged<ParkingLotUISystem>();
+            _abriss = World.GetOrCreateSystemManaged<ParkingLotAbrissWerkzeug>();
+            _abriss.Rueckfall = (lot, grund) =>
+            {
+                Mod.log.Warn("PLT-Stadtreinigung: Lot " + lot.Index + " geht den alten Weg (" + grund
+                    + "): Markieren vor der Kaskade. Knoten an Stadtstrassen bleiben dort stehen.");
+                MarkiereZumAbriss(lot);
+            };
 
             /*
              * NUR, WAS DER AUFRAEUMER AUCH ANNIMMT.
@@ -287,7 +300,12 @@ namespace ParkingLotTool.Tools
         }
 
         /**
-         * MARKIERT DEN PARKPLATZ - MEHR BRAUCHT ES NICHT.
+         * RUECKFALL: MARKIEREN VOR DER KASKADE.
+         *
+         * Seit 29.10.2026 reisst `ParkingLotAbrissWerkzeug` jedes Lot wie der
+         * Bulldozer ab; hierher kommt ein Lot nur noch, wenn das scheitert.
+         * Die beiden Gruende unten waren der Grund, warum das bis dahin nicht
+         * ging - das Werkzeug kopiert die Eckpunkte und IST ein Werkzeug.
          *
          * Hier stand zwischendurch eine `CreationDefinition` mit
          * `CreationFlags.Delete`, dem Bulldozer nachgebaut. Die hat nie
@@ -458,6 +476,32 @@ namespace ParkingLotTool.Tools
         internal void Warte() => SetzeStand(Knopfzustand.Wartet);
 
         /**
+         * Das Abrisswerkzeug einschalten, solange es Lots hat, und danach
+         * wieder das normale Werkzeug. Nimmt der Spieler zwischendurch ein
+         * anderes, geht alles Offene den alten Weg (`PflegeOhneWerkzeug`) -
+         * kein Hin und Her um das aktive Werkzeug.
+         */
+        private void PflegeAbrisswerkzeug()
+        {
+            var werkzeuge = World.GetOrCreateSystemManaged<ToolSystem>();
+            if (_abriss.Laeuft)
+            {
+                if (werkzeuge.activeTool == _abriss) return;
+                if (!_abrissAktiviert)
+                {
+                    werkzeuge.activeTool = _abriss;
+                    _abrissAktiviert = true;
+                }
+                else _abriss.PflegeOhneWerkzeug();
+                return;
+            }
+            if (!_abrissAktiviert) return;
+            _abrissAktiviert = false;
+            if (werkzeuge.activeTool == _abriss)
+                werkzeuge.activeTool = World.GetOrCreateSystemManaged<DefaultToolSystem>();
+        }
+
+        /**
          * Zaehlt, was in dieser Stadt steht: abraeumbare Lots, Lots ohne
          * Traegerreferenz (die der Aufraeumer NICHT annimmt) und die noch
          * lebenden Teile.
@@ -506,11 +550,17 @@ namespace ParkingLotTool.Tools
                             flaechen[i])) lots.Add(flaechen[i]);
                     else uebergangen++;
                 }
+                // Der Bulldozer liest SubNet und SubArea; die Listen muessen
+                // vorher stimmen (nach dem Laden fehlt dort, was nur ueber
+                // Owner bekannt ist).
+                var auftrag = new System.Collections.Generic.List<Entity>();
                 for (var i = 0; i < lots.Length; i++)
                 {
-                    MarkiereZumAbriss(lots[i]);
+                    FuelleBesitzlisten(lots[i]);
+                    auftrag.Add(lots[i]);
                     markiert++;
                 }
+                _abriss.Einreihen(auftrag);
             }
 
             Mod.log.Info("PLT-Stadtreinigung: " + markiert
@@ -558,6 +608,7 @@ namespace ParkingLotTool.Tools
         protected override void OnUpdate()
         {
             if (Stand == Knopfzustand.Wartet && !Blockiert()) SetzeStand(Knopfzustand.Bereit);
+            PflegeAbrisswerkzeug();
             if (_beauftragt)
             {
                 _beauftragt = false;
@@ -576,7 +627,7 @@ namespace ParkingLotTool.Tools
             var uebrig = _teile.CalculateEntityCount();
             var offeneLots = _markierteLots.CalculateEntityCount();
 
-            if (uebrig == 0 && offeneLots == 0)
+            if (uebrig == 0 && offeneLots == 0 && !_abriss.Laeuft)
             {
                 var nachsatz = _uebergangen > 0
                     ? " ABER: " + _uebergangen + " Flaeche(n) ohne "
@@ -764,6 +815,8 @@ namespace ParkingLotTool.Tools
             _gewarnt = false;
             // Ein Auftrag der alten Stadt darf die neue nicht treffen.
             _beauftragt = false;
+            _abriss.Zuruecksetzen();
+            _abrissAktiviert = false;
             SetzeStand(Knopfzustand.Bereit);
         }
 
