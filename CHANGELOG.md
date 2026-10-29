@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.1 — unreleased
+
+- Addition: lots that lost their paths are listed with "Repair" and rebuilt with the same shape and settings.
+- Improvement: alleys get their own road surface that also covers their round end at the perimeter road.
+- Improvement: the parking lot list stays usable at large text sizes.
+- Change: updating old lots only renews their surfaces; a lot whose paths don't match its build plan is left untouched.
+- Fix: asphalt and grass no longer appear on a bridge above a parking lot (thanks thowelljr5).
+- Fix: demolishing an updated or repaired lot also removes its alleys, zoning roads and paths.
+- Fix: the panel no longer runs off the screen at large text sizes or on wide screens (thanks Marcaliseth).
+- Fix: the tab row stays on one line on wide screens (thanks Mxdanger).
+- Fix: hovering over buildings or roads no longer stalls an update in progress.
+- Fix: a failed background rebuild no longer leaves a lot locked with a hole.
+- Fix: lots without a zoning road name in their build plan can be updated again.
+- Fix: utility lines no longer count as paths outside the lot.
+- Fix: curve points in the preview are no longer red.
+
 ## 1.1.0 — October 21, 2026
 
 - Addition: support for curved roads. Just click along a curved road and the parking lot follows.
