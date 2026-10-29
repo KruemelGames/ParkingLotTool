@@ -291,10 +291,12 @@ namespace ParkingLotTool.Tools
                 seitenGelesen.Append(seitenplan[i].Links ? "links " : "rechts ")
                     .Append(seitenplan[i].Aus ? "AUS" : "an");
             }
-            Mod.log.Info("PLT-Zoningseitenplan GELESEN: " + seitenplan.Count
-                + " Handschaltung(en)"
-                + (seitenplan.Count > 0 ? " - " + seitenGelesen : string.Empty)
-                + ". Der Leser veraendert keine Panelwahl.");
+            // Ohne Handschaltung gibt es nichts zu sagen (vorher 130-mal
+            // "0 Handschaltung(en)" je Sync, 29.10.2026).
+            if (seitenplan.Count > 0)
+                Mod.log.Info("PLT-Zoningseitenplan GELESEN: " + seitenplan.Count
+                    + " Handschaltung(en) - " + seitenGelesen
+                    + ". Der Leser veraendert keine Panelwahl.");
             if (EntityManager.HasBuffer<ParkingLotBuildBusStop>(lot))
             {
                 var busPuffer = EntityManager.GetBuffer<ParkingLotBuildBusStop>(lot,

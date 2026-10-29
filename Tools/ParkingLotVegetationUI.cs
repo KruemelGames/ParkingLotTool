@@ -30,6 +30,9 @@ namespace ParkingLotTool.Tools
     }
     public sealed partial class ParkingLotUISystem
     {
+        /** Zuletzt geloggter Vegetationskatalog - gleiche Zeile nicht nochmal. */
+        private string _letzterVegetationskatalog;
+
         private ValueBinding<string> _vegetation, _vegetationCatalog, _vegetationDefault;
         private readonly List<VegetationAsset> _vegetationAssets = new List<VegetationAsset>();
         private readonly List<VegetationSet> _vegetationSets = new List<VegetationSet>();
@@ -179,16 +182,22 @@ namespace ParkingLotTool.Tools
             _vegetationAssets.Sort((a,b) => string.Compare(a.Name,b.Name,StringComparison.CurrentCulture));
             // Der ganze Katalog einmal ins Log: wer pflanzt sich wie ein Baum, wer wie ein Busch,
             // und wer hat TreeData (Altersstufen). Die beiden fallen nicht zusammen.
-            Mod.log.Info("PLT-Vegetationskatalog Wuchs (Baum ab " + VegetationSpecies.BaumHoehe.ToString("F1") + " m): "
+            // Nur, wenn er sich geaendert hat: er wird je Laden mehrfach
+            // gebaut, und dreimal dieselbe lange Zeile hilft niemandem.
+            var katalog = "PLT-Vegetationskatalog Wuchs (Baum ab " + VegetationSpecies.BaumHoehe.ToString("F1") + " m): "
                 + string.Join("; ", _vegetationAssets.Select(a => a.Name + " [" + a.Id.Replace("StaticObjectPrefab:", "") + "] "
                     + (a.Hoehe >= VegetationSpecies.BaumHoehe ? "Baum" : "Busch") + (a.Tree ? "/TreeData" : "")
-                    + " " + a.Hoehe.ToString("F1") + " m hoch, " + a.Spacing.ToString("F1") + " m breit")));
+                    + " " + a.Hoehe.ToString("F1") + " m hoch, " + a.Spacing.ToString("F1") + " m breit"));
+            var katalogNeu = katalog != _letzterVegetationskatalog;
+            _letzterVegetationskatalog = katalog;
+            if (katalogNeu) Mod.log.Info(katalog);
             AddVegetationSet("wild-deciduous", "TreesDeciduous",
                 "EU_AlderTree01", "BirchTree01", "NA_LondonPlaneTree01", "NA_LindenTree01", "NA_HickoryTree01", "EU_ChestnutTree01", "OakTree01");
             AddVegetationSet("wild-coniferous", "TreesNeedle", "PineTree01", "SpruceTree01");
             AddVegetationSet("wild-bushes", "Bushes", "GreenBushWild01", "GreenBushWild02", "FlowerBushWild01", "FlowerBushWild02");
-            Mod.log.Info("PLT-Vegetationskatalog: " + _vegetationAssets.Count + " echte Pflanzen; "
-                + string.Join("; ", _vegetationSets.Select(set=>set.Name+"="+set.Species.Length)));
+            if (katalogNeu)
+                Mod.log.Info("PLT-Vegetationskatalog: " + _vegetationAssets.Count + " echte Pflanzen; "
+                    + string.Join("; ", _vegetationSets.Select(set=>set.Name+"="+set.Species.Length)));
             try { if (File.Exists(VegetationSetsPath)) _vegetationSets.AddRange((JsonConvert.DeserializeObject<List<VegetationSet>>(File.ReadAllText(VegetationSetsPath)) ?? new List<VegetationSet>()).Where(s => s.Custom && s.Species != null)); }
             catch(Exception e) { Mod.log.Warn("Vegetationssets konnten nicht geladen werden: " + e.Message); }
             PublishVegetation();

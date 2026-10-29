@@ -43,6 +43,7 @@ namespace ParkingLotTool.Tools
             internal Entity Lot;
             internal Entity Carrier;
             internal bool Ready;
+            internal int Portionen;
         }
 
         private ModificationBarrier2 _barrier;
@@ -298,10 +299,16 @@ namespace ParkingLotTool.Tools
                  * hier ueberhaupt ankommen, stand nirgends. Eine Zahl, die
                  * stumm 0 ist, sieht aus wie "nichts zu tun".
                  */
-                Mod.log.Info($"PLT-Aufraeumer: {marked} relationierte Teile "
-                    + $"vorgemerkt ({pflanzen} davon Pflanzen), {remaining} "
-                    + $"bleiben uebrig ({pflanzenUebrig} davon Pflanzen); "
-                    + $"Grenze {PartsPerPass} je Durchgang.");
+                // Erste Portion, jede zehnte und die letzte - dazwischen
+                // sagt die Zahl nichts Neues (vorher 348 Zeilen bei einer
+                // Deinstallation, 29.10.2026). Die Schrittmarke darunter
+                // bleibt je Portion.
+                work.Portionen++;
+                if (work.Portionen == 1 || work.Portionen % 10 == 0 || remaining == 0)
+                    Mod.log.Info($"PLT-Aufraeumer: Portion {work.Portionen}: {marked} relationierte Teile "
+                        + $"vorgemerkt ({pflanzen} davon Pflanzen), {remaining} "
+                        + $"bleiben uebrig ({pflanzenUebrig} davon Pflanzen); "
+                        + $"Grenze {PartsPerPass} je Durchgang.");
                 ParkingLotSchrittmarke.Setze(
                     $"Abriss: {marked} Teile vorgemerkt, {remaining} uebrig");
 /*

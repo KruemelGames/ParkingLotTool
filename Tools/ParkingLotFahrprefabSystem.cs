@@ -116,6 +116,8 @@ namespace ParkingLotTool.Tools
             return true;
         }
 
+        private int _listenGesund;
+
         /** Nach NetInitialize; UI- und Spawn-Pools lesen, niemals nachtraeglich saeubern. */
         internal void PruefeListen()
         {
@@ -153,10 +155,23 @@ namespace ParkingLotTool.Tools
                 // schluckt den Fehler, Internal_WriteStream nutzt den leeren
                 // Schreiber). Ohne Abhaken kaeme sie jedes Bild wieder (Forum, 16.10.).
                 abgeschlossen.Add(entity);
-                try { if (fehler) Mod.log.Error(text); else Mod.log.Info(text); }
+                // Einzeln nur der Fehlerfall; die gesunden Teile als eine Summe
+                // (vorher rund 950 Zeilen je Laden, 29.10.2026).
+                if (!fehler) { _listenGesund++; continue; }
+                try { Mod.log.Error(text); }
                 catch (Exception) { }
             }
             foreach (var entity in abgeschlossen) _waechter.Remove(entity);
+            if (_waechter.Count == 0 && _listenGesund > 0)
+            {
+                try
+                {
+                    Mod.log.Info("PLT-Fahrprefab Listenwaechter: " + _listenGesund + " Prefab-Teil(e) geprueft - "
+                        + "keines in UI-, Spawn- oder Platzhalterlisten, alle von Find It ausgeschlossen.");
+                }
+                catch (Exception) { }
+                _listenGesund = 0;
+            }
         }
     }
 

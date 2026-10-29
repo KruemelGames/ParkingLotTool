@@ -92,7 +92,9 @@ Pruefe(Lies("Mod.cs").Contains("UpdateAfter<ParkingLotDefinitionsendeSystem, Gam
 Pruefe(abschluss.Contains("ParkingLotDefinitionsendeSystem>().Merke(owner,") && rueckweg.Contains("ParkingLotDefinitionsendeSystem>().Merke(alt.Besitzer,"),"Beide Permanent-Netzerzeuger melden den berechtigten Besitzer");
 Pruefe(zustand.Contains("HintergrundRueckwegfrist.Weiter(") && zustand.Contains("_angehalten.Contains(lot)"),"Feste Frist und Lotsperre im Produktionszustand");
 Pruefe(zustand.Contains("a.Bauer.HintergrundFehlstellen()") && zustand.Contains("diagnose:true"),"Beide Fehlstellendiagnosen vor endgueltiger Meldung");
-Pruefe(Lies("Tools/ParkingLotExklusivesBildSystem.cs").Contains("Parking-Lot-Panel/Werkzeug schliessen"),"Gate nennt das zeichnende PLT-Werkzeug");
+// Seit ddb6168 (06.10.) stehen Spielertexte in Lang/*.json: dieselbe Eigenschaft, neuer Ort.
+Pruefe(Lies("Tools/ParkingLotExklusivesBildSystem.cs").Contains("pltZeichnet ? ParkingLotTexte.T(\"exklusivesBildSystem.synchronizationIsWaitingFinishTheDraft\")")
+    && Lies("Lang/en-US.json").Contains("close the Parking Lot panel/tool"),"Gate nennt das zeichnende PLT-Werkzeug");
 Pruefe(Lies("UI/src/mods/sync-fortschritt.tsx").Contains("{felder[2]}"),"Fortschrittsmeldung zeigt den Warte-/Abbruchgrund");
 Console.WriteLine($"HINTERGRUND5: {n} Pruefungen, {fehler} Fehler (Rechenregeln und Quellenvertrag; kein Spieltest).");
 return fehler == 0 ? 0 : 1;
