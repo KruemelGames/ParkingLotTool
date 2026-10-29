@@ -79,6 +79,9 @@ namespace Game
 }
 namespace Game.Common { public struct PseudoRandomSeed { public ushort m_Seed; } public struct Deleted { } public struct Owner { public Entity m_Owner; } }
 namespace Game.Areas { public struct Area { } }
+// Seit dem Flaechensync-Neuaufbau haelt der Auftrag die Layoutrechnung als Feld;
+// gerechnet wird in Dateien, die dieser Test nicht uebersetzt.
+namespace ParkingLotTool.Geometry { public sealed class ParkingLayout { } }
 namespace Game.Net { public struct TestBezier { public Unity.Mathematics.float3 a, d; } public struct Curve { public TestBezier m_Bezier; } public struct SubNet { public Entity m_SubNet; } public struct Edge { } }
 namespace Game.SceneFlow
 {

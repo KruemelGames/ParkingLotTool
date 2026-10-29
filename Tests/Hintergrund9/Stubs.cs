@@ -91,6 +91,8 @@ namespace Game
 namespace Game.Common
 {
     public struct Deleted {}
+    // Seit 16.10. setzt der Ersatzabriss `Updated` an behaltenen Knoten.
+    public struct Updated {}
     public struct Owner { public Unity.Entities.Entity m_Owner; }
 }
 namespace Game.Prefabs

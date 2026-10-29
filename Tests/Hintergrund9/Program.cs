@@ -129,6 +129,7 @@ string Lies(string p)=>File.ReadAllText(Path.Combine(root!.FullName,p));
 Pruefe(Lies("Mod.cs").Contains("UpdateBefore<ParkingLotDauerkursSystem, Game.Tools.GenerateNodesSystem>(SystemUpdatePhase.Modification1)"),"Ausgabe nach PostTool/CourseSplit, unmittelbar vor GenerateNodes");
 Pruefe(Lies("Tools/ParkingLotLotOwner.cs").Contains("if (_bauarbeiter && _definitionsmodus == ParkingLotDefinitionsmodus.Permanent)")&&Lies("Tools/ParkingLotNetzRueckweg.cs").Contains("ParkingLotDauerkursSystem.Plane(em,d)"),"Bauer und Rueckweg geben explizit geplant aus; Temp-Normalbau bleibt bisheriger Pfad");
 Pruefe(Lies("Tools/ParkingLotHintergrundSystem.cs").Contains("a.Ersatzabriss ??= new HintergrundPortion(ParkingLotErsatzabriss.Schritte(")&&Lies("Tools/ParkingLotBauarbeiter.cs").Contains("ParkingLotErsatzabriss.Schritte("),"Dieselbe vollstaendige Ruecknahme auch nach Speichern/Laden");
-Pruefe(Lies("Tools/ParkingLotHintergrundSystem.cs").Contains("if (a.Phase == Phase.Ruecknahme || a.Phase == Phase.Ruhe"),"Ein unvollstaendiger Ersatzabriss wird angehalten statt endlos wiederholt");
+// Die Fehlerbehandlung zog am 16.10. (04c4fa4) nach ParkingLotHintergrund.Abschluss.cs: dieselbe Eigenschaft, neuer Ort.
+Pruefe((Lies("Tools/ParkingLotHintergrundSystem.cs")+Lies("Tools/ParkingLotHintergrund.Abschluss.cs")).Contains("if (a.Phase == Phase.Ruecknahme || a.Phase == Phase.Ruhe"),"Ein unvollstaendiger Ersatzabriss wird angehalten statt endlos wiederholt");
 Console.WriteLine($"HINTERGRUND9: {pruefungen} Pruefungen, {fehler} Fehler (Produktionsmethoden mit Test-API, keine nativen ECS-Jobs).");
 return fehler==0?0:1;

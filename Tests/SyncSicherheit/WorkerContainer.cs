@@ -75,7 +75,7 @@ namespace ParkingLotTool.Tools
         public bool TestDarfArbeiten() => LaufGueltig();
         public void TestBelegung(bool ja) => _lauf = ja ? new Lauf() : null;
         public bool TestStart(Entity lot, Auftragskennung id)
-        { _warteschlange.RemoveAll(a => a.Kennung == id); return Beginne(lot, id, 0); }
+        { _warteschlange.RemoveAll(a => a.Kennung == id); return Beginne(lot, id, 0, neuaufbau: false); }
         public Action TestAntwort(bool ok)
         {
             var a = _lauf;
