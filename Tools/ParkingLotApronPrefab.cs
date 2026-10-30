@@ -679,7 +679,11 @@ namespace ParkingLotTool.Tools
                 }
 
                 eintrag.OriginalMaske = originalGerendert.m_DecalLayerMask;
-                klonGerendert.m_DecalLayerMask = eintrag.OriginalMaske
+                // Ob der Klon auf Strassen zeichnet, entscheiden WIR, nicht
+                // das Original: Asset-Belaege (G87, EAI) tragen selbst
+                // `Roads`. Geerbt zeichnete der Raeumbelag auf Bruecken (#22),
+                // und die Abnahme unten wurde nie wahr (#24, #25).
+                klonGerendert.m_DecalLayerMask = (eintrag.OriginalMaske & ~DecalLayers.Roads)
                     | DecalLayers.Terrain
                     | (ZeichnetAufStrassen(eintrag) ? DecalLayers.Roads : 0);
 
