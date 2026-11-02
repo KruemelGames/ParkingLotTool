@@ -375,6 +375,14 @@ namespace ParkingLotTool.Tools
                         int rest = ParkingLotErsatzabriss.Eigene(EntityManager,a.Lot,ersatz.Lot,ersatz.Traeger).Count;
                         if (rest != 0) throw new InvalidOperationException($"Ruecknahme unvollstaendig: {rest} eigene Stage-B-Teile leben; 0 Rueckwegdefinitionen.");
                         ParkingLotNetzRueckweg.Melde("Ruecknahme vollstaendig: 0 eigene Stage-B-Netzteile/Kinder leben; Rueckweg freigegeben.");
+                        /*
+                         * Der Marker sagt "es gibt einen offenen Ersatz". Eben
+                         * bestaetigt: es gibt keinen mehr. Stehengelassen hielt
+                         * er bis zum erfolgreichen Rueckweg und versperrte damit
+                         * genau dann den Ausweg "Neubau statt Dauersperre", wenn
+                         * der Rueckweg nicht aufging (Codex-Befund zu #25).
+                         */
+                        EntityManager.RemoveComponent<ParkingLotOffenerErsatz>(a.Lot);
                     }
                     a.Phase = Phase.Rueckweg; a.Seit = UnityEngine.Time.frameCount;
                     break;

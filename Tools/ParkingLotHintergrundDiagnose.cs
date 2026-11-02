@@ -150,7 +150,7 @@ namespace ParkingLotTool.Tools
                     yield return 0;
                     ParkingLotHintergrundDiagnose.Kurs(EntityManager,_prefabSystem,"Erhalt",r.Kante.Index,
                         "Originalkante",r.Prefab,r.Besitzer,r.Kurs.m_Curve,
-                        "Originalkante/3D-Kurve/Prefab/Owner/Knoten/ConnectedEdge nicht unveraendert",r.Start,r.Ende);
+                        "Abnahme jetzt: " + ParkingLotNetzerhalt.Gruende(EntityManager,r),r.Start,r.Ende);
                 }
                 foreach (var r in _fehlendeHintergrundkurse.Take(4))
                 {
