@@ -1561,7 +1561,37 @@ namespace ParkingLotTool.Tools
                 _uiSystem?.SetHinweise(null);
                 RecordPreviewDiagnostic("Error",
                     "PLT-Vorschau konnte nicht berechnet werden.", exception);
-                Mod.log.Error(exception, "PLT-Vorschau konnte nicht berechnet werden.");
+                /*
+                 * "ZU KLEIN" IST KEIN FEHLER (Forum mandaroke, 2026-11-02).
+                 *
+                 * Bis 1.1.2 ging jede gescheiterte Vorschau als ERROR mit Stack
+                 * ins Log, auch "No parking module fits inside the inner
+                 * contour" - der Normalfall, wenn die Form fuer Randabstand und
+                 * Randstrasse zu klein ist. Skyve listet so eine Zeile als
+                 * Exception, und ein Spieler hielt sie fuer die Ursache seines
+                 * Absturzes. Was der Spieler selbst beheben kann (zu klein,
+                 * Umriss ungueltig), steht jetzt als Info ohne Stack im Log,
+                 * und nur, wenn sich der Text aendert - beim Ziehen scheitert
+                 * jede Zwischenform gleich. Alles andere bleibt ERROR mit Stack.
+                 */
+                var erwartet = Vorschaufehler.Einordnen(exception);
+                if (erwartet == Vorschaufehler.Ursache.ZuKlein
+                    || erwartet == Vorschaufehler.Ursache.UmrissUngueltig)
+                {
+                    var innen = exception;
+                    while (innen.InnerException != null) innen = innen.InnerException;
+                    var zeile = $"PLT-Vorschau nicht berechenbar ({erwartet}): {innen.Message}";
+                    if (zeile != _letzteErwarteteVorschauzeile)
+                    {
+                        _letzteErwarteteVorschauzeile = zeile;
+                        Mod.log.Info(zeile);
+                    }
+                }
+                else
+                {
+                    _letzteErwarteteVorschauzeile = null;
+                    Mod.log.Error(exception, "PLT-Vorschau konnte nicht berechnet werden.");
+                }
                 // OHNE DIESE ZEILE SIEHT DER NUTZER NICHTS. Der Abbruch stand
                 // nur im Log; im Panel blieb die alte Meldung stehen, und die
                 // Vorschau verschwand kommentarlos.
@@ -1592,6 +1622,9 @@ namespace ParkingLotTool.Tools
                 }
             }
         }
+
+        /** Letzte "zu klein"/"Umriss ungueltig"-Zeile im Log, gegen Wiederholung beim Ziehen. */
+        private string _letzteErwarteteVorschauzeile;
 
         private static string UebernahmeMs(long ticks)
             => ParkingLotLiveLog.Zahl(ticks * 1000d / Stopwatch.Frequency);
