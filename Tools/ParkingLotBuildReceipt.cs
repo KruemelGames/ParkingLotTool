@@ -133,6 +133,9 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            // Neuere oder unsinnige Fassung: ab hier liest dieser Build versetzt.
+            if (Version > CurrentVersion || Version < 1)
+                ParkingLotFassungsschutz.Melde(nameof(ParkingLotBuildReceipt), Version, CurrentVersion);
             reader.Read(out Es);
             reader.Read(out Ai);
             reader.Read(out Cw);
