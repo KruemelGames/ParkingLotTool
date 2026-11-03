@@ -124,7 +124,7 @@ namespace ParkingLotTool.Tools
         /**
          * Je Einmuendung: liegt dort der Weg, den der Bauzettel sagt? Alley-Weg
          * (PLT Zufahrtsgasse, alt: Vanilla "Alley") bei Gasse, unsichtbarer
-         * Zufahrtsweg ("Invisible Road Path") bei Zufahrt/Einfahrt/Ausfahrt.
+         * Zufahrtsweg (Katalog ParkingLotFahrregeln.Wege) bei Zufahrt/Einfahrt/Ausfahrt.
          * Gegengeprueft an den Berichten vom 28.10.: wo die Wege stehen, liegen
          * sie 0,00-0,05 m neben dem Punkt aus Kante und Along.
          */
@@ -157,7 +157,7 @@ namespace ParkingLotTool.Tools
                     var prefab = EntityManager.GetComponentData<PrefabRef>(e).m_Prefab;
                     if (!prefabs.TryGetPrefab<PrefabBase>(prefab, out var p) || p == null) continue;
                     if (GassenPrefab.Ist(prefabs, prefab) || p.name == "Alley") alley = true;
-                    else if (p.name.Contains("Invisible Road Path")) auto = true;
+                    else if (IstZufahrtsweg(p.name)) auto = true;
                 }
                 var sollAlley = Zufahrtsarten.IstGasse(m.Art);
                 if (!alley && !auto)
@@ -167,6 +167,24 @@ namespace ParkingLotTool.Tools
                 }
                 else if (sollAlley ? !alley : !auto) abweichend++;
             }
+        }
+
+        /*
+         * WELCHER WEG IST EINE AUTOZUFAHRT (Tokero-Spielstand, 2026-11-03).
+         * Hier stand `Contains("Invisible Road Path")`. Die schmale Zufahrt
+         * baut PLT aber als "Invisible Car Path - 1xTwoway" (3 m); der Lot
+         * mit 200 Buchten meldete deshalb "1 ohne Weg", obwohl genau auf der
+         * Einmuendung sein eigener 'PLT Invisible Car Path - 1xTwoway' lag
+         * (0,00 m, Besitzer der Lot). Massgeblich ist der Katalog, aus dem
+         * auch gebaut wird: ParkingLotFahrregeln.Wege, mit und ohne "PLT ".
+         * Der alte Namensvergleich bleibt fuer aeltere Bauten erhalten.
+         */
+        private static bool IstZufahrtsweg(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            if (name.Contains("Invisible Road Path")) return true;
+            var quelle = name.StartsWith("PLT ", System.StringComparison.Ordinal) ? name.Substring(4) : name;
+            return ParkingLotFahrregeln.IstFahrweg(quelle);
         }
 
         /*
