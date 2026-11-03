@@ -24,7 +24,7 @@ namespace ParkingLotTool.Tools
         }
         public void Deserialize<R>(R r) where R : IReader
         {
-            r.Read(out int version); r.Read(out int art); Art = (ParkingLotErzeugungsart)art;
+            r.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotErzeugungsauftrag), version, 1); r.Read(out int art); Art = (ParkingLotErzeugungsart)art;
             r.Read(out string name); Prefabname = ParkingLotPrefabname.Fest(name);
             r.Read(out Seed); r.Read(out Bezug); r.Read(out Ergebnis); r.Read(out A); r.Read(out D); r.Read(out Erledigt);
         }

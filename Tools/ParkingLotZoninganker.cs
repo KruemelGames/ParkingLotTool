@@ -14,7 +14,7 @@ namespace ParkingLotTool.Tools
     public struct ParkingLotZoninganker : IComponentData, ISerializable
     {
         public void Serialize<TWriter>(TWriter w) where TWriter : IWriter => w.Write(1);
-        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); }
+        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotZoninganker), version, 1); }
     }
     public struct ParkingLotAbrisswurzel : IComponentData { }
 

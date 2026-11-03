@@ -32,6 +32,21 @@ namespace ParkingLotTool.Tools
         /** Welche Komponente in welcher Fassung, fuer das Log. */
         internal static string Befund => _befund ?? string.Empty;
 
+        /**
+         * Jede gespeicherte PLT-Komponente mit Fassungsnummer ruft das direkt
+         * nach dem Lesen der Nummer auf (Stand 03.11.: 27 Lesestellen).
+         *
+         * OHNE FASSUNGSNUMMER sind bis heute: Lot-/Traegerverweis, Wirtschafts-
+         * daten, Versorgungsleitung, Zoning-Probe, Stufe-A-Prefab/-Knoten,
+         * offener Ersatz und Vegetationszettel. Aendert sich deren Aufbau,
+         * merkt ein aelterer Leser das nicht. Wer eine davon aendert, gibt ihr
+         * DABEI eine Fassungsnummer und ruft hier `Pruefe` auf.
+         */
+        internal static void Pruefe(string komponente, int gelesen, int bekannt)
+        {
+            if (gelesen > bekannt || gelesen < 1) Melde(komponente, gelesen, bekannt);
+        }
+
         internal static void Melde(string komponente, int fassung, int bekannt)
         {
             if (_fremd) return;

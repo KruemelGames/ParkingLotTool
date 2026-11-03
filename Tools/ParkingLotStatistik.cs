@@ -161,6 +161,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotStatistik), Version, AktuelleVersion);
             reader.Read(out GebautFrame);
             reader.Read(out Proben);
             reader.Read(out BelegtPromille);
@@ -229,7 +230,8 @@ namespace ParkingLotTool.Tools
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
-            reader.Read(out int _);
+            reader.Read(out int version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotZielwert), version, AktuelleVersion);
             reader.Read(out Gebaeude);
             reader.Read(out Gewicht);
         }
@@ -261,7 +263,8 @@ namespace ParkingLotTool.Tools
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
-            reader.Read(out int _);
+            reader.Read(out int version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotStundenwert), version, AktuelleVersion);
             reader.Read(out BelegtPromille);
             reader.Read(out Proben);
         }
@@ -290,7 +293,8 @@ namespace ParkingLotTool.Tools
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
-            reader.Read(out int _);
+            reader.Read(out int version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotTagwert), version, AktuelleVersion);
             reader.Read(out Tag);
             reader.Read(out Autos);
         }

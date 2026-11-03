@@ -27,7 +27,7 @@ namespace ParkingLotTool.Tools
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
-            reader.Read(out int version);
+            reader.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotDatenstand), version, CurrentVersion);
             reader.Read(out Stand);
         }
     }

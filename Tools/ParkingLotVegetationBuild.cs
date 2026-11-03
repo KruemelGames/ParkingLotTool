@@ -48,7 +48,7 @@ namespace ParkingLotTool.Tools
         { w.Write(1); w.Write((byte)Zustand); w.Write(Wuchs); }
         public void Deserialize<TReader>(TReader r) where TReader : IReader
         {
-            r.Read(out int version);
+            r.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBaumziel), version, 1);
             r.Read(out byte zustand); Zustand = (Game.Objects.TreeState)zustand;
             r.Read(out Wuchs);
         }

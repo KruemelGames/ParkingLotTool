@@ -21,7 +21,7 @@ namespace ParkingLotTool.Tools
 
         public void Deserialize<TReader>(TReader r) where TReader : IReader
         {
-            r.Read(out int version);
+            r.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotStufeAPrefabID), version, 1);
             if (version != 1) throw new InvalidOperationException("Stufe-A-Prefabversion");
             r.Read(out string name);
             PrefabName = ParkingLotPrefabname.Fest(name);

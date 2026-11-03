@@ -14,7 +14,7 @@ namespace ParkingLotTool.Tools
         public float3 Start, Ziel;
         public bool Stadt;
         public void Serialize<W>(W w) where W : IWriter { w.Write(1); w.Write(Kante); w.Write(Start); w.Write(Ziel); w.Write(Stadt); }
-        public void Deserialize<R>(R r) where R : IReader { r.Read(out int version); r.Read(out Kante); r.Read(out Start); r.Read(out Ziel); r.Read(out Stadt); }
+        public void Deserialize<R>(R r) where R : IReader { r.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotVersorgungsnachweis), version, 1); r.Read(out Kante); r.Read(out Start); r.Read(out Ziel); r.Read(out Stadt); }
     }
 
 }
