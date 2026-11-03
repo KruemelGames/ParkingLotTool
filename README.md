@@ -19,6 +19,11 @@ Released on Paradox Mods and updated regularly. A mod this size still meets
 cities and mod combinations nobody has tested, so please back up your save
 before you build your first lot.
 
+From 1.1.3 on, going back to an older version can't damage a save made with a
+newer one: the older version leaves the lots as they are, turns off sync,
+repair and editing, and asks you to install the newer version again. Versions
+before 1.1.3 don't have this protection.
+
 ## Reporting a problem
 
 Open an [issue](https://github.com/KruemelGames/ParkingLotTool/issues). That is

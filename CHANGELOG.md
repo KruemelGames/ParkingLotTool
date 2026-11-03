@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.3 — November 3, 2026
+
+- Fix: a lot whose background repair failed could stay locked after every load ("Updating parking lots is stuck"). Undoing the repair now finds the lot's own unchanged paths again (#25, #27, thanks Tokerocraft and d9sfmg255y-lab).
+- Fix: updating old lots skipped lots with a narrow car entrance, because their entrance path wasn't recognized (#27).
+- Fix: with low frame rates PLT wrote a log line for nearly every frame, which could cause error popups from the game's logger. Now at most one line per second (#26, thanks aeonfluxx75).
+- Fix: surfaces cloned from packs like G87 or EAI no longer draw on bridges and are no longer dropped while loading.
+- Fix: "Lot too small" in the preview is no longer logged as an error, so tools like Skyve don't list it as an exception (thanks mandaroke).
+- Addition: a save made with a newer PLT version is no longer misread by an older one. PLT leaves its lots as they are, turns off sync, repair and editing, and asks you not to save and to install the newer version.
+- Known issue: a bridge directly over an alley entrance shows the surface on top of the bridge. This is a limit of the game and probably can't be fixed.
+
 ## 1.1.2 — October 29, 2026
 
 - Fix: with some surface packs (for example from G87) the frame rate could drop sharply, because the same error was written to the log many times per second; this also made "Updating parking lots" look stuck (#24, thanks zcndgn2310 and kajanpb).
