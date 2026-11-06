@@ -169,11 +169,18 @@ $hinweis: #f2c94c;
  * sie weiter unten. Wer die alte Oberflaeche einschaltet, bekommt damit
  * auch bei uns das Passende.
  */
+/*
+ * TEXT FEST HELL, nicht `--menuText*`: die gelten dem hellen Hauptmenue und sind
+ * in `style--bright-blue` dunkelblau. Unser Panel bleibt dort dunkel, die
+ * Beschriftungen waren kaum lesbar. Das Spiel selbst nimmt auf seinen Panels
+ * `--normalTextColor`, in allen Stilen hell. Die Werte sind die bisherigen des
+ * Standardstils.
+ */
 $grund: var(--panelColorNormal);
 $rand: var(--menuBorderColor1);
-$text-1: var(--menuText1Normal);
-$text-2: var(--menuText1Normal);
-$text-3: var(--menuText2Normal);
+$text-1: rgba(255, 255, 255, 0.8);
+$text-2: rgba(255, 255, 255, 0.8);
+$text-3: rgba(255, 255, 255, 0.6);
 $text-4: rgba(255, 255, 255, 0.3);
 $flaeche: var(--menuHoverColor);
 $flaeche-hell: var(--menuActiveColor);

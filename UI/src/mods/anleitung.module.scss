@@ -48,7 +48,7 @@ $abstand: 12rem;
   white-space: normal;
   overflow-wrap: break-word;
   font-size: var(--fontSizeXS);
-  color: var(--menuText2Normal);
+  color: rgba(255, 255, 255, 0.6);
   max-width: 640rem;
 }
 
@@ -225,9 +225,9 @@ $abstand: 12rem;
   overflow-wrap: break-word;
   margin-top: 2rem;
   font-size: var(--fontSizeS);
-  color: var(--menuText1Normal);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .kachelBald .name {
-  color: var(--menuText2Normal);
+  color: rgba(255, 255, 255, 0.6);
 }

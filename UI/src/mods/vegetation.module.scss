@@ -42,7 +42,7 @@
 .einklappen {
   flex-shrink:0; width:20rem; height:20rem; padding:0; border:none;
   border-radius:4rem; background-color:rgba(255,255,255,.1);
-  color:var(--menuText1Normal); font-size:var(--fontSizeL);
+  color:rgba(255, 255, 255, 0.8); font-size:var(--fontSizeL);
 }
 .einklappen:hover { background-color:rgba(255,255,255,.2); }
 
