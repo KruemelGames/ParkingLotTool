@@ -26,6 +26,7 @@ body:
       label: When did the problem happen?
       description: Pick the moment closest to it.
       options:
+        - Please choose
         - While the game was starting (before the main menu)
         - While loading a save
         - Shortly after loading, before using Parking Lot Tool (e.g. moving the camera)
@@ -70,6 +71,7 @@ body:
     attributes:
       label: Did the game crash?
       options:
+        - Please choose
         - "No"
         - "Yes, it closed itself"
         - "Yes, it froze and I had to kill it"
