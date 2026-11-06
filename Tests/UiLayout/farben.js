@@ -15,6 +15,11 @@ const SPIEL = process.env.CSII_GAMEUI || "C:/Program Files (x86)/Steam/steamapps
 const OUT = path.join(__dirname, "out");
 const BILDER = path.join(OUT, "farben");
 const url = (p) => "file:///" + p.split(String.fromCharCode(92)).join("/");
+/** Wie kR() in index.js bei der Standard-Transparenz 0.5: daraus folgt die Deckung der Panels. */
+const dr = (e, t) => -t * e * e + (1 + t) * e;
+const DECKUNG = 1 - 0.75 * dr(0.5, 1);
+const DECKUNG_DUNKEL = dr(DECKUNG, 0.66);
+const SZENE = process.env.PLT_SZENE || "C:/Projekte/CS2 Mods/ParkingLotTool/Properties/Screenshots/Fit.png";
 
 const STILE = [
   ["default", "", "75, 195, 241"],
@@ -23,7 +28,7 @@ const STILE = [
 ];
 const BUNT = ["240, 173, 62", "79, 195, 247", "124, 212, 85"];
 const ARTEN = ["224, 90, 43", "242, 193, 78", "126, 217, 87", "187, 53, 82", "255, 95, 176"];
-/** Text aus `--menuText*` in bright-blue: dunkelblau auf dunklem Panel, kaum lesbar. */
+/** `--menuText*` aus style--bright-blue; im Spiel schlaegt overwrite-legacy es, das bleibt so. */
 const DUNKEL = ["0, 41, 59", "8, 61, 92", "0, 18, 51"];
 
 const texte = () => {
@@ -39,11 +44,11 @@ const seite = (klasse, werte) => `<!doctype html><html><head><meta charset="utf-
   @font-face { font-family: Overpass; font-weight: 400; src: url("${url(SPIEL)}/Fonts/Overpass-Regular.ttf"); }
   @font-face { font-family: Overpass; font-weight: 700; src: url("${url(SPIEL)}/Fonts/Overpass-Bold.ttf"); }
   html { font-size: 1px !important; }
-  :root { --fontScale: 1; --fontScaleChange: 0; }
-  body { margin: 0; background: #5d6b52; overflow: hidden; }
+  :root { --fontScale: 1; --fontScaleChange: 0; --uiOpacity: ${DECKUNG}; --panelOpacityNormal: ${DECKUNG}; --panelOpacityDark: ${DECKUNG_DUNKEL}; }
+  body { margin: 0; background: #5d6b52 url("${url(SZENE)}") center / cover; overflow: hidden; }
   #game { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; }
   * { flex-shrink: 0; }
-</style></head><body class="${klasse}"><div id="game"></div>
+</style></head><body class="${klasse} overwrite-legacy"><div id="game"></div>
 <script>window.__PLT_REM__ = 1; window.__PLT_WERTE__ = ${JSON.stringify(werte)};</script>
 <script src="${url(OUT)}/harness.js"></script></body></html>`;
 

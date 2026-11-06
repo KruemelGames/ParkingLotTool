@@ -143,6 +143,11 @@ $hinweis: #f2c94c;
  * `-hover`, `--accentColorLight`) je `style--...`. Ein kuenftiges unbekanntes
  * Schema bekommt die des Standardschemas.
  *
+ * Die Farben bleiben, wie das Spiel sie vorgibt (Nutzer 06.11.). Das Mittelblau
+ * von Bright Blue hat auf dem durchscheinenden Panel wenig Kontrast, rechnerisch
+ * rund 2:1 ueber einer mittelhellen Szene. Das ist so gewollt: wer diesen Stil
+ * waehlt, bekommt genau seine Farbe.
+ *
  * Bleibt in beiden gleich: Gelb ($hinweis, es wartet etwas), Rot ($melden,
  * Loeschen und Abbrechen) und Magenta nur am Knopf `.aktionZufahrt`, weil das
  * Werkzeug die Zufahrt in dieser Farbe in die Welt zeichnet. Die Spalte
