@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.4 — November 6, 2026
+
+- Addition: a "Panel colors" setting. "Game theme" uses the accent color of the game's interface style instead of one color per column (thanks scunthorpe).
+- Fix: PLT's invisible paths and its surfaces no longer show up as duplicates in Find It (thanks mcarch1892002).
+- Fix: with the bright blue interface style, panel labels were dark and hard to read.
+- Known issue: a bridge directly over an alley entrance shows the surface on top of the bridge. This is a limit of the game and probably can't be fixed.
+
 ## 1.1.3 — November 3, 2026
 
 - Fix: a lot whose background repair failed could stay locked after every load ("Updating parking lots is stuck"). Undoing the repair now finds the lot's own unchanged paths again (#25, #27, thanks Tokerocraft and d9sfmg255y-lab).
