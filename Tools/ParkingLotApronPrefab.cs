@@ -742,6 +742,8 @@ namespace ParkingLotTool.Tools
                  * sondern derselbe Wert.
                  */
 
+                // Find It listet jedes Flaechenprefab, auch ohne UIObject (BUG-35).
+                ParkingLotFahrprefabKopie.Verstecke(klon);
                 if (!_prefabSystem.AddPrefab(klon))
                 {
                     Fehlschlag(eintrag, "PrefabSystem.AddPrefab gab false zurueck.");
