@@ -226,6 +226,7 @@ export const surfaceApronOn$ = bindValue<boolean>(MOD, "SurfaceApronOn", true);
  * Spalten nebeneinander liegen oder untereinander.
  */
 export const panelStil$ = bindValue<string>(MOD, "PanelStil", "horizontal");
+export const panelFarben$ = bindValue<string>(MOD, "PanelFarben", "bunt");
 
 /**
  * DIE FANGOPTIONEN GEHOEREN DEM SPIEL, NICHT UNS.

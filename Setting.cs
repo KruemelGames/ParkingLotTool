@@ -642,6 +642,24 @@ namespace ParkingLotTool
         internal string FensterstilKuerzel()
             => Fensterstil == Fensterstilwahl.Hochkant ? "hochkant" : "horizontal";
 
+        /**
+         * Farben des Panels (FRQ-34). Bunt gibt jeder Spalte ihre Farbe,
+         * Spielschema nimmt nur die Akzentfarbe des Oberflaechenstils von CS2.
+         * Gelb und Rot behalten ihre Bedeutung.
+         */
+        public enum Panelfarbenwahl
+        {
+            Bunt,
+            Spielschema,
+        }
+
+        [SettingsUISection(ReiterAllgemein, GruppeFenster)]
+        public Panelfarbenwahl Panelfarben { get; set; } = Panelfarbenwahl.Bunt;
+
+        /** "bunt" oder "spiel" - das, woran die Oberflaeche haengt. */
+        internal string PanelfarbenKuerzel()
+            => Panelfarben == Panelfarbenwahl.Spielschema ? "spiel" : "bunt";
+
         [SettingsUIButton]
         [SettingsUISection(ReiterAllgemein, GruppeFenster)]
         public bool FensterZuruecksetzen
@@ -866,6 +884,7 @@ namespace ParkingLotTool
             // zuruecksetzen" soll den Entwickler-Reiter sicher ausschalten.
             EntwicklerDebug = false;
             Wirtschaft = true;
+            Panelfarben = Panelfarbenwahl.Bunt;
             Parkgebuehr = 10;
             Unterhalt = Unterhaltwahl.Voll;
             ZoningMaxBreiteText = ParkingGeometry.ZoningMaxStandard
@@ -1037,6 +1056,22 @@ namespace ParkingLotTool
                     _setting.GetEnumValueLocaleID(
                         Setting.Fensterstilwahl.Hochkant),
                     S("settings.enum.Fensterstilwahl.Hochkant")},
+                {
+                    "Options.OPTION[" + seite + "." + nameof(Setting) + "."
+                        + nameof(Setting.Panelfarben) + "]",
+                    S("settings.Panelfarben.label")},
+                {
+                    "Options.OPTION_DESCRIPTION[" + seite + "." + nameof(Setting)
+                        + "." + nameof(Setting.Panelfarben) + "]",
+                    S("settings.Panelfarben.desc")},
+                {
+                    _setting.GetEnumValueLocaleID(
+                        Setting.Panelfarbenwahl.Bunt),
+                    S("settings.enum.Panelfarbenwahl.Bunt")},
+                {
+                    _setting.GetEnumValueLocaleID(
+                        Setting.Panelfarbenwahl.Spielschema),
+                    S("settings.enum.Panelfarbenwahl.Spielschema")},
                 {
                     "Options.GROUP[" + seite + "." + Setting.GruppeZufahrt + "]",
                     S("settings.group.Zufahrt")},

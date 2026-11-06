@@ -6,10 +6,10 @@
    Fertige Folge und Platzhalter haben DIESELBE Groesse - Nutzerwunsch; beim
    Erscheinen einer Folge springt nichts. */
 
-$fahrwege: #4fc3f7;
-$zuschnitt: #f0ad3e;
-$gruen: #7cd455;
-$zufahrt: #ff5fb0;
+$fahrwege: rgba(var(--pltFahrwege), 1);
+$zuschnitt: rgba(var(--pltZuschnitt), 1);
+$gruen: rgba(var(--pltGruen), 1);
+$zufahrt: rgba(var(--pltZufahrt), 1);
 $melden: #f2725c;
 
 /* Kachelmasse: 16:9. Waagerecht stehen alle fuenf in einer Reihe,
@@ -99,10 +99,10 @@ $abstand: 12rem;
   height: $kachel-hoch-hochkant;
 }
 
-.rahmenFahrwege { border-color: rgba(79, 195, 247, 0.55); }
-.rahmenZuschnitt { border-color: rgba(240, 173, 62, 0.45); }
-.rahmenGruen { border-color: rgba(124, 212, 85, 0.45); }
-.rahmenZufahrt { border-color: rgba(255, 95, 176, 0.45); }
+.rahmenFahrwege { border-color: rgba(var(--pltFahrwege), 0.55); }
+.rahmenZuschnitt { border-color: rgba(var(--pltZuschnitt), 0.45); }
+.rahmenGruen { border-color: rgba(var(--pltGruen), 0.45); }
+.rahmenZufahrt { border-color: rgba(var(--pltZufahrt), 0.45); }
 .rahmenMelden { border-color: rgba(242, 114, 92, 0.45); }
 
 .kachelFertig:hover .rahmenFahrwege { border-color: $fahrwege; }
@@ -136,7 +136,7 @@ $abstand: 12rem;
 
 .kachelFertig:hover .abspielen {
   opacity: 1;
-  background-color: rgba(79, 195, 247, 0.85);
+  background-color: rgba(var(--pltFahrwege), 0.85);
   border-color: #ffffff;
 }
 
@@ -157,10 +157,10 @@ $abstand: 12rem;
   justify-content: center;
 }
 
-.grundFahrwege { background-color: rgba(79, 195, 247, 0.14); }
-.grundZuschnitt { background-color: rgba(240, 173, 62, 0.14); }
-.grundGruen { background-color: rgba(124, 212, 85, 0.14); }
-.grundZufahrt { background-color: rgba(255, 95, 176, 0.14); }
+.grundFahrwege { background-color: rgba(var(--pltFahrwege), 0.14); }
+.grundZuschnitt { background-color: rgba(var(--pltZuschnitt), 0.14); }
+.grundGruen { background-color: rgba(var(--pltGruen), 0.14); }
+.grundZufahrt { background-color: rgba(var(--pltZufahrt), 0.14); }
 .grundMelden { background-color: rgba(242, 114, 92, 0.14); }
 
 .platzhalterNummer {
