@@ -44,6 +44,8 @@ namespace ParkingLotTool.Tools
                     foreach (var layout in new[] { Fahrradlayout.A, Fahrradlayout.C, Fahrradlayout.D })
                     {
                         var lot = ParkingLotFahrradPrefabBau.Lot(layout);
+                        // Find It listet jedes Flaechenprefab, auch ohne UIObject (BUG-35).
+                        ParkingLotFahrprefabKopie.Verstecke(lot);
                         if (!_prefabs.AddPrefab(lot)) throw new InvalidOperationException("Fahrrad-Lot abgelehnt");
                         var entity = _prefabs.GetEntity(lot);
                         EntityManager.AddComponentData(entity, new ParkingLotFahrradLayout { Layout = layout });
@@ -51,6 +53,7 @@ namespace ParkingLotTool.Tools
                     }
                     _lot = _lots[Fahrradlayout.A]; _lotBild = UnityEngine.Time.frameCount;
                     var gehen = ParkingLotFahrradPrefabBau.Gehflaeche();
+                    ParkingLotFahrprefabKopie.Verstecke(gehen);
                     if (!_prefabs.AddPrefab(gehen)) throw new InvalidOperationException("Fahrrad-Gehflaeche abgelehnt");
                     _gehen = _prefabs.GetEntity(gehen);
                 }
@@ -76,6 +79,9 @@ namespace ParkingLotTool.Tools
 
         private void Registriere(PrefabBase quelle, PrefabBase klon)
         {
+            // Find It listet jedes PathwayPrefab, auch ohne UIObject (BUG-35);
+            // Spuren und Abschnitte zeigt es nicht, die brauchen nichts.
+            if (klon is PathwayPrefab) ParkingLotFahrprefabKopie.Verstecke(klon);
             if (!_prefabs.AddPrefab(klon)) throw new InvalidOperationException("Fahrradklon abgelehnt: " + klon.name);
             if (_prefabs.TryGetEntity(klon, out _))
                 World.GetOrCreateSystemManaged<ParkingLotFahrprefabSystem>().Beobachte(klon);
