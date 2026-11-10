@@ -58,6 +58,10 @@ game objects:
 - **Surfaces** for the driving area, for everything in between and for the
   ground under zoning parcels — any surface in the game, including asset mods,
   or switched off. The surface can reach out to the road it connects to.
+- **Bicycle parking lots**: switch the panel to bike parking and pick rack rows,
+  shelters or hoops in a plain, green-framed or plaza style.
+- **Special bays** for car lots: disabled and electric bays, only one kind, or
+  none.
 - **Lamps, trees and bushes**, with a real preview of surfaces, lamps and
   plants before you build.
 - **Zoning** inside the lot: drag patches or place them at a fixed size, ringed

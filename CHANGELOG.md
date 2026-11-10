@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 — November 10, 2026
+
+- Addition: bicycle parking lots. "Change to bike parking lot" sits at the top of the first column. Pick the racks (rack rows, shelters or hoops) and a style (plain, green frame or plaza). Upkeep works like the game's own bicycle parking.
+- Addition: a "Special bays" switch for car lots: all, off, electric only or disabled only.
+- Known issue: a lot can't be switched between car and bicycle parking after it is built, and automatic rebuilding and network repairs don't cover bicycle lots yet. Use Edit to change one.
+- Known issue: a bridge directly over an alley entrance shows the surface on top of the bridge. This is a limit of the game and probably can't be fixed.
+
 ## 1.1.4 — November 6, 2026
 
 - Addition: a "Panel colors" setting. "Game theme" uses the accent color of the game's interface style instead of one color per column (thanks scunthorpe).
