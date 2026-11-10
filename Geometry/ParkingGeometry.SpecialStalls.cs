@@ -283,7 +283,16 @@ namespace ParkingLotTool.Geometry
 
             var groessen = FindDisabledGroups(settings.Sw);
             var group = groessen.FirstOrDefault();
-            var groups = group != null ? (output.Bay.Count >= 150 ? 2 : 1) : 0;
+            /*
+             * Schalter "Sonderplaetze" (Nutzer 2026-11-10). Ohne Behindertenblock
+             * rechnet Elektro unten von selbst wieder gegen das Ziel statt gegen
+             * den blauen Block - `ReferenceDistance` faellt dann auf `Near` zurueck.
+             */
+            var mitBehindert = settings.Sonderplaetze == Sonderplatzwahl.Alle
+                || settings.Sonderplaetze == Sonderplatzwahl.Behindert;
+            var mitElektro = settings.Sonderplaetze == Sonderplatzwahl.Alle
+                || settings.Sonderplaetze == Sonderplatzwahl.Elektro;
+            var groups = group != null && mitBehindert ? (output.Bay.Count >= 150 ? 2 : 1) : 0;
             for (var groupIndex = 0; groupIndex < groups; groupIndex++)
             {
                 // Reihum, damit zwei Gruppen an zwei verschiedenen Fusswegen
@@ -441,7 +450,7 @@ namespace ParkingLotTool.Geometry
             }
 
             // Elektro ist geometrisch normal (gleiche 2,9x5,9-Spur), nur Grafik.
-            var pairs = Math.Max(ElectricPairsMin, Math.Min(ElectricPairsMax,
+            var pairs = !mitElektro ? 0 : Math.Max(ElectricPairsMin, Math.Min(ElectricPairsMax,
                 JsRound(output.Bay.Count * ElectricShare / 2)));
             // Abstand zum BLAUEN BLOCK. Gegen die Zufahrt gemessen rueckte Elektro
             // naeher als Behindert, weil Blau mehrere freie Felder am Stueck braucht.

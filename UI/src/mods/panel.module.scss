@@ -1692,6 +1692,41 @@ $eck-reiter: 9rem;
   background-color: var(--commonDarkBlue);
 }
 
+/*
+ * Stufenschalter: dieselbe Bahn, nur laenger - vier Stellungen zu je 12rem.
+ * Aus ist grau, alles an gruen wie beim Kippschalter, eine Teilwahl halb so
+ * kraeftig. Die Punkte markieren die Stellungen, damit man ohne Lesen sieht,
+ * dass der Schalter mehr als zwei kennt.
+ */
+.stufen {
+  flex-shrink: 0;
+  position: relative;
+  width: 50rem;
+  height: 14rem;
+  margin-left: $s3;
+  padding: 0;
+  border: none;
+  border-radius: 7rem;
+  background-color: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+}
+
+.stufenTeil { background-color: rgba(var(--pltGruen), 0.5); }
+.stufenVoll { background-color: $gruen; }
+
+.stufenPunkt {
+  position: absolute;
+  top: 5rem;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 2rem;
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
+.stufenGriffAn { background-color: var(--commonDarkBlue); }
+
+.stufenWortAn { color: $text-1; }
+
 /* ------------------------------------------------------------- Ergebnis */
 
 .ergebnis {

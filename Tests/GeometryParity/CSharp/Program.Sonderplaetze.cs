@@ -38,6 +38,17 @@ internal static partial class Program
          * 38,8 bis 75,6 m vom gesetzten Fussweg weg, ohne dass hier etwas
          * rot wurde. Ein Schalter, den keine Pruefung umlegt, ist ungeprueft.
          */
+        /*
+         * ALLE VIER STELLUNGEN DES SCHALTERS "SONDERPLAETZE" (2026-11-10).
+         *
+         * Aus ein Satz wie oben: ein Schalter, den keine Pruefung umlegt, ist
+         * ungeprueft. Je Stellung muss genau die gewaehlte Sorte entstehen, die
+         * andere gar nicht - und was entsteht, muss weiter am Zugang liegen.
+         * Ohne Behindertenblock rechnet Elektro gegen den Zugang statt gegen
+         * den Block; genau das prueft "Elektro" hier mit.
+         */
+        foreach (var wahl in new[] { Sonderplatzwahl.Alle, Sonderplatzwahl.Aus,
+                     Sonderplatzwahl.Elektro, Sonderplatzwahl.Behindert })
         foreach (var randstrassen in new[] { true, false })
         foreach (var eintrag in kanten.Split(';'))
         {
@@ -50,6 +61,7 @@ internal static partial class Program
 
             var einstellungen = LayoutSettings.Cs2;
             einstellungen.Randstrassen = randstrassen;
+            einstellungen.Sonderplaetze = wahl;
             einstellungen.AngleMode = "edge";
             einstellungen.Auto = false;
             einstellungen.Zellen = true;
@@ -61,7 +73,7 @@ internal static partial class Program
             var layout = ParkingGeometry.Build(punkte, einstellungen);
             if (layout.EntranceLine.Length == 0)
             {
-                Console.WriteLine($"  Rand {(randstrassen ? "an " : "aus")}"
+                Console.WriteLine($"  {wahl,-9} Rand {(randstrassen ? "an " : "aus")}"
                     + $" Kante {kante} bei {entlang,6:F1} m: keine Zufahrt entstanden");
                 schlecht++;
                 continue;
@@ -147,17 +159,26 @@ internal static partial class Program
                 .DefaultIfEmpty(0)
                 .Max();
             var urteil = naechsterSonder <= grenze ? "OK" : "ZU WEIT";
+            var sollBehindert = wahl == Sonderplatzwahl.Alle || wahl == Sonderplatzwahl.Behindert;
+            var sollElektro = wahl == Sonderplatzwahl.Alle || wahl == Sonderplatzwahl.Elektro;
+            if (sollBehindert != (behindert.Length > 0))
+                urteil = sollBehindert ? "BEHINDERT FEHLT" : "BEHINDERT ZU VIEL";
+            else if (sollElektro != (elektro.Length > 0))
+                urteil = sollElektro ? "ELEKTRO FEHLT" : "ELEKTRO ZU VIEL";
+            else if (elektro.Length % 2 != 0 || layout.ElectricPair.Length * 2 != elektro.Length)
+                urteil = "ELEKTRO NICHT PAARWEISE";
             if (urteil != "OK") schlecht++;
 
-            Console.WriteLine($"  Rand {(randstrassen ? "an " : "aus")}"
+            Console.WriteLine($"  {wahl,-9} Rand {(randstrassen ? "an " : "aus")}"
                 + $" Kante {kante} bei {entlang,6:F1} m, {art,-8}"
                 + $" naechste Bucht {naechste,5:F1} m"
                 + $" | Behindert {(behindert.Length == 0 ? 0 : behindert.Min()),5:F1}-{(behindert.Length == 0 ? 0 : behindert.Max()),5:F1}"
                 + $" | Elektro {(elektro.Length == 0 ? 0 : elektro.Min()),5:F1}-{(elektro.Length == 0 ? 0 : elektro.Max()),5:F1}"
                 + $" | Anzahl B/E {behindert.Length}/{elektro.Length}"
                 + $" | Grenze {grenze,5:F1} | {urteil}");
-            foreach (var zeile in ParkingGeometry.SonderplatzSpur)
-                Console.WriteLine("      " + zeile);
+            if (wahl == Sonderplatzwahl.Alle || urteil != "OK")
+                foreach (var zeile in ParkingGeometry.SonderplatzSpur)
+                    Console.WriteLine("      " + zeile);
         }
 
         Console.WriteLine();

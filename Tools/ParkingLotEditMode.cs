@@ -648,6 +648,8 @@ namespace ParkingLotTool.Tools
                 Schalter("Qk", gespeichert.Qk, wirksam.Qk);
                 Schalter("Randstrassen", gespeichert.Randstrassen,
                     wirksam.Randstrassen);
+                if (gespeichert.Sonderplaetze != wirksam.Sonderplaetze)
+                    abweichungen.Add($"Sonderplaetze {gespeichert.Sonderplaetze} -> {wirksam.Sonderplaetze}");
                 Schalter("Auto", gespeichert.Auto, wirksam.Auto);
                 Schalter("AutomaticEntrances", gespeichert.AutomaticEntrances,
                     wirksam.AutomaticEntrances);

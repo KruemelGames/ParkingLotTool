@@ -18,7 +18,7 @@ namespace ParkingLotTool.Geometry
         {
             "Fahrzeugart", "Fahrradlayout", "Fahrradstil",
             "Es", "Ai", "Cw", "Sl", "Sw", "Md", "Gassenbreite", "Cr",
-            "Qk", "Randstrassen", "Auto", "Angle", "AngleMode",
+            "Qk", "Randstrassen", "Sonderplaetze", "Auto", "Angle", "AngleMode",
             "Ausrichtwinkel", "TeilflaechenAusrichtungen", "Zoningflaechen",
             "Randzoning", "Zoningstrasse", "BusStops", "Teilflaechenschnitte",
             "Entrances", "AutomaticEntrances", "KantenVersatz", "Zellen",
@@ -48,7 +48,7 @@ namespace ParkingLotTool.Geometry
             "SetFahrzeugart", "SetFahrradlayout", "SetFahrradstil",
             "SetAisleWidth", "SetAngleMode", "SetBayIcons", "SetCrossBays",
             "SetCrossCaps", "SetCrossWidth", "SetEdgeSetback", "SetEngine",
-            "SetCrossRoads", "SetGreenMedian", "SetMedianWidth", "SetRandstrassen",
+            "SetCrossRoads", "SetGreenMedian", "SetMedianWidth", "SetRandstrassen", "SetSonderplaetze",
             "SetRowAngle", "SetSurfaceApronOn", "SetSurfaceDecoration",
             "SetSurfaceDecorationOn", "SetSurfaceRoad", "SetSurfaceRoadOn",
             "SetSurfaceZoning", "SetZoningAussentiefe", "SetZoningWinkel",

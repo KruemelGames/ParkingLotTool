@@ -614,6 +614,9 @@ namespace ParkingLotTool.Tools
                 signature = AppendDouble(signature, settings.KantenVersatz);
                 signature = signature * 31 + (settings.Qk ? 1 : 0);
                 signature = signature * 31 + (settings.Randstrassen ? 1 : 0);
+                // Nur wenn abweichend, damit "Alle" die bisherige Signatur behaelt.
+                if (settings.Sonderplaetze != Sonderplatzwahl.Alle)
+                    signature = signature * 31 + 100 + (int)settings.Sonderplaetze;
                 signature = signature * 31 + (settings.Auto ? 1 : 0);
                 signature = signature * 31 + (settings.AutomaticEntrances ? 1 : 0);
                 signature = signature * 31 + (settings.Zellen ? 1 : 0);

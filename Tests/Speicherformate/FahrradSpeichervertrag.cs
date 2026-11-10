@@ -19,7 +19,7 @@ internal static partial class Program
             s.Fahrradlayout=layout;s.Fahrradstil=stil;
             var r=new ParkingLotBuildReceipt
             {
-                Version=8,Fahrzeugart=art,Fahrradlayout=layout,Fahrradstil=stil,
+                Version=ParkingLotBuildReceipt.CurrentVersion,Fahrzeugart=art,Fahrradlayout=layout,Fahrradstil=stil,
                 Es=s.Es,Ai=s.Ai,Cw=s.Cw,Sl=s.Sl,Sw=s.Sw,Md=s.Md,Cr=s.Cr,
                 Gassenbreite=s.Gassenbreite,Angle=s.Angle,KantenVersatz=s.KantenVersatz,
                 Qk=s.Qk,Randstrassen=s.Randstrassen,Auto=s.Auto,AutomaticEntrances=s.AutomaticEntrances,
@@ -29,8 +29,8 @@ internal static partial class Program
             var w=new Schreiber();r.Serialize(w);
             var felder=w.Felder.Select(f=>new Feld {Typ=f.Typ.Name,Wert=JsonSerializer.SerializeToElement(f.Wert)}).ToList();
             var leser=new Leser(felder);var neu=Lies<ParkingLotBuildReceipt>(leser);
-            Pruefe(neu.Version==8 && neu.Fahrzeugart==art && neu.Fahrradlayout==layout && neu.Fahrradstil==stil,"v8 Roundtrip "+art+"/"+layout+"/"+stil);
-            Pruefe(leser.Position==felder.Count,"v8 exakt bis Datensatzende gelesen");
+            Pruefe(neu.Version==ParkingLotBuildReceipt.CurrentVersion && neu.Fahrzeugart==art && neu.Fahrradlayout==layout && neu.Fahrradstil==stil,"Roundtrip "+art+"/"+layout+"/"+stil);
+            Pruefe(leser.Position==felder.Count,"aktuelle Fassung exakt bis Datensatzende gelesen");
             var geladen=neu.ToLayoutSettings(Array.Empty<Entrance>());
             Pruefe(geladen.Fahrzeugart==art && geladen.Fahrradlayout==layout && geladen.Fahrradstil==stil,"Edit-Settings behalten Art/Layout/Stil");
             var w2=new World();var e2=w2.EntityManager;var lot2=new Entity(940,1);var p2=new Entity(941,1);

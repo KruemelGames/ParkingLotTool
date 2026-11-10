@@ -26,6 +26,7 @@ namespace ParkingLotTool.Tools
                                            ISerializable
     {
         /*
+         * VERSION 9: die Sonderplatzwahl folgt auf Fassung 8 (fehlt sie: Alle).
          * VERSION 8: der Fahrradstil folgt auf Fassung 7 (fehlt er: Schlicht).
          * VERSION 7: Fahrzeugart und Fahrradlayout folgen auf Fassung 6.
          * VERSION 6: ein Bushalt-Zaehler folgt auf alle Felder der Fassung 5.
@@ -40,7 +41,7 @@ namespace ParkingLotTool.Tools
          * folgenden Datensaetze. Mit der Version davor weiss der Leser, wie
          * weit er lesen darf - Fassung 1 endet nach `BayIcons`.
          */
-        public const int CurrentVersion = 8;
+        public const int CurrentVersion = 9;
 
         public int Version;
         /** Bezugsrichtung in Grad; `NaN` heisst "keine Linie gewaehlt". */
@@ -91,6 +92,7 @@ namespace ParkingLotTool.Tools
         public Fahrzeugart Fahrzeugart;
         public Fahrradlayout Fahrradlayout;
         public Fahrradstil Fahrradstil;
+        public Sonderplatzwahl Sonderplaetze;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -136,6 +138,7 @@ namespace ParkingLotTool.Tools
             writer.Write((int)Fahrzeugart);
             writer.Write((int)Fahrradlayout);
             writer.Write((int)Fahrradstil);
+            writer.Write((int)Sonderplaetze);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -211,6 +214,14 @@ namespace ParkingLotTool.Tools
                 reader.Read(out int stil);
                 Fahrradstil = Bauartvertrag.Stil(stil);
             }
+            // Fehlt die Wahl (Fassung 8 und frueher), gab es immer alle Sonderplaetze.
+            Sonderplaetze = Sonderplatzwahl.Alle;
+            if (Version >= 9)
+            {
+                reader.Read(out int sonder);
+                Sonderplaetze = sonder >= 0 && sonder <= 3
+                    ? (Sonderplatzwahl)sonder : Sonderplatzwahl.Alle;
+            }
         }
 
         internal LayoutSettings ToLayoutSettings(Entrance[] entrances)
@@ -230,6 +241,7 @@ namespace ParkingLotTool.Tools
                 Gassenbreite = Gassenbreite,
                 Qk = Qk,
                 Randstrassen = Randstrassen,
+                Sonderplaetze = Sonderplaetze,
                 Auto = Auto,
                 Angle = Angle,
                 AngleMode = DecodeAngleMode(AngleMode),

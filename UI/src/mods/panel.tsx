@@ -4,12 +4,13 @@ import { VegetationSchalter, VegetationFenster } from "./vegetation";
 import { LaternenSchalter, LaternenFenster } from "./laternen";
 import { randstrassen$, randstrassenDefault$, setRandstrassen } from "./bindings";
 import { crossRoads$, crossRoadsDefault$, setCrossRoads } from "./bindings";
+import { sonderplaetze$, sonderplaetzeDefault$, setSonderplaetze } from "./bindings";
 import { useValue } from "cs2/api";
 import { useEffect, useRef, useState } from "react";
 import styles from "./panel.module.scss";
 import {
-  Auswahl, Fangschalter, Flaeche, ModeChooser, Slider, Spalte, SpaltenGruppe, Toggle,
-  TooltipKnopf,
+  Auswahl, Fangschalter, Flaeche, ModeChooser, Slider, Spalte, SpaltenGruppe, Stufenschalter,
+  Toggle, TooltipKnopf,
 } from "./controls";
 import { ReportTab } from "./report";
 import { DebugTab } from "./debug";
@@ -349,6 +350,8 @@ export const ParkingLotPanel = () => {
   const randstrassenDefault = useValue(randstrassenDefault$);
   const crossRoads = useValue(crossRoads$);
   const crossRoadsDefault = useValue(crossRoadsDefault$);
+  const sonderplaetze = useValue(sonderplaetze$);
+  const sonderplaetzeDefault = useValue(sonderplaetzeDefault$);
   const crossCaps = useValue(crossCaps$);
   const crossCapsDefault = useValue(crossCapsDefault$);
   const medianWidth = useValue(medianWidth$);
@@ -1633,6 +1636,23 @@ export const ParkingLotPanel = () => {
             differsFromDefault={bayIcons !== bayIconsDefault}
             onReset={() => resetOne("BayIcons")}
             onSetDefault={() => setAsDefault("BayIcons")}
+          /> : null}
+          {/* Nur Autoparkplaetze haben Sonderplaetze (Nutzer 2026-11-10).
+              Links aus, rechts alle; Werte siehe Sonderplatzwahl in C#. */}
+          {!fahrrad ? <Stufenschalter
+            label={t.sonderplaetze}
+            tooltip={t.tooltipSonderplaetze}
+            value={sonderplaetze}
+            stufen={[
+              { wert: 1, text: t.sonderplaetzeAus },
+              { wert: 2, text: t.sonderplaetzeElektro },
+              { wert: 3, text: t.sonderplaetzeBehindert },
+              { wert: 0, text: t.sonderplaetzeAlle },
+            ]}
+            onChange={setSonderplaetze}
+            differsFromDefault={sonderplaetze !== sonderplaetzeDefault}
+            onReset={() => resetOne("Sonderplaetze")}
+            onSetDefault={() => setAsDefault("Sonderplaetze")}
           /> : null}
         </Spalte>
 

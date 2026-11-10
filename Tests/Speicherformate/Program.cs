@@ -89,6 +89,13 @@ internal static partial class Program
                     Pruefe(wiederverwendet.Fahrradstil==Fahrradstil.Schlicht,
                         "Datensatz vor v8 setzt wiederverwendetes Leseziel auf Schlicht zurueck");
                 }
+                if(fixture.Art=="Receipt" && fixture.Version<9)
+                {
+                    var wiederverwendet=new ParkingLotBuildReceipt {Sonderplaetze=Sonderplatzwahl.Aus};
+                    wiederverwendet.Deserialize(new Leser(felder.ToList()));
+                    Pruefe(wiederverwendet.Sonderplaetze==Sonderplatzwahl.Alle,
+                        "Datensatz vor v9 setzt wiederverwendetes Leseziel auf alle Sonderplaetze zurueck");
+                }
                 if ((fixture.Art == "Receipt" && fixture.Version >= 6)
                     || (fixture.Art == "Rueckweg" || fixture.Art == "Erhaltener") && fixture.Version == 2
                     || fixture.Art == "Anschluss" && fixture.Version == -2
@@ -97,9 +104,11 @@ internal static partial class Program
                 {
                     var writer = new Schreiber();
                     wert.Serialize(writer);
-                    // Aeltere Receipts werden in der aktuellen Fassung (8) geschrieben:
-                    // v6 bekommt Fahrzeugart, Fahrradlayout und Fahrradstil, v7 den Fahrradstil.
-                    var zusatz = fixture.Art != "Receipt" ? 0 : fixture.Version == 6 ? 3 : fixture.Version == 7 ? 1 : 0;
+                    // Aeltere Receipts werden in der aktuellen Fassung (9) geschrieben:
+                    // v6 bekommt Fahrzeugart, Fahrradlayout, Fahrradstil und Sonderplaetze,
+                    // v7 Fahrradstil und Sonderplaetze, v8 die Sonderplaetze.
+                    var zusatz = fixture.Art != "Receipt" ? 0 : fixture.Version == 6 ? 4
+                        : fixture.Version == 7 ? 2 : fixture.Version == 8 ? 1 : 0;
                     var upgrade = zusatz > 0;
                     Pruefe(writer.Felder.Count == felder.Length + zusatz, fixture.Art + " schreibt passende Datensatzlaenge");
                     for (int i = 0; i < Math.Min(writer.Felder.Count, felder.Length); i++)
@@ -107,7 +116,7 @@ internal static partial class Program
                             && Gleich(writer.Felder[i].Wert, upgrade && i==0 ? ParkingLotBuildReceipt.CurrentVersion : felder[i].Lesen()), fixture.Art + " Schreiberfeld " + i);
                     if(upgrade)
                         Pruefe(writer.Felder.Skip(felder.Length).All(f => (int)f.Wert==0),
-                            "v" + fixture.Version + " wird mit denselben Altwerten als v8 Auto/A/Schlicht geschrieben");
+                            "v" + fixture.Version + " wird mit denselben Altwerten als v9 Auto/A/Schlicht/Alle geschrieben");
                 }
             }
             reader.Read(out string ende);
@@ -136,6 +145,7 @@ internal static partial class Program
             if (version < 7) Pruefe(r.Fahrzeugart==Fahrzeugart.Auto && r.Fahrradlayout==Fahrradlayout.A,
                 "Receipt v1-v6 bleibt Auto/A, auch bei Wiederverwendung");
             if (version < 8) Pruefe(r.Fahrradstil==Fahrradstil.Schlicht, "Receipt v1-v7 ist Schlicht");
+            if (version < 9) Pruefe(r.Sonderplaetze==Sonderplatzwahl.Alle, "Receipt v1-v8 hat alle Sonderplaetze");
         }
         var kurs = wert is ParkingLotRueckwegkurs k ? k : wert is ParkingLotErhaltenerKurs e ? e.Bestand : default;
         if (wert is ParkingLotRueckwegkurs || wert is ParkingLotErhaltenerKurs)

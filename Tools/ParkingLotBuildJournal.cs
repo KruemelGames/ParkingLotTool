@@ -365,6 +365,7 @@ namespace ParkingLotTool.Tools
                 + $"median {Num(s.Md)} m, bay {Num(s.Sw)} x {Num(s.Sl)} m, "
                 + $"angle mode {s.AngleMode ?? "(none)"}, angle {Num(s.Angle)} deg, "
                 + $"Randstrassen {(s.Randstrassen ? "an" : "aus")}, "
+                + $"special bays {s.Sonderplaetze}, "
                 + $"caps at cross roads {(s.Qk ? "on" : "off")}, "
                 + $"auto {(s.Auto ? "on" : "off")}, "
                 + $"{s.TeilflaechenAusrichtungen?.Length ?? 0} sub-area alignment(s), "

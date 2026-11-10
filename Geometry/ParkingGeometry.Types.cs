@@ -21,6 +21,24 @@ namespace ParkingLotTool.Geometry
     }
 
     /**
+     * WELCHE SONDERPLAETZE EIN AUTOPARKPLATZ BEKOMMT (Nutzer 2026-11-10).
+     *
+     * `Alle` steht bewusst auf 0: alte Bauzettel kennen das Feld nicht, und
+     * ein fehlender Wert muss das bisherige Verhalten ergeben, nicht "Aus".
+     *
+     * Die Zahlen folgen dem Klickweg im Panel: Alle -> Aus -> Elektro ->
+     * Behindert -> Alle. Der naechste Zustand ist deshalb einfach (n + 1) % 4.
+     * Fahrradparkplaetze haben keine Sonderplaetze; dort gilt das Feld nicht.
+     */
+    public enum Sonderplatzwahl
+    {
+        Alle = 0,
+        Aus = 1,
+        Elektro = 2,
+        Behindert = 3,
+    }
+
+    /**
      * WAS FUER EINE ZUFAHRT DAS IST.
      *
      * Bis zum 2026-08-27 gab es nur eine Sorte, und `Entrance` brauchte
@@ -294,6 +312,8 @@ namespace ParkingLotTool.Geometry
         public double Cr { get; set; } = 34;
         public bool Qk { get; set; } = true;
         public bool Randstrassen { get; set; } = true;
+        /** Behinderten- und E-Plaetze; 0 = Alle, siehe `Sonderplatzwahl`. */
+        public Sonderplatzwahl Sonderplaetze { get; set; }
         public bool Auto { get; set; } = true;
         public double Angle { get; set; }
         public string AngleMode { get; set; }
@@ -458,6 +478,7 @@ namespace ParkingLotTool.Geometry
                 Cr = Cr,
                 Qk = Qk,
                 Randstrassen = Randstrassen,
+                Sonderplaetze = Sonderplaetze,
                 Auto = Auto,
                 Angle = Angle,
                 AngleMode = AngleMode,

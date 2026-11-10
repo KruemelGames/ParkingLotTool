@@ -48,6 +48,7 @@ namespace ParkingLotTool.Tools
                     KantenVersatz = settings.KantenVersatz,
                     Qk = settings.Qk,
                     Randstrassen = settings.Randstrassen,
+                    Sonderplaetze = settings.Sonderplaetze,
                     Auto = settings.Auto,
                     AutomaticEntrances = settings.AutomaticEntrances,
                     Zellen = settings.Zellen,

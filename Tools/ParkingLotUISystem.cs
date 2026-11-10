@@ -148,6 +148,10 @@ namespace ParkingLotTool.Tools
             [JsonProperty("CrossRoads", Required = Required.Default)]
             public bool CrossRoads { get; set; } = true;
 
+            /** Sonderplaetze als `Sonderplatzwahl`, 0 = Alle (2026-11-10). Fehlt der Schluessel: Alle. */
+            [JsonProperty("Sonderplaetze", Required = Required.Default)]
+            public int Sonderplaetze { get; set; }
+
             [JsonProperty("AngleMode", Required = Required.Always)]
             public string AngleMode { get; set; }
 
@@ -219,6 +223,7 @@ namespace ParkingLotTool.Tools
                 CrossCaps = CrossCaps,
             Randstrassen = Randstrassen,
                 CrossRoads = CrossRoads,
+                Sonderplaetze = Sonderplaetze,
                 AngleMode = AngleMode,
                 PanelX = PanelX,
                 PanelY = PanelY,
@@ -241,6 +246,7 @@ namespace ParkingLotTool.Tools
         private ValueBinding<bool> _crossCaps;
             private ValueBinding<bool> _randstrassen;
             private ValueBinding<bool> _crossRoads;
+        private ValueBinding<int> _sonderplaetze;
         private ValueBinding<float> _medianWidth;
         private ValueBinding<float> _crossBays;
         private ValueBinding<string> _angleMode;
@@ -264,6 +270,7 @@ namespace ParkingLotTool.Tools
         private ValueBinding<bool> _crossCapsDefault;
             private ValueBinding<bool> _randstrassenDefault;
             private ValueBinding<bool> _crossRoadsDefault;
+        private ValueBinding<int> _sonderplaetzeDefault;
         private ValueBinding<float> _medianWidthDefault;
         private ValueBinding<float> _crossBaysDefault;
         private ValueBinding<string> _angleModeDefault;
@@ -543,6 +550,8 @@ namespace ParkingLotTool.Tools
                 new ValueBinding<bool>(Group, "Randstrassen", _defaults.Randstrassen));
             AddBinding(_crossRoads =
                 new ValueBinding<bool>(Group, "CrossRoads", _defaults.CrossRoads));
+            AddBinding(_sonderplaetze = new ValueBinding<int>(Group, "Sonderplaetze",
+                Sonderplatzwert(_defaults.Sonderplaetze)));
             AddBinding(_medianWidth =
                 new ValueBinding<float>(Group, "MedianWidth", _defaults.MedianWidth));
             AddBinding(_crossBays =
@@ -585,6 +594,8 @@ namespace ParkingLotTool.Tools
                 "RandstrassenDefault", _defaults.Randstrassen));
             AddBinding(_crossRoadsDefault = new ValueBinding<bool>(Group,
                 "CrossRoadsDefault", _defaults.CrossRoads));
+            AddBinding(_sonderplaetzeDefault = new ValueBinding<int>(Group,
+                "SonderplaetzeDefault", Sonderplatzwert(_defaults.Sonderplaetze)));
             AddBinding(_medianWidthDefault = new ValueBinding<float>(Group,
                 "MedianWidthDefault", _defaults.MedianWidth));
             AddBinding(_crossBaysDefault = new ValueBinding<float>(Group,
@@ -1011,6 +1022,9 @@ namespace ParkingLotTool.Tools
             AddBinding(new TriggerBinding<bool>(Group, "SetCrossRoads",
                 value => ChangeDraftSetting(() => Geaendert("CrossRoads"), () =>
                     UpdateValue(_crossRoads, value))));
+            AddBinding(new TriggerBinding<int>(Group, "SetSonderplaetze",
+                value => ChangeDraftSetting(() => Geaendert("Sonderplaetze"), () =>
+                    UpdateValue(_sonderplaetze, Sonderplatzwert(value)))));
             AddBinding(new TriggerBinding<string>(Group, "SetAngleMode",
                 value => ChangeDraftSetting(() => Geaendert("AngleMode"), () =>
                 {
@@ -1649,7 +1663,7 @@ namespace ParkingLotTool.Tools
          */
         private static readonly System.Collections.Generic.HashSet<string> BekannteEinstellungen = new System.Collections.Generic.HashSet<string>
         {
-            "EdgeSetback", "AisleWidth", "CrossWidth", "MedianWidth", "CrossBays", "RowAngle", "AngleMode", "GreenMedian", "CrossCaps", "Randstrassen", "CrossRoads", "SurfaceRoad", "SurfaceDecoration", "SurfaceZoning", "SurfaceRoadOn", "SurfaceDecorationOn", "SurfaceApronOn", "BayIcons", "Engine"
+            "EdgeSetback", "AisleWidth", "CrossWidth", "MedianWidth", "CrossBays", "RowAngle", "AngleMode", "GreenMedian", "CrossCaps", "Randstrassen", "CrossRoads", "Sonderplaetze", "SurfaceRoad", "SurfaceDecoration", "SurfaceZoning", "SurfaceRoadOn", "SurfaceDecorationOn", "SurfaceApronOn", "BayIcons", "Engine"
         };
 
         private static string Einstellungsname(string key)
@@ -1917,6 +1931,10 @@ namespace ParkingLotTool.Tools
                 case "CrossRoads":
                     changed = UpdateValue(_crossRoads, _defaults.CrossRoads);
                     break;
+                case "Sonderplaetze":
+                    changed = UpdateValue(_sonderplaetze,
+                        Sonderplatzwert(_defaults.Sonderplaetze));
+                    break;
                 case "Randstrassen":
                     changed = UpdateValue(_randstrassen, _defaults.Randstrassen);
                     break;
@@ -1979,6 +1997,7 @@ namespace ParkingLotTool.Tools
                 case "CrossCaps": next.CrossCaps = _crossCaps.value; break;
             case "Randstrassen": next.Randstrassen = _randstrassen.value; break;
                 case "CrossRoads": next.CrossRoads = _crossRoads.value; break;
+                case "Sonderplaetze": next.Sonderplaetze = _sonderplaetze.value; break;
                 case "AngleMode": next.AngleMode = _angleMode.value; break;
                 default:
                     Mod.log.Warn("PLT: unbekannter Einstellungsschluessel: " + key);
@@ -2060,6 +2079,7 @@ namespace ParkingLotTool.Tools
             changed |= UpdateValue(_crossCaps, values.CrossCaps);
             changed |= UpdateValue(_randstrassen, values.Randstrassen);
             changed |= UpdateValue(_crossRoads, values.CrossRoads);
+            changed |= UpdateValue(_sonderplaetze, Sonderplatzwert(values.Sonderplaetze));
             changed |= UpdateValue(_angleMode, values.AngleMode);
             return changed;
         }
@@ -2093,6 +2113,7 @@ namespace ParkingLotTool.Tools
             _crossCapsDefault.Update(_defaults.CrossCaps);
             _randstrassenDefault.Update(_defaults.Randstrassen);
             _crossRoadsDefault.Update(_defaults.CrossRoads);
+            _sonderplaetzeDefault.Update(Sonderplatzwert(_defaults.Sonderplaetze));
             _angleModeDefault.Update(_defaults.AngleMode);
         }
 
@@ -2109,6 +2130,16 @@ namespace ParkingLotTool.Tools
             binding.Update(value);
             return true;
         }
+
+        private static bool UpdateValue(ValueBinding<int> binding, int value)
+        {
+            if (binding.value == value) return false;
+            binding.Update(value);
+            return true;
+        }
+
+        /** Nur 0..3 ist eine `Sonderplatzwahl`; alles andere (kaputte Datei, alter Trigger) heisst Alle. */
+        private static int Sonderplatzwert(int wert) => wert >= 0 && wert <= 3 ? wert : 0;
 
         private static bool UpdateValue(ValueBinding<string> binding, string value)
         {
@@ -2355,6 +2386,7 @@ namespace ParkingLotTool.Tools
              */
             settings.Qk = _crossCaps.value;
             settings.Randstrassen = _randstrassen.value;
+            settings.Sonderplaetze = (Sonderplatzwahl)Sonderplatzwert(_sonderplaetze.value);
             settings.Cr = (_crossBays.value + (settings.Qk ? 2 : 0))
                 * Buchtbreite;
             // Querstrassen aus: negativ, der Betrag bleibt (siehe ParkingGeometry.Zellen).
@@ -2430,6 +2462,7 @@ namespace ParkingLotTool.Tools
             changed |= UpdateValue(_greenMedian, receipt.GreenMedian);
             changed |= UpdateValue(_crossCaps, receipt.Qk);
             changed |= UpdateValue(_randstrassen, receipt.Randstrassen);
+            changed |= UpdateValue(_sonderplaetze, (int)receipt.Sonderplaetze);
             // Alte Bauzettel haben immer Cr > 0 - also Querstrassen an.
             changed |= UpdateValue(_crossRoads, receipt.Cr > 0);
             changed |= UpdateValue(_angleMode,

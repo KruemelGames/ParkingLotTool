@@ -509,6 +509,69 @@ export const Toggle = ({ label, tooltip, value, onChange, differsFromDefault,
   </div>
 );
 
+/**
+ * KIPPSCHALTER MIT MEHR ALS ZWEI STELLUNGEN (Sonderplaetze, Nutzer 2026-11-10).
+ *
+ * `stufen` steht in der Reihenfolge von links nach rechts. Ein Klick rueckt
+ * den Griff eine Stellung nach rechts; von der letzten springt er auf die
+ * erste. Ganz links ist "aus", ganz rechts "alles an" - so liest sich die
+ * Lage wie beim normalen Schalter.
+ *
+ * Die Farbe allein sagt nicht, welche der Zwischenstellungen gilt. Deshalb
+ * steht das Wort daneben, und die Stellung zeigen kleine Punkte auf der Bahn.
+ */
+interface StufenProps {
+  label: string;
+  tooltip: string;
+  value: number;
+  stufen: { wert: number; text: string }[];
+  onChange: (value: number) => void;
+  differsFromDefault?: boolean;
+  onReset?: () => void;
+  onSetDefault?: () => void;
+}
+
+export const Stufenschalter = ({ label, tooltip, value, stufen, onChange,
+                                 differsFromDefault, onReset, onSetDefault }: StufenProps) => {
+  const gefunden = stufen.findIndex((s) => s.wert === value);
+  const lage = gefunden < 0 ? stufen.length - 1 : gefunden;
+  const letzte = stufen.length - 1;
+  const ton = lage === 0 ? "" : lage === letzte ? styles.stufenVoll : styles.stufenTeil;
+  return (
+    <div className={styles.schalterReihe}>
+      <MitTooltip text={tooltip}>
+        <div className={styles.schalterBereich} title={tooltip} aria-label={tooltip}>
+          <span className={styles.label}>{label}</span>
+          <span className={`${styles.schalterWort} ${lage > 0 ? styles.stufenWortAn : ""}`}>
+            {stufen[lage].text}
+          </span>
+          <button
+            className={`${styles.stufen} ${ton}`}
+            title={tooltip}
+            aria-label={tooltip}
+            onClick={() => onChange(stufen[lage === letzte ? 0 : lage + 1].wert)}
+          >
+            {stufen.map((s, i) => (
+              <span key={s.wert} className={styles.stufenPunkt}
+                style={{ left: `${2 + i * 12 + 3}rem` }} />
+            ))}
+            <span
+              className={`${styles.schalterGriff} ${lage > 0 ? styles.stufenGriffAn : ""}`}
+              style={{ left: `${2 + lage * 12}rem` }}
+            />
+          </button>
+        </div>
+      </MitTooltip>
+      {onReset && onSetDefault ? <SettingActions
+        label={label}
+        active={differsFromDefault === true}
+        onReset={onReset}
+        onSetDefault={onSetDefault}
+      /> : null}
+    </div>
+  );
+};
+
 interface ModeProps {
   label: string;
   tooltip: string;
