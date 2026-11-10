@@ -1725,6 +1725,10 @@ $eck-reiter: 9rem;
 
 .stufenGriffAn { background-color: var(--commonDarkBlue); }
 
+/* Das Wort steht neben der Beschriftung und hat deren Groesse; `.schalterWort`
+   allein erbt die groessere Panelschrift (im Bild 10.11.: "Alle" groesser als "Sonderplaetze"). */
+.stufenWort { font-size: $type-sm; }
+
 .stufenWortAn { color: $text-1; }
 
 /* ------------------------------------------------------------- Ergebnis */

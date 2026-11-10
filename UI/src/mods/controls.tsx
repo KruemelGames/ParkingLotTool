@@ -542,7 +542,7 @@ export const Stufenschalter = ({ label, tooltip, value, stufen, onChange,
       <MitTooltip text={tooltip}>
         <div className={styles.schalterBereich} title={tooltip} aria-label={tooltip}>
           <span className={styles.label}>{label}</span>
-          <span className={`${styles.schalterWort} ${lage > 0 ? styles.stufenWortAn : ""}`}>
+          <span className={`${styles.schalterWort} ${styles.stufenWort} ${lage > 0 ? styles.stufenWortAn : ""}`}>
             {stufen[lage].text}
           </span>
           <button

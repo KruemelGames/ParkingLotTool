@@ -18,6 +18,7 @@ const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright-core");
 const fahrradprobe = require("./fahrrad");
+const sonderplatzprobe = require("./sonderplaetze");
 
 const SPIEL = process.env.CSII_GAMEUI || "C:/Program Files (x86)/Steam/steamapps/common/Cities Skylines II/Cities2_Data/Content/Game/UI";
 const OUT = path.join(__dirname, "out");
@@ -206,6 +207,9 @@ function messen() {
           const t = JSON.parse(fall.texte);
           for (const fehler of await fahrradprobe(page, t, pruefe, kennung)) {
             befunde++; zeilen.push(`FEHLER ${kennung} / Fahrradbedienung: ${fehler}`);
+          }
+          for (const fehler of await sonderplatzprobe(page, t, pruefe, kennung)) {
+            befunde++; zeilen.push(`FEHLER ${kennung} / Sonderplatzschalter: ${fehler}`);
           }
           if (rahmen === "eng") continue;
           for (const schluessel of ["reiterListe", "reiterAnleitung", "reiterMelden"])
