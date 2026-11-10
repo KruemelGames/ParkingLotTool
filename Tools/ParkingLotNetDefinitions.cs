@@ -25,6 +25,16 @@ namespace ParkingLotTool.Tools
         private System.Collections.Generic.IEnumerable<int> CreateNetDefinitionsSchritte(ParkingLayout layout, LayoutSettings settings, TerrainHeightData heightData)
         {
             if (layout == null || settings == null) yield break;
+            if (layout.Fahrrad != null)
+            {
+                // Versuch 02.11.2026 (Nutzer): keine Wege, nur die Gehflaeche wie Vanilla.
+                // Die Raeder fahren ueber die NavigationArea (AreaConnectionSystem:514-517),
+                // der Marker an der Lotkante findet Fahrspur + Gehweg der Stadtstrasse
+                // (WaypointConnectionSystem:1268-1313). Unser Zugangsweg lag dem Marker
+                // naeher und hatte keinen Gehweg -> kein Fussweg nach dem Abstellen.
+                // FahrradNetze bleibt fuer die Rueckkehr bestehen.
+                yield break;
+            }
             if (!TryChooseDrivablePath(settings.Ai, out var wide, out var wideCore))
                 yield break;
             if (!TryChooseDrivablePath(settings.Cw, out var narrow, out var narrowCore))

@@ -60,6 +60,12 @@ internal static partial class Program
         em.Set(traeger, new ParkingLotAbrissabsicht());
         Sperre("editSection.carrier");
         em.RemoveComponent<ParkingLotAbrissabsicht>(traeger);
+        Pruefe((int)Lies().Werte["fahrradPlaetze"]==-1,"Auto erhaelt keine Fahrradzeile");
+        em.Set(prefab,new ParkingLotFahrradLayout { Layout=ParkingLotTool.Geometry.Fahrradlayout.C });
+        Pruefe((int)Lies().Werte["fahrradPlaetze"]==0,"frischer Fahrradlot zeigt 0 bis zur Messung");
+        em.Set(lot,new ParkingLotEconomyData { Capacity=192 });
+        Pruefe((int)Lies().Werte["fahrradPlaetze"]==192,"Infofenster uebertraegt gemessene Fahrradkapazitaet");
+        em.RemoveComponent<ParkingLotFahrradLayout>(prefab);
         waisen.Status = 1; Sperre("editSection.orphan");
         waisen.Status = 2; Pruefe(!(bool)Lies().Werte["reparierbar"], "mehrdeutige Waise bleibt unreparierbar");
         em.Set(lot, new Deleted());

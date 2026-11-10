@@ -27,6 +27,7 @@ namespace ParkingLotTool.Tools
 
         private readonly List<Band> _roads = new List<Band>();
         private readonly List<Band> _bays = new List<Band>();
+        private bool _fahrradLayout;
         private readonly List<(float3 Position, bool Tree)> _vegetation = new List<(float3, bool)>();
 
         /**
@@ -103,6 +104,7 @@ namespace ParkingLotTool.Tools
 
         internal void ClearLayout()
         {
+            _fahrradLayout = false;
             _green.Clear();
             _roads.Clear();
             _bays.Clear();
@@ -179,6 +181,19 @@ namespace ParkingLotTool.Tools
             {
                 if (quads == null) return;
                 for (var i = 0; i < quads.Length; i++) AddQuad(target, quads[i], color);
+            }
+
+            if (layout.Fahrrad != null)
+            {
+                _fahrradLayout = true;
+                foreach (var o in layout.Fahrrad.Objekte)
+                    AddQuad(_bays, o.Grundriss, o.Art == Fahrradobjektart.Unterstand
+                        ? ParkingLotPreviewStyle.FahrradDach : ParkingLotPreviewStyle.FahrradBucht);
+                foreach (var w in layout.Fahrrad.Wege)
+                    _roads.Add(new Band(new Line3.Segment(World(w.A), World(w.B)),
+                        (float)w.Breite, ParkingLotPreviewStyle.FahrradWeg));
+                if (vorflaechen != null) AddQuads(_roads, vorflaechen, ParkingLotPreviewStyle.FahrradWeg);
+                return;
             }
 
             /**

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using ParkingLotTool.Geometry;
 
@@ -211,6 +211,20 @@ internal static partial class Program
                     == (reiter == Werkzeugreiter.Entwurf),
                 $"Schritt zurueck im Reiter {reiter} - er zerlegt den Umriss");
 
+        // Zusaetzlicher Bauartfilter: Auto bleibt unveraendert; Fahrrad hat
+        // keine Bushalte und keine Zoningarbeit, in jedem Reiter/Modus.
+        var bauartmasken = new[] { "...........", "..---......" };
+        foreach (var art in new[] { Fahrzeugart.Auto, Fahrzeugart.Fahrrad })
+        foreach (Werkzeugreiter reiter in Enum.GetValues(typeof(Werkzeugreiter)))
+        foreach (Werkzeugmodus modus in Enum.GetValues(typeof(Werkzeugmodus)))
+        for (var i = 0; i < arbeiten.Length; i++)
+        {
+            var erlaubt = Werkzeugzustand.Erlaubt(reiter, modus, arbeiten[i]);
+            Pruefe((FahrradBedienung.Arbeit(art, arbeiten[i]) && erlaubt)
+                == (bauartmasken[(int)art][i] == '.' && erlaubt),
+                $"Bauartmatrix {art}/{reiter}/{modus}/{arbeiten[i]}");
+        }
+        Console.WriteLine("Bauartmatrix: 770 Zellen zusaetzlich geprueft.");
         Console.WriteLine($"Werkzeugzustand: {fehler} Fehler");
         return fehler == 0 ? 0 : 1;
     }

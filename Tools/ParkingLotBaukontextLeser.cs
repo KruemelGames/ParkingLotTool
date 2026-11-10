@@ -359,7 +359,8 @@ namespace ParkingLotTool.Tools
 
         private static bool ValidReceiptSettings(ParkingLotBuildReceipt r)
         {
-            return Finite(r.Es) && Finite(r.Ai) && Finite(r.Cw)
+            return Bauartvertrag.Gueltig(r.Fahrzeugart, r.Fahrradlayout)
+                && Finite(r.Es) && Finite(r.Ai) && Finite(r.Cw)
                 && Finite(r.Sl) && Finite(r.Sw) && Finite(r.Md)
                 && Finite(r.Cr) && Finite(r.Angle) && Finite(r.KantenVersatz)
                 && Finite(r.MedianWidth) && Finite(r.CrossBays)

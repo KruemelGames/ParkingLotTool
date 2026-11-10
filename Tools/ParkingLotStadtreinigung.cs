@@ -549,6 +549,9 @@ namespace ParkingLotTool.Tools
          */
         internal int EntferneAlle()
         {
+            // Zwischen Optionsklick und PreTool kann ein Edit/Sync starten.
+            // Auch beim Annehmen pruefen: 0 Besitzerlisten waehrend Fremdarbeit aendern.
+            if(Blockiert()) { Warte(); return 0; }
             _flaechen.CompleteDependency();
             var markiert = 0;
             var uebergangen = 0;
@@ -563,6 +566,9 @@ namespace ParkingLotTool.Tools
                 for (var i = 0; i < flaechen.Length; i++)
                 {
                     if (!IstUnserLot(flaechen[i])) continue;
+                    if(!EntityManager.HasComponent<ParkingLotCarrierReference>(flaechen[i])
+                        && ParkingLotFahrradBetrieb.IstBestand(EntityManager,flaechen[i]))
+                        World.GetOrCreateSystemManaged<ParkingLotWaisenSystem>().VerbindeFahrradFuerAbriss(flaechen[i]);
                     if (EntityManager.HasComponent<ParkingLotCarrierReference>(
                             flaechen[i])) lots.Add(flaechen[i]);
                     else uebergangen++;
@@ -787,12 +793,22 @@ namespace ParkingLotTool.Tools
                     if (EntityManager.HasComponent<Game.Routes.TransportStop>(
                         teile[i])) bushalte++;
 
-            var summe = flaechen + strassen + knoten + traeger + lots;
+            // Der neue Fahrradtraeger ist auch OHNE lebendes Lot/Teile
+            // eindeutig erkennbar. Eine reine Teilrelation-Zaehung faende
+            // diesen verwaisten Rest nicht (0 Kinder waere eine falsche Null).
+            var fahrradtraeger = 0;
+            using (var q = EntityManager.CreateEntityQuery(ComponentType.ReadOnly<Game.Buildings.BicycleParkingFacility>(),
+                ComponentType.ReadOnly<PrefabRef>(), ComponentType.Exclude<Deleted>(), ComponentType.Exclude<Temp>()))
+            using (var reste = q.ToEntityArray(Allocator.Temp))
+                foreach (var rest in reste)
+                    if (_prefabSystem.TryGetPrefab<PrefabBase>(EntityManager.GetComponentData<PrefabRef>(rest).m_Prefab,
+                        out var p) && ParkingLotFahrradPrefabBau.IstLotname(p.name)) fahrradtraeger++;
+            var summe = flaechen + strassen + knoten + traeger + lots + fahrradtraeger;
             var text = "PLT-Schlusspruefung: " + lots + " Parkplatzflaeche(n), "
                 + flaechen + " Belagflaeche(n), " + strassen
                 + " PLT-Strasse(n)/Weg(e), " + knoten + " PLT-Knoten, " + traeger
                 + " lebende(s) Teil(e), davon " + bushalte
-                + " Bushaltestelle(n), noch in der Stadt. Zonierte "
+                + " Bushaltestelle(n), dazu " + fahrradtraeger + " Fahrradtraeger, noch in der Stadt. Zonierte "
                 + "Kacheln und gewachsene Haeuser sind NICHT mitgezaehlt - "
                 + "die gehoeren dem Spieler und bleiben mit Absicht.";
             if (summe == 0) Mod.log.Info(text + " Es ist nichts uebrig.");
@@ -840,7 +856,10 @@ namespace ParkingLotTool.Tools
             var prefab = EntityManager.GetComponentData<PrefabRef>(lot).m_Prefab;
             return _prefabSystem.TryGetPrefab<PrefabBase>(prefab, out var wert)
                 && wert != null
-                && wert.name == ParkingLotToolSystem.LotOwnerPrefabName;
+                && (wert.name == ParkingLotToolSystem.LotOwnerPrefabName
+                    || wert.name == ParkingLotFahrradPrefabBau.Lotname
+                    || wert.name == ParkingLotFahrradPrefabBau.LotC
+                    || wert.name == ParkingLotFahrradPrefabBau.LotD);
         }
     }
 }

@@ -6,6 +6,9 @@ namespace ParkingLotTool.Tools
     // Meter im Weltraum, keine Pixel. Siehe PREVIEW-DESIGN.md fuer Abnahme.
     internal static class ParkingLotPreviewStyle
     {
+        internal static Color FahrradBucht => NormalBayColor;
+        internal static Color FahrradDach => Alpha(NormalBayColor, .4f);
+        internal static Color FahrradWeg => AisleRoadColor;
         internal static readonly Color KurvenJa = new Color(.15f, .9f, .25f, 1f);
         // Nicht rot: rot liest sich als "Stop" (Nutzer 27.10.). Gleiches Hell
         // wie PointColor - als Wert, weil PointColor weiter unten erst

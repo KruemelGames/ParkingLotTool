@@ -166,8 +166,10 @@ internal static partial class Program
         var befunde = new System.Collections.Generic.List<Befund>();
         for (var i = 0; i < formen.Count; i++)
         {
+            Console.WriteLine($"Qualitaet {i + 1}/{formen.Count}: {formen[i].Name} beginnt");
             var befund = PruefeForm(formen[i].Name, formen[i].Site, einstellungen,
                                     feinesRaster: i < festeFaelle);
+            Console.WriteLine($"Qualitaet {i + 1}/{formen.Count}: {formen[i].Name} fertig, {befund.Verstoesse.Count} Befunde");
             befund.Herkunft = i < festeFaelle ? "fest"
                 : formen[i].Name.StartsWith("Gebaut") ? "echt" : "Zufall";
             befunde.Add(befund);

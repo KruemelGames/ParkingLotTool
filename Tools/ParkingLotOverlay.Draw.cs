@@ -116,7 +116,7 @@ namespace ParkingLotTool.Tools
             ParkingLotMessung.Zaehle(ParkingLotMessung.Zaehler.Baender,
                 _green.Count + (netzFuellt ? 0 : _roads.Count + _bays.Count));
             DrawBands(buffer, _green, false, netzFuellt);
-            if (!netzFuellt) DrawBands(buffer, _roads, true);
+            if (!netzFuellt || _fahrradLayout) DrawBands(buffer, _roads, true);
             if (!netzFuellt) DrawBands(buffer, _bays, true);
             ParkingLotMessung.Zaehle(ParkingLotMessung.Zaehler.Sonstige,
                 _chargers.Count);

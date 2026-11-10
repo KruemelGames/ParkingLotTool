@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
@@ -328,6 +328,7 @@ internal static partial class Program
         const double schritt = 0.1;
         var alle = layout.Bay.Concat(layout.GrassSurface)
             .Concat(layout.AsphaltSurface).ToList();
+        var index = new Qualitaetsindex(alle);
         var minX = site.Min(p => p.x);
         var maxX = site.Max(p => p.x);
         var minY = site.Min(p => p.y);
@@ -341,8 +342,7 @@ internal static partial class Program
                 var pt = new float2((float)(minX + (sx + 0.5) * schritt),
                                     (float)(minY + (sy + 0.5) * schritt));
                 if (!PointIn(pt, site)) continue;
-                if (alle.Any(q => PointIn(pt, q))
-                    || alle.Any(q => DistanceToBoundary(pt, q) <= 1e-6)) continue;
+                if (index.Enthaelt(pt)) continue;
                 leer[sx, sy] = true;
             }
 

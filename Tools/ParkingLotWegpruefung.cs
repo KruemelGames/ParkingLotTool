@@ -157,6 +157,9 @@ namespace ParkingLotTool.Tools
             var waisen = World.GetOrCreateSystemManaged<ParkingLotWaisenSystem>();
             foreach (var lot in lots)
             {
+                // Auto-Wegvergleich kennt D-Geh-Flaechen nicht und wuerde
+                // einen gueltigen Platz als fehlendes Autonetz melden.
+                if (ParkingLotFahrradBetrieb.IstBestand(EntityManager, lot)) continue;
                 lebend.Add(lot);
                 var wege = WegeDesTraegers(lot);
                 var abdruck = Abdruck(wege);
@@ -485,6 +488,12 @@ namespace ParkingLotTool.Tools
         /** Neubau im Hintergrund mit derselben Form und denselben Einstellungen. */
         internal void Reparieren(Entity lot)
         {
+            if (ParkingLotFahrradBetrieb.IstBestand(EntityManager, lot))
+            {
+                Mod.log.Warn("PLT-Bauzettel Fahrrad: Auto-Wegreparatur ausgelassen, Lot " + lot.Index);
+                World.GetOrCreateSystemManaged<ParkingLotUISystem>().SetStatus(ParkingLotTexte.T("fahrrad.automatikAus"));
+                return;
+            }
             if (!_staende.TryGetValue(lot, out var s) || s.Befund == 0) return;
             var hintergrund = World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>();
             if (hintergrund.Gesperrt(lot)) return;

@@ -33,7 +33,7 @@ namespace ParkingLotTool.Geometry
          * ohne Nebenwirkung. Den allgemeinen Belag laesst es in Ruhe, bis
          * derselbe Befund auch dort mit Zahlen belegt ist.
          */
-        private static float2[][] PlaneZellenCs2Flaechen(
+        internal static float2[][] PlaneZellenCs2Flaechen(
             float2[][] ringe, bool entwirren = false,
             List<float2[]> unbaubar = null, bool unbaubareWeglassen = false,
             List<float2[]> haarrisse = null)

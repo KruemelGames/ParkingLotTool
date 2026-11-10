@@ -137,7 +137,7 @@ namespace ParkingLotTool.Tools
                     name = _prefabSystem.GetPrefabName(prefab);
             }
             catch { name = null; }
-            ist = name == ParkingLotToolSystem.LotOwnerPrefabName;
+            ist = name == ParkingLotToolSystem.LotOwnerPrefabName || ParkingLotFahrradPrefabBau.IstLotname(name);
             merk[prefab] = ist;
             return ist;
         }

@@ -20,12 +20,17 @@ namespace ParkingLotTool.Tools
         private readonly Action<PrefabBase, PrefabBase> _anmelden;
         private readonly Dictionary<PrefabBase, PrefabBase> _prefabs = new();
         private readonly Dictionary<object, object> _werte = new();
+        private readonly bool _autoregeln;
+        private readonly Action<PrefabBase> _konfiguriere;
 
         internal ParkingLotFahrprefabKopie(string netz,
-            Action<PrefabBase, PrefabBase> anmelden)
+            Action<PrefabBase, PrefabBase> anmelden, bool autoregeln = true,
+            Action<PrefabBase> konfiguriere = null)
         {
             _netz = netz;
             _anmelden = anmelden;
+            _autoregeln = autoregeln;
+            _konfiguriere = konfiguriere;
         }
 
         /** Nur vor AddPrefab des Wurzelnetzes aufrufen, in PrefabUpdate. */
@@ -35,8 +40,9 @@ namespace ParkingLotTool.Tools
             foreach (var komponente in netz.components)
                 KopiereFelder(komponente, komponente, typeof(ComponentBase));
             Verstecke(netz);
-            if (netz is RoadPrefab road) road.m_SpeedLimit = ParkingLotFahrregeln.TempoKmh;
-            if (netz is PathwayPrefab path) path.m_SpeedLimit = ParkingLotFahrregeln.TempoKmh;
+            if (_autoregeln && netz is RoadPrefab road) road.m_SpeedLimit = ParkingLotFahrregeln.TempoKmh;
+            if (_autoregeln && netz is PathwayPrefab path) path.m_SpeedLimit = ParkingLotFahrregeln.TempoKmh;
+            _konfiguriere?.Invoke(netz);
         }
 
         private PrefabBase Klone(PrefabBase quelle)
@@ -53,8 +59,9 @@ namespace ParkingLotTool.Tools
                 KopiereFelder(komponente, kopie, typeof(ComponentBase));
             }
             var auto = klon.GetComponent<CarPathfind>();
-            if (auto != null) auto.m_DrivingCost = ParkingLotFahrregeln.Fahrkosten;
+            if (_autoregeln && auto != null) auto.m_DrivingCost = ParkingLotFahrregeln.Fahrkosten;
             Verstecke(klon);
+            _konfiguriere?.Invoke(klon);
             _anmelden(quelle, klon);
             return klon;
         }

@@ -242,6 +242,7 @@ namespace ParkingLotTool.Tools
             try
             {
                 RestoreCarrierSubNetsAfterLoad();
+                RestoreFahrradGehflaechenAfterLoad();
                 World.GetOrCreateSystemManaged<ParkingLotCleanupSystem>()
                     .NimmAbrissNachLadenWiederAuf();
             }
@@ -620,6 +621,11 @@ namespace ParkingLotTool.Tools
 
         private System.Collections.Generic.IEnumerable<int> CreateBayDecalDefinitionsSchritte(ParkingLayout layout, LayoutSettings settings, TerrainHeightData heightData)
         {
+            if (layout?.Fahrrad != null)
+            {
+                foreach (var n in FahrradObjekte(layout.Fahrrad, heightData)) yield return n;
+                yield break;
+            }
             if (layout?.Bay == null || layout.Bay.Length == 0 || settings == null)
                 yield break;
             if (!ResolveBayDecalPrefabs()) yield break;

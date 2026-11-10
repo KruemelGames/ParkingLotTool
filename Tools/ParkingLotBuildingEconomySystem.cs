@@ -703,7 +703,8 @@ namespace ParkingLotTool.Tools
             => prefab != Entity.Null && EntityManager.Exists(prefab)
                && _prefabSystem.TryGetPrefab<PrefabBase>(prefab, out var value)
                && value != null
-               && value.name == ParkingLotToolSystem.LotOwnerPrefabName;
+               && (value.name == ParkingLotToolSystem.LotOwnerPrefabName
+                   || ParkingLotFahrradPrefabBau.IstLotname(value.name));
 
         private float3 AreaCenter(Entity lot)
         {

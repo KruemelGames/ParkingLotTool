@@ -200,6 +200,8 @@ namespace ParkingLotTool.Tools
 
         private bool TryResolveLotOwnerPrefab(out Entity prefab)
         {
+            if (Fahrradbau)
+                return World.GetOrCreateSystemManaged<ParkingLotFahrradPrefabSystem>().TryLot(_areaPreviewLayout.Fahrrad.Layout, out prefab);
             prefab = _lotOwnerPrefab;
             if (prefab != Entity.Null) return LotOwnerPrefabReady(prefab);
             if (_lotOwnerPrefabFailed) return false;

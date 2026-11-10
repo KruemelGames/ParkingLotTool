@@ -243,6 +243,12 @@ namespace ParkingLotTool.Tools
          */
         internal void Reparieren(Entity lot)
         {
+            if (ParkingLotFahrradBetrieb.IstBestand(EntityManager, lot))
+            {
+                Mod.log.Warn("PLT-Bauzettel Fahrrad: Auto-Assetreparatur ausgelassen, Lot " + lot.Index);
+                World.GetOrCreateSystemManaged<ParkingLotUISystem>().SetStatus(ParkingLotTexte.T("fahrrad.automatikAus"));
+                return;
+            }
             if (!_befunde.TryGetValue(lot, out var befund)) return;
             var hintergrund = World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>();
             if (hintergrund.Gesperrt(lot)) return;

@@ -39,6 +39,8 @@ namespace Unity.Entities
         public bool Exists(Entity e) { foreach (var key in _werte.Keys) if (key.Item1 == e) return true; return false; }
         public void SetBuffer<T>(Entity e) => Set(e, new List<T>());
         public bool HasBuffer<T>(Entity e) => HasComponent<List<T>>(e);
+        public DynamicBuffer<T> GetBuffer<T>(Entity e) => new((List<T>)_werte[(e, typeof(List<T>))]);
+        public DynamicBuffer<T> AddBuffer<T>(Entity e) { SetBuffer<T>(e); return GetBuffer<T>(e); }
         public bool HasComponent<T>(Entity e) => _werte.ContainsKey((e, typeof(T)));
         public T GetComponentData<T>(Entity e) => (T)_werte[(e, typeof(T))];
         public void AddComponent<T>(Entity e) => Set(e, default(T));

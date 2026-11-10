@@ -562,11 +562,43 @@ namespace ParkingLotTool.Tools
                     }
                 }
 
+                MarkiereUnterobjekte(buffer, part, 0);
                 buffer.AddComponent<Deleted>(part);
                 marked++;
             }
 
             return (marked, remaining, pflanzen, pflanzenUebrig);
+        }
+
+        /**
+         * DIE EINGEBAUTEN KINDER EINES TEILS GEHEN MIT.
+         *
+         * Nutzerbefund 03.11.2026: nach dem Loeschen eines Fahrradplatzes
+         * standen "irgendwelche Wandlampen" in der Gegend. Im Log am selben
+         * Abend: 'BicycleShelter01' ueberlappt ZWEI 'WallLightShortRange02' -
+         * die eigene Leuchte und die eines vorher geloeschten Unterstands.
+         * Vanilla-Prefabs bringen solche Unterobjekte selbst mit.
+         *
+         * `SubElementDeleteSystem` (Game.Objects) reicht `Deleted` nur an
+         * SubArea, SubNet, SubRoute und Fahrzeuge weiter, nicht an SubObject.
+         * Wer ein Objekt direkt loescht statt ueber ein Werkzeug, muss seine
+         * Unterobjekte selbst markieren - wie oben die Parkspuren.
+         */
+        private void MarkiereUnterobjekte(EntityCommandBuffer buffer, Entity besitzer, int tiefe)
+        {
+            if (tiefe > 4 || !EntityManager.HasBuffer<Game.Objects.SubObject>(besitzer)) return;
+            var kinder = EntityManager.GetBuffer<Game.Objects.SubObject>(besitzer, true);
+            for (var k = 0; k < kinder.Length; k++)
+            {
+                var kind = kinder[k].m_SubObject;
+                if (kind == Entity.Null || kind == besitzer || !EntityManager.Exists(kind)
+                    || EntityManager.HasComponent<Deleted>(kind)) continue;
+                // Nur echte Kinder dieses Teils, nie etwas, das nur verweist.
+                if (!EntityManager.HasComponent<Owner>(kind)
+                    || EntityManager.GetComponentData<Owner>(kind).m_Owner != besitzer) continue;
+                MarkiereUnterobjekte(buffer, kind, tiefe + 1);
+                buffer.AddComponent<Deleted>(kind);
+            }
         }
     }
 }

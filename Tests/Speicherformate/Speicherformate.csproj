@@ -6,6 +6,8 @@
     <KurvenrandFormatQuelle Condition="'$(KurvenrandFormatQuelle)' == ''">../../Geometry/ParkingGeometry.KurvenrandFormat.cs</KurvenrandFormatQuelle>
     <MusterMarkerQuelle Condition="'$(MusterMarkerQuelle)' == ''">../../Tools/ParkingLotMusterflaeche.cs</MusterMarkerQuelle>
     <ReceiptQuelle Condition="'$(ReceiptQuelle)' == ''">../../Tools/ParkingLotBuildReceipt.cs</ReceiptQuelle>
+    <BestandQuelle Condition="'$(BestandQuelle)' == ''">../../Tools/ParkingLotFahrradBestand.cs</BestandQuelle>
+    <BauartQuelle Condition="'$(BauartQuelle)' == ''">../../Geometry/Bauartvertrag.cs</BauartQuelle>
     <RueckwegQuelle Condition="'$(RueckwegQuelle)' == ''">../../Tools/ParkingLotRueckwegDaten.cs</RueckwegQuelle>
     <ZwischenbauQuelle Condition="'$(ZwischenbauQuelle)' == ''">../../Tools/ParkingLotGespeicherterZwischenbau.cs</ZwischenbauQuelle>
     <StufeAQuelle Condition="'$(StufeAQuelle)' == ''">../../Tools/ParkingLotStufeAPrefabID.cs</StufeAQuelle>
@@ -17,6 +19,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="EditContainer.cs" /><Compile Include="EditAnzeige.cs" />
+    <Compile Include="FahrradContainer.cs" />
+    <Compile Include="FahrradSpeichervertrag.cs" />
+    <Compile Include="../../Tools/ParkingLotFahrradBetrieb.cs" />
+    <Compile Include="$(BestandQuelle)" /><Compile Include="$(BauartQuelle)" />
     <Compile Include="../../Tools/ParkingLotEditSection.cs" Link="ParkingLotEditSection.cs" />
     <Compile Include="$(EditSectionQuelle)" Link="ParkingLotEditSection.Freigabe.cs" />
     <Compile Include="$(NebenMarkerQuelle)" Link="ParkingLotNebenarbeitDaten.cs" />
@@ -25,7 +31,7 @@
     <Compile Include="NeueNebenformate.cs" /><Compile Include="Kurvenformate.cs" />
     <Compile Include="$(MusterMarkerQuelle)" Link="ParkingLotMusterflaeche.cs" />
     <Compile Include="Program.cs" /><Compile Include="Container.cs" /><Compile Include="Feldstrom.cs" />
-    <Compile Include="../../Geometry/*.cs" Exclude="../../Geometry/EditFreigabe.cs;../../Geometry/ParkingGeometry.KurvenrandFormat.cs" Link="Geometry/%(Filename)%(Extension)" />
+    <Compile Include="../../Geometry/*.cs" Exclude="../../Geometry/EditFreigabe.cs;../../Geometry/ParkingGeometry.KurvenrandFormat.cs;../../Geometry/Bauartvertrag.cs" Link="Geometry/%(Filename)%(Extension)" />
     <Compile Include="../../Geometry/Zellen/*.cs" Link="Geometry/Zellen/%(Filename)%(Extension)" />
     <Compile Include="$(ReceiptQuelle)" Link="ParkingLotBuildReceipt.cs" />
     <Compile Include="$(RueckwegQuelle)" Link="ParkingLotRueckwegDaten.cs" />
@@ -37,6 +43,7 @@
     <Compile Include="../../Tools/ParkingLotAbrissabsicht.cs" Link="ParkingLotAbrissabsicht.cs" />
     <Content Include="Fixturen/nebenarbeit.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Fixturen/historisch.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixturen/fahrrad.json" CopyToOutputDirectory="PreserveNewest" />
     <Reference Include="Unity.Mathematics"><HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath></Reference>
   </ItemGroup>
 </Project>

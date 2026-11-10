@@ -130,6 +130,7 @@ internal static partial class Program
 
     private static int Run(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--qualitaetsindex") return PruefeQualitaetsindex();
         if (args.Length == 1 && args[0] == "--aussenband") return PruefeAussenband();
         if (args.Length == 1 && args[0] == "--zettelvollstaendig")
             return PruefeZettelvollstaendigkeit();
@@ -1444,6 +1445,7 @@ internal static partial class Program
     {
         var all = layout.Bay.Concat(layout.GrassSurface)
             .Concat(layout.AsphaltSurface).ToList();
+        var index = new Qualitaetsindex(all);
         var minX = site.Min(p => p.x);
         var maxX = site.Max(p => p.x);
         var minY = site.Min(p => p.y);
@@ -1454,8 +1456,7 @@ internal static partial class Program
             {
                 var point = new float2((float)x, (float)y);
                 if (!PointIn(point, site)) continue;
-                if (!all.Any(q => PointIn(point, q))
-                    && !all.Any(q => DistanceToBoundary(point, q) <= 1e-6))
+                if (!index.Enthaelt(point))
                     gap += step * step;
             }
         var area = Math.Abs(SignedArea(site));

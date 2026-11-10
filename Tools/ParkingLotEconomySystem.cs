@@ -172,6 +172,7 @@ namespace ParkingLotTool.Tools
             }
             if (!an)
             {
+                MesseFahrradOhneWirtschaft();
                 Abschalten();
                 return;
             }
@@ -408,8 +409,8 @@ namespace ParkingLotTool.Tools
                 economy = new ParkingLotEconomyData
                 {
                     Capacity = capacity,
-                    Upkeep = CalculateUpkeep(capacity),
-                    ParkingFee = UnityEngine.Mathf.Clamp(
+                    Upkeep = ParkingLotFahrradBetrieb.Unterhalt(EntityManager, lot, capacity),
+                    ParkingFee = ParkingLotFahrradBetrieb.Ist(EntityManager, lot) ? 0 : UnityEngine.Mathf.Clamp(
                         Mod.Optionen?.Parkgebuehr ?? 10, 0, 50),
                 };
                 ParkingLotSchrittmarke.Aenderung("Wirtschaft: Lot " + lot.Index + " bekommt Wirtschaftsdaten");
@@ -426,7 +427,7 @@ namespace ParkingLotTool.Tools
             // aktuellen Baustandard; danach ist der Wert Teil der Instanz.
             if (economy.ParkingFee == ParkingLotEconomyData.UninitializedParkingFee)
             {
-                economy.ParkingFee = UnityEngine.Mathf.Clamp(
+                economy.ParkingFee = ParkingLotFahrradBetrieb.Ist(EntityManager, lot) ? 0 : UnityEngine.Mathf.Clamp(
                     Mod.Optionen?.Parkgebuehr ?? 10, 0, 50);
                 EntityManager.SetComponentData(lot, economy);
                 Mod.log.Info("PLT-Wirtschaft: Lot " + lot.Index
@@ -435,7 +436,7 @@ namespace ParkingLotTool.Tools
             }
 
             begleiter.TryGetValue(lot, out var b);
-            RestoreRuntimeComponents(lot, b, economy);
+            if (Mod.WirtschaftAn) RestoreRuntimeComponents(lot, b, economy);
         }
 
         /**
@@ -512,8 +513,8 @@ namespace ParkingLotTool.Tools
             var economy = new ParkingLotEconomyData
             {
                 Capacity = capacity,
-                Upkeep = CalculateUpkeep(capacity),
-                ParkingFee = UnityEngine.Mathf.Clamp(parkingFee, 0, 50),
+                Upkeep = ParkingLotFahrradBetrieb.Unterhalt(EntityManager, lot, capacity),
+                ParkingFee = ParkingLotFahrradBetrieb.Ist(EntityManager, lot) ? 0 : UnityEngine.Mathf.Clamp(parkingFee, 0, 50),
             };
             if (EntityManager.HasComponent<ParkingLotEconomyData>(lot))
                 EntityManager.SetComponentData(lot, economy);
@@ -608,7 +609,8 @@ namespace ParkingLotTool.Tools
             // des Spiels veraendern.
             if (!_prefabSystem.TryGetPrefab<PrefabBase>(prefab, out var lotPrefab)
                 || lotPrefab == null
-                || lotPrefab.name != ParkingLotToolSystem.LotOwnerPrefabName)
+                || (lotPrefab.name != ParkingLotToolSystem.LotOwnerPrefabName
+                    && !ParkingLotFahrradPrefabBau.IstLotname(lotPrefab.name)))
                 return false;
             if (!EntityManager.HasComponent<CollectedServiceBuildingBudgetData>(
                     prefab))
@@ -800,7 +802,8 @@ namespace ParkingLotTool.Tools
          * bis 1.0.7 fest "Unterhalt / 2" - das stimmte nur bei 50 % Budget.
          */
         internal int MonatsUnterhalt(Entity lot, int upkeep)
-            => MitBudget(WirksamerUnterhalt(upkeep) + Loehne(lot));
+            => ParkingLotFahrradBetrieb.Ist(EntityManager, lot) && !Mod.WirtschaftAn ? 0
+                : MitBudget(WirksamerUnterhalt(upkeep) + Loehne(lot));
 
         /** Ein Geldbetrag mal Budget-Prozent des Strassendienstes, wie `CityServiceBudgetSystem`. */
         internal int MitBudget(int betrag)

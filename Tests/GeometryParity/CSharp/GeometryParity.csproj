@@ -7,9 +7,11 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <MusterQuelle Condition="'$(MusterQuelle)' == ''">..\..\..\Geometry\OberflaechenMuster.cs</MusterQuelle>
     <SprachtexteQuelle Condition="'$(SprachtexteQuelle)' == ''">..\..\..\Geometry\Sprachtexte.cs</SprachtexteQuelle>
+    <QualitaetsindexQuelle Condition="'$(QualitaetsindexQuelle)' == ''">Program.Qualitaetsindex.cs</QualitaetsindexQuelle>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="$(QualitaetsindexQuelle)" />
     <Compile Include="Program.SurfacePreview.cs" />
     <Compile Include="Program.SurfacePreview.Logik.cs" />
     <Compile Include="$(MusterQuelle)" Link="Geometry/OberflaechenMuster.cs" />

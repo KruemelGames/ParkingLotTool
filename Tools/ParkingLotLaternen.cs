@@ -103,7 +103,8 @@ namespace ParkingLotTool.Tools
 
         internal static LaternenPlan LaternenPlanFuer(ParkingLayout layout, LaternenOptionen optionen)
             => optionen != null && optionen.Enabled && layout != null
-                ? ParkingLanterns.Plan(layout, optionen.Abstand)
+                ? layout.Fahrrad != null ? FahrradDekoration.Laternen(layout, optionen.Abstand)
+                    : ParkingLanterns.Plan(layout, optionen.Abstand)
                 : new LaternenPlan();
 
         /**

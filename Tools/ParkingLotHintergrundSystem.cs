@@ -426,6 +426,11 @@ namespace ParkingLotTool.Tools
 
         internal bool KannNeubauen(Entity lot, out string grund)
         {
+            if (ParkingLotFahrradBetrieb.IstBestand(EntityManager, lot))
+            {
+                grund = ParkingLotTexte.T("fahrrad.automatikAus");
+                return false;
+            }
             grund = "Lot fehlt oder ist kein dauerhafter Parkplatz; Reparatur/Bauplan erforderlich";
             return ParkingLotNetzRueckweg.Lebt(EntityManager,lot)
                 && EntityManager.HasComponent<Game.Areas.Area>(lot) && !EntityManager.HasComponent<Game.Tools.Temp>(lot)

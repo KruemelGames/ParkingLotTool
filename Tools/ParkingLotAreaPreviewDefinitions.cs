@@ -80,6 +80,9 @@ namespace ParkingLotTool.Tools
                 }
             }
 
+            if (layout.Fahrrad != null)
+                MeasureAreaPreviewGroup(new[] { layout.Grundstueck }, ref heightData,
+                    ref sampled, ref minimum, ref maximum);
             if (sampled == 0)
             {
                 SetAreaTerrainTransfer(0, 0f, 0f, 0f,
@@ -117,6 +120,13 @@ namespace ParkingLotTool.Tools
             ProtokolliereBauschritt("CreateLotOwnerDefinition");
             created += CreateLotOwnerDefinition(ref heightData);
             yield return created;
+            if (layout.Fahrrad != null)
+            {
+                var gehen = World.GetOrCreateSystemManaged<ParkingLotFahrradPrefabSystem>();
+                if (gehen.TryGehen(out var gehprefab)
+                    && CreateAreaPreviewDefinition("FahrradGehflaeche", 0, layout.Grundstueck,
+                        gehprefab, ref heightData)) { created++; yield return 1; }
+            }
             /**
              * HIER wirken die Flaechenschalter unabhaengig - und NUR hier.
              *
@@ -591,6 +601,8 @@ namespace ParkingLotTool.Tools
             unchecked
             {
                 if (settings == null) return signature * 31 - 1;
+                if (settings.Fahrzeugart != Fahrzeugart.Auto)
+                    signature = ((signature * 31 + (int)settings.Fahrzeugart) * 31 + (int)settings.Fahrradlayout) * 31 + (int)settings.Fahrradstil;
                 signature = AppendDouble(signature, settings.Es);
                 signature = AppendDouble(signature, settings.Ai);
                 signature = AppendDouble(signature, settings.Cw);

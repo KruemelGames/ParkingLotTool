@@ -37,6 +37,7 @@ namespace ParkingLotTool.Tools
     internal static class ParkingLotPersonal
     {
         internal static bool Ohne(EntityManager em, Entity lot)
-            => lot != Entity.Null && em.Exists(lot) && em.HasComponent<ParkingLotOhnePersonal>(lot);
+            => lot != Entity.Null && em.Exists(lot) && (em.HasComponent<ParkingLotOhnePersonal>(lot)
+                || ParkingLotFahrradBetrieb.Ist(em, lot));
     }
 }

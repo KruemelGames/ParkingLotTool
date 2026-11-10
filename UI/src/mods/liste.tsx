@@ -98,6 +98,7 @@ type Parkplatz = {
   sync: boolean;
   fehlt: string;
   wege: number;
+  fahrrad: boolean;
 };
 
 const zahl = (s: string | undefined) => {
@@ -313,6 +314,7 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
         <div className={styles.listeKopfzeile}>
           <div className={styles.listeTitelblock}>
             <Name platz={platz} />
+            {platz.fahrrad && <div className={styles.textEinzeilig}>{t.fahrradPlaetze(platz.kapazitaet)}</div>}
             <Untertitel platz={platz} />
           </div>
           <MitTooltip text={t.tooltipHinspringen}>
@@ -361,7 +363,8 @@ const Kachel = ({ platz, bloecke, slot, runde }: {
           <MitTooltip text={t.tooltipGebuehr}>
             <div className={styles.listeGeldName}>{t.spalteGebuehr}</div>
           </MitTooltip>
-          <Listengebuehr id={platz.id} wert={platz.gebuehr} />
+          {platz.fahrrad ? <span>{t.fahrradKostenlos}</span>
+            : <Listengebuehr id={platz.id} wert={platz.gebuehr} />}
           <div className={styles.listeLuecke} />
           <MitTooltip
             text={platz.geschaetzt ? t.tooltipErgebnisGeschaetzt
@@ -540,6 +543,7 @@ export const ListeTab = () => {
     sync: zahl(f[SYNC_FELD]) === 1,
     fehlt: f[FEHLT_FELD] ?? "",
     wege: zahl(f[WEGE_FELD]),
+    fahrrad: zahl(f[WEGE_FELD + 1]) === 1,
   })), [rohListe]);
   const bloecke = useMemo(() => {
     const result = new Map<string, Block[]>();

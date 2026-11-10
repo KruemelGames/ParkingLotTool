@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -16,6 +16,7 @@ namespace ParkingLotTool.Geometry
     {
         public static readonly string[] Layout =
         {
+            "Fahrzeugart", "Fahrradlayout", "Fahrradstil",
             "Es", "Ai", "Cw", "Sl", "Sw", "Md", "Gassenbreite", "Cr",
             "Qk", "Randstrassen", "Auto", "Angle", "AngleMode",
             "Ausrichtwinkel", "TeilflaechenAusrichtungen", "Zoningflaechen",
@@ -44,6 +45,7 @@ namespace ParkingLotTool.Geometry
         // ein neuer Trigger muss im Geometrietest neu zugeordnet werden.
         public static readonly string[] BauTrigger =
         {
+            "SetFahrzeugart", "SetFahrradlayout", "SetFahrradstil",
             "SetAisleWidth", "SetAngleMode", "SetBayIcons", "SetCrossBays",
             "SetCrossCaps", "SetCrossWidth", "SetEdgeSetback", "SetEngine",
             "SetCrossRoads", "SetGreenMedian", "SetMedianWidth", "SetRandstrassen",

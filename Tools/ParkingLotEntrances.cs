@@ -1,4 +1,4 @@
-using static ParkingLotTool.Tools.ParkingLotTexte;
+﻿using static ParkingLotTool.Tools.ParkingLotTexte;
 using System;
 using System.Collections.Generic;
 using Colossal.Mathematics;
@@ -123,6 +123,7 @@ namespace ParkingLotTool.Tools
 
         internal string FehlenderZugang()
         {
+            if (Fahrradmodus) return _entrances.Exists(e => e != null) ? null : "zugang";
             var zufahrt = 0;
             var einfahrt = 0;
             var ausfahrt = 0;
@@ -170,6 +171,7 @@ namespace ParkingLotTool.Tools
          */
         internal void SetZufahrtsartFromPanel(int art)
         {
+            if (!FahrradBedienung.Zugang(Fahrradmodus ? Fahrzeugart.Fahrrad : Fahrzeugart.Auto, art)) return;
             // Kein Vergleich gegen den letzten Wert: der wandert, sobald
             // eine Art dazukommt, und tut es stumm.
             var gewaehlt = Enum.IsDefined(typeof(Zufahrtsart), art)
@@ -203,6 +205,8 @@ namespace ParkingLotTool.Tools
             NoRoom,
             /** Hier liegt Bauland - Zoningflaeche oder Randzoning. */
             Bauland,
+            /** Fahrradplatz: von hier erreicht der Zugang keinen Weg, ohne Staender zu queren. */
+            Fahrradweg,
         }
 
         private struct BoundaryProjection
@@ -255,6 +259,7 @@ namespace ParkingLotTool.Tools
 
         private void BeginEntrancePlacement(bool showMissingPrompt)
         {
+            if (Fahrradmodus) _zufahrtsart = Zufahrtsart.Zufahrt;
             SetBusStopModeFromPanel(false);
             // Entweder oder: der Zugangsmodus und das Zoning wollen denselben
             // Linksklick. Zoning schaltete diesen hier schon aus; jetzt auch
@@ -273,7 +278,7 @@ namespace ParkingLotTool.Tools
             ClearEntranceGesture();
             PublishEntranceState();
             UpdateEntranceHint();
-            _uiSystem?.SetStatus(!_entranceMissingPrompt
+            _uiSystem?.SetStatus(Fahrradmodus ? T("ui.fahrradZugang") : !_entranceMissingPrompt
                 ? T("entrances.placeAnEntranceOnTheEdge")
                 : fehlt == "ausfahrt"
                 ? T("entrances.anEntryWithoutAnExitCars")
@@ -856,6 +861,11 @@ namespace ParkingLotTool.Tools
                 valid = false;
                 blockReason = EntranceBlockReason.Bauland;
             }
+            else if (valid && !FahrradZufahrtMoeglich(entrance, ignoredIndex, settings))
+            {
+                valid = false;
+                blockReason = EntranceBlockReason.Fahrradweg;
+            }
 
             candidate = new EntranceCandidate
             {
@@ -1241,6 +1251,9 @@ namespace ParkingLotTool.Tools
             else if (_hasEntranceCandidate
                 && _entranceCandidate.BlockReason == EntranceBlockReason.Bauland)
                 text = T("entrances.buildingLandHereAZoningPatch");
+            else if (_hasEntranceCandidate
+                && _entranceCandidate.BlockReason == EntranceBlockReason.Fahrradweg)
+                text = T("entrances.bikeNoPathHere");
             else if (_hoverEntrance >= 0)
                 text = T("entrances.clickTheEntranceAndDragIt");
             else if (_entrances.Count >= MaxEntranceCount)

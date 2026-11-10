@@ -202,7 +202,7 @@ namespace ParkingLotTool.Tools
         }
 
         /** Fuer die Liste: braucht dieser Parkplatz eine Synchronisation? */
-        internal bool BrauchtSync(Entity lot) => _offenMenge.Contains(lot);
+        internal bool BrauchtSync(Entity lot) => !ParkingLotFahrradBetrieb.IstBestand(EntityManager, lot) && _offenMenge.Contains(lot);
 
         [Preserve]
         protected override void OnCreate()
@@ -412,6 +412,7 @@ namespace ParkingLotTool.Tools
             {
                 var lot = lots[i];
                 var hintergrund = World.GetOrCreateSystemManaged<ParkingLotHintergrundSystem>();
+                if (ParkingLotFahrradBetrieb.IstBestand(EntityManager, lot)) continue;
                 if (hintergrund.IstErsatz(lot)) continue;
                 if (_wartetAuf.ContainsKey(lot))
                 { _offen.Add(lot); _offenMenge.Add(lot); continue; }
@@ -488,6 +489,7 @@ namespace ParkingLotTool.Tools
 
         private void Einreihen(Entity lot)
         {
+            if (ParkingLotFahrradBetrieb.IstBestand(EntityManager, lot)) return;
             // Wartet der Parkplatz schon auf seinen Tausch oder Neubau, kommt er
             // erst danach wieder dran (1.0.6: sonst doppelte Laternen).
             if (!_offenMenge.Contains(lot) || _warteschlange.Contains(lot)
@@ -509,6 +511,7 @@ namespace ParkingLotTool.Tools
 
         private bool Synchronisiere(Entity lot, Dictionary<Entity, List<Entity>> index)
         {
+            if (ParkingLotFahrradBetrieb.IstBestand(EntityManager, lot)) return false;
             _offen.Remove(lot);
             _offenMenge.Remove(lot);
             if (!EntityManager.Exists(lot) || EntityManager.HasComponent<Deleted>(lot)

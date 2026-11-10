@@ -463,6 +463,8 @@ namespace ParkingLotTool.Tools
 
             var notes = new List<string>
             {
+                "PLT-Fahrradsonde: " + ParkingLotFahrradSonde.LetzterStand
+                    + "; Messwerte im Mod-Log mit demselben Praefix.",
                 "Layout- und ECS-Koordinaten sind die tatsächlich gespeicherten float-Werte; "
                     + "sie werden als JSON-Zahlen mit G17 ausgegeben.",
                 "DynamicBuffer werden ausschließlich innerhalb dieses Aufrufs indexweise "

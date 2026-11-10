@@ -1,0 +1,15 @@
+.wechsel {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 8rem;
+  padding: 7rem 8rem;
+  border-radius: 4rem;
+  background-color: rgba(74, 122, 140, .45);
+  color: #fff;
+  font-size: var(--fontSizeXS);
+  white-space: normal;
+  overflow-wrap: break-word;
+  cursor: pointer;
+  &[aria-disabled="true"] { opacity: .45; cursor: default; }
+}

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using ParkingLotTool.Geometry;
@@ -541,6 +541,8 @@ namespace ParkingLotTool.Tools
          */
         internal void SetzeZoningModus(bool an)
         {
+            if (an && Fahrradmodus)
+            { _uiSystem?.SetStatus(T("ui.fahrradZoningAus")); return; }
             /*
              * OHNE GESCHLOSSENEN UMRISS GIBT ES NICHTS ZU ZONEN.
              *

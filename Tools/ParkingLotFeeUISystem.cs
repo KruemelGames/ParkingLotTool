@@ -57,6 +57,7 @@ namespace ParkingLotTool.Tools
         private bool IsParkingLot(Entity entity)
             => entity != Entity.Null
                && EntityManager.Exists(entity)
+               && !ParkingLotFahrradBetrieb.Ist(EntityManager, entity)
                && !EntityManager.HasComponent<Deleted>(entity)
                && EntityManager.HasComponent<ParkingLotCarrierReference>(entity)
                && EntityManager.HasComponent<ParkingLotEconomyData>(entity);

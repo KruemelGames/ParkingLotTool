@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using ParkingLotTool.Geometry;
 using Unity.Entities;
@@ -14,6 +14,12 @@ namespace ParkingLotTool.Tools
             if (lot == Entity.Null || !EntityManager.Exists(lot)
                 || settings == null || worldPoints == null
                 || worldPoints.Length < MinPolygonPoints) return false;
+            if (settings.Fahrzeugart == Fahrzeugart.Fahrrad)
+            {
+                q.Zoningflaechen = Array.Empty<ParkingGeometry.Zoningflaeche>();
+                q.Randzoning = Array.Empty<ParkingGeometry.RandzoningLinie>();
+                q.Seitenplan = Array.Empty<(Unity.Mathematics.float2 A, Unity.Mathematics.float2 B, bool Links, bool Aus)>();
+            }
             // Auftrag 4 im Lauf 13:01 brach vor dem ersten ECS-Schreiben ab:
             // fehlende optionale Ausrichtungs-/Schnitt-/Zonenpuffer sind null.
             // Auch Normalbau und Protokollreparatur schreiben dieselbe Quelle.
@@ -27,6 +33,9 @@ namespace ParkingLotTool.Tools
                 var receipt = new ParkingLotBuildReceipt
                 {
                     Version = ParkingLotBuildReceipt.CurrentVersion,
+                    Fahrzeugart = settings.Fahrzeugart,
+                    Fahrradlayout = settings.Fahrradlayout,
+                    Fahrradstil = settings.Fahrradstil,
                     Es = settings.Es,
                     Ai = settings.Ai,
                     Cw = settings.Cw,

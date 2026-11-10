@@ -26,6 +26,8 @@ namespace ParkingLotTool.Tools
                                            ISerializable
     {
         /*
+         * VERSION 8: der Fahrradstil folgt auf Fassung 7 (fehlt er: Schlicht).
+         * VERSION 7: Fahrzeugart und Fahrradlayout folgen auf Fassung 6.
          * VERSION 6: ein Bushalt-Zaehler folgt auf alle Felder der Fassung 5.
          * VERSION 5: auf die drei bestehenden Fassungen folgten die
          * gemessene Gassenbreite und vier Zoning-Vorwahlen. Die Felder
@@ -38,7 +40,7 @@ namespace ParkingLotTool.Tools
          * folgenden Datensaetze. Mit der Version davor weiss der Leser, wie
          * weit er lesen darf - Fassung 1 endet nach `BayIcons`.
          */
-        public const int CurrentVersion = 6;
+        public const int CurrentVersion = 8;
 
         public int Version;
         /** Bezugsrichtung in Grad; `NaN` heisst "keine Linie gewaehlt". */
@@ -86,6 +88,9 @@ namespace ParkingLotTool.Tools
         public int ZoningAussentiefeVorwahl;
         public double ZoningAusrichtwinkel;
         public int BusStopCount;
+        public Fahrzeugart Fahrzeugart;
+        public Fahrradlayout Fahrradlayout;
+        public Fahrradstil Fahrradstil;
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
@@ -128,6 +133,9 @@ namespace ParkingLotTool.Tools
             writer.Write(ZoningAussentiefeVorwahl);
             writer.Write(ZoningAusrichtwinkel);
             writer.Write(BusStopCount);
+            writer.Write((int)Fahrzeugart);
+            writer.Write((int)Fahrradlayout);
+            writer.Write((int)Fahrradstil);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -186,12 +194,31 @@ namespace ParkingLotTool.Tools
             }
             BusStopCount = 0;
             if (Version >= 6) reader.Read(out BusStopCount);
+            // Auch bei wiederverwendetem Leserziel alte Zettel eindeutig Auto.
+            Fahrzeugart = Fahrzeugart.Auto;
+            Fahrradlayout = Fahrradlayout.A;
+            if (Version >= 7)
+            {
+                reader.Read(out int art);
+                reader.Read(out int layout);
+                Fahrzeugart = (Fahrzeugart)art;
+                Fahrradlayout = (Fahrradlayout)layout;
+            }
+            Fahrradstil = Fahrradstil.Schlicht;
+            if (Version >= 8)
+            {
+                reader.Read(out int stil);
+                Fahrradstil = Bauartvertrag.Stil(stil);
+            }
         }
 
         internal LayoutSettings ToLayoutSettings(Entrance[] entrances)
         {
             return new LayoutSettings
             {
+                Fahrzeugart = Fahrzeugart,
+                Fahrradlayout = Fahrradlayout,
+                Fahrradstil = Fahrradstil,
                 Es = Es,
                 Ai = Ai,
                 Cw = Cw,

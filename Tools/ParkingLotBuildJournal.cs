@@ -236,6 +236,11 @@ namespace ParkingLotTool.Tools
                 ["ZoningWinkel"] = ZoningReglerwinkel,
                 ["ZoningAussentiefe"] = ZoningTiefeVorwahl,
                 ["ZoningAusrichtwinkel"] = ZoningAusrichtwinkel,
+                ["Fahrzeugart"] = _uiSystem?.CurrentSettings()?.Fahrzeugart.ToString(),
+                ["Fahrradlayout"] = _uiSystem?.CurrentSettings() is { Fahrzeugart: Fahrzeugart.Fahrrad } s
+                    ? s.Fahrradlayout.ToString() : null,
+                ["Fahrradstil"] = _uiSystem?.CurrentSettings() is { Fahrzeugart: Fahrzeugart.Fahrrad } t
+                    ? t.Fahrradstil.ToString() : null,
             };
         }
 
@@ -261,6 +266,12 @@ namespace ParkingLotTool.Tools
                 ["ZoningAussentiefe"] = receipt.ZoningAussentiefeVorwahl,
                 ["ZoningAusrichtwinkel"] = double.IsNaN(
                     receipt.ZoningAusrichtwinkel) ? null : receipt.ZoningAusrichtwinkel,
+                // Bauart steht seit Zettelfassung 7 im Zettel; im Bericht sichtbar machen.
+                ["Fahrzeugart"] = receipt.Fahrzeugart.ToString(),
+                ["Fahrradlayout"] = receipt.Fahrzeugart == Fahrzeugart.Fahrrad
+                    ? receipt.Fahrradlayout.ToString() : null,
+                ["Fahrradstil"] = receipt.Fahrzeugart == Fahrzeugart.Fahrrad
+                    ? receipt.Fahrradstil.ToString() : null,
             };
         }
 

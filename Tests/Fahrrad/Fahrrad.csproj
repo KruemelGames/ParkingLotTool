@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TypesQuelle Condition="'$(TypesQuelle)' == ''">../../Geometry/ParkingGeometry.Types.cs</TypesQuelle>
+    <FahrradQuelle Condition="'$(FahrradQuelle)' == ''">../../Geometry/FahrradGeometrie.cs</FahrradQuelle>
+    <RaumQuelle Condition="'$(RaumQuelle)' == ''">../../Geometry/FahrradGeometrie.Raum.cs</RaumQuelle>
+    <NetzQuelle Condition="'$(NetzQuelle)' == ''">../../Geometry/FahrradGeometrie.Netz.cs</NetzQuelle>
+    <StilQuelle Condition="'$(StilQuelle)' == ''">../../Geometry/FahrradGeometrie.Stil.cs</StilQuelle>
+    <ZellenQuelle Condition="'$(ZellenQuelle)' == ''">../../Geometry/FahrradGeometrie.Zellen.cs</ZellenQuelle>
+    <ZufahrtQuelle Condition="'$(ZufahrtQuelle)' == ''">../../Geometry/FahrradGeometrie.Zufahrt.cs</ZufahrtQuelle>
+    <BaukurseQuelle Condition="'$(BaukurseQuelle)' == ''">../../Geometry/FahrradBaukurse.cs</BaukurseQuelle>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program*.cs" Condition="'$(Autovergleich)' != 'true'" />
+    <Compile Include="Autovergleich.cs" Condition="'$(Autovergleich)' == 'true'" />
+    <Compile Include="../../Geometry/*.cs" Exclude="../../Geometry/ParkingGeometry.Types.cs;../../Geometry/Fahrrad*.cs" />
+    <Compile Include="../../Geometry/FahrradBetrieb.cs;../../Geometry/FahrradPlan.cs;$(BaukurseQuelle);../../Geometry/FahrradDekoration.cs;$(FahrradQuelle);$(RaumQuelle);$(NetzQuelle);$(StilQuelle);$(ZellenQuelle);$(ZufahrtQuelle)" Condition="'$(Autovergleich)' != 'true' Or '$(TypesQuelle)' == '../../Geometry/ParkingGeometry.Types.cs'" />
+    <Compile Include="$(TypesQuelle)" />
+    <Compile Include="../../Geometry/Zellen/*.cs" />
+    <Reference Include="Unity.Mathematics"><HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

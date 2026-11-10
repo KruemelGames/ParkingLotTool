@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Colossal.Mathematics;
 using Game.Common;
 using Game.Net;
@@ -744,7 +744,7 @@ namespace ParkingLotTool.Tools
          */
         internal bool ZufahrtTrifftBauland(Entrance zufahrt)
         {
-            if (zufahrt == null) return false;
+            if (Fahrradmodus || zufahrt == null) return false;
             if (zufahrt.Edge >= 0 && zufahrt.Edge < _points.Count
                 && _randzoning.Count > 0)
             {

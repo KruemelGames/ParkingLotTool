@@ -41,7 +41,7 @@ namespace ParkingLotTool.Tools
             });
 
         /** Die ganze Protokollzeile zu einer Kennung - der juengste Eintrag. */
-        internal static string ProtokollzeileZu(string kennung)
+        internal static string ProtokollzeileZu(string kennung, Fahrzeugart? art = null, Fahrradlayout? layout = null)
         {
             try
             {
@@ -51,7 +51,19 @@ namespace ParkingLotTool.Tools
                 var marke = "{\"kennung\":\"" + kennung + "\"";
                 foreach (var zeile in File.ReadAllLines(pfad))
                     if (zeile.StartsWith(marke, StringComparison.Ordinal))
+                    {
+                        if(art.HasValue)
+                        {
+                            try
+                            {
+                                if(JObject.Parse(zeile)["layoutwerte"] is not JObject werte) continue;
+                                if(!Bauartvertrag.ProtokollPasst((string)werte["Fahrzeugart"],
+                                    (string)werte["Fahrradlayout"],art,layout)) continue;
+                            }
+                            catch(Exception) { continue; }
+                        }
                         treffer = zeile;
+                    }
                 return treffer;
             }
             catch (Exception e)
@@ -92,6 +104,8 @@ namespace ParkingLotTool.Tools
                     return false;
                 }
                 var settings = layout.ToObject<LayoutSettings>(ProtokollLeser);
+                if(!Bauartvertrag.Gueltig(settings.Fahrzeugart,settings.Fahrradlayout))
+                { grund=ParkingLotTexte.T("baukontextLeser.invalidSettingsInTheBuildReceipt");return false; }
                 // Die internen Werte liest der Deserialisierer nicht; sie
                 // entscheiden aber mit, welches Layout herauskommt.
                 settings.KantenVersatz = (double?)layout["KantenVersatz"] ?? 0;
@@ -263,7 +277,9 @@ namespace ParkingLotTool.Tools
                 xz[i] = knoten[i].m_Position.xz;
             }
             var kennung = LotId(xz);
-            var zeile = ProtokollzeileZu(kennung);
+            var fahrrad=ParkingLotFahrradBetrieb.TryLayout(EntityManager,lot,out var layout);
+            var zeile = ProtokollzeileZu(kennung,fahrrad?Fahrzeugart.Fahrrad:Fahrzeugart.Auto,
+                fahrrad?(Fahrradlayout?)layout:null);
             if (zeile == null)
             {
                 grund = "kein Protokolleintrag " + kennung;

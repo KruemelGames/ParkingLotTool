@@ -1,4 +1,4 @@
-using ParkingLotTool.Geometry;
+﻿using ParkingLotTool.Geometry;
 
 namespace ParkingLotTool.Tools
 {
@@ -48,9 +48,25 @@ namespace ParkingLotTool.Tools
             }
         }
 
+        internal void BauartGewechselt()
+        {
+            SetBusStopModeFromPanel(false);
+            SetEntranceModeFromPanel(false);
+            SetzeZoningModus(false);
+            SetzeZoningSeitenModus(false);
+            _zufahrtsart = Zufahrtsart.Zufahrt;
+            PublishEntranceState();
+        }
+
         /** Darf der naechste Klick das tun? */
+        internal bool BauartBeschaeftigt => _buildStage != BuildStage.Idle
+            || _pendingEditLot != Unity.Entities.Entity.Null || _speicherLaeuft;
+
+        internal bool Fahrradmodus => _uiSystem?.AktuelleFahrzeugart == Fahrzeugart.Fahrrad;
+
         internal bool DarfArbeiten(Weltarbeit arbeit)
-            => Werkzeugzustand.Erlaubt(_reiter, AktuellerModus, arbeit);
+            => FahrradBedienung.Arbeit(Fahrradmodus ? Fahrzeugart.Fahrrad : Fahrzeugart.Auto, arbeit)
+                && Werkzeugzustand.Erlaubt(_reiter, AktuellerModus, arbeit);
 
         /** Der Panel-Reitername als Zustand. */
         internal static Werkzeugreiter ReiterAus(string name)
@@ -82,6 +98,7 @@ namespace ParkingLotTool.Tools
          */
         internal void SetzeReiter(Werkzeugreiter reiter)
         {
+            if (Fahrradmodus && reiter == Werkzeugreiter.Zoning) reiter = Werkzeugreiter.Entwurf;
             if (_reiter == reiter) return;
             _reiter = reiter;
 

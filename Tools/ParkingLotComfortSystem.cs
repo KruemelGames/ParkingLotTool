@@ -274,7 +274,8 @@ namespace ParkingLotTool.Tools
                      * kommt beim Wiedereinschalten unveraendert zurueck.
                      */
                     var wirtschaftAn = Mod.WirtschaftAn;
-                    var zielGebuehrInt = !wirtschaftAn
+                    var fahrrad = ParkingLotFahrradBetrieb.TryLayout(EntityManager, lot, out var fahrradlayout);
+                    var zielGebuehrInt = !wirtschaftAn || fahrrad
                         ? 0
                         : EntityManager.HasComponent<ParkingLotEconomyData>(lot)
                         ? EntityManager.GetComponentData<ParkingLotEconomyData>(lot)
@@ -286,8 +287,9 @@ namespace ParkingLotTool.Tools
                     var zielGebuehr = (ushort)zielGebuehrInt;
                     var gebuehrAnders = lane.m_ParkingFee != zielGebuehr;
 
+                    var komfort = fahrrad ? ParkingLotTool.Geometry.FahrradBetrieb.Komfort(fahrradlayout) : ZielKomfort;
                     var ziel = !wirtschaftAn ? (ushort)0 : (ushort)UnityEngine.Mathf.Clamp(
-                        UnityEngine.Mathf.RoundToInt(ZielKomfort * 65535f), 0, 65535);
+                        UnityEngine.Mathf.RoundToInt(komfort * 65535f), 0, 65535);
                     if (lane.m_ComfortFactor == ziel && !gebuehrAnders) continue;
                     lane.m_ComfortFactor = ziel;
                     lane.m_ParkingFee = zielGebuehr;
@@ -302,7 +304,7 @@ namespace ParkingLotTool.Tools
                     _zuletztGesetzt = gesetzt;
                     Mod.log.Info($"PLT-Komfort: {unsere} eigene Parkspuren gerechnet, "
                         + $"davon {warNull} mit Komfort 0 (hoechster Wert vorher "
-                        + $"{vorherMax}). {gesetzt} auf {ZielKomfort:0.00} gesetzt. "
+                        + $"{vorherMax}). {gesetzt} auf Sollkomfort je Art/Layout gesetzt. "
                         + $"AllowEnter {mitAllowEnter}, AllowExit {mitAllowExit} "
                         + "(nur gezaehlt, nicht gesetzt). Parkgebuehr "
                         + (gebuehrMin == gebuehrMax
@@ -465,6 +467,7 @@ namespace ParkingLotTool.Tools
         /** Schreibt eine UI-Aenderung sofort auf die Spuren dieses Lots. */
         internal int SetParkingFeeImmediately(Entity lot, int fee)
         {
+            if (ParkingLotFahrradBetrieb.Ist(EntityManager, lot)) fee = 0;
             if (_tool == null || lot == Entity.Null || !EntityManager.Exists(lot))
                 return 0;
             if (!_tool.TryGetCleanupPrefabs(out var lotPrefab, out _)) return 0;

@@ -81,6 +81,7 @@ namespace ParkingLotTool.Tools
             // gespeicherte Wert bleibt am Parkplatz und kommt mit dem
             // Schalter zurueck.
             var sichtbar = Mod.WirtschaftAn
+                && !ParkingLotFahrradBetrieb.Ist(EntityManager, lot)
                 && lot != Entity.Null
                 && EntityManager.Exists(lot)
                 && EntityManager.HasComponent<ParkingLotCarrierReference>(lot)

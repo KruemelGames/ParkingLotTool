@@ -1,3 +1,5 @@
+﻿import { Fahrradwahl } from "./fahrradwahl";
+import { fahrzeugart$ } from "./bindings";
 import { VegetationSchalter, VegetationFenster } from "./vegetation";
 import { LaternenSchalter, LaternenFenster } from "./laternen";
 import { randstrassen$, randstrassenDefault$, setRandstrassen } from "./bindings";
@@ -129,6 +131,7 @@ const ARTEN = [
 
 export const ParkingLotPanel = () => {
   const t = useTexte();
+  const fahrrad = useValue(fahrzeugart$) === 1;
   const surfaceRoad = useValue(surfaceRoad$);
   const surfaceDecoration = useValue(surfaceDecoration$);
   /**
@@ -383,7 +386,7 @@ export const ParkingLotPanel = () => {
   // Zu klein fuer eine Buchtreihe: der Bauknopf sagt es selbst (die Statuszeile liest nicht jeder).
   const vorschaufehler = useValue(vorschaufehler$);
   const zuKlein = vorschaufehler === "zuKlein" || vorschaufehler === "zuKleinRandstrassen";
-  const fehltText = entranceMissing === "einfahrt" ? t.fehltEinfahrt
+  const fehltText = fahrrad ? t.fahrradZugang : entranceMissing === "einfahrt" ? t.fehltEinfahrt
     : entranceMissing === "ausfahrt" ? t.fehltAusfahrt
     : t.fehltZugang;
   const entranceCount = useValue(entranceCount$);
@@ -902,13 +905,13 @@ export const ParkingLotPanel = () => {
               `MitTooltip`. Der Hinweis, WARUM der Reiter grau ist, waere
               also unsichtbar geblieben. */}
           <TooltipKnopf
-            text={polygonClosed ? t.tooltipZoningReiter
+            text={fahrrad ? t.fahrradZoningAus : polygonClosed ? t.tooltipZoningReiter
               : t.tooltipZoningGesperrt}
             className={`${styles.tab} ${zoning ? styles.tabAktiv : ""}
-              ${polygonClosed ? "" : styles.tabAus}`}
-            aria-disabled={!polygonClosed}
+              ${polygonClosed && !fahrrad ? "" : styles.tabAus}`}
+            aria-disabled={!polygonClosed || fahrrad}
             onMouseDown={haltAn}
-            onClick={() => { if (polygonClosed) setTab("zoning"); }}
+            onClick={() => { if (polygonClosed && !fahrrad) setTab("zoning"); }}
           >
             {t.zoningReiter}
           </TooltipKnopf>
@@ -1292,6 +1295,7 @@ export const ParkingLotPanel = () => {
           : zoning ? <ZoningTab /> : <>
         <SpaltenGruppe>
         <Spalte title={t.zuschnitt} ton="Zuschnitt" {...abschnitt("Zuschnitt")} titleTooltip={t.tooltipZuschnitt}>
+          <Fahrradwahl />
           <Slider
             label={t.randabstand}
             tooltip={t.tooltipRandabstand}
@@ -1452,6 +1456,7 @@ export const ParkingLotPanel = () => {
         </Spalte>
 
         <Spalte title={t.fahrwege} ton="Fahrwege" {...abschnitt("Fahrwege")} titleTooltip={t.tooltipFahrwege}>
+          {!fahrrad ? <>
           <Slider
             label={t.fahrgassenbreite}
             tooltip={t.tooltipFahrgassenbreite}
@@ -1508,10 +1513,12 @@ export const ParkingLotPanel = () => {
             onReset={() => resetOne("CrossRoads")}
             onSetDefault={() => setAsDefault("CrossRoads")}
           />
+          </> : null}
           <LaternenSchalter onOeffnen={oeffneLaternen} />
         </Spalte>
 
         <Spalte title={t.gruen} ton="Gruen" {...abschnitt("Gruen")} titleTooltip={t.tooltipGruen}>
+          {!fahrrad ? <>
           <Toggle
             label={t.mittelgruen}
             tooltip={t.tooltipMittelgruen}
@@ -1552,6 +1559,7 @@ export const ParkingLotPanel = () => {
             onReset={() => resetOne("MedianWidth")}
             onSetDefault={() => setAsDefault("MedianWidth")}
           />
+          </> : null}
           <VegetationSchalter onOeffnen={oeffneVegetation} />
         </Spalte>
 
@@ -1617,7 +1625,7 @@ export const ParkingLotPanel = () => {
             onReset={() => resetOne("SurfaceApronOn")}
             onSetDefault={() => setAsDefault("SurfaceApronOn")}
           />
-          <Toggle
+          {!fahrrad ? <Toggle
             label={t.buchtsymbole}
             tooltip={t.tooltipBuchtsymbole}
             value={bayIcons}
@@ -1625,7 +1633,7 @@ export const ParkingLotPanel = () => {
             differsFromDefault={bayIcons !== bayIconsDefault}
             onReset={() => resetOne("BayIcons")}
             onSetDefault={() => setAsDefault("BayIcons")}
-          />
+          /> : null}
         </Spalte>
 
         </SpaltenGruppe>
@@ -1638,7 +1646,7 @@ export const ParkingLotPanel = () => {
         <div className={styles.ergebnis}>
           <div className={styles.ergebnisKopf}>
             <span className={styles.ergebnisZahl}>{stalls}</span>
-            <span className={styles.ergebnisName}>{t.stellplaetze}</span>
+            <span className={styles.ergebnisName}>{fahrrad ? t.fahrradKapazitaet : t.stellplaetze}</span>
           </div>
           {/*
             JEDE ZEILE EIN EINZIGES TEXTSTUECK.
@@ -1650,7 +1658,7 @@ export const ParkingLotPanel = () => {
             Stueck und brachen deshalb nie um - daran war es zu erkennen.
           */}
           <div className={styles.ergebnisZeile}>
-            {t.amRandGassen(perimeterStalls, aisles)}
+            {fahrrad ? t.fahrradKostenlos : t.amRandGassen(perimeterStalls, aisles)}
           </div>
           <div className={styles.ergebnisZeile}>
             {t.jeBucht(areaPerStall)}
@@ -1713,11 +1721,11 @@ export const ParkingLotPanel = () => {
         </TooltipKnopf>
 
         <div className={styles.artZeile}>
-          {ARTEN.map((art) => {
+          {ARTEN.filter((art) => !fahrrad || art.id === 0).map((art) => {
             const aktiv = entranceMode && entranceKind === art.id;
             return (
               <div key={art.id} className={styles.artZelle}>
-               <TooltipKnopf text={t[art.tooltip]}
+               <TooltipKnopf text={fahrrad ? t.fahrradZugang : t[art.tooltip]}
                   className={`${styles.artKnopf} ${styles[art.ton]}
                     ${aktiv ? styles.artAktiv : ""}
                     ${polygonClosed ? "" : styles.aktionAus}`}
@@ -1730,7 +1738,7 @@ export const ParkingLotPanel = () => {
               </div>
             );
           })}
-          <div className={styles.artZelle}>
+          {!fahrrad ? <div className={styles.artZelle}>
             <TooltipKnopf text={t.tooltipBushaltestelle}
               className={`${styles.artKnopf} ${styles.artZufahrt}
                 ${busStopMode ? styles.artAktiv : ""}
@@ -1740,7 +1748,7 @@ export const ParkingLotPanel = () => {
               <img src={icon("Road")} />
               <span className={styles.artName}>{t.bushaltestelle}</span>
             </TooltipKnopf>
-          </div>
+          </div> : null}
           </div>
         <div className={styles.artZaehler}>
           {`${entranceCount} / ${entranceMax}`}

@@ -32,7 +32,10 @@ module.exports = {
     rules: [
       {
         test: /\.tsx?$/,
-        use: { loader: "ts-loader", options: { transpileOnly: true, configFile: path.join(UI, "tsconfig.json") } },
+        use: [
+          { loader: "ts-loader", options: { transpileOnly: true, configFile: path.join(UI, "tsconfig.json") } },
+          { loader: path.join(__dirname, "mutations-loader.js") },
+        ],
       },
       {
         test: /\.s?css$/,

@@ -253,6 +253,8 @@ namespace ParkingLotTool
             updateSystem.UpdateAt<ParkingLotUISystem>(SystemUpdatePhase.UIUpdate);
             // Diagnose fuer Issue #15 (Post), nur auf Knopfdruck im dev-Debug-Reiter.
             updateSystem.UpdateAt<ParkingLotPostsondeSystem>(SystemUpdatePhase.UIUpdate);
+            // Testzaehler Fahrrad (02.11.2026): Raeder auf Walking Area und Staendern, nur lesend.
+            updateSystem.UpdateAt<ParkingLotFahrradZaehler>(SystemUpdatePhase.UIUpdate);
             // Lebenszeichen fuer Absturzberichte, auch im Hauptmenue.
             updateSystem.UpdateAt<ParkingLotHerzschlagSystem>(SystemUpdatePhase.MainLoop);
             // Einmal nach dem Laden: Masse und Lichtbedingungen der Laternen.
@@ -356,6 +358,10 @@ namespace ParkingLotTool
                 Game.Prefabs.NetInitializeSystem>(SystemUpdatePhase.PrefabUpdate);
             updateSystem.UpdateBefore<ParkingLotFahrprefabSystem,
                 Game.Prefabs.PrefabInitializeSystem>(SystemUpdatePhase.PrefabUpdate);
+            updateSystem.UpdateBefore<ParkingLotFahrradPrefabSystem,
+                Game.Prefabs.PrefabInitializeSystem>(SystemUpdatePhase.PrefabUpdate);
+            updateSystem.UpdateAfter<ParkingLotFahrradPrefabAbschlussSystem,
+                Game.Prefabs.NetInitializeSystem>(SystemUpdatePhase.PrefabUpdate);
             updateSystem.UpdateAfter<ParkingLotFahrprefabAbschlussSystem,
                 Game.Prefabs.NetInitializeSystem>(SystemUpdatePhase.PrefabUpdate);
             // Die einebnenden Wegvarianten fuer Gassenenden: vor dem

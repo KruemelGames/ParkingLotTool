@@ -51,7 +51,7 @@ internal static partial class Program
     private static bool Gleich(object a, object b)
     {
         if (a is FixedString512Bytes fs) return fs.ToString() == (string)b;
-        if (a.GetType().IsEnum) return Convert.ToUInt32(a) == (uint)b;
+        if (a.GetType().IsEnum) return Convert.ToInt64(a) == Convert.ToInt64(b);
         return a.Equals(b);
     }
 
@@ -59,7 +59,9 @@ internal static partial class Program
     {
         var fixtures = JsonSerializer.Deserialize<Fixtur[]>(File.ReadAllText(
             Path.Combine(AppContext.BaseDirectory, "Fixturen/historisch.json")));
-        foreach (var fixture in fixtures)
+        var fahrrad = JsonSerializer.Deserialize<Fixtur[]>(File.ReadAllText(
+            Path.Combine(AppContext.BaseDirectory, "Fixturen/fahrrad.json")));
+        foreach (var fixture in fixtures.Concat(fahrrad))
         {
             var strom = fixture.Datensaetze.SelectMany(x => x).ToList();
             strom.Add(new Feld { Name = "$ende", Typ = "String", Wert = JsonSerializer.SerializeToElement("ENDE_PLT") });
@@ -73,7 +75,21 @@ internal static partial class Program
                     if (!f.Name.StartsWith("$"))
                         Pruefe(Gleich(Feldwert(wert, f.Name), f.Lesen()), fixture.Art + "/" + fixture.Version + ": " + f.Name);
                 Defaults(wert, fixture.Version);
-                if ((fixture.Art == "Receipt" && fixture.Version == 6)
+                if(fixture.Art=="Receipt" && fixture.Version<7)
+                {
+                    var wiederverwendet=new ParkingLotBuildReceipt {Fahrzeugart=Fahrzeugart.Fahrrad,Fahrradlayout=Fahrradlayout.D};
+                    wiederverwendet.Deserialize(new Leser(felder.ToList()));
+                    Pruefe(wiederverwendet.Fahrzeugart==Fahrzeugart.Auto && wiederverwendet.Fahrradlayout==Fahrradlayout.A,
+                        "alter Datensatz setzt wiederverwendetes Leseziel auf Auto/A zurueck");
+                }
+                if(fixture.Art=="Receipt" && fixture.Version<8)
+                {
+                    var wiederverwendet=new ParkingLotBuildReceipt {Fahrradstil=Fahrradstil.Platz};
+                    wiederverwendet.Deserialize(new Leser(felder.ToList()));
+                    Pruefe(wiederverwendet.Fahrradstil==Fahrradstil.Schlicht,
+                        "Datensatz vor v8 setzt wiederverwendetes Leseziel auf Schlicht zurueck");
+                }
+                if ((fixture.Art == "Receipt" && fixture.Version >= 6)
                     || (fixture.Art == "Rueckweg" || fixture.Art == "Erhaltener") && fixture.Version == 2
                     || fixture.Art == "Anschluss" && fixture.Version == -2
                     || fixture.Art.StartsWith("StufeA") || fixture.Art == "NebenarbeitOffen" && fixture.Version == 2
@@ -81,10 +97,17 @@ internal static partial class Program
                 {
                     var writer = new Schreiber();
                     wert.Serialize(writer);
-                    Pruefe(writer.Felder.Count == felder.Length, fixture.Art + " schreibt passende Datensatzlaenge");
+                    // Aeltere Receipts werden in der aktuellen Fassung (8) geschrieben:
+                    // v6 bekommt Fahrzeugart, Fahrradlayout und Fahrradstil, v7 den Fahrradstil.
+                    var zusatz = fixture.Art != "Receipt" ? 0 : fixture.Version == 6 ? 3 : fixture.Version == 7 ? 1 : 0;
+                    var upgrade = zusatz > 0;
+                    Pruefe(writer.Felder.Count == felder.Length + zusatz, fixture.Art + " schreibt passende Datensatzlaenge");
                     for (int i = 0; i < Math.Min(writer.Felder.Count, felder.Length); i++)
                         Pruefe(writer.Felder[i].Typ.Name == felder[i].Typ
-                            && Gleich(writer.Felder[i].Wert, felder[i].Lesen()), fixture.Art + " Schreiberfeld " + i);
+                            && Gleich(writer.Felder[i].Wert, upgrade && i==0 ? ParkingLotBuildReceipt.CurrentVersion : felder[i].Lesen()), fixture.Art + " Schreiberfeld " + i);
+                    if(upgrade)
+                        Pruefe(writer.Felder.Skip(felder.Length).All(f => (int)f.Wert==0),
+                            "v" + fixture.Version + " wird mit denselben Altwerten als v8 Auto/A/Schlicht geschrieben");
                 }
             }
             reader.Read(out string ende);
@@ -95,6 +118,7 @@ internal static partial class Program
         StufeA();
         EditAnzeige();
         InfoSektion();
+        FahrradSpeichervertrag();
         Console.WriteLine($"SPEICHERFORMATE: {_pruefungen} Pruefungen, {_fehler} Fehler.");
         return _fehler == 0 ? 0 : 1;
     }
@@ -109,6 +133,9 @@ internal static partial class Program
             if (version < 5) Pruefe(r.ZoningWinkelmodus == 0 && r.ZoningReglerwinkel == 0
                 && r.ZoningAussentiefeVorwahl == 2 && double.IsNaN(r.ZoningAusrichtwinkel), "alte Zoning-Vorgaben");
             if (version < 6) Pruefe(r.BusStopCount == 0, "alter Receipt ohne Bushalte");
+            if (version < 7) Pruefe(r.Fahrzeugart==Fahrzeugart.Auto && r.Fahrradlayout==Fahrradlayout.A,
+                "Receipt v1-v6 bleibt Auto/A, auch bei Wiederverwendung");
+            if (version < 8) Pruefe(r.Fahrradstil==Fahrradstil.Schlicht, "Receipt v1-v7 ist Schlicht");
         }
         var kurs = wert is ParkingLotRueckwegkurs k ? k : wert is ParkingLotErhaltenerKurs e ? e.Bestand : default;
         if (wert is ParkingLotRueckwegkurs || wert is ParkingLotErhaltenerKurs)

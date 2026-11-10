@@ -117,6 +117,8 @@ namespace ParkingLotTool.Tools
                 if (!EntityManager.HasComponent<Owner>(traeger)) continue;
                 var lot = EntityManager.GetComponentData<Owner>(traeger).m_Owner;
                 if (!waisen.Contains(lot)) continue;
+                if(ParkingLotFahrradBetrieb.IstBestand(EntityManager,lot)
+                    && !ParkingLotFahrradBetrieb.TraegerPasst(EntityManager,lot,traeger)) continue;
                 if (!kandidaten.TryGetValue(lot, out var liste))
                     kandidaten[lot] = liste = new List<Entity>();
                 liste.Add(traeger);
@@ -238,6 +240,8 @@ namespace ParkingLotTool.Tools
                 return false;
             }
             var uhr = System.Diagnostics.Stopwatch.StartNew();
+            if(ParkingLotFahrradBetrieb.IstBestand(EntityManager,lot)
+                && !ParkingLotFahrradBetrieb.TraegerPasst(EntityManager,lot,traeger)) return false;
 
             // Nur Objekte, deren Owner der Traeger ist - genau die, die beim
             // Bau eine Relation bekommen haben (HefteObjekteAnTraeger).
@@ -273,6 +277,8 @@ namespace ParkingLotTool.Tools
             // Aufraeumer den Parkplatz. Vorher waere er halb verbunden.
             EntityManager.AddComponentData(lot,
                 new ParkingLotCarrierReference { Carrier = traeger });
+            if(ParkingLotFahrradBetrieb.IstBestand(EntityManager,lot))
+                World.GetOrCreateSystemManaged<ParkingLotToolSystem>().RestoreFahrradGehflaechenAfterLoad();
 
             Mod.log.Info("PLT-Waisen: Lot " + lot.Index + " verbunden: Traeger "
                 + traeger.Index + ", " + objekte.Count + " Relationen, Begleiter "

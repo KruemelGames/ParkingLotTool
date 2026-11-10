@@ -1,4 +1,4 @@
-import { bindValue, trigger } from "cs2/api";
+﻿import { bindValue, trigger } from "cs2/api";
 
 /**
  * Alles, was das Panel vom Mod weiss - und alles, was es ihm sagen kann.
@@ -609,3 +609,13 @@ export const parkplatzReparieren = (schluessel: string) =>
   trigger(MOD, "ParkplatzReparieren", schluessel);
 export const parkplaetzeReparieren = () => trigger(MOD, "ParkplaetzeReparieren");
 export const gewaehltenReparieren = () => trigger(MOD, "GewaehltenReparieren");
+
+/** Bauartwahl ist fluechtig; gespeichert wird erst der Bauzettel. */
+export const fahrzeugart$ = bindValue<number>(MOD, "Fahrzeugart", 0);
+export const fahrradlayout$ = bindValue<number>(MOD, "Fahrradlayout", 0);
+export const fahrradstil$ = bindValue<number>(MOD, "Fahrradstil", 0);
+export const bauartEdit$ = bindValue<boolean>(MOD, "BauartEdit", false);
+export const bauartBeschaeftigt$ = bindValue<boolean>(MOD, "BauartBeschaeftigt", false);
+export const setFahrzeugart = (art: number) => trigger(MOD, "SetFahrzeugart", art);
+export const setFahrradlayout = (layout: number) => trigger(MOD, "SetFahrradlayout", layout);
+export const setFahrradstil = (stil: number) => trigger(MOD, "SetFahrradstil", stil);

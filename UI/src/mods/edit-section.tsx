@@ -9,6 +9,7 @@ import { useTexte } from "./texte";
 /** C# erkennt die PLT-Flaeche und liefert Freigabe samt lokalisiertem Grund. */
 export const ParkingEditSection = (props: {
   waise?: number; bauzettel?: boolean; schluessel?: string;
+  fahrradPlaetze?: number;
   bearbeitbar?: boolean; reparierbar?: boolean; grund?: string;
 }) => {
   const t = useTexte();
@@ -27,6 +28,9 @@ export const ParkingEditSection = (props: {
     `${styles.editButton} ${aktiv ? "" : styles.editButtonGesperrt}`;
   return (
     <div className={styles.editSection}>
+      {(props.fahrradPlaetze ?? -1) >= 0 && <div className={styles.waiseText}>
+        {t.fahrradPlaetze(props.fahrradPlaetze ?? 0)}
+      </div>}
       {waise > 0 && <div className={styles.waiseTitel}>
         {waise === 3 ? t.bauplanTitel : t.waiseTitel}
       </div>}

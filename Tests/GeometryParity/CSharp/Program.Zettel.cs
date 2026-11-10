@@ -71,6 +71,7 @@ internal static partial class Program
                 : type == typeof(double?) ? (double?)18.25
                 : type == typeof(bool) ? !(bool)property.GetValue(cloneProbe)
                 : type == typeof(string) ? "zettelprobe"
+                : type.IsEnum ? Enum.GetValues(type).GetValue(1)
                 : type.IsArray ? Array.CreateInstance(type.GetElementType(), 1)
                 : throw new InvalidOperationException("Unbekannter Typ: " + name);
             if (type.IsArray)

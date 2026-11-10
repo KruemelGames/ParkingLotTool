@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net9.0</TargetFramework>
+    <NoWarn>$(NoWarn);CS0649;SYSLIB0050</NoWarn>
+    <FabrikQuelle Condition="'$(FabrikQuelle)' == ''">../../Tools/ParkingLotFahrradPrefabBau.cs</FabrikQuelle>
+    <BauQuelle Condition="'$(BauQuelle)' == ''">../../Tools/ParkingLotFahrradBau.cs</BauQuelle>
+    <BetriebQuelle Condition="'$(BetriebQuelle)' == ''">../../Geometry/FahrradBetrieb.cs</BetriebQuelle>
+    <BetriebsbrueckeQuelle Condition="'$(BetriebsbrueckeQuelle)' == ''">../../Tools/ParkingLotFahrradBetrieb.cs</BetriebsbrueckeQuelle>
+    <DekorationQuelle Condition="'$(DekorationQuelle)' == ''">../../Geometry/FahrradDekoration.cs</DekorationQuelle>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Tools/ParkingLotFahrprefabKopie.cs" />
+    <Compile Include="../../Tools/ParkingLotFahrregeln.cs" />
+    <Compile Include="../../Tools/ParkingLotKlonregel.cs" />
+    <Compile Include="$(FabrikQuelle)" /><Compile Include="$(BauQuelle)" />
+    <Compile Include="$(BetriebsbrueckeQuelle)" />
+    <Compile Include="../../Tools/ParkingLotFahrradBestand.cs" />
+    <Compile Include="../../Geometry/**/*.cs" Exclude="../../Geometry/FahrradBetrieb.cs;../../Geometry/FahrradDekoration.cs" />
+    <Compile Include="$(BetriebQuelle)" />
+    <Compile Include="$(DekorationQuelle)" />
+    <Reference Include="Unity.Mathematics"><HintPath>$(CSII_TOOLPATH)/UnityModsProject/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

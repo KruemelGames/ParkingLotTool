@@ -256,6 +256,11 @@ namespace ParkingLotTool.Geometry
 
     public sealed class LayoutSettings
     {
+        // Nullwerte sind der Speichervertrag alter JSON-Bauzettel: Auto, Layout A.
+        public Fahrzeugart Fahrzeugart { get; set; }
+        public Fahrradlayout Fahrradlayout { get; set; }
+        /** Gestaltung des Fahrradplatzes; fehlt sie (alter Zettel), gilt Schlicht. */
+        public Fahrradstil Fahrradstil { get; set; }
         /**
          * Grundrisse der Bruecken ueber dem Parkplatz, Weltkoordinaten (Issue
          * #22). Unter ihnen bekommt die Strasse keine eigene Fahrbahn mit
@@ -438,6 +443,9 @@ namespace ParkingLotTool.Geometry
         {
             return new LayoutSettings
             {
+                Fahrzeugart = Fahrzeugart,
+                Fahrradlayout = Fahrradlayout,
+                Fahrradstil = Fahrradstil,
                 Kurvenlaeufe = Kurvenlaeufe?.Select(k => k?.Clone()).ToArray()
                     ?? Array.Empty<KurvenRandlauf>(),
                 Es = Es,
@@ -532,6 +540,15 @@ namespace ParkingLotTool.Geometry
             Zellen = true,
         };
 
+        public static LayoutSettings Fahrrad(Fahrradlayout layout, Fahrradstil stil = Fahrradstil.Schlicht) => new LayoutSettings
+        {
+            Fahrzeugart = Fahrzeugart.Fahrrad, Fahrradlayout = layout, Fahrradstil = stil,
+            Ai = 3, Cw = layout == Fahrradlayout.C ? 2.5 : 3,
+            Sl = layout == Fahrradlayout.C ? 2.5 : 2,
+            Sw = layout == Fahrradlayout.C ? .45 : .375, Gassenbreite = 3,
+            Es = 0, Randstrassen = false, Md = 0, Zellen = true,
+        };
+
         // Masse im Frame sind Fuss: Bucht 9 x 18 ft, Fahrgasse etwa 24 ft,
         // Setback 10 ft.
         public static LayoutSettings ReferenceFrame => new LayoutSettings
@@ -611,6 +628,7 @@ namespace ParkingLotTool.Geometry
 
     public sealed class ParkingLayout
     {
+        public FahrradPlan Fahrrad { get; internal set; }
         public float2[][] Bay { get; internal set; } = Array.Empty<float2[]>();
         public BayKind[] BayKind { get; internal set; } = Array.Empty<BayKind>();
         public KurvenRandreihe[] KurvenRandreihen { get; internal set; } = Array.Empty<KurvenRandreihe>();
@@ -929,6 +947,21 @@ namespace ParkingLotTool.Geometry
             VorschauVorbereitung vorbereitung)
         {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
+            if (settings.Fahrzeugart == Fahrzeugart.Fahrrad)
+            {
+                var fahrrad = FahrradGeometrie.Baue(site, settings);
+                return new ParkingLayout
+                {
+                    Fahrrad = fahrrad,
+                    Stalls = fahrrad.Kapazitaet,
+                    Entrances = settings.Entrances?.Where(e => e != null).Select(e => e.Clone()).ToArray() ?? Array.Empty<Entrance>(),
+                    Ring = site?.ToArray() ?? Array.Empty<float2>(),
+                    Grundstueck = site?.ToArray() ?? Array.Empty<float2>(),
+                    AsphaltSurface = fahrrad.Flaechen.ToArray(),
+                    GrassSurface = fahrrad.Gras.ToArray(),
+                    Warnings = fahrrad.Hinweise.ToArray(),
+                };
+            }
             /*
              * DER ZELLENWEG IST SEIT DEM 2026-09-01 DER EINZIGE.
              *

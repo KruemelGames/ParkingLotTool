@@ -254,6 +254,7 @@ namespace ParkingLotTool.Tools
             EntityManager.AddComponentData(_lotOwner,
                 new ParkingLotCarrierReference { Carrier = carrier });
             _lotCarrier = carrier;
+            if (Fahrradbau) FahrradTraeger();
             // Nachzaehlen, was CS2 aus unserem Zoning-Ring macht. Laeuft
             // verzoegert, weil BlockSystem und ValidAreaSystem erst nach uns
             // an der Reihe sind.

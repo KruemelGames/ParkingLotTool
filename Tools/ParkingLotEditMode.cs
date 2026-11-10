@@ -620,6 +620,9 @@ namespace ParkingLotTool.Tools
                 if (wirksam == null) return;
 
                 var abweichungen = new List<string>();
+                if (gespeichert.Fahrzeugart != wirksam.Fahrzeugart || gespeichert.Fahrradlayout != wirksam.Fahrradlayout
+                    || gespeichert.Fahrradstil != wirksam.Fahrradstil)
+                    abweichungen.Add($"Bauart {gespeichert.Fahrzeugart}/{gespeichert.Fahrradlayout}/{gespeichert.Fahrradstil} -> {wirksam.Fahrzeugart}/{wirksam.Fahrradlayout}/{wirksam.Fahrradstil}");
                 void Zahl(string name, double a, double b, double schranke)
                 {
                     if (Math.Abs(a - b) > schranke)
@@ -867,6 +870,11 @@ namespace ParkingLotTool.Tools
             var gelesen = ParkingLotBaukontextLeser.TryRead(EntityManager, lot,
                 out var kontext, out reason);
             receipt = kontext?.Zettel ?? default;
+            if(gelesen && !ParkingLotFahrradBetrieb.PasstZettel(EntityManager,lot,receipt))
+            {
+                gelesen=false;
+                reason=ParkingLotTexte.T("baukontextLeser.invalidSettingsInTheBuildReceipt");
+            }
             points = kontext?.Punkte ?? Array.Empty<float3>();
             entrances = kontext?.Zugaenge ?? Array.Empty<Entrance>();
             alignments = kontext?.Ausrichtungen;

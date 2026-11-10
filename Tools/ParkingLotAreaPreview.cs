@@ -490,6 +490,11 @@ namespace ParkingLotTool.Tools
                 return;
             }
 
+            if (_areaPreviewLayout.Fahrrad != null && !FahrradPrefabsBereit(_areaPreviewLayout.Fahrrad))
+            {
+                _areaTransferNote = "Fahrrad-Prefabs noch nicht vollstaendig initialisiert.";
+                return;
+            }
             _areaPreviewPrefabsReady = true;
             if (prefabsOnly) return;
             var signature = AreaPreviewSignature(_areaPreviewLayout);

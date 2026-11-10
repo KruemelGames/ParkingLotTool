@@ -30,6 +30,8 @@ namespace ParkingLotTool.Geometry
          * Immer Einheitsvektor in XZ.
          */
         public float2 Richtung;
+        /** Festes Modell statt des Laternensatzes (Fahrradplatz: Parklaterne). Null = Satz. */
+        public string Prefab;
         public bool Doppelt => Art != LaternenArt.Rand;
     }
 
@@ -84,6 +86,13 @@ namespace ParkingLotTool.Geometry
             new LaternenModell { Prefab = "LightpoleIndustrial02", Bauart = LaternenBauart.Einseitig, Hoehe = 20.75f, Reichweite = 30f },
             new LaternenModell { Prefab = "LightpoleIndustrial03", Bauart = LaternenBauart.Rundum, Hoehe = 22.27f, Reichweite = 30f },
             new LaternenModell { Prefab = "LightpoleIndustrial04", Bauart = LaternenBauart.Rundum, Hoehe = 22.27f, Reichweite = 30f },
+            /*
+             * FAHRRADPLATZ: die Parklaterne des Vanilla-Fahrradparks (BicyclePark01
+             * setzt vier davon um die Mitte). Fuer Autos vom Nutzer abgelehnt (s. o.),
+             * fuer Fahrraeder am 03.11.2026 gewuenscht. Hoehe und Reichweite sind
+             * vorlaeufig; die Laternen-Inventur misst sie beim naechsten Spielstart.
+             */
+            new LaternenModell { Prefab = FahrradDekoration.Parklaterne, Bauart = LaternenBauart.Rundum, Hoehe = 4.5f, Reichweite = 12f },
         };
 
         /** Die drei festen Sets; je Feld genau ein Modell (Nutzer 2026-10-04). */
@@ -116,7 +125,7 @@ namespace ParkingLotTool.Geometry
         public string Einzeln = "StreetlightSingle02";
         public string Doppelt = "StreetlightDouble02";
 
-        public string ModellFuer(LaternenPlatz platz) => platz.Doppelt ? Doppelt : Einzeln;
+        public string ModellFuer(LaternenPlatz platz) => platz.Prefab ?? (platz.Doppelt ? Doppelt : Einzeln);
     }
 
     public sealed class LaternenPlan

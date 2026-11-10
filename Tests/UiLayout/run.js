@@ -17,6 +17,7 @@
 const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright-core");
+const fahrradprobe = require("./fahrrad");
 
 const SPIEL = process.env.CSII_GAMEUI || "C:/Program Files (x86)/Steam/steamapps/common/Cities Skylines II/Cities2_Data/Content/Game/UI";
 const OUT = path.join(__dirname, "out");
@@ -50,8 +51,10 @@ const texte = (sprache) => {
  * kaemen nie vor. Felder: id, Name, Plaetze, belegt, Gebuehr, Unterhalt,
  * Proben, Breite, Tiefe, Alter, Ergebnis, geschaetzt, Mangelblock (7),
  * Waise, Bauzettel, Sync, fehlende Assets, Wegebefund.
+ * Neu: Fahrzeugart als letztes Feld; die alten Autozeilen bleiben unveraendert.
  */
 const LISTE = [
+  ["90000:1", "Fahrradparkplatz mit ueberdachten Reihen", 192, 81, 0, 2400, 0, 30, 20, 1, -2400, 0, 0, 0, 0, 0, 0, "", "", 0, 1, 0, "", 0, 1],
   ["67394:1", "Parkplatz (2143 Stellplätze)", 2143, 1702, 12, 4650, 40, 180, 140, 31, 2400, 0, 72, 3, 0, 0, 0, "", "", 0, 1, 1, "", 0],
   ["69367:1", "Parking Lot (323 spaces)", 323, 12, 8, 1200, 40, 90, 70, 24, -300, 0, 70, 0, 0, 0, 0, "", "", 0, 1, 0, "", 3],
   ["82600:1", "Parking Lot (146 spaces)", 146, 140, 10, 700, 40, 60, 40, 18, 900, 0, 54, 2, 0, 0, 0, "", "", 0, 1, 0, "", 0],
@@ -200,10 +203,23 @@ function messen() {
           await page.goto("file:///" + html.replace(/\\/g, "/"));
           await page.waitForTimeout(350);
           await pruefe(kennung + " / Entwurf");
-          if (rahmen === "eng") continue;
           const t = JSON.parse(fall.texte);
+          for (const fehler of await fahrradprobe(page, t, pruefe, kennung)) {
+            befunde++; zeilen.push(`FEHLER ${kennung} / Fahrradbedienung: ${fehler}`);
+          }
+          if (rahmen === "eng") continue;
           for (const schluessel of ["reiterListe", "reiterAnleitung", "reiterMelden"])
-            if (await reiter(t[schluessel])) await pruefe(kennung + " / " + t[schluessel]);
+            if (await reiter(t[schluessel])) {
+              await pruefe(kennung + " / " + t[schluessel]);
+              if (schluessel === "reiterListe") {
+                const bike = page.locator("[class*='listeKachel_']").filter({ hasText: "Fahrradparkplatz mit ueberdachten Reihen" });
+                const richtig = await bike.count() === 1
+                  && await bike.getByText(t.fahrradPlaetze.replace("{plaetze}", "192"), { exact: true }).count() === 1
+                  && await bike.getByText(t.fahrradKostenlos, { exact: true }).count() === 1
+                  && await bike.getByRole("slider").count() === 0;
+                if (!richtig) { befunde++; zeilen.push(`FEHLER ${kennung} / Fahrradart, 192 Plaetze oder gebuehrenfreie Anzeige fehlt`); }
+              }
+            }
             else { zeilen.push(`FEHLER ${kennung} / Reiter "${t[schluessel]}" nicht gefunden`); befunde++; faelle++; }
         }
   await browser.close();

@@ -53,6 +53,7 @@ namespace ParkingLotTool.Tools
 
         /** Farbindex, mit dem die Parkplaetze zuletzt gefaerbt wurden; 0 = keine Farbe. */
         private int _index;
+        private int _fahrradIndex;
         private int _lotzahl = -1;
         private readonly HashSet<Entity> _mitSymbol = new();
         private bool _nachLadenAufraeumen;
@@ -90,51 +91,61 @@ namespace ParkingLotTool.Tools
             if (spiel == null || spiel.isGameLoading || !spiel.gameMode.IsGame()) return;
 
             var index = AktiverParkplatzIndex();
+            var fahrradIndex = AktiverParkplatzIndex(BuildingType.BicycleParkingFacility);
             var lotzahl = _lots.CalculateEntityCount();
             if (lotzahl != _lotzahl || _nachLadenAufraeumen) SichereZaehlmerkmal();
-            if (index == _index && lotzahl == _lotzahl && !_nachLadenAufraeumen) return;
+            if (index == _index && fahrradIndex == _fahrradIndex && lotzahl == _lotzahl && !_nachLadenAufraeumen) return;
 
             var marker = ParkplatzMarker();
+            var fahrradMarker = ParkplatzMarker(BuildingType.BicycleParkingFacility);
             using var lots = _lots.ToEntityArray(Allocator.Temp);
             var befehle = _icons.CreateCommandBuffer();
 
-            if (_nachLadenAufraeumen && marker != Entity.Null)
+            if (_nachLadenAufraeumen)
                 for (var i = 0; i < lots.Length; i++)
-                    befehle.Remove(lots[i], marker, default, IconFlags.IgnoreTarget);
+                {
+                    if (marker != Entity.Null) befehle.Remove(lots[i], marker, default, IconFlags.IgnoreTarget);
+                    if (fahrradMarker != Entity.Null) befehle.Remove(lots[i], fahrradMarker, default, IconFlags.IgnoreTarget);
+                }
             _nachLadenAufraeumen = false;
 
-            var farbe = new Game.Objects.Color((byte)math.clamp(index, 0, 255), 0, index > 0);
             var lebend = new HashSet<Entity>();
             for (var i = 0; i < lots.Length; i++)
             {
                 var lot = lots[i];
+                var fahrrad = ParkingLotFahrradBetrieb.Ist(EntityManager, lot);
+                var aktiv = fahrrad ? fahrradIndex : index;
+                var symbol = fahrrad ? fahrradMarker : marker;
+                var farbe = new Game.Objects.Color((byte)math.clamp(aktiv, 0, 255), 0, aktiv > 0);
                 lebend.Add(lot);
                 if (EntityManager.HasComponent<Game.Objects.Color>(lot))
                     EntityManager.SetComponentData(lot, farbe);
-                else if (index > 0)
+                else if (aktiv > 0)
                     EntityManager.AddComponentData(lot, farbe);
 
-                if (marker == Entity.Null) continue;
-                if (index > 0 && !_mitSymbol.Contains(lot))
+                if (symbol == Entity.Null) continue;
+                if (aktiv > 0 && !_mitSymbol.Contains(lot))
                 {
-                    befehle.Add(lot, marker, Mitte(lot), IconPriority.Info, IconClusterLayer.Marker,
+                    befehle.Add(lot, symbol, Mitte(lot), IconPriority.Info, IconClusterLayer.Marker,
                         IconFlags.Unique | IconFlags.IgnoreTarget);
                     _mitSymbol.Add(lot);
                 }
-                else if (index == 0 && _mitSymbol.Contains(lot))
+                else if (aktiv == 0 && _mitSymbol.Contains(lot))
                 {
-                    befehle.Remove(lot, marker, default, IconFlags.IgnoreTarget);
+                    befehle.Remove(lot, symbol, default, IconFlags.IgnoreTarget);
+                    _mitSymbol.Remove(lot);
                 }
             }
-            if (index == 0) _mitSymbol.Clear();
+            if (index == 0 && fahrradIndex == 0) _mitSymbol.Clear();
             // Abgerissene Plaetze: ihr Symbol raeumt Vanilla mit dem Besitzer ab.
             _mitSymbol.RemoveWhere(e => !lebend.Contains(e));
 
-            if (index != _index)
+            if (index != _index || fahrradIndex != _fahrradIndex)
                 Mod.log.Info("PLT-Infoansicht: Parkplatz-Modus " + (index > 0 ? "aktiv, Farbindex " + index : "aus")
-                    + "; " + lots.Length + " Parkplatz/Parkplaetze"
+                    + "; Fahrrad-Farbindex " + fahrradIndex + "; " + lots.Length + " Parkplatz/Parkplaetze"
                     + (marker == Entity.Null ? ", KEIN Parkplatz-Symbol gefunden" : "") + ".");
             _index = index;
+            _fahrradIndex = fahrradIndex;
             _lotzahl = lotzahl;
         }
 
@@ -148,6 +159,7 @@ namespace ParkingLotTool.Tools
                 var traeger = EntityManager.GetComponentData<ParkingLotCarrierReference>(lots[i]).Carrier;
                 if (traeger == Entity.Null || !EntityManager.Exists(traeger)
                     || EntityManager.HasComponent<Deleted>(traeger)
+                    || EntityManager.HasComponent<Game.Buildings.BicycleParkingFacility>(traeger)
                     || EntityManager.HasComponent<Game.Buildings.CarParkingFacility>(traeger)) continue;
                 EntityManager.AddComponent<Game.Buildings.CarParkingFacility>(traeger);
                 neu++;
@@ -157,22 +169,22 @@ namespace ParkingLotTool.Tools
         }
 
         /** Index des aktiven Vanilla-Infomodes fuer Auto-Parkplaetze, 0 wenn keiner aktiv ist. */
-        private int AktiverParkplatzIndex()
+        private int AktiverParkplatzIndex(BuildingType art = BuildingType.CarParkingFacility)
         {
             if (_modi.IsEmptyIgnoreFilter) return 0;
             using var modi = _modi.ToEntityArray(Allocator.Temp);
             for (var i = 0; i < modi.Length; i++)
-                if (EntityManager.GetComponentData<InfoviewBuildingData>(modi[i]).m_Type == BuildingType.CarParkingFacility)
+                if (EntityManager.GetComponentData<InfoviewBuildingData>(modi[i]).m_Type == art)
                     return EntityManager.GetComponentData<InfomodeActive>(modi[i]).m_Index;
             return 0;
         }
 
         /** Das Vanilla-Symbol fuer Auto-Parkplaetze. */
-        private Entity ParkplatzMarker()
+        private Entity ParkplatzMarker(BuildingType art = BuildingType.CarParkingFacility)
         {
             using var marker = _marker.ToEntityArray(Allocator.Temp);
             for (var i = 0; i < marker.Length; i++)
-                if (EntityManager.GetComponentData<BuildingMarkerData>(marker[i]).m_BuildingType == BuildingType.CarParkingFacility)
+                if (EntityManager.GetComponentData<BuildingMarkerData>(marker[i]).m_BuildingType == art)
                     return marker[i];
             return Entity.Null;
         }

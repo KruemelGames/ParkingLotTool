@@ -1,4 +1,4 @@
-import { useValue } from "cs2/api";
+﻿import { useValue } from "cs2/api";
 import { sprachtexte$ } from "./bindings";
 import { mehrzahlEndung } from "./mehrzahl";
 
@@ -74,6 +74,30 @@ const baue = (d: Record<string, string>) => {
     return teile;
   };
   return {
+    fahrradZugang: tx("fahrradZugang"),
+    fahrradZuRad: tx("fahrradZuRad"),
+    fahrradZuAuto: tx("fahrradZuAuto"),
+    fahrradArtFest: tx("fahrradArtFest"),
+    fahrradWechselHinweis: tx("fahrradWechselHinweis"),
+    fahrradLayout: tx("fahrradLayout"),
+    fahrradLayoutHinweis: tx("fahrradLayoutHinweis"),
+    fahrradLayoutA: tx("fahrradLayoutA"),
+    fahrradLayoutATipp: tx("fahrradLayoutATipp"),
+    fahrradLayoutC: tx("fahrradLayoutC"),
+    fahrradLayoutCTipp: tx("fahrradLayoutCTipp"),
+    fahrradLayoutD: tx("fahrradLayoutD"),
+    fahrradLayoutDTipp: tx("fahrradLayoutDTipp"),
+    fahrradStil: tx("fahrradStil"),
+    fahrradStilHinweis: tx("fahrradStilHinweis"),
+    fahrradStilSchlicht: tx("fahrradStilSchlicht"),
+    fahrradStilSchlichtTipp: tx("fahrradStilSchlichtTipp"),
+    fahrradStilRahmen: tx("fahrradStilRahmen"),
+    fahrradStilRahmenTipp: tx("fahrradStilRahmenTipp"),
+    fahrradStilPlatz: tx("fahrradStilPlatz"),
+    fahrradStilPlatzTipp: tx("fahrradStilPlatzTipp"),
+    fahrradZoningAus: tx("fahrradZoningAus"),
+    fahrradArbeit: tx("fahrradArbeit"),
+    fahrradKapazitaet: tx("fahrradKapazitaet"),
     /** Freier Zugriff fuer Komponenten mit eigenen Schluesseln (laternen, vegetation). */
     text: (k: string, werte?: Werte): string => (werte ? tf(k, werte) : tx(k)),
     zahl: tz,
@@ -452,6 +476,8 @@ const baue = (d: Record<string, string>) => {
     listeSuchen: tx("listeSuchen"),
     listeSummenzeile: (plaetze: number, frei: number, unterhalt: number, waehrung: string) => tf("listeSummenzeile", { plaetze, frei, unterhalt, waehrung }),
     listeSuche: tx("listeSuche"),
+    fahrradPlaetze: (plaetze: number) => tf("fahrradPlaetze", { plaetze }),
+    fahrradKostenlos: tx("fahrradKostenlos"),
     listeFilter: [tx("listeFilter.0"), tx("listeFilter.1"), tx("listeFilter.2"), tx("listeFilter.3")],
     listeSortierungen: [tx("listeSortierungen.0"), tx("listeSortierungen.1"), tx("listeSortierungen.2"), tx("listeSortierungen.3")],
     listeSortieren: tx("listeSortieren"),

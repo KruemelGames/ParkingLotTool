@@ -92,7 +92,8 @@ namespace ParkingLotTool.Tools
             // Auch mit 0 Stellen sichtbar, wenn der Parkplatz Personal haette:
             // sonst verschwaende mit "ohne Personal" der Schalter zum
             // Zurueckstellen (Issue #23).
-            var sichtbar = Mod.WirtschaftAn && gefunden && (_plaetze > 0 || _mitPersonal > 0);
+            var sichtbar = Mod.WirtschaftAn && gefunden && (_plaetze > 0 || _mitPersonal > 0)
+                && !ParkingLotFahrradBetrieb.Ist(EntityManager, selectedEntity);
             /*
              * Sagen, WARUM nichts zu sehen ist. Am 2026-08-27 fehlte die Zeile,
              * und das Log schwieg dazu - dass in Wahrheit gar kein Begleiter
@@ -222,6 +223,7 @@ namespace ParkingLotTool.Tools
         private void SetzeOhnePersonal(bool ohne)
         {
             var lot = selectedEntity;
+            if (ParkingLotFahrradBetrieb.Ist(EntityManager, lot)) return;
             if (lot == Entity.Null || !EntityManager.Exists(lot)
                 || !EntityManager.HasComponent<ParkingLotCarrierReference>(lot)
                 || !EntityManager.HasComponent<ParkingLotEconomyData>(lot)) return;

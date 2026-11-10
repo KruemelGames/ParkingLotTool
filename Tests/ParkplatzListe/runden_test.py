@@ -22,6 +22,11 @@ using System.Collections.Generic;
 class Base { protected virtual void OnUpdate() {} }
 class ValueBinding<T> { public T value; public ValueBinding(T v){value=v;} public void Update(T v){value=v;} }
 class Query { public int Count=2; public int CalculateEntityCount()=>Count; }
+// Die produktive Runde liest inzwischen Waisen-/Wegebefunde und eine Messuhr.
+// Dieser Pruefstand hat keine Waisen; seine unveraenderten Aussagen messen die Historie.
+class ParkingLotMessung : IDisposable { public enum Sys { Liste } public static ParkingLotMessung Miss(Sys s)=>new(); public void Dispose(){} }
+class Waisen { public List<int> OffeneWaisen=new(),OhneBauzettel=new(); }
+class Befund { public int Anzahl; }
 class Test : Base {
  const int AktualisierungFrames=60;
  int _frames,_zuletztGezaehlt=-1,number,infoWrites,listWrites;
@@ -30,6 +35,8 @@ class Test : Base {
  ValueBinding<string> _infos=new(""),_liste=new(""),_runde=new("");
  ValueBinding<bool> _hatVorrunde=new(false);
  Query _lotQuery=new(); List<int> _lots=new();
+ Waisen _waisen; Befund _fehlend,_wege; List<int> _waisenListe=new();
+ void PflegeWaisenSchalter(){} void SammleWaisen(){}
  void SammleLots(){_lots.Clear();for(int i=0;i<_lotQuery.Count;i++)_lots.Add(i);}
  void SammleWerte(){}
  void ZieheNeueRunde(){_rundeTextVorher=_rundeTextJetzt;_rundeTextJetzt=(++number).ToString();_rundeSteht=true;}
@@ -38,7 +45,7 @@ class Test : Base {
  void Tick(){_frames=60;OnUpdate();}
  int checks;
  void Check(bool ok,string text){checks++;if(!ok)throw new Exception("FEHLER: "+text);}
- public static void Main(){new Test().Run();}
+ public static void Main(){try{new Test().Run();}catch(Exception e){Console.Error.WriteLine(e);Environment.ExitCode=1;}}
  void Run(){
   Tick();Check(infoWrites==1,"erste Runde wird geschrieben");
   Tick();Check(infoWrites==1 && listWrites==2,"Grunddaten live, Infos bleiben stehen");

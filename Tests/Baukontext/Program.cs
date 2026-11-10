@@ -116,6 +116,19 @@ Pruefe(ParkingLotBaukontextLeser.TryRead(em, lot, out k, out _)
     "Alte Zettel ohne freiwillige Texte behalten bisherigen Rueckfall");
 Pruefe(!ParkingLotBaukontextLeser.TryRead(em, Entity.Null, out fehlt, out _) && fehlt == null,
     "Kein Kontext fuer fehlendes Lot");
+foreach(var layout in new[]{Fahrradlayout.A,Fahrradlayout.C,Fahrradlayout.D})
+{
+    var fahrrad=zettel;fahrrad.Fahrzeugart=Fahrzeugart.Fahrrad;fahrrad.Fahrradlayout=layout;
+    em.Set(lot,fahrrad);
+    Pruefe(ParkingLotBaukontextLeser.TryRead(em,lot,out var bike,out _,melden:false)
+        && bike.Zettel.ToLayoutSettings(bike.Zugaenge).Fahrzeugart==Fahrzeugart.Fahrrad
+        && bike.Zettel.ToLayoutSettings(bike.Zugaenge).Fahrradlayout==layout,
+        "echter Baukontextleser behaelt Fahrradart/Layout "+layout);
+}
+bad=zettel;bad.Fahrzeugart=(Fahrzeugart)99;em.Set(lot,bad);
+Pruefe(!ParkingLotBaukontextLeser.TryRead(em,lot,out fehlt,out _,melden:false),"unbekannte Fahrzeugart wird vor Edit/Bau abgelehnt");
+bad=zettel;bad.Fahrzeugart=Fahrzeugart.Fahrrad;bad.Fahrradlayout=(Fahrradlayout)1;em.Set(lot,bad);
+Pruefe(!ParkingLotBaukontextLeser.TryRead(em,lot,out fehlt,out _,melden:false),"entfallenes B wird vor Edit/Bau abgelehnt");
 Console.WriteLine($"Baukontext: {pruefungen} Pruefungen, {fehler} Fehler. "
     + "Getestet ist der echte Leser mit Datencontainern, keine ECS-Materialisierung.");
 return fehler == 0 ? 0 : 1;

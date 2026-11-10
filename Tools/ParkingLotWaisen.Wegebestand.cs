@@ -42,6 +42,7 @@ namespace ParkingLotTool.Tools
             var zeilen = new List<string>();
             foreach (var lot in _wegebestandLots)
             {
+                if(ParkingLotFahrradBetrieb.IstBestand(EntityManager,lot)) continue;
                 if (!EntityManager.Exists(lot) || EntityManager.HasComponent<Deleted>(lot)) continue;
                 if (!ParkingLotBaukontextLeser.TryRead(EntityManager, lot, out var k, out _, melden: false)) continue;
                 var ring = k.Punkte.Select(q => q.xz).ToArray();

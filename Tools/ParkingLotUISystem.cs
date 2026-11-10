@@ -1,4 +1,4 @@
-using static ParkingLotTool.Tools.ParkingLotTexte;
+﻿using static ParkingLotTool.Tools.ParkingLotTexte;
 using System;
 using System.IO;
 using Colossal.UI.Binding;
@@ -527,6 +527,7 @@ namespace ParkingLotTool.Tools
 
             AddBinding(_panelOpen = new ValueBinding<bool>(Group, "PanelOpen", false));
             AddBinding(_toolActive = new ValueBinding<bool>(Group, "ToolActive", false));
+            BindeFahrrad();
             AddBinding(_edgeSetback =
                 new ValueBinding<float>(Group, "EdgeSetback", _defaults.EdgeSetback));
             AddBinding(_aisleWidth =
@@ -2292,10 +2293,20 @@ namespace ParkingLotTool.Tools
          */
         private const float GassenbelagLuft = 2.5f;
 
+        // Neubauwahl bleibt getrennt vom geladenen Edit-Zettel.
+        internal Fahrzeugart FahrzeugartFuerNeubau { get; set; }
+        internal Fahrradlayout FahrradlayoutFuerNeubau { get; set; }
+        // Neubau zeigt gleich den gruenen Rahmen; alte Zettel lesen Schlicht.
+        internal Fahrradstil FahrradstilFuerNeubau { get; set; } = Fahrradstil.Rahmen;
+        private Fahrzeugart? _editFahrzeugart;
+        private Fahrradlayout _editFahrradlayout;
+        private Fahrradstil _editFahrradstil;
+
         internal LayoutSettings CurrentSettings()
         {
             var settings = _loadedBuildReceiptTemplate?.Clone()
-                ?? LayoutSettings.Cs2;
+                ?? (FahrzeugartFuerNeubau == Fahrzeugart.Fahrrad
+                    ? LayoutSettings.Fahrrad(FahrradlayoutFuerNeubau, FahrradstilFuerNeubau) : LayoutSettings.Cs2);
             settings.Es = _edgeSetback.value;
             settings.Ai = _aisleWidth.value;
             /*
@@ -2354,6 +2365,16 @@ namespace ParkingLotTool.Tools
             // der steht hier noch gar nicht fest.
             settings.EineFlaeche = !string.IsNullOrEmpty(FlaecheStrasse)
                 && FlaecheStrasse == FlaecheDekoration;
+            Bauartvertrag.Edit(settings, _editFahrzeugart, _editFahrradlayout, _editFahrradstil);
+            if (settings.Fahrzeugart == Fahrzeugart.Fahrrad)
+            {
+                // Auch Fang/Greifpunkte lesen LayoutSettings. Die gemerkten
+                // Autoregler bleiben erhalten, der Fahrradzugang ist 3 m.
+                var masse = LayoutSettings.Fahrrad(settings.Fahrradlayout);
+                settings.Ai = masse.Ai; settings.Cw = masse.Cw;
+                settings.Sl = masse.Sl; settings.Sw = masse.Sw;
+                settings.Gassenbreite = 3; settings.Randstrassen = false; settings.Md = 0;
+            }
             return settings;
         }
 
@@ -2366,6 +2387,9 @@ namespace ParkingLotTool.Tools
                                        string surfaceDecoration,
                                        string surfaceZoning = "")
         {
+            _editFahrzeugart = receipt.Fahrzeugart;
+            _editFahrradlayout = receipt.Fahrradlayout;
+            _editFahrradstil = receipt.Fahrradstil;
             // Leer ist ein gueltiger Wert: dann gilt die Dekoflaeche. So
             // verhaelt sich auch ein Bauzettel von vor dem 2026-09-02.
             UpdateValue(_flaecheZoning, surfaceZoning ?? string.Empty);
@@ -2416,7 +2440,10 @@ namespace ParkingLotTool.Tools
         }
 
         internal void ClearBuildReceiptTemplate()
-            => _loadedBuildReceiptTemplate = null;
+        {
+            _loadedBuildReceiptTemplate = null;
+            _editFahrzeugart = null;
+        }
 
         internal void SetBuildReceiptZoningstrasse(string name)
         {
@@ -2630,6 +2657,8 @@ namespace ParkingLotTool.Tools
 
         private void SetTab(string value)
         {
+            if (value == ZoningTab && AktuelleFahrzeugart == Fahrzeugart.Fahrrad)
+            { SetStatus(T("ui.fahrradZoningAus")); return; }
             var vorher = _tab.value;
             _tab.Update(value);
             if (value != ReportTab) VerlasseMeldemodus();

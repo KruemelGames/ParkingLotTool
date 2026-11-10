@@ -89,6 +89,10 @@ namespace ParkingLotTool.Tools
         /** 0 = nicht verwaist, 1 = reparierbar, 2 = nicht reparierbar. */
         public override void OnWriteProperties(IJsonWriter writer)
         {
+            writer.PropertyName("fahrradPlaetze");
+            writer.Write(ParkingLotFahrradBetrieb.Ist(EntityManager, selectedEntity)
+                ? (EntityManager.HasComponent<ParkingLotEconomyData>(selectedEntity)
+                    ? EntityManager.GetComponentData<ParkingLotEconomyData>(selectedEntity).Capacity : 0) : -1);
             writer.PropertyName("bearbeitbar");
             writer.Write(_bearbeitbar);
             writer.PropertyName("reparierbar");

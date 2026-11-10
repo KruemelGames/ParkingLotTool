@@ -1,4 +1,4 @@
-using static ParkingLotTool.Tools.ParkingLotTexte;
+﻿using static ParkingLotTool.Tools.ParkingLotTexte;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -515,7 +515,7 @@ namespace ParkingLotTool.Tools
             // Der unsichtbare Strassenklon wird bestellt, sobald eine Flaeche
             // steht - nicht erst beim Bauen. Sonst faehrt der erste Bau ohne
             // Zoning-Strasse, weil das Prefab noch einen Zyklus braucht.
-            if (_zoningflaechen.Count != 0 || _randzoning.Count != 0)
+            if (!Fahrradmodus && (_zoningflaechen.Count != 0 || _randzoning.Count != 0))
                 WaermeZoningstrasseVor(_buildSettings?.Zoningstrasse ?? "Alley");
 
             /*
@@ -1232,6 +1232,7 @@ namespace ParkingLotTool.Tools
                     Anker = zuweisung.Anker,
                     Winkel = zuweisung.Winkel,
                 }).ToArray();
+            FahrradBedienung.FuerBau(_buildSettings);
             _buildRevision = _geometryRevision;
             _layoutDirty = false;
             BeginPreviewDiagnostics();
@@ -1784,27 +1785,27 @@ namespace ParkingLotTool.Tools
                 TrennmodusAktiv,
                 TrennmodusAktiv ? Trennlinien() : null,
                 _trennAnfang,
-                _zoningflaechen,
-                ZoningVorschau,
+                Fahrradmodus ? null : _zoningflaechen,
+                Fahrradmodus ? null : ZoningVorschau,
                 _zoningHover,
                 ZoningAuswahl,
                 ZoningSeite,
-                _zoningStrassenAktuell,
+                Fahrradmodus ? null : _zoningStrassenAktuell,
                 ZoningSeitenVorschau(out var seiteA, out var seiteB,
                         out var seiteLinks, out var seiteKacheln)
                     ? (seiteA, seiteB, seiteLinks, seiteKacheln)
                     : ((float2, float2, bool, int)?)null,
                 // Seitenmarken nur fuer "Zoning road sides", nicht fuer "Edge zoning".
                 ZoningSeitenModus && !ZoningNurRand,
-                _randzoning.Select(l => (l.A, l.B)).ToArray(),
-                RandzoningStrassenAchsen.Select(r => (r.A, r.B)).ToArray(),
+                Fahrradmodus ? null : _randzoning.Select(l => (l.A, l.B)).ToArray(),
+                Fahrradmodus ? null : RandzoningStrassenAchsen.Select(r => (r.A, r.B)).ToArray(),
                 RandzoningVorschau(out var randA, out var randB,
                         out var randZustand)
                     ? (randA, randB, randZustand)
                     : ((float2, float2, int)?)null);
-            DrawBusStops(new ParkingLotPreviewBuffer(buffer));
+            if (!Fahrradmodus) DrawBusStops(new ParkingLotPreviewBuffer(buffer));
             ZeichneMustergriff(new ParkingLotPreviewBuffer(buffer));
-            ZeichneZoningGeist(new ParkingLotPreviewBuffer(buffer));
+            if (!Fahrradmodus) ZeichneZoningGeist(new ParkingLotPreviewBuffer(buffer));
             _uiSystem?.SetZoningVerloren(_overlay.ZoningVerloren);
             ZeichneKurvendiagnose(new ParkingLotPreviewBuffer(buffer));
             ParkingLotMessung.Ende(

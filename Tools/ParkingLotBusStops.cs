@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Colossal.Mathematics;
@@ -57,7 +57,7 @@ namespace ParkingLotTool.Tools
 
         internal void SetBusStopModeFromPanel(bool on)
         {
-            if (on && (!_closed || _reiter != Werkzeugreiter.Entwurf)) return;
+            if (on && (Fahrradmodus || !_closed || _reiter != Werkzeugreiter.Entwurf)) return;
             if (_busStopMode == on) return;
             if (on)
             {
@@ -320,7 +320,7 @@ namespace ParkingLotTool.Tools
 
         private void PlanBusStopBuild(Entity lot, Entity carrier)
         {
-            _pendingBusStops = _busStops.ToArray();
+            _pendingBusStops = Fahrradbau ? Array.Empty<BusStopPlacement>() : _busStops.ToArray();
             _pendingBusLot = lot;
             _pendingBusCarrier = carrier;
             _busStopBuildDeadline = 90;

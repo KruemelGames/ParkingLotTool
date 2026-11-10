@@ -39,6 +39,8 @@ namespace ParkingLotTool.Tools
             "StreetlightDouble01", "StreetlightDouble02", "StreetlightDouble03",
             "LightpoleCommercial01", "LightpoleCommercial02", "LightpoleCommercial03", "LightpoleCommercial04",
             "LightpoleIndustrial01", "LightpoleIndustrial02", "LightpoleIndustrial03", "LightpoleIndustrial04",
+            // Fahrradplatz (03.11.2026): Hoehe/Reichweite im Katalog sind bis zur Messung vorlaeufig.
+            "LightpolePark02",
         };
 
         private PrefabSystem _prefabs;

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Game.Common;
 using Game.Net;
 using Game.Tools;
@@ -109,6 +109,8 @@ namespace ParkingLotTool.Tools
 
         private void SetzeZoningSeitenArt(bool an, bool nurRand)
         {
+            if (an && Fahrradmodus)
+            { _uiSystem?.SetStatus(T("ui.fahrradZoningAus")); return; }
             if (an && !ZoningSeitenMoeglich) return;
             if (ZoningSeitenModus == an && (!an || ZoningNurRand == nurRand)) return;
             ZoningSeitenModus = an;

@@ -160,6 +160,11 @@ namespace ParkingLotTool.Tools
             _vorflaechenSicht = Array.Empty<float2[]>();
             _vorflaechenArt = Array.Empty<int>();
             _vorflaechenKante = Array.Empty<float2[]>();
+            if (layout?.Fahrrad != null)
+            {
+                FahrradVorflaechen(layout.Fahrrad,site,settings);
+                return;
+            }
             if (layout?.NetLine == null || site == null || site.Length < 3) return;
             if (!(_baukontext?.Zettel.SurfaceApronOn ?? _uiSystem?.VorflaecheAn ?? true)) return;
             // Die Vorflaeche IST Flaeche 1. Wer den Belag ganz abschaltet,

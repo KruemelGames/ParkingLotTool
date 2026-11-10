@@ -11,6 +11,14 @@ const werte = (): Record<string, unknown> => ((window as any).__PLT_WERTE__ ||= 
 const hoerer = new Set<() => void>();
 let stand = 0;
 
+// Nur der Pruefstand setzt Serverantworten und liest gesendete Befehle.
+(window as any).__PLT_SET__ = (neu: Record<string, unknown>) => {
+  Object.assign(werte(), neu);
+  stand++;
+  hoerer.forEach((h) => h());
+};
+(window as any).__PLT_BEFEHLE__ = [];
+
 export const bindValue = <T,>(group: string, name: string, fallback?: T) => ({ group, name, fallback });
 
 export const useValue = (b: any) => {
@@ -21,6 +29,7 @@ export const useValue = (b: any) => {
 };
 
 export const trigger = (_group: string, name: string, ...args: unknown[]) => {
+  (window as any).__PLT_BEFEHLE__.push({ name, args });
   if (!name || !name.startsWith("Set") || args.length !== 1) return;
   werte()[name.slice(3)] = args[0];
   stand++;

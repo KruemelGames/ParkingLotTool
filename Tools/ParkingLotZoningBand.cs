@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using ParkingLotTool.Geometry;
@@ -243,7 +243,7 @@ namespace ParkingLotTool.Tools
         internal IReadOnlyList<float2[]> ZoningSperrquads()
         {
             var layout = _areaPreviewLayout;
-            if (layout == null || !_closed)
+            if (Fahrradmodus || layout == null || !_closed)
             {
                 _zoningSperrLayout = null;
                 _zoningRandQuads = Array.Empty<float2[]>();
