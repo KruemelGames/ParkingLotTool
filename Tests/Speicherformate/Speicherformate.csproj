@@ -41,6 +41,8 @@
     <Compile Include="$(EditQuelle)" Link="EditFreigabe.cs" />
     <Compile Include="../../Tools/ParkingLotPrefabname.cs" Link="ParkingLotPrefabname.cs" />
     <Compile Include="../../Tools/ParkingLotAbrissabsicht.cs" Link="ParkingLotAbrissabsicht.cs" />
+    <!-- Jeder Leser ruft seit c8ac3ba ParkingLotFassungsschutz.Pruefe; ohne die Datei baut der Test nicht. -->
+    <Compile Include="../../Tools/ParkingLotFassungsschutz.cs" Link="ParkingLotFassungsschutz.cs" />
     <Content Include="Fixturen/nebenarbeit.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Fixturen/historisch.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Fixturen/fahrrad.json" CopyToOutputDirectory="PreserveNewest" />
