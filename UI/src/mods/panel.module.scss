@@ -122,14 +122,72 @@ $type-xl: calc(var(--fontSizeXL) * 1.5);
  * Magenta ist nicht frei gewaehlt: genau in dieser Farbe zeichnet das
  * Werkzeug den Zufahrtsring in die Welt. Fenster und Welt sagen dasselbe.
  */
-$zuschnitt: #f0ad3e;
-$fahrwege: #4fc3f7;
-$gruen: #7cd455;
-$zufahrt: #ff5fb0;
+$zuschnitt: rgba(var(--pltZuschnitt), 1);
+$fahrwege: rgba(var(--pltFahrwege), 1);
+$gruen: rgba(var(--pltGruen), 1);
+$voll: rgba(var(--pltVoll), 1);
+$zufahrt: rgba(var(--pltZufahrt), 1);
 $melden: #f2725c;
 // Gelb fuer "hier wartet etwas": Synchronisieren, Reparieren. Rot bleibt
 // Loeschen und Abbrechen vorbehalten (Nutzer, 2026-10-02).
 $hinweis: #f2c94c;
+
+/**
+ * ZWEI FARBSAETZE (FRQ-34, Einstellung "Panelfarben").
+ *
+ * Die Werte sind RGB-Tripel, weil Zartes dieselbe Farbe mit Alpha braucht:
+ * `rgba(var(--x), 0.2)`. Cohtml kann das nachweislich, index.css schreibt
+ * `rgba(var(--scrollbarColor),0.15)`. `color-mix` und `hsl` kann es nicht.
+ *
+ * Das Spielschema nimmt die Akzentfarben aus index.css (`--accentColorNormal`,
+ * `-hover`, `--accentColorLight`) je `style--...`. Ein kuenftiges unbekanntes
+ * Schema bekommt die des Standardschemas.
+ *
+ * Die Farben bleiben, wie das Spiel sie vorgibt (Nutzer 06.11.). Das Mittelblau
+ * von Bright Blue hat auf dem durchscheinenden Panel wenig Kontrast, rechnerisch
+ * rund 2:1 ueber einer mittelhellen Szene. Das ist so gewollt: wer diesen Stil
+ * waehlt, bekommt genau seine Farbe.
+ *
+ * Bleibt in beiden gleich: Gelb ($hinweis, es wartet etwas), Rot ($melden,
+ * Loeschen und Abbrechen) und Magenta nur am Knopf `.aktionZufahrt`, weil das
+ * Werkzeug die Zufahrt in dieser Farbe in die Welt zeichnet. Die Spalte
+ * "Flaechen" traegt $zufahrt nur als Spaltenfarbe und wird deshalb Akzent.
+ * `--pltVoll` ist eine Warnung und wird gelb, nicht Akzent: sonst saehe "voll"
+ * aus wie "gut".
+ */
+:global(body) {
+  --pltZuschnitt: 240, 173, 62;
+  --pltZuschnittHell: 247, 212, 154;
+  --pltFahrwege: 79, 195, 247;
+  --pltFahrwegeHell: 111, 208, 250;
+  --pltGruen: 124, 212, 85;
+  --pltGruenHell: 146, 228, 111;
+  --pltVoll: 240, 173, 62;
+  --pltZufahrt: 255, 95, 176;
+  --pltArtZufahrt: 224, 90, 43;
+  --pltArtAusfahrt: 242, 193, 78;
+  --pltArtFussweg: 126, 217, 87;
+  --pltArtGasse: 187, 53, 82;
+}
+
+@mixin spielschema($normal, $hover, $hell) {
+  --pltZuschnitt: #{$normal};
+  --pltZuschnittHell: #{$hell};
+  --pltFahrwege: #{$normal};
+  --pltFahrwegeHell: #{$hover};
+  --pltGruen: #{$normal};
+  --pltGruenHell: #{$hover};
+  --pltVoll: 242, 201, 76;
+  --pltZufahrt: #{$normal};
+  --pltArtZufahrt: #{$normal};
+  --pltArtAusfahrt: #{$normal};
+  --pltArtFussweg: #{$normal};
+  --pltArtGasse: #{$normal};
+}
+
+:global(body.plt-farben-spiel) { @include spielschema("75, 195, 241", "122, 211, 245", "158, 226, 252"); }
+:global(body.plt-farben-spiel.style--bright-blue) { @include spielschema("35, 145, 219", "78, 167, 227", "158, 202, 252"); }
+:global(body.plt-farben-spiel.style--dark-grey-orange) { @include spielschema("219, 145, 35", "227, 167, 78", "252, 218, 158"); }
 
 /**
  * GRUND UND TEXT - AUS DEN VARIABLEN DES SPIELS.
@@ -1282,10 +1340,10 @@ $eck-reiter: 9rem;
 .titelZufahrt { color: $zufahrt; }
 .titelMelden { color: $melden; }
 
-.linieZuschnitt { background-color: rgba(240, 173, 62, 0.25); }
-.linieFahrwege { background-color: rgba(79, 195, 247, 0.25); }
-.linieGruen { background-color: rgba(124, 212, 85, 0.25); }
-.linieZufahrt { background-color: rgba(255, 95, 176, 0.25); }
+.linieZuschnitt { background-color: rgba(var(--pltZuschnitt), 0.25); }
+.linieFahrwege { background-color: rgba(var(--pltFahrwege), 0.25); }
+.linieGruen { background-color: rgba(var(--pltGruen), 0.25); }
+.linieZufahrt { background-color: rgba(var(--pltZufahrt), 0.25); }
 .linieMelden { background-color: rgba(242, 114, 92, 0.25); }
 
 /* ------------------------------------------------------------------ Regler */
@@ -1507,7 +1565,7 @@ $eck-reiter: 9rem;
   background-color: $gruen;
   color: #0b1a08;
 
-  &:hover { background-color: #92e46f; }
+  &:hover { background-color: rgba(var(--pltGruenHell), 1); }
 }
 
 .mode {
@@ -1539,35 +1597,35 @@ $eck-reiter: 9rem;
 }
 
 .modeAktivZufahrt {
-  background-color: rgba(255, 95, 176, 0.2);
+  background-color: rgba(var(--pltZufahrt), 0.2);
   color: $zufahrt;
   font-weight: bold;
 
-  &:hover { background-color: rgba(255, 95, 176, 0.2); }
+  &:hover { background-color: rgba(var(--pltZufahrt), 0.2); }
 }
 
 .modeAktivZuschnitt {
-  background-color: rgba(240, 173, 62, 0.2);
+  background-color: rgba(var(--pltZuschnitt), 0.2);
   color: $zuschnitt;
   font-weight: bold;
 
-  &:hover { background-color: rgba(240, 173, 62, 0.2); }
+  &:hover { background-color: rgba(var(--pltZuschnitt), 0.2); }
 }
 
 .modeAktivFahrwege {
-  background-color: rgba(79, 195, 247, 0.2);
+  background-color: rgba(var(--pltFahrwege), 0.2);
   color: $fahrwege;
   font-weight: bold;
 
-  &:hover { background-color: rgba(79, 195, 247, 0.2); }
+  &:hover { background-color: rgba(var(--pltFahrwege), 0.2); }
 }
 
 .modeAktivGruen {
-  background-color: rgba(124, 212, 85, 0.2);
+  background-color: rgba(var(--pltGruen), 0.2);
   color: $gruen;
   font-weight: bold;
 
-  &:hover { background-color: rgba(124, 212, 85, 0.2); }
+  &:hover { background-color: rgba(var(--pltGruen), 0.2); }
 }
 
 /* Cohtml wertet `:disabled` nicht aus; der Klickschutz sitzt im JSX. */
@@ -1832,11 +1890,11 @@ $eck-reiter: 9rem;
  * dieselbe wie ueber der Spalte, in der man die Form einstellt.
  */
 .aktionPolygon {
-  border: 1rem solid rgba(240, 173, 62, 0.45);
-  background-color: rgba(240, 173, 62, 0.16);
-  color: #f7d49a;
+  border: 1rem solid rgba(var(--pltZuschnitt), 0.45);
+  background-color: rgba(var(--pltZuschnitt), 0.16);
+  color: rgba(var(--pltZuschnittHell), 1);
 
-  &:hover { background-color: rgba(240, 173, 62, 0.26); }
+  &:hover { background-color: rgba(var(--pltZuschnitt), 0.26); }
 
   .aktionNebentext { color: rgba(247, 212, 154, 0.7); }
 }
@@ -1845,7 +1903,7 @@ $eck-reiter: 9rem;
   background-color: $fahrwege;
   color: #08141f;
 
-  &:hover { background-color: #6fd0fa; }
+  &:hover { background-color: rgba(var(--pltFahrwegeHell), 1); }
 
   .aktionNebentext { color: rgba(8, 20, 31, 0.6); }
 }
@@ -2324,35 +2382,35 @@ $eck-reiter: 9rem;
 }
 
 .flaecheAktivZufahrt {
-  background-color: rgba(255, 95, 176, 0.2);
+  background-color: rgba(var(--pltZufahrt), 0.2);
   color: $zufahrt;
   font-weight: bold;
 
-  &:hover { background-color: rgba(255, 95, 176, 0.2); }
+  &:hover { background-color: rgba(var(--pltZufahrt), 0.2); }
 }
 
 .flaecheAktivZuschnitt {
-  background-color: rgba(240, 173, 62, 0.2);
+  background-color: rgba(var(--pltZuschnitt), 0.2);
   color: $zuschnitt;
   font-weight: bold;
 
-  &:hover { background-color: rgba(240, 173, 62, 0.2); }
+  &:hover { background-color: rgba(var(--pltZuschnitt), 0.2); }
 }
 
 .flaecheAktivFahrwege {
-  background-color: rgba(79, 195, 247, 0.2);
+  background-color: rgba(var(--pltFahrwege), 0.2);
   color: $fahrwege;
   font-weight: bold;
 
-  &:hover { background-color: rgba(79, 195, 247, 0.2); }
+  &:hover { background-color: rgba(var(--pltFahrwege), 0.2); }
 }
 
 .flaecheAktivGruen {
-  background-color: rgba(124, 212, 85, 0.2);
+  background-color: rgba(var(--pltGruen), 0.2);
   color: $gruen;
   font-weight: bold;
 
-  &:hover { background-color: rgba(124, 212, 85, 0.2); }
+  &:hover { background-color: rgba(var(--pltGruen), 0.2); }
 }
 
 /* --------------------------------------------------- Nachfrage-Dialog */
@@ -2865,25 +2923,25 @@ $eck-reiter: 9rem;
   border-color: #ffffff;
 }
 
-.artZufahrt  { border-left: 5rem solid #e05a2b; }
-.artEinfahrt { border-left: 5rem solid #4fc3f7; }
-.artAusfahrt { border-left: 5rem solid #f2c14e; }
-.artFussweg  { border-left: 5rem solid #7ed957; }
+.artZufahrt  { border-left: 5rem solid rgba(var(--pltArtZufahrt), 1); }
+.artEinfahrt { border-left: 5rem solid rgba(var(--pltFahrwege), 1); }
+.artAusfahrt { border-left: 5rem solid rgba(var(--pltArtAusfahrt), 1); }
+.artFussweg  { border-left: 5rem solid rgba(var(--pltArtFussweg), 1); }
 /* Dunkles Rot: die Gasse gehoert farblich zur Zufahrt, muss sich aber von
    deren Orange auf einen Blick trennen lassen. */
-.artGasse    { border-left: 5rem solid #bb3552; }
+.artGasse    { border-left: 5rem solid rgba(var(--pltArtGasse), 1); }
 /* Die gerichteten Gassen tragen denselben Ton wie ihre zweispurige
    Verwandte - sie sind dieselbe Sache, nur einspurig. */
-.artGasseEin { border-left: 5rem solid #bb3552; }
-.artGasseAus { border-left: 5rem solid #bb3552; }
+.artGasseEin { border-left: 5rem solid rgba(var(--pltArtGasse), 1); }
+.artGasseAus { border-left: 5rem solid rgba(var(--pltArtGasse), 1); }
 
-.artZufahrt.artAktiv  { background-color: rgba(224, 90, 43, 0.40); }
-.artEinfahrt.artAktiv { background-color: rgba(79, 195, 247, 0.40); }
-.artAusfahrt.artAktiv { background-color: rgba(242, 193, 78, 0.40); }
-.artFussweg.artAktiv  { background-color: rgba(126, 217, 87, 0.40); }
-.artGasse.artAktiv    { background-color: rgba(187, 53, 82, 0.40); }
-.artGasseEin.artAktiv { background-color: rgba(187, 53, 82, 0.40); }
-.artGasseAus.artAktiv { background-color: rgba(187, 53, 82, 0.40); }
+.artZufahrt.artAktiv  { background-color: rgba(var(--pltArtZufahrt), 0.40); }
+.artEinfahrt.artAktiv { background-color: rgba(var(--pltFahrwege), 0.40); }
+.artAusfahrt.artAktiv { background-color: rgba(var(--pltArtAusfahrt), 0.40); }
+.artFussweg.artAktiv  { background-color: rgba(var(--pltArtFussweg), 0.40); }
+.artGasse.artAktiv    { background-color: rgba(var(--pltArtGasse), 0.40); }
+.artGasseEin.artAktiv { background-color: rgba(var(--pltArtGasse), 0.40); }
+.artGasseAus.artAktiv { background-color: rgba(var(--pltArtGasse), 0.40); }
 
 /*
  * DIE OBERGRENZE IST EINE BILDUNTERSCHRIFT, KEIN FUENFTER KNOPF.
@@ -3171,9 +3229,9 @@ $eck-reiter: 9rem;
 /* Der Sprung zum Parkplatz ist die haeufigste Handlung - er traegt
    deshalb als einziger Farbe. */
 .listeSymbolFokus {
-  background-color: rgba(79, 195, 247, 0.16);
+  background-color: rgba(var(--pltFahrwege), 0.16);
 
-  &:hover { background-color: rgba(79, 195, 247, 0.28); }
+  &:hover { background-color: rgba(var(--pltFahrwege), 0.28); }
 }
 
 /* --- Belegung ------------------------------------------------------- */
@@ -3193,7 +3251,7 @@ $eck-reiter: 9rem;
 }
 
 .listeBalkenGut { background-color: $gruen; }
-.listeBalkenVoll { background-color: $zuschnitt; }
+.listeBalkenVoll { background-color: $voll; }
 
 /* Solange zu wenig gemessen wurde, faerbt der Balken nichts ein - eine
    gruene Anzeige aus zwei Beobachtungen waere eine Behauptung. */
@@ -3287,7 +3345,7 @@ $eck-reiter: 9rem;
 }
 
 .listeHinweisGut { background-color: rgba(0, 0, 0, 0.18); }
-.listeHinweisJung { background-color: rgba(79, 195, 247, 0.12); }
+.listeHinweisJung { background-color: rgba(var(--pltFahrwege), 0.12); }
 
 /* Maengel rotieren nicht mit; sie stehen fest, solange sie zutreffen. */
 .listeHinweisMangel { background-color: rgba(242, 114, 92, 0.13); }
@@ -3325,7 +3383,7 @@ $eck-reiter: 9rem;
   font-size: $type-xs; cursor: pointer;
   &:hover { background-color: rgba(255,255,255,0.14); }
 }
-.listeAktiv { border-color: $fahrwege; background-color: rgba(79,195,247,0.18); color: #fff; }
+.listeAktiv { border-color: $fahrwege; background-color: rgba(var(--pltFahrwege), 0.18); color: #fff; }
 .listeSortierung { max-width: 100%; position: relative; margin-left: auto; }
 /* Stelle nur im Rueckfall; sonst setzt der Aufklapper sie (rahmen.tsx). */
 .listeSortiermenueVorOrt { position: absolute; right: 0; top: 100%; }
@@ -3362,7 +3420,7 @@ $eck-reiter: 9rem;
 .listeUntertitel, .listeJeMonat { color: rgba(255,255,255,0.62); }
 .listeSymbol { border: 1rem solid $rand; color: #fff; font-size: $type-marke; }
 .listeBearbeiten { min-width: 0; max-width: 100%; width: auto; padding: 0 $s3; font-size: $type-xs; }
-.listeFastVoll { color: $zuschnitt; }
+.listeFastVoll { color: $voll; }
 .listeGeldzeile { flex-wrap: wrap; margin-top: $s3; }
 .listeGeldName { color: rgba(255,255,255,0.72); }
 .listeErgebnisBlock { margin-left: $s3; }
@@ -3428,7 +3486,7 @@ $eck-reiter: 9rem;
 .listeNotizPfeil { flex-shrink: 0; width: 22rem; height: 20rem; padding: 0; border: none;
   border-radius: $s2; background-color: transparent; color: $fahrwege; cursor: pointer;
   font-size: $type-marke;
-  &:hover { background-color: rgba(79,195,247,0.18); }
+  &:hover { background-color: rgba(var(--pltFahrwege), 0.18); }
 }
 .listeNotiz .listeHinweis { margin-top: 0; background-color: transparent; }
 
@@ -3801,7 +3859,7 @@ $eck-reiter: 9rem;
   pointer-events: auto;
   cursor: pointer;
 
-  &:hover { background-color: rgba(79, 195, 247, 0.12); }
+  &:hover { background-color: rgba(var(--pltFahrwege), 0.12); }
 }
 .syncTitel {
   @include textPlatz(0 1 auto);
@@ -3888,7 +3946,7 @@ $eck-reiter: 9rem;
   margin-right: $s2;
   padding: 3rem $s4;
   border-radius: $s2;
-  background-color: rgba(240, 173, 62, 0.16);
+  background-color: rgba(var(--pltZuschnitt), 0.16);
   color: $zuschnitt;
   font-size: $type-sm;
   font-weight: bold;

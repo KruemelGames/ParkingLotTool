@@ -11,7 +11,7 @@ namespace ParkingLotTool.Tools
     public struct ParkingLotNeubauFaellig : IComponentData, ISerializable
     {
         public void Serialize<TWriter>(TWriter w) where TWriter : IWriter => w.Write(1);
-        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); }
+        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotNeubauFaellig), version, 1); }
     }
     // Vor dem Generator ist dessen Ergebnis-ID noch unbekannt. Die gesendete
     // Lot-Kontur identifiziert nach Laden auch die Luecke A -> Besitzerfund.

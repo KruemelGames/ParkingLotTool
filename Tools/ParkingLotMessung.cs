@@ -159,6 +159,25 @@ namespace ParkingLotTool.Tools
          */
         private const double AusreisserMs = 50.0;
 
+        /*
+         * AUSREISSER HEISST: FAELLT AUS DER REIHE (Issue #26, 2026-11-02).
+         *
+         * Bis 1.1.2 galt jedes Bild ueber 50 ms als Ausreisser. Bei einem
+         * Spieler mit 15 Bildern je Sekunde war damit JEDES Bild einer, und
+         * PLT schrieb bei offenem Werkzeug jedes Bild eine Zeile ins Log
+         * (7018 Zeilen in 43 Minuten). Der Logger von CS2 oeffnet die Datei
+         * fuer jede Zeile neu; dabei scheiterte er 16-mal mit einer
+         * NullReference, die CS2 als Fehlerfenster zeigte.
+         *
+         * Jetzt muss ein Ausreisser auch doppelt so lang sein wie der Schnitt
+         * der letzten Sekunde, und ins Log geht hoechstens einer je Sekunde.
+         * Die weiteren zaehlt die Sekundenzeile.
+         */
+        private const double AusreisserFaktor = 2.0;
+        private static double _schnittMs;
+        private static bool _ausreisserGeloggt;
+        private static int _ausreisserUngeloggt;
+
         private static readonly long[] Summe = new long[(int)Punkt.Anzahl];
         private static readonly long[] Hoechstwert = new long[(int)Punkt.Anzahl];
         private static readonly int[] Laeufe = new int[(int)Punkt.Anzahl];
@@ -290,7 +309,10 @@ namespace ParkingLotTool.Tools
                 if (dauer > _bildHoechstwert) _bildHoechstwert = dauer;
                 // Die Zeile wird nur gebaut, wenn sie jemand liest - siehe
                 // `JemandSiehtHin`. Gezaehlt wird trotzdem, das kostet nichts.
-                if (dauer * MsJeTick >= AusreisserMs && JemandSiehtHin(_werkzeugLief))
+                var dauerMs = dauer * MsJeTick;
+                if (dauerMs >= AusreisserMs
+                    && dauerMs >= AusreisserFaktor * _schnittMs
+                    && JemandSiehtHin(_werkzeugLief))
                     MeldeAusreisser(dauer);
             }
             _letztesBild = jetzt;
@@ -344,7 +366,12 @@ namespace ParkingLotTool.Tools
                 + " | mesh groups " + BildStueck[(int)Zaehler.Netzgruppen]
                 + ", uploads " + BildStueck[(int)Zaehler.Uebertragungen]
                 + SystemeDiesesBild() + ".";
-            InsLog("PLT-Messung " + zeile);
+            if (_ausreisserGeloggt) _ausreisserUngeloggt++;
+            else
+            {
+                InsLog("PLT-Messung " + zeile);
+                _ausreisserGeloggt = true;
+            }
             Notiere(zeile);
         }
 
@@ -411,10 +438,18 @@ namespace ParkingLotTool.Tools
                     + (Stueck[(int)Zaehler.Netzgruppen] / _bilder)
                     + ", uploads "
                     + (Stueck[(int)Zaehler.Uebertragungen] / _bilder)
-                    + Systeme() + ".";
+                    + Systeme()
+                    + (_ausreisserUngeloggt > 0
+                        ? " | " + _ausreisserUngeloggt
+                          + " more outlier(s) not logged"
+                        : string.Empty)
+                    + ".";
                 InsLog("PLT-Messung: " + zeile);
                 Notiere(zeile);
             }
+            if (_bilder > 0) _schnittMs = fensterMs / _bilder;
+            _ausreisserGeloggt = false;
+            _ausreisserUngeloggt = 0;
 
             for (var i = 0; i < Summe.Length; i++)
             {

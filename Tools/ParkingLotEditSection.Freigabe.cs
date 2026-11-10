@@ -49,6 +49,12 @@ namespace ParkingLotTool.Tools
             _bearbeitbar = sperre == EditSperre.Keine;
             _reparierbar = EditFreigabe.DarfReparieren(sperre, _waise);
             _grund = sperrgrund.Length > 0 ? sperrgrund : Grundtext(sperre);
+            if (ParkingLotFassungsschutz.Fremd)
+            {
+                _bearbeitbar = false;
+                _reparierbar = false;
+                _grund = ParkingLotTexte.T("baukontextLeser.newerSaveFormat");
+            }
         }
 
         private static string Grundtext(EditSperre sperre) => sperre switch

@@ -23,6 +23,8 @@ namespace ParkingLotTool.Tools
                 if (wartend.NurNebenarbeit) { wartend.NurNebenarbeit = false; wartend.Neu = Entity.Null; }
                 wartend.NurRueckweg = true; return;
             }
+            // Spielstand aus einer neueren PLT-Fassung: nichts ab- oder neu bauen.
+            if (ParkingLotFassungsschutz.Fremd) return;
             if (_regel.Gesperrt(lot)) return;
             var id = Auftraege.Merke(lot, Auftragsarbeiter.Hintergrund,
                 grund ?? (rueckweg ? Auftragsgrund.Normalbau : Auftragsgrund.Repair));
@@ -34,6 +36,7 @@ namespace ParkingLotTool.Tools
 
         private bool EinreihenKern(Entity lot, Auftragskennung id, bool rueckweg, int fruehestens, bool fortsetzung)
         {
+            if (ParkingLotFassungsschutz.Fremd) return false;
             if (!Auftraege.Register.Lies(id, out var daten) || daten.Lot != lot
                 || daten.Arbeiter != Auftragsarbeiter.Hintergrund
                 || (fortsetzung ? !Auftraege.DarfAnwenden(id) : daten.Phase != Auftragsphase.Vorgemerkt)) return false;

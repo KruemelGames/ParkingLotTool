@@ -57,6 +57,8 @@ namespace ParkingLotTool.Tools
                         if (!feld.IsInitOnly && !feld.IsLiteral) feld.SetValue(klon, feld.GetValue(original));
                     foreach (var komponente in original.components)
                         if (ParkingLotKlonregel.Erben(komponente)) klon.AddComponentFrom(komponente);
+                    // Find It listet jedes PathwayPrefab, auch ohne UIObject (BUG-35: doppelte Wege).
+                    ParkingLotFahrprefabKopie.Verstecke(klon);
                     if (!_prefabs.AddPrefab(klon)) throw new InvalidOperationException("AddPrefab gab false zurueck");
                     _klon = _prefabs.GetEntity(klon);
                     var zugang = ScriptableObject.CreateInstance<PathwayPrefab>();
@@ -67,12 +69,16 @@ namespace ParkingLotTool.Tools
                         if (!feld.IsInitOnly && !feld.IsLiteral) feld.SetValue(zugang, feld.GetValue(original));
                     foreach (var komponente in original.components)
                         if (ParkingLotKlonregel.Erben(komponente)) zugang.AddComponentFrom(komponente);
+                    ParkingLotFahrprefabKopie.Verstecke(zugang);
                     if (!_prefabs.AddPrefab(zugang))
                     {
                         UnityEngine.Object.Destroy(zugang);
                         throw new InvalidOperationException("Zugangs-AddPrefab gab false zurueck");
                     }
                     _zugang = _prefabs.GetEntity(zugang);
+                    var waechter = World.GetOrCreateSystemManaged<ParkingLotFahrprefabSystem>();
+                    waechter.Beobachte(klon);
+                    waechter.Beobachte(zugang);
                 }
                 catch (Exception e)
                 {

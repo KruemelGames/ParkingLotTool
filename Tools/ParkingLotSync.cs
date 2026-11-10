@@ -283,6 +283,18 @@ namespace ParkingLotTool.Tools
             base.OnGameLoadingComplete(purpose, mode);
             _neuAufnehmen = mode == GameMode.Game;
             _spielGeladen = mode == GameMode.Game;
+            if (_spielGeladen && ParkingLotFassungsschutz.Fremd)
+            {
+                // Bauzettel aus einer neueren PLT-Fassung: kein Sync, keine
+                // Migration, kein Neubau aus versetzt gelesenen Daten.
+                _neuAufnehmen = _spielGeladen = false;
+                Mod.log.Warn("PLT-Fassungsschutz: " + ParkingLotFassungsschutz.Befund
+                    + ". Bauzettel sind versetzt gelesen; Sync, Altbestand, Reparatur und "
+                    + "Bearbeiten bleiben fuer diesen Spielstand aus. Nicht speichern.");
+                World.GetOrCreateSystemManaged<ParkingLotUISystem>()
+                    .SetStatus(ParkingLotTexte.T("hinweis.newerSaveFormat"));
+                return;
+            }
             if (_spielGeladen)
                 ParkingLotSchrittmarke.Setze("Laden: Sync vorbereitet");
         }
@@ -294,6 +306,7 @@ namespace ParkingLotTool.Tools
             if (mode == GameMode.Game)
                 ParkingLotSchrittmarke.Setze("Laden: Sync.OnGamePreload");
             base.OnGamePreload(purpose, mode);
+            ParkingLotFassungsschutz.Zuruecksetzen();
             _spielGeladen = false;
             _offen.Clear();
             _offenMenge.Clear();

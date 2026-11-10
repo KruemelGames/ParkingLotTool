@@ -15,7 +15,7 @@ namespace ParkingLotTool.Tools
     public struct ParkingLotRueckwegsicherungOffen : IComponentData, ISerializable
     {
         public void Serialize<TWriter>(TWriter w) where TWriter : IWriter { w.Write(1); }
-        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); }
+        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotRueckwegsicherungOffen), version, 1); }
     }
     /** Liegt bis zum Erfolg am ALTEN Lot, auch im Save. Keine Temp-ID wird
      *  gespeichert. Eigene entfernte Knoten bekommen im Rueckweg neue IDs. */
@@ -47,7 +47,7 @@ namespace ParkingLotTool.Tools
         }
         public void Deserialize<TReader>(TReader r) where TReader : IReader
         {
-            r.Read(out int version); if (version != 1 && version != 2) throw new InvalidOperationException("Rueckwegversion");
+            r.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotRueckwegkurs), version, 2); if (version != 1 && version != 2) throw new InvalidOperationException("Rueckwegversion");
             r.Read(out Kante); r.Read(out Prefab); r.Read(out Besitzer);
             r.Read(out Start); r.Read(out Ende);
             r.Read(out float3 a); r.Read(out float3 b); r.Read(out float3 c); r.Read(out float3 d);

@@ -303,10 +303,21 @@ namespace ParkingLotTool.Tools
                 {
                     lauf.Soll++;
                     if (ParkingLotNetzerhalt.Pruefe(em,r.Bestand)) { lauf.Ist++; erhalten++; }
-                    // Von CS2 geteilt oder neu verbunden: dieselbe Lage zaehlt
-                    // wie bei jedem neu gebauten Kurs.
-                    else if (FindeKurs(em,eigeneKanten,Ersatzkurs(em,r.Bestand,out _),benutzt,out _) != null) { lauf.Ist++; nachLage++; }
-                    else if (diagnose) Melde($"Rueckweg ERHALTEN FEHLT: Originalkante {r.Bestand.Kante}, Prefab {r.Bestand.Prefab}, Knoten {r.Bestand.Start}/{r.Bestand.Ende}; weder Entity noch Lage, nicht nachbaubar.");
+                    else
+                    {
+                        // Warum die strenge Abnahme nicht passt, einmal je Kante
+                        // und Sitzung (#25: dieser Grund fehlte in jedem Report).
+                        if (diagnose && GemeldetErhalt.Add(r.Bestand.Kante))
+                        {
+                            var bestand = r.Bestand;
+                            ParkingLotHintergrundDiagnose.Sicher(() => Melde($"Rueckweg Erhalt-Abnahme Originalkante {bestand.Kante}: "
+                                + ParkingLotNetzerhalt.Gruende(em,bestand)));
+                        }
+                        // Von CS2 geteilt oder neu verbunden: dieselbe Lage zaehlt
+                        // wie bei jedem neu gebauten Kurs.
+                        if (FindeKurs(em,eigeneKanten,Ersatzkurs(em,r.Bestand,out _),benutzt,out _) != null) { lauf.Ist++; nachLage++; }
+                        else if (diagnose) Melde($"Rueckweg ERHALTEN FEHLT: Originalkante {r.Bestand.Kante}, Prefab {r.Bestand.Prefab}, Knoten {r.Bestand.Start}/{r.Bestand.Ende}; weder Entity noch Lage, nicht nachbaubar.");
+                    }
                     yield return 0;
                 }
                 Melde($"Rueckweg: erhaltene Originalkanten {erhalten}/{bleibt.Length}, nach Lage wiedergefunden {nachLage}.");
@@ -318,6 +329,8 @@ namespace ParkingLotTool.Tools
             ParkingLotRueckwegkurs alt, HashSet<Entity> benutzt, out string grund)
         {
             alt = Originalkurs(em,alt);
+            var original = Originalkante(em,alt,benutzt);
+            if (original != null) { grund = "Originalkante"; return original; }
             var teile = ParkingLotKursabgleich.Sammle(em,kanten,alt.Kurs.m_Curve,alt.Prefab,alt.Besitzer,benutzt,
                 ParkingLotKursabgleich.InnenhoeheVanilla(em,alt.Prefab,Eingabekurs(alt),alt.Besitzer)
                     && ParkingLotKursabgleich.InnenhoeheNachGeneratoren(em,alt.Prefab,Eingabekurs(alt),alt.Besitzer));
@@ -337,6 +350,58 @@ namespace ParkingLotTool.Tools
             { grund = $"Originalknoten verschieden: Ist {start}/{ende}, Soll {alt.Start}/{alt.Ende}"; return null; }
             foreach (var p in teile) benutzt.Add(p.Kante);
             grund = "vollstaendig"; return teile;
+        }
+
+        /*
+         * DIE ORIGINALKANTE IST DAS ORIGINAL (Issues #25, #27, 2026-11-02).
+         *
+         * `Originalkurs` biegt die gespeicherte Kurve auf die AKTUELLE Lage
+         * ihrer Knoten. Das ist fuer Ersatz richtig, der neu gebaut wird.
+         * Steht aber die gespeicherte Kante selbst noch, kann ihre Kurve
+         * neben ihrem Knoten beginnen: #27 (1.1.2), Lot mit 6 Wegen an einem
+         * Knoten - Kante 2212453 mit denselben Knoten, Prefab und Besitzer,
+         * Kurvenanfang 0,75 m neben dem Knoten. Die Lagesuche verglich sie
+         * mit der umgebogenen Kurve, lehnte sie ab, und der Rueckweg hielt
+         * nach jedem Laden wieder an (87/88). #25 zeigte dasselbe mit
+         * 0,05-0,45 m.
+         *
+         * Jetzt: lebt die gespeicherte Kante noch, mit demselben Prefab,
+         * Besitzer, Start- und Endknoten, beidseitig verbunden und mit
+         * demselben Upgrade, ist sie der Kurs. Die Kurvenlage spielt dann
+         * keine Rolle, denn es ist keine Kopie, sondern dieselbe Kante.
+         */
+        /** Je Sitzung nur einmal je Kante melden; die Pruefung laeuft mehrmals. */
+        private static readonly HashSet<Entity> GemeldetIdentitaet = new HashSet<Entity>();
+        private static readonly HashSet<Entity> GemeldetErhalt = new HashSet<Entity>();
+
+        private static List<ParkingLotKursabgleich.Teil> Originalkante(EntityManager em,
+            ParkingLotRueckwegkurs alt, HashSet<Entity> benutzt)
+        {
+            var e = alt.Kante;
+            if (benutzt.Contains(e) || !Lebt(em,e) || em.HasComponent<Temp>(e)
+                || !em.HasComponent<Edge>(e) || !em.HasComponent<Curve>(e)
+                || !em.HasComponent<PrefabRef>(e) || !em.HasComponent<Owner>(e)) return null;
+            var k = em.GetComponentData<Edge>(e);
+            if (alt.Start == Entity.Null || alt.Ende == Entity.Null
+                || k.m_Start != alt.Start || k.m_End != alt.Ende
+                || em.GetComponentData<PrefabRef>(e).m_Prefab != alt.Prefab
+                || em.GetComponentData<Owner>(e).m_Owner != alt.Besitzer
+                || !Verbunden(em,k.m_Start,e) || !Verbunden(em,k.m_End,e)
+                || em.HasComponent<Upgraded>(e) != alt.HatUpgrade
+                || alt.HatUpgrade && !em.GetComponentData<Upgraded>(e).Equals(alt.Upgrade)) return null;
+            benutzt.Add(e);
+            // Beleg im Report, dass genau dieser Weg gegriffen hat: nur wenn die
+            // Lagesuche die Kante abgelehnt haette (ueber 5 cm), einmal je Kante.
+            var abweichung = HintergrundAbgleich.Kurvenabstand(
+                ParkingLotKursabgleich.Form(em.GetComponentData<Curve>(e).m_Bezier),
+                ParkingLotKursabgleich.Form(alt.Kurs.m_Curve));
+            if (!(abweichung <= .05f) && GemeldetIdentitaet.Add(e))
+                Melde($"Rueckweg: Originalkante {e} per Identitaet angenommen (Prefab, Besitzer, Knoten {k.m_Start}/{k.m_End}, "
+                    + $"ConnectedEdge, Upgrade gleich); Kurvenabweichung zur Knotenlage {abweichung:F3} m.");
+            return new List<ParkingLotKursabgleich.Teil>
+            {
+                new ParkingLotKursabgleich.Teil { Kante = e, Start = k.m_Start, Ende = k.m_End, Bereich = new float2(0,1) },
+            };
         }
 
         private static ParkingLotRueckwegkurs[] MitErhaltenen(ParkingLotRueckwegkurs[] kurse, ParkingLotErhaltenerKurs[] bleibt)

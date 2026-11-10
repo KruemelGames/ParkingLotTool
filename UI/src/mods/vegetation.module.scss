@@ -7,8 +7,8 @@
 .choice { display:flex; align-items:center; justify-content:center; width:32rem; height:32rem; flex-shrink:0; padding:3rem; margin:0 4rem 4rem 0; border:1rem solid rgba(255,255,255,.15); border-radius:4rem; background-color:rgba(255,255,255,.06); color:white; font-size:var(--fontSizeXS); }
 .choice img { flex-shrink:0; width:24rem; height:24rem; }
 .choice span { flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; overflow-wrap:break-word; }
-.choice:hover { background-color:rgba(79,195,247,.15); }
-.selected { border-color:#4fc3f7; background-color:rgba(79,195,247,.2); }
+.choice:hover { background-color:rgba(var(--pltFahrwege), .15); }
+.selected { border-color:rgba(var(--pltFahrwege), 1); background-color:rgba(var(--pltFahrwege), .2); }
 .choice[disabled] { opacity:.4; }
 .sets { display:flex; flex-wrap:wrap; max-height:104rem; overflow-y:auto; }
 .set { display:flex; align-items:center; min-width:0; max-width:100%; }

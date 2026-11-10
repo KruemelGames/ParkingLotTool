@@ -71,6 +71,12 @@ namespace ParkingLotTool.Tools
             surfaceRoad = string.Empty;
             surfaceDecoration = string.Empty;
             surfaceZoning = string.Empty;
+            if (ParkingLotFassungsschutz.Fremd)
+            {
+                // Ein Bauzettel war aus einer neueren Fassung: alle sind versetzt gelesen.
+                reason = ParkingLotTexte.T("baukontextLeser.newerSaveFormat");
+                return false;
+            }
             reason = ParkingLotTexte.T("baukontextLeser.buildReceiptMissing");
             if (lot == Entity.Null || !EntityManager.Exists(lot)
                 || !Vollstaendig(EntityManager, lot)) return false;

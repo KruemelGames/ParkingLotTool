@@ -15,7 +15,7 @@ namespace ParkingLotTool.Tools
         { w.Write(2); w.Write((int)Offen); w.Write(VersorgungBekannt); }
         public void Deserialize<R>(R r) where R : IReader
         {
-            r.Read(out int version);
+            r.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotNebenarbeitOffen), version, 2);
             // V1 kannte die damalige Auto-Versorgungswahl nicht.
             Offen = NebenarbeitPflicht.Bushalte | NebenarbeitPflicht.Zoning;
             VersorgungBekannt = false;

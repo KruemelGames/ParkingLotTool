@@ -308,6 +308,7 @@ namespace ParkingLotTool.Tools
         private ValueBinding<float> _panelX;
         private ValueBinding<float> _panelY;
         private ValueBinding<string> _panelStil;
+        private ValueBinding<string> _panelFarben;
         private ValueBinding<int> _leistungRest;
 
         /** Wie lange der Knopf im Melde-Reiter misst. */
@@ -773,6 +774,8 @@ namespace ParkingLotTool.Tools
                 Mod.Optionen?.FensterstilKuerzel() ?? PanelStilHorizontal));
             AddBinding(new TriggerBinding<string>(Group, "SetPanelStil",
                 SetPanelStil));
+            AddBinding(_panelFarben = new ValueBinding<string>(Group, "PanelFarben",
+                Mod.Optionen?.PanelfarbenKuerzel() ?? "bunt"));
             // Derselbe Weg wie der Knopf in den Modeinstellungen - nur
             // erreichbar, ohne das Spiel zu pausieren.
             AddBinding(new TriggerBinding(Group, "FensterHeim",
@@ -1449,6 +1452,9 @@ namespace ParkingLotTool.Tools
         private void PflegeSchalter()
         {
             if (_autoZufahrtModus == null || Mod.Optionen == null) return;
+            var farben = Mod.Optionen.PanelfarbenKuerzel();
+            if (_panelFarben != null && _panelFarben.value != farben)
+                _panelFarben.Update(farben);
             var jetzt = Mod.Optionen.AutomatischZufahrtModus;
             if (_autoZufahrtModus.value != jetzt)
                 _autoZufahrtModus.Update(jetzt);

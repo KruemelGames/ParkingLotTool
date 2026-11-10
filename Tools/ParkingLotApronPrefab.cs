@@ -502,7 +502,10 @@ namespace ParkingLotTool.Tools
             RetteToteFlaechen();
             foreach (var eintrag in _eintraege.Values)
             {
-                if (eintrag.Fehler || eintrag.Bereit) continue;
+                // Aufgegeben heisst fertig mit Pruefen: sonst schrieb jeder
+                // weitere Zyklus die AUFGEGEBEN-Meldung samt Stack ins Log
+                // (Spielerbericht 1.1.1: 15-20 je Sekunde, 60 -> 15 FPS).
+                if (eintrag.Fehler || eintrag.Bereit || eintrag.Aufgegeben) continue;
 
                 if (eintrag.KlonEntity == Entity.Null)
                 {
@@ -676,7 +679,11 @@ namespace ParkingLotTool.Tools
                 }
 
                 eintrag.OriginalMaske = originalGerendert.m_DecalLayerMask;
-                klonGerendert.m_DecalLayerMask = eintrag.OriginalMaske
+                // Ob der Klon auf Strassen zeichnet, entscheiden WIR, nicht
+                // das Original: Asset-Belaege (G87, EAI) tragen selbst
+                // `Roads`. Geerbt zeichnete der Raeumbelag auf Bruecken (#22),
+                // und die Abnahme unten wurde nie wahr (#24, #25).
+                klonGerendert.m_DecalLayerMask = (eintrag.OriginalMaske & ~DecalLayers.Roads)
                     | DecalLayers.Terrain
                     | (ZeichnetAufStrassen(eintrag) ? DecalLayers.Roads : 0);
 
@@ -735,6 +742,8 @@ namespace ParkingLotTool.Tools
                  * sondern derselbe Wert.
                  */
 
+                // Find It listet jedes Flaechenprefab, auch ohne UIObject (BUG-35).
+                ParkingLotFahrprefabKopie.Verstecke(klon);
                 if (!_prefabSystem.AddPrefab(klon))
                 {
                     Fehlschlag(eintrag, "PrefabSystem.AddPrefab gab false zurueck.");

@@ -7,6 +7,6 @@ namespace ParkingLotTool.Tools
     public struct ParkingLotMusterflaeche : IComponentData, ISerializable
     {
         public void Serialize<TWriter>(TWriter w) where TWriter : IWriter => w.Write(1);
-        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); }
+        public void Deserialize<TReader>(TReader r) where TReader : IReader { r.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotMusterflaeche), version, 1); }
     }
 }

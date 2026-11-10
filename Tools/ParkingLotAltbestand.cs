@@ -90,6 +90,9 @@ namespace ParkingLotTool.Tools
 
         private void Suchen()
         {
+            // Versetzt gelesene Bauzettel zeigen zufaellig `Zellen = false`:
+            // nie etwas zum Loeschen anbieten, was wir nicht lesen konnten.
+            if (ParkingLotFassungsschutz.Fremd) return;
             using var lots = _lots.ToEntityArray(Allocator.Temp);
             for (var i = 0; i < lots.Length; i++)
             {

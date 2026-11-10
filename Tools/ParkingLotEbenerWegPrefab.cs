@@ -125,7 +125,9 @@ namespace ParkingLotTool.Tools
                         // Historische Flat-Autowege bleiben unter ihrem alten
                         // Namen ladbar, erhalten aber dieselben Fahrregeln.
                         var fahrprefabs = World.GetOrCreateSystemManaged<ParkingLotFahrprefabSystem>();
+                        // Fahrwege versteckt Isoliere; die Fusswege muessen es selbst (BUG-35).
                         if (ParkingLotFahrregeln.IstFahrweg(quellname)) fahrprefabs.Isoliere(klon);
+                        else ParkingLotFahrprefabKopie.Verstecke(klon);
                         if (!_prefabs.AddPrefab(klon))
                         {
                             UnityEngine.Object.Destroy(klon);
@@ -134,6 +136,7 @@ namespace ParkingLotTool.Tools
                         }
                         _quelleZuKlon[entity] = _prefabs.GetEntity(klon);
                         if (ParkingLotFahrregeln.IstFahrweg(quellname)) fahrprefabs.Beobachte(quelle, klon);
+                        else fahrprefabs.Beobachte(klon);
                         _angelegt.Add(klonname);
                     }
                     catch (Exception e)

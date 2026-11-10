@@ -39,26 +39,71 @@ namespace ParkingLotTool.Tools
         }
 
         internal static bool Pruefe(EntityManager em, ParkingLotRueckwegkurs alt)
+            => Pruefe(em,alt,null);
+
+        /*
+         * DER WAECHTER NENNT SEINE GRUENDE (Issue #25, 2026-11-02).
+         *
+         * Die Abnahme erhaltener Kanten meldete nur "veraendert oder
+         * fehlend". Welche Bedingung brach - Knotenlage, Kurve, Upgrade,
+         * Knoten-ID -, liess sich aus keinem Report lesen (Codex-Bericht
+         * #25). `Gruende` rechnet dieselben Bedingungen wie `Pruefe` und
+         * schreibt jede verletzte mit Soll und Ist.
+         */
+        internal static string Gruende(EntityManager em, ParkingLotRueckwegkurs alt)
+        {
+            var gruende = new List<string>();
+            return Pruefe(em,alt,gruende) ? "alle Bedingungen erfuellt" : string.Join("; ", gruende);
+        }
+
+        private static bool Pruefe(EntityManager em, ParkingLotRueckwegkurs alt, List<string> gruende)
         {
             var e = alt.Kante;
             if (!ParkingLotNetzRueckweg.Lebt(em,e) || em.HasComponent<Temp>(e)
                 || !em.HasComponent<Edge>(e) || !em.HasComponent<Curve>(e)
-                || !em.HasComponent<PrefabRef>(e) || !em.HasComponent<Owner>(e)) return false;
+                || !em.HasComponent<PrefabRef>(e) || !em.HasComponent<Owner>(e))
+            {
+                gruende?.Add($"Kante {e} " + (!ParkingLotNetzRueckweg.Lebt(em,e) ? "lebt nicht"
+                    : em.HasComponent<Temp>(e) ? "ist Temp" : "ohne Edge/Curve/PrefabRef/Owner"));
+                return false;
+            }
             var k = em.GetComponentData<Edge>(e);
             bool verbunden = Verbunden(em,k.m_Start,e) && Verbunden(em,k.m_End,e);
             bool knoten = k.m_Start == alt.Start && k.m_End == alt.Ende;
-            float d = HintergrundAbgleich.Kurvenabstand(ParkingLotKursabgleich.Form(em.GetComponentData<Curve>(e).m_Bezier),
+            float kurve = HintergrundAbgleich.Kurvenabstand(ParkingLotKursabgleich.Form(em.GetComponentData<Curve>(e).m_Bezier),
                 ParkingLotKursabgleich.Form(alt.Kurs.m_Curve));
+            float d = kurve, startLage = 0, endLage = 0;
             if (verbunden)
             {
-                d = math.max(d,math.distance(em.GetComponentData<Node>(k.m_Start).m_Position,alt.Kurs.m_StartPosition.m_Position));
-                d = math.max(d,math.distance(em.GetComponentData<Node>(k.m_End).m_Position,alt.Kurs.m_EndPosition.m_Position));
+                startLage = math.distance(em.GetComponentData<Node>(k.m_Start).m_Position,alt.Kurs.m_StartPosition.m_Position);
+                endLage = math.distance(em.GetComponentData<Node>(k.m_End).m_Position,alt.Kurs.m_EndPosition.m_Position);
+                d = math.max(d,math.max(startLage,endLage));
             }
             bool upgrade = em.HasComponent<Upgraded>(e) == alt.HatUpgrade
                 && (!alt.HatUpgrade || em.GetComponentData<Upgraded>(e).Equals(alt.Upgrade));
-            return Netzerhalt.Unveraendert(em.GetComponentData<PrefabRef>(e).m_Prefab == alt.Prefab,
-                true,knoten,verbunden,upgrade,d) && em.GetComponentData<Owner>(e).m_Owner == alt.Besitzer;
+            var prefab = em.GetComponentData<PrefabRef>(e).m_Prefab;
+            var besitzer = em.GetComponentData<Owner>(e).m_Owner;
+            bool ok = Netzerhalt.Unveraendert(prefab == alt.Prefab,
+                true,knoten,verbunden,upgrade,d) && besitzer == alt.Besitzer;
+            if (!ok && gruende != null)
+            {
+                if (prefab != alt.Prefab) gruende.Add($"Prefab Soll {alt.Prefab} Ist {prefab}");
+                if (besitzer != alt.Besitzer) gruende.Add($"Besitzer Soll {alt.Besitzer} Ist {besitzer}");
+                if (!knoten) gruende.Add($"Knoten Soll {alt.Start}/{alt.Ende} Ist {k.m_Start}/{k.m_End}");
+                if (!verbunden) gruende.Add("ConnectedEdge nicht an beiden Knoten");
+                if (!upgrade) gruende.Add($"Upgrade Soll {(alt.HatUpgrade ? Flags(alt.Upgrade.m_Flags) : "keins")} "
+                    + $"Ist {(em.HasComponent<Upgraded>(e) ? Flags(em.GetComponentData<Upgraded>(e).m_Flags) : "keins")}");
+                if (!math.isfinite(kurve) || kurve > .05f) gruende.Add($"Kurve {kurve:F3} m");
+                if (startLage > .05f) gruende.Add($"Startknoten {startLage:F3} m neben der gespeicherten Lage");
+                if (endLage > .05f) gruende.Add($"Endknoten {endLage:F3} m neben der gespeicherten Lage");
+                gruende.Add("Grenzwert 0,05 m");
+            }
+            return ok;
         }
+
+        // CompositionFlags hat kein eigenes ToString (Log 31.10.: nur der Typname).
+        private static string Flags(CompositionFlags f)
+            => $"{f.m_General}/{f.m_Left}/{f.m_Right}";
     }
 
     public sealed partial class ParkingLotToolSystem

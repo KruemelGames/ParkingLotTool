@@ -24,6 +24,7 @@ body:
     id: when
     attributes:
       label: When did the problem happen?
+      multiple: true
       description: Pick the moment closest to it.
       options:
         - While the game was starting (before the main menu)
@@ -69,6 +70,7 @@ body:
     id: crash
     attributes:
       label: Did the game crash?
+      multiple: true
       options:
         - "No"
         - "Yes, it closed itself"

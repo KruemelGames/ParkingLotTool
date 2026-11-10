@@ -31,7 +31,7 @@ namespace ParkingLotTool.Tools
     public struct ParkingLotOhnePersonal : IComponentData, ISerializable
     {
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter => writer.Write(1);
-        public void Deserialize<TReader>(TReader reader) where TReader : IReader { reader.Read(out int version); }
+        public void Deserialize<TReader>(TReader reader) where TReader : IReader { reader.Read(out int version); ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotOhnePersonal), version, 1); }
     }
 
     internal static class ParkingLotPersonal

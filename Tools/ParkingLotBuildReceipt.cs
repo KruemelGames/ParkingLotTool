@@ -141,6 +141,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildReceipt), Version, CurrentVersion);
             reader.Read(out Es);
             reader.Read(out Ai);
             reader.Read(out Cw);
@@ -269,6 +270,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildPoint), Version, CurrentVersion);
             reader.Read(out Position);
         }
     }
@@ -308,6 +310,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildEntrance), Version, CurrentVersion);
             reader.Read(out Edge);
             reader.Read(out Along);
             reader.Read(out Corner);
@@ -362,6 +365,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildAlignment), Version, CurrentVersion);
             reader.Read(out Anchor);
             reader.Read(out LineA);
             reader.Read(out LineB);
@@ -439,6 +443,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildZoningSeite), Version, CurrentVersion);
             reader.Read(out A);
             reader.Read(out B);
             reader.Read(out Links);
@@ -475,6 +480,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildBusStop), Version, CurrentVersion);
             reader.Read(out A);
             reader.Read(out B);
             reader.Read(out Along);
@@ -499,6 +505,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildRandzoning), Version, CurrentVersion);
             reader.Read(out A);
             reader.Read(out B);
         }
@@ -557,6 +564,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildZoning), Version, CurrentVersion);
             reader.Read(out Ecke);
             reader.Read(out Spalten);
             reader.Read(out Reihen);
@@ -604,6 +612,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildCut), Version, CurrentVersion);
             reader.Read(out A);
             reader.Read(out B);
         }
@@ -659,6 +668,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildCurve), Version, CurrentVersion);
             reader.Read(out Von);
             reader.Read(out Bis);
             reader.Read(out Zwischen);
@@ -696,6 +706,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildCurveSection), Version, CurrentVersion);
             reader.Read(out A);
             reader.Read(out B);
             reader.Read(out C);
@@ -720,6 +731,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildCurveStation), Version, CurrentVersion);
             reader.Read(out Bogen);
         }
     }
@@ -745,6 +757,7 @@ namespace ParkingLotTool.Tools
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
         {
             reader.Read(out Version);
+            ParkingLotFassungsschutz.Pruefe(nameof(ParkingLotBuildText), Version, CurrentVersion);
             reader.Read(out Kind);
             reader.Read(out Index);
             reader.Read(out Value);
